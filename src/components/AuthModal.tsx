@@ -1,4 +1,5 @@
 import { useState, FormEvent } from "react"
+import { useNavigate } from "react-router-dom"
 import {
   Dialog,
   DialogContent,
@@ -7,6 +8,7 @@ import {
   DialogDescription,
 } from "./ui/dialog"
 import Icon from "@/components/ui/icon"
+import { useAuth } from "@/contexts/AuthContext"
 
 type AuthMode = "login" | "register"
 
@@ -22,10 +24,13 @@ export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthMod
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
+  const { login, register } = useAuth()
+  const navigate = useNavigate()
 
   const isLogin = mode === "login"
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError("")
 
@@ -42,7 +47,20 @@ export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthMod
       return
     }
 
-    onOpenChange(false)
+    setLoading(true)
+    try {
+      if (isLogin) {
+        await login(email, password)
+      } else {
+        await register(name, email, password)
+      }
+      onOpenChange(false)
+      navigate("/cabinet")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Что-то пошло не так")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const switchMode = (next: AuthMode) => {
@@ -60,7 +78,7 @@ export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthMod
           <DialogDescription className="text-foreground/60">
             {isLogin
               ? "Рады видеть вас снова"
-              : "Присоединяйтесь к нашей студии"}
+              : "Присоединяйтесь к FixKey"}
           </DialogDescription>
         </DialogHeader>
 
@@ -109,9 +127,16 @@ export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthMod
 
           <button
             type="submit"
-            className="mt-2 inline-flex items-center justify-center gap-2 text-sm px-5 py-3 bg-foreground text-white hover:bg-foreground/90 transition-all duration-300"
+            disabled={loading}
+            className="mt-2 inline-flex items-center justify-center gap-2 text-sm px-5 py-3 bg-foreground text-white hover:bg-foreground/90 transition-all duration-300 disabled:opacity-60"
           >
-            {isLogin ? "Войти" : "Зарегистрироваться"}
+            {loading ? (
+              <Icon name="Loader2" size={16} className="animate-spin" />
+            ) : isLogin ? (
+              "Войти"
+            ) : (
+              "Зарегистрироваться"
+            )}
           </button>
         </form>
 

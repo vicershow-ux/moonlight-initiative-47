@@ -1,0 +1,131 @@
+import { ReactNode, useState } from "react"
+import { NavLink, useNavigate } from "react-router-dom"
+import Icon from "@/components/ui/icon"
+import { useAuth } from "@/contexts/AuthContext"
+import { cn } from "@/lib/utils"
+
+interface CrmLayoutProps {
+  children: ReactNode
+  title: string
+  subtitle?: string
+}
+
+const navItems = [
+  { label: "Dashboard", icon: "LayoutDashboard", href: "/cabinet" },
+  { label: "Объекты", icon: "Building2", href: "/cabinet/objects" },
+  { label: "Документы", icon: "FileText", href: "/cabinet/documents" },
+  { label: "Заказчики", icon: "Users", href: "/cabinet/customers", badge: "PRO" },
+  { label: "Услуги", icon: "Wrench", href: "/cabinet/services" },
+  { label: "Компания", icon: "Building", href: "/cabinet/company" },
+  { label: "Команда", icon: "UsersRound", href: "/cabinet/team", badge: "PRO" },
+  { label: "Профиль", icon: "User", href: "/cabinet/profile" },
+]
+
+export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  const handleLogout = () => {
+    logout()
+    navigate("/")
+  }
+
+  const today = new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
+
+  return (
+    <div className="min-h-screen bg-[#161616] text-white flex">
+      <button
+        className="md:hidden fixed top-4 left-4 z-50 bg-[#1f1f1f] p-2 rounded-lg"
+        onClick={() => setMobileOpen(!mobileOpen)}
+      >
+        <Icon name={mobileOpen ? "X" : "Menu"} size={20} />
+      </button>
+
+      <aside
+        className={cn(
+          "fixed md:static z-40 h-screen w-64 bg-[#1a1a1a] border-r border-white/10 flex flex-col transition-transform duration-300",
+          mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        )}
+      >
+        <div className="px-5 py-6 flex items-center gap-2 border-b border-white/10">
+          <div className="w-8 h-8 rounded-lg bg-[rgb(239,68,68)] flex items-center justify-center">
+            <Icon name="KeyRound" size={18} className="text-white" />
+          </div>
+          <span className="text-xl font-semibold tracking-tight">FixKey</span>
+        </div>
+
+        <div className="px-5 py-4 border-b border-white/10">
+          <p className="text-xs text-white/40 mb-1">Активная компания</p>
+          <p className="text-sm font-medium truncate">{user?.company_name}</p>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto py-4 px-3">
+          <p className="text-[10px] uppercase tracking-wider text-white/30 px-3 mb-2">Platform</p>
+          <ul className="flex flex-col gap-1">
+            {navItems.map((item) => (
+              <li key={item.href}>
+                <NavLink
+                  to={item.href}
+                  end={item.href === "/cabinet"}
+                  onClick={() => setMobileOpen(false)}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
+                      isActive
+                        ? "bg-[rgb(239,68,68)] text-white"
+                        : "text-white/60 hover:bg-white/5 hover:text-white"
+                    )
+                  }
+                >
+                  <Icon name={item.icon} size={17} />
+                  <span className="flex-1">{item.label}</span>
+                  {item.badge && (
+                    <span className="text-[9px] font-semibold bg-white/10 text-white/50 px-1.5 py-0.5 rounded">
+                      {item.badge}
+                    </span>
+                  )}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div className="p-3 border-t border-white/10">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:bg-white/5 hover:text-white transition-colors mb-2"
+          >
+            <Icon name="LogOut" size={17} />
+            Выйти
+          </button>
+          <div className="flex items-center gap-2 px-3 py-2">
+            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-medium">
+              {user?.full_name?.slice(0, 2).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium truncate">{user?.full_name}</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-30 md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      <main className="flex-1 min-h-screen overflow-y-auto">
+        <div className="px-6 md:px-10 py-8 md:py-10 max-w-7xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">{title}</h1>
+            <p className="text-sm text-white/40 mt-1">{subtitle || today}</p>
+          </div>
+          {children}
+        </div>
+      </main>
+    </div>
+  )
+}
