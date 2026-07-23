@@ -7,6 +7,8 @@ import {
 } from "@/components/ui/dialog"
 import Icon from "@/components/ui/icon"
 import { estimatesApi, Estimate, ObjectItem } from "@/lib/api"
+import { printEstimate } from "@/lib/printEstimate"
+import { useAuth } from "@/contexts/AuthContext"
 
 interface EstimatesListModalProps {
   open: boolean
@@ -18,10 +20,12 @@ const formatMoney = (n: number) =>
   new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n) + " ₽"
 
 export function EstimatesListModal({ open, onOpenChange, object }: EstimatesListModalProps) {
+  const { user } = useAuth()
   const [estimates, setEstimates] = useState<Estimate[]>([])
   const [loading, setLoading] = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [expandedData, setExpandedData] = useState<Estimate | null>(null)
+  const [printingId, setPrintingId] = useState<number | null>(null)
 
   useEffect(() => {
     if (open && object) {
@@ -52,6 +56,17 @@ export function EstimatesListModal({ open, onOpenChange, object }: EstimatesList
     if (expandedId === id) {
       setExpandedId(null)
       setExpandedData(null)
+    }
+  }
+
+  const handlePrint = async (id: number) => {
+    if (!object) return
+    setPrintingId(id)
+    try {
+      const full = expandedId === id && expandedData ? expandedData : await estimatesApi.get(id)
+      printEstimate(full, object, user?.company_name || "")
+    } finally {
+      setPrintingId(null)
     }
   }
 
@@ -86,6 +101,19 @@ export function EstimatesListModal({ open, onOpenChange, object }: EstimatesList
                     <p className="text-xs text-white/40">{formatDate(est.created_at)}</p>
                   </div>
                   <div className="flex items-center gap-3">
+                    {printingId === est.id ? (
+                      <Icon name="Loader2" size={15} className="text-white/40 animate-spin" />
+                    ) : (
+                      <Icon
+                        name="Printer"
+                        size={15}
+                        className="text-white/30 hover:text-white transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handlePrint(est.id)
+                        }}
+                      />
+                    )}
                     <Icon
                       name="Trash2"
                       size={15}

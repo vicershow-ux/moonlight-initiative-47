@@ -7,6 +7,8 @@ import {
 } from "@/components/ui/dialog"
 import Icon from "@/components/ui/icon"
 import { servicesApi, estimatesApi, ServiceItem, EstimateItem, ObjectItem } from "@/lib/api"
+import { printEstimate } from "@/lib/printEstimate"
+import { useAuth } from "@/contexts/AuthContext"
 
 interface EstimateModalProps {
   open: boolean
@@ -23,6 +25,7 @@ const formatMoney = (n: number) =>
   new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n) + " ₽"
 
 export function EstimateModal({ open, onOpenChange, object, onCreated }: EstimateModalProps) {
+  const { user } = useAuth()
   const [services, setServices] = useState<ServiceItem[]>([])
   const [items, setItems] = useState<LineItem[]>([])
   const [saving, setSaving] = useState(false)
@@ -87,7 +90,7 @@ export function EstimateModal({ open, onOpenChange, object, onCreated }: Estimat
 
   const total = items.reduce((sum, it) => sum + it.amount, 0)
 
-  const handleSave = async () => {
+  const handleSave = async (shouldPrint = false) => {
     setError("")
     if (!object) return
     const validItems = items.filter((it) => it.name.trim() && it.quantity > 0)
@@ -97,12 +100,15 @@ export function EstimateModal({ open, onOpenChange, object, onCreated }: Estimat
     }
     setSaving(true)
     try {
-      await estimatesApi.create({
+      const created = await estimatesApi.create({
         object_id: object.id,
         items: validItems.map(({ key, ...rest }) => rest),
       })
       onOpenChange(false)
       onCreated?.()
+      if (shouldPrint) {
+        printEstimate(created, object, user?.company_name || "")
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ошибка сохранения сметы")
     } finally {
@@ -221,13 +227,23 @@ export function EstimateModal({ open, onOpenChange, object, onCreated }: Estimat
             </p>
           )}
 
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white text-sm px-4 py-3 rounded-lg disabled:opacity-60"
-          >
-            {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : "Сохранить смету"}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleSave(false)}
+              disabled={saving}
+              className="flex-1 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white text-sm px-4 py-3 rounded-lg disabled:opacity-60"
+            >
+              {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : "Сохранить смету"}
+            </button>
+            <button
+              onClick={() => handleSave(true)}
+              disabled={saving}
+              className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-4 py-3 rounded-lg disabled:opacity-60"
+              title="Сохранить и распечатать"
+            >
+              <Icon name="Printer" size={16} />
+            </button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
