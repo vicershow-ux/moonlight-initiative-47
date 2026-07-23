@@ -2,6 +2,8 @@ import { useEffect, useState } from "react"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { objectsApi, ObjectItem } from "@/lib/api"
+import { EstimateModal } from "@/components/crm/EstimateModal"
+import { EstimatesListModal } from "@/components/crm/EstimatesListModal"
 import {
   Dialog,
   DialogContent,
@@ -30,6 +32,10 @@ export default function Objects() {
   const [objectType, setObjectType] = useState("вторичка")
   const [area, setArea] = useState("")
   const [status, setStatus] = useState("лид")
+
+  const [estimateModalOpen, setEstimateModalOpen] = useState(false)
+  const [estimatesListOpen, setEstimatesListOpen] = useState(false)
+  const [selectedObject, setSelectedObject] = useState<ObjectItem | null>(null)
 
   const load = () => {
     setLoading(true)
@@ -85,6 +91,16 @@ export default function Objects() {
   const handleStatusChange = async (id: number, newStatus: string) => {
     await objectsApi.update(id, { status: newStatus })
     load()
+  }
+
+  const openEstimateModal = (obj: ObjectItem) => {
+    setSelectedObject(obj)
+    setEstimateModalOpen(true)
+  }
+
+  const openEstimatesList = (obj: ObjectItem) => {
+    setSelectedObject(obj)
+    setEstimatesListOpen(true)
   }
 
   return (
@@ -145,12 +161,29 @@ export default function Objects() {
                       </select>
                     </td>
                     <td className="py-3 pr-4">
-                      <button
-                        onClick={() => handleDelete(obj.id)}
-                        className="text-white/40 hover:text-red-400 transition-colors"
-                      >
-                        <Icon name="Trash2" size={16} />
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => openEstimateModal(obj)}
+                          className="flex items-center gap-1.5 text-white/60 hover:text-red-400 transition-colors"
+                          title="Создать смету"
+                        >
+                          <Icon name="FilePlus2" size={16} />
+                        </button>
+                        <button
+                          onClick={() => openEstimatesList(obj)}
+                          className="flex items-center gap-1.5 text-white/60 hover:text-white transition-colors"
+                          title="Сметы объекта"
+                        >
+                          <Icon name="FileText" size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(obj.id)}
+                          className="text-white/40 hover:text-red-400 transition-colors"
+                          title="Удалить объект"
+                        >
+                          <Icon name="Trash2" size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -245,6 +278,19 @@ export default function Objects() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <EstimateModal
+        open={estimateModalOpen}
+        onOpenChange={setEstimateModalOpen}
+        object={selectedObject}
+        onCreated={load}
+      />
+
+      <EstimatesListModal
+        open={estimatesListOpen}
+        onOpenChange={setEstimatesListOpen}
+        object={selectedObject}
+      />
     </CrmLayout>
   )
 }

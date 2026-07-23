@@ -4,6 +4,7 @@ const AUTH_URL = funcUrls.auth
 const OBJECTS_URL = funcUrls.objects
 const SERVICES_URL = funcUrls.services
 const DASHBOARD_URL = funcUrls.dashboard
+const ESTIMATES_URL = funcUrls.estimates
 
 const TOKEN_KEY = "fixkey_token"
 
@@ -168,5 +169,52 @@ export const dashboardApi = {
   async stats() {
     const res = await fetch(DASHBOARD_URL, { headers: { ...authHeaders() } })
     return parseResponse(res) as Promise<DashboardStats>
+  },
+}
+
+export interface EstimateItem {
+  id?: number
+  service_id?: number | null
+  name: string
+  unit: string
+  price: number
+  quantity: number
+  amount: number
+}
+
+export interface Estimate {
+  id: number
+  object_id: number
+  total_amount: number
+  created_at: string
+  items?: EstimateItem[]
+}
+
+export const estimatesApi = {
+  async listByObject(objectId: number) {
+    const res = await fetch(`${ESTIMATES_URL}?object_id=${objectId}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ estimates: Estimate[] }>
+  },
+
+  async get(id: number) {
+    const res = await fetch(`${ESTIMATES_URL}?id=${id}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<Estimate>
+  },
+
+  async create(payload: { object_id: number; items: EstimateItem[] }) {
+    const res = await fetch(ESTIMATES_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<Estimate>
+  },
+
+  async remove(id: number) {
+    const res = await fetch(`${ESTIMATES_URL}?id=${id}`, {
+      method: "DELETE",
+      headers: { ...authHeaders() },
+    })
+    return parseResponse(res)
   },
 }
