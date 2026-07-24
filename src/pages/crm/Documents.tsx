@@ -8,11 +8,11 @@ import { cn } from "@/lib/utils"
 
 type TabKey = "all" | "estimates" | "contracts" | "acts"
 
-const tabs: { key: TabKey; label: string; pro?: boolean }[] = [
+const tabs: { key: TabKey; label: string }[] = [
   { key: "all", label: "Все документы" },
   { key: "estimates", label: "Сметы" },
-  { key: "contracts", label: "Договоры", pro: true },
-  { key: "acts", label: "Акты", pro: true },
+  { key: "contracts", label: "Договоры" },
+  { key: "acts", label: "Акты" },
 ]
 
 const formatMoney = (n: number) =>
@@ -20,6 +20,13 @@ const formatMoney = (n: number) =>
 
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" })
+
+const objectStatusColors: Record<string, string> = {
+  "лид": "bg-purple-500/20 text-purple-300",
+  "в работе": "bg-blue-500/20 text-blue-300",
+  "завершён": "bg-green-500/20 text-green-300",
+  "отменён": "bg-red-500/20 text-red-300",
+}
 
 export default function Documents() {
   const { user } = useAuth()
@@ -93,11 +100,6 @@ export default function Documents() {
                 )}
               >
                 {t.label}
-                {t.pro && (
-                  <span className="text-[9px] font-semibold bg-white/10 text-white/50 px-1.5 py-0.5 rounded">
-                    PRO
-                  </span>
-                )}
               </button>
             ))}
           </div>
@@ -120,9 +122,11 @@ export default function Documents() {
         ) : isLocked ? (
           <div className="flex flex-col items-center justify-center text-center py-16">
             <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-4">
-              <Icon name="Lock" size={22} className="text-white/30" />
+              <Icon name="FileText" size={22} className="text-white/30" />
             </div>
-            <p className="text-white/50 text-sm mb-1">Раздел доступен в тарифе PRO</p>
+            <p className="text-white/50 text-sm mb-1">
+              {tab === "contracts" ? "Договоров пока нет" : "Актов пока нет"}
+            </p>
             <p className="text-white/30 text-xs">
               {tab === "contracts" ? "Договоры подряда с автоформированием из смет" : "Акты выполненных работ по объектам"}
             </p>
@@ -144,7 +148,8 @@ export default function Documents() {
                   <th className="text-left font-medium py-3 px-4">Объект</th>
                   <th className="text-left font-medium py-3 px-4">Заказчик</th>
                   <th className="text-left font-medium py-3 px-4">Сумма</th>
-                  <th className="text-left font-medium py-3 px-4">Статус</th>
+                  <th className="text-left font-medium py-3 px-4">Статус объекта</th>
+                  <th className="text-left font-medium py-3 px-4">Статус сметы</th>
                   <th className="text-left font-medium py-3 px-4">Действия</th>
                 </tr>
               </thead>
@@ -166,6 +171,16 @@ export default function Documents() {
                       </td>
                       <td className="py-3 px-4 text-white/60">{e.client_name || obj?.client_name || "—"}</td>
                       <td className="py-3 px-4 font-medium">{formatMoney(e.total_amount)}</td>
+                      <td className="py-3 px-4">
+                        {obj?.status ? (
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full text-xs",
+                            objectStatusColors[obj.status] || "bg-white/10 text-white/60"
+                          )}>
+                            {obj.status}
+                          </span>
+                        ) : "—"}
+                      </td>
                       <td className="py-3 px-4">
                         {e.has_pending ? (
                           <span className="px-2 py-0.5 rounded-full text-xs bg-orange-500/20 text-orange-300">
