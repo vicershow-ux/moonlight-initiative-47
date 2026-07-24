@@ -15,7 +15,7 @@ const fullNavItems = [
   { label: "Dashboard", icon: "LayoutDashboard", href: "/cabinet", roles: ["owner", "admin", "employee"] },
   { label: "Объекты", icon: "Building2", href: "/cabinet/objects", roles: ["owner", "admin", "employee", "client"] },
   { label: "Документы", icon: "FileText", href: "/cabinet/documents", roles: ["owner", "admin", "employee"] },
-  { label: "Заказчики", icon: "Users", href: "/cabinet/customers", roles: ["owner", "admin", "employee"], badge: "PRO" },
+  { label: "Заказчики", icon: "Users", href: "/cabinet/customers", roles: ["owner", "admin", "employee"] },
   { label: "Услуги", icon: "Wrench", href: "/cabinet/services", roles: ["owner", "admin", "employee"] },
   { label: "Компания", icon: "Building", href: "/cabinet/company", roles: ["owner", "admin", "employee"] },
   { label: "Команда", icon: "UsersRound", href: "/cabinet/team", roles: ["owner", "admin", "employee"] },

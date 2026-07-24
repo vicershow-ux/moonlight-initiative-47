@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
-import { teamApi, objectsApi, TeamMember, ObjectItem } from "@/lib/api"
+import { teamApi, TeamMember } from "@/lib/api"
 import { useAuth } from "@/contexts/AuthContext"
 import {
   Dialog,
@@ -14,20 +14,17 @@ const roleLabels: Record<string, string> = {
   owner: "Владелец",
   admin: "Администратор",
   employee: "Сотрудник",
-  client: "Заказчик",
 }
 
 const roleColors: Record<string, string> = {
   owner: "bg-red-500/20 text-red-300",
   admin: "bg-orange-500/20 text-orange-300",
   employee: "bg-blue-500/20 text-blue-300",
-  client: "bg-green-500/20 text-green-300",
 }
 
 export default function Team() {
   const { user } = useAuth()
   const [members, setMembers] = useState<TeamMember[]>([])
-  const [objects, setObjects] = useState<ObjectItem[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -37,18 +34,14 @@ export default function Team() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [phone, setPhone] = useState("")
-  const [role, setRole] = useState<"employee" | "client">("employee")
-  const [selectedObjectIds, setSelectedObjectIds] = useState<number[]>([])
 
   const canManage = user?.role === "owner" || user?.role === "admin"
 
   const load = () => {
     setLoading(true)
-    Promise.all([teamApi.list(), objectsApi.list()])
-      .then(([teamData, objData]) => {
-        setMembers(teamData.members)
-        setObjects(objData.objects)
-      })
+    teamApi
+      .list()
+      .then((data) => setMembers(data.members.filter((m) => m.role !== "client")))
       .finally(() => setLoading(false))
   }
 
@@ -61,15 +54,7 @@ export default function Team() {
     setEmail("")
     setPassword("")
     setPhone("")
-    setRole("employee")
-    setSelectedObjectIds([])
     setError("")
-  }
-
-  const toggleObject = (id: number) => {
-    setSelectedObjectIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    )
   }
 
   const handleCreate = async () => {
@@ -86,10 +71,6 @@ export default function Team() {
       setError("Пароль должен быть не короче 6 символов")
       return
     }
-    if (role === "client" && selectedObjectIds.length === 0) {
-      setError("Выберите хотя бы один объект для заказчика")
-      return
-    }
 
     setSaving(true)
     try {
@@ -97,9 +78,8 @@ export default function Team() {
         full_name: fullName,
         email,
         password,
-        role,
+        role: "employee",
         phone,
-        object_ids: role === "client" ? selectedObjectIds : undefined,
       })
       setOpen(false)
       resetForm()
@@ -120,7 +100,7 @@ export default function Team() {
     new Date(d).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" })
 
   return (
-    <CrmLayout title="Команда" subtitle="Сотрудники и заказчики вашей компании">
+    <CrmLayout title="Команда" subtitle="Сотрудники вашей компании">
       {canManage && (
         <div className="flex justify-end mb-6">
           <button
@@ -128,7 +108,7 @@ export default function Team() {
             className="flex items-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white text-sm px-4 py-2.5 rounded-lg"
           >
             <Icon name="UserPlus" size={16} />
-            Создать логин
+            Пригласить сотрудника
           </button>
         </div>
       )}
@@ -150,7 +130,6 @@ export default function Team() {
                   <th className="text-left font-medium py-2 pr-4">Имя</th>
                   <th className="text-left font-medium py-2 pr-4">Email</th>
                   <th className="text-left font-medium py-2 pr-4">Роль</th>
-                  <th className="text-left font-medium py-2 pr-4">Объекты</th>
                   <th className="text-left font-medium py-2 pr-4">С нами с</th>
                   {canManage && <th className="text-left font-medium py-2 pr-4">Действия</th>}
                 </tr>
@@ -164,11 +143,6 @@ export default function Team() {
                       <span className={`px-2 py-0.5 rounded-full text-xs ${roleColors[m.role] || "bg-white/10 text-white/60"}`}>
                         {roleLabels[m.role] || m.role}
                       </span>
-                    </td>
-                    <td className="py-3 pr-4 text-white/60">
-                      {m.objects && m.objects.length > 0
-                        ? m.objects.map((o) => o.object_code).join(", ")
-                        : "—"}
                     </td>
                     <td className="py-3 pr-4 text-white/40">{formatDate(m.created_at)}</td>
                     {canManage && (
@@ -192,27 +166,12 @@ export default function Team() {
       </div>
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm() }}>
-        <DialogContent className="bg-[#1f1f1f] border-white/10 text-white sm:max-w-md max-h-[85vh] overflow-y-auto">
+        <DialogContent className="bg-[#1f1f1f] border-white/10 text-white sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Новый логин</DialogTitle>
+            <DialogTitle>Новый сотрудник</DialogTitle>
           </DialogHeader>
 
           <div className="flex flex-col gap-3 mt-2">
-            <div className="flex gap-2">
-              <button
-                onClick={() => setRole("employee")}
-                className={`flex-1 px-3 py-2 rounded-lg text-sm transition-colors ${role === "employee" ? "bg-red-500 text-white" : "bg-[#161616] text-white/50 border border-white/10"}`}
-              >
-                Сотрудник
-              </button>
-              <button
-                onClick={() => setRole("client")}
-                className={`flex-1 px-3 py-2 rounded-lg text-sm transition-colors ${role === "client" ? "bg-red-500 text-white" : "bg-[#161616] text-white/50 border border-white/10"}`}
-              >
-                Заказчик
-              </button>
-            </div>
-
             <div className="flex flex-col gap-1.5">
               <label className="text-xs text-white/50">Имя</label>
               <input
@@ -255,30 +214,6 @@ export default function Team() {
               />
             </div>
 
-            {role === "client" && (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-white/50">Доступные объекты</label>
-                {objects.length === 0 ? (
-                  <p className="text-xs text-white/30">Сначала создайте хотя бы один объект</p>
-                ) : (
-                  <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto border border-white/10 rounded-lg p-2">
-                    {objects.map((o) => (
-                      <label key={o.id} className="flex items-center gap-2 text-sm px-2 py-1.5 rounded hover:bg-white/5 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedObjectIds.includes(o.id)}
-                          onChange={() => toggleObject(o.id)}
-                          className="accent-red-500"
-                        />
-                        <span className="text-red-400">{o.object_code}</span>
-                        <span className="text-white/50">— {o.client_name}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
             {error && (
               <p className="text-sm text-red-400 flex items-center gap-1.5">
                 <Icon name="CircleAlert" size={15} />
@@ -291,7 +226,7 @@ export default function Team() {
               disabled={saving}
               className="mt-2 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white text-sm px-4 py-3 rounded-lg disabled:opacity-60"
             >
-              {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : "Создать логин"}
+              {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : "Пригласить сотрудника"}
             </button>
           </div>
         </DialogContent>
