@@ -277,7 +277,7 @@ export function EstimatesListModal({ open, onOpenChange, object }: EstimatesList
                               value={proposeName}
                               onChange={(e) => setProposeName(e.target.value)}
                               placeholder="Название работы"
-                              className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2 text-xs outline-none focus:border-red-500/50"
+                              className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2 text-xs outline-none focus:border-green-500/50"
                             />
                             <div className="grid grid-cols-3 gap-2">
                               <input
@@ -311,7 +311,7 @@ export function EstimatesListModal({ open, onOpenChange, object }: EstimatesList
                               <button
                                 onClick={() => handlePropose(est.id)}
                                 disabled={proposing}
-                                className="flex-1 bg-red-500 hover:bg-red-600 transition-colors text-white text-xs px-3 py-2 rounded-lg disabled:opacity-60 flex items-center justify-center gap-1.5"
+                                className="flex-1 bg-green-500 hover:bg-green-600 transition-colors text-white text-xs px-3 py-2 rounded-lg disabled:opacity-60 flex items-center justify-center gap-1.5"
                               >
                                 {proposing ? <Icon name="Loader2" size={13} className="animate-spin" /> : "Отправить на согласование"}
                               </button>

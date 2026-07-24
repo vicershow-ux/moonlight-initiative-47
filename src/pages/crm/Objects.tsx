@@ -112,7 +112,7 @@ export default function Objects() {
         <div className="flex justify-end mb-6">
           <button
             onClick={() => setOpen(true)}
-            className="flex items-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white text-sm px-4 py-2.5 rounded-lg"
+            className="flex items-center gap-2 bg-green-500 hover:bg-green-600 transition-colors text-white text-sm px-4 py-2.5 rounded-lg"
           >
             <Icon name="Plus" size={16} />
             Создать объект
@@ -145,7 +145,7 @@ export default function Objects() {
               <tbody>
                 {objects.map((obj) => (
                   <tr key={obj.id} className="border-b border-white/5 last:border-0">
-                    <td className="py-3 pr-4 text-red-400">{obj.object_code}</td>
+                    <td className="py-3 pr-4 text-green-400">{obj.object_code}</td>
                     <td className="py-3 pr-4">
                       <p>{obj.client_name}</p>
                       <p className="text-xs text-white/30">{obj.client_phone}</p>
@@ -176,7 +176,7 @@ export default function Objects() {
                         {!isClient && (
                           <button
                             onClick={() => openEstimateModal(obj)}
-                            className="flex items-center gap-1.5 text-white/60 hover:text-red-400 transition-colors"
+                            className="flex items-center gap-1.5 text-white/60 hover:text-green-400 transition-colors"
                             title="Создать смету"
                           >
                             <Icon name="FilePlus2" size={16} />
@@ -221,7 +221,7 @@ export default function Objects() {
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
                 placeholder="Иванов Иван"
-                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-500/50"
+                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-green-500/50"
               />
             </div>
 
@@ -231,7 +231,7 @@ export default function Objects() {
                 value={clientPhone}
                 onChange={(e) => setClientPhone(e.target.value)}
                 placeholder="+7 900 000 00 00"
-                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-500/50"
+                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-green-500/50"
               />
             </div>
 
@@ -256,7 +256,7 @@ export default function Objects() {
                   onChange={(e) => setArea(e.target.value)}
                   placeholder="30.5"
                   type="number"
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-500/50"
+                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-green-500/50"
                 />
               </div>
             </div>
@@ -286,7 +286,7 @@ export default function Objects() {
             <button
               onClick={handleCreate}
               disabled={saving}
-              className="mt-2 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white text-sm px-4 py-3 rounded-lg disabled:opacity-60"
+              className="mt-2 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 transition-colors text-white text-sm px-4 py-3 rounded-lg disabled:opacity-60"
             >
               {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : "Создать объект"}
             </button>

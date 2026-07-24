@@ -63,8 +63,8 @@ export default function Dashboard() {
         <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm text-white/50">Всего смет</p>
-            <div className="w-9 h-9 rounded-lg bg-red-500/15 flex items-center justify-center">
-              <Icon name="FileText" size={18} className="text-red-400" />
+            <div className="w-9 h-9 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+              <Icon name="FileText" size={18} className="text-emerald-400" />
             </div>
           </div>
           <p className="text-3xl font-semibold">{stats?.total_estimates ?? 0}</p>
@@ -105,7 +105,7 @@ export default function Dashboard() {
         <div className="lg:col-span-2 bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <p className="font-medium">Последние объекты</p>
-            <Link to="/cabinet/objects" className="text-sm text-red-400 hover:text-red-300">
+            <Link to="/cabinet/objects" className="text-sm text-green-400 hover:text-green-300">
               Все объекты →
             </Link>
           </div>
@@ -125,7 +125,7 @@ export default function Dashboard() {
                 <tbody>
                   {stats.recent_objects.map((obj) => (
                     <tr key={obj.id} className="border-b border-white/5 last:border-0">
-                      <td className="py-3 pr-4 text-red-400">{obj.object_code}</td>
+                      <td className="py-3 pr-4 text-green-400">{obj.object_code}</td>
                       <td className="py-3 pr-4">
                         <p>{obj.client_name}</p>
                         <p className="text-xs text-white/30">{obj.client_phone}</p>
@@ -154,7 +154,7 @@ export default function Dashboard() {
           <div className="flex flex-col gap-2">
             <Link
               to="/cabinet/objects"
-              className="flex items-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white text-sm px-4 py-3 rounded-lg"
+              className="flex items-center gap-2 bg-green-500 hover:bg-green-600 transition-colors text-white text-sm px-4 py-3 rounded-lg"
             >
               <Icon name="Plus" size={16} />
               Создать объект

@@ -67,7 +67,7 @@ export function SetPasswordDialog({ open, onOpenChange, memberId, memberName, on
               value={password}
               onChange={(e) => { setPassword(e.target.value); setSuccess(false) }}
               placeholder="Минимум 6 символов"
-              className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-500/50"
+              className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-green-500/50"
             />
           </div>
 
@@ -88,7 +88,7 @@ export function SetPasswordDialog({ open, onOpenChange, memberId, memberName, on
           <button
             onClick={handleSave}
             disabled={saving}
-            className="mt-1 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white text-sm px-4 py-3 rounded-lg disabled:opacity-60"
+            className="mt-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 transition-colors text-white text-sm px-4 py-3 rounded-lg disabled:opacity-60"
           >
             {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : "Сохранить пароль"}
           </button>

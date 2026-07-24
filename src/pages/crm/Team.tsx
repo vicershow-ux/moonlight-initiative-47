@@ -108,7 +108,7 @@ export default function Team() {
         <div className="flex justify-end mb-6">
           <button
             onClick={() => setOpen(true)}
-            className="flex items-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white text-sm px-4 py-2.5 rounded-lg"
+            className="flex items-center gap-2 bg-green-500 hover:bg-green-600 transition-colors text-white text-sm px-4 py-2.5 rounded-lg"
           >
             <Icon name="UserPlus" size={16} />
             Пригласить сотрудника
@@ -191,7 +191,7 @@ export default function Team() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Иванов Иван"
-                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-500/50"
+                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-green-500/50"
               />
             </div>
 
@@ -202,7 +202,7 @@ export default function Team() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="user@example.com"
-                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-500/50"
+                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-green-500/50"
               />
             </div>
 
@@ -213,7 +213,7 @@ export default function Team() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-500/50"
+                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-green-500/50"
               />
             </div>
 
@@ -223,7 +223,7 @@ export default function Team() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+7 900 000 00 00"
-                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-500/50"
+                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-green-500/50"
               />
             </div>
 
@@ -237,7 +237,7 @@ export default function Team() {
             <button
               onClick={handleCreate}
               disabled={saving}
-              className="mt-2 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white text-sm px-4 py-3 rounded-lg disabled:opacity-60"
+              className="mt-2 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 transition-colors text-white text-sm px-4 py-3 rounded-lg disabled:opacity-60"
             >
               {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : "Пригласить сотрудника"}
             </button>

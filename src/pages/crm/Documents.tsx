@@ -96,7 +96,7 @@ export default function Documents() {
                 onClick={() => setTab(t.key)}
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors",
-                  tab === t.key ? "bg-red-500 text-white" : "text-white/50 hover:text-white"
+                  tab === t.key ? "bg-green-500 text-white" : "text-white/50 hover:text-white"
                 )}
               >
                 {t.label}
@@ -110,7 +110,7 @@ export default function Documents() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Поиск по номеру, адресу, заказчику..."
-              className="w-full bg-[#161616] border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm outline-none focus:border-red-500/50"
+              className="w-full bg-[#161616] border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm outline-none focus:border-green-500/50"
             />
           </div>
         </div>
@@ -159,7 +159,7 @@ export default function Documents() {
                   return (
                     <tr key={e.id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
                       <td className="py-3 px-4">
-                        <span className="text-red-400 font-medium text-xs">Смета</span>
+                        <span className="text-green-400 font-medium text-xs">Смета</span>
                       </td>
                       <td className="py-3 px-4">
                         <p className="font-medium">Смета на ремонтные работы</p>

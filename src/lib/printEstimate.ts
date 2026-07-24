@@ -42,7 +42,7 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    border-bottom: 3px solid #ef4444;
+    border-bottom: 3px solid #22c55e;
     padding-bottom: 16px;
     margin-bottom: 24px;
   }
@@ -51,7 +51,7 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
     font-weight: 700;
     letter-spacing: -0.5px;
   }
-  .brand span { color: #ef4444; }
+  .brand span { color: #22c55e; }
   .doc-title {
     text-align: right;
   }

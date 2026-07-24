@@ -231,7 +231,7 @@ export function EstimateModal({ open, onOpenChange, object, onCreated }: Estimat
             <button
               onClick={() => handleSave(false)}
               disabled={saving}
-              className="flex-1 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white text-sm px-4 py-3 rounded-lg disabled:opacity-60"
+              className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 transition-colors text-white text-sm px-4 py-3 rounded-lg disabled:opacity-60"
             >
               {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : "Сохранить смету"}
             </button>
