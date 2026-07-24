@@ -4,6 +4,7 @@ import Icon from "@/components/ui/icon"
 import { objectsApi, ObjectItem } from "@/lib/api"
 import { EstimateModal } from "@/components/crm/EstimateModal"
 import { EstimatesListModal } from "@/components/crm/EstimatesListModal"
+import { useAuth } from "@/contexts/AuthContext"
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,8 @@ const statusColors: Record<string, string> = {
 const statusOptions = ["лид", "в работе", "завершён", "отменён"]
 
 export default function Objects() {
+  const { user } = useAuth()
+  const isClient = user?.role === "client"
   const [objects, setObjects] = useState<ObjectItem[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
@@ -104,16 +107,18 @@ export default function Objects() {
   }
 
   return (
-    <CrmLayout title="Объекты" subtitle="Все объекты вашей компании">
-      <div className="flex justify-end mb-6">
-        <button
-          onClick={() => setOpen(true)}
-          className="flex items-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white text-sm px-4 py-2.5 rounded-lg"
-        >
-          <Icon name="Plus" size={16} />
-          Создать объект
-        </button>
-      </div>
+    <CrmLayout title="Объекты" subtitle={isClient ? "Ваши объекты" : "Все объекты вашей компании"}>
+      {!isClient && (
+        <div className="flex justify-end mb-6">
+          <button
+            onClick={() => setOpen(true)}
+            className="flex items-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white text-sm px-4 py-2.5 rounded-lg"
+          >
+            <Icon name="Plus" size={16} />
+            Создать объект
+          </button>
+        </div>
+      )}
 
       <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
         {loading ? (
@@ -148,27 +153,35 @@ export default function Objects() {
                     <td className="py-3 pr-4 text-white/60">{obj.object_type}</td>
                     <td className="py-3 pr-4 text-white/60">{obj.area} м²</td>
                     <td className="py-3 pr-4">
-                      <select
-                        value={obj.status}
-                        onChange={(e) => handleStatusChange(obj.id, e.target.value)}
-                        className={`px-2 py-1 rounded-full text-xs bg-[#1a1a1a] border border-white/10 outline-none ${statusColors[obj.status] || ""}`}
-                      >
-                        {statusOptions.map((s) => (
-                          <option key={s} value={s} className="bg-[#1a1a1a] text-white">
-                            {s}
-                          </option>
-                        ))}
-                      </select>
+                      {isClient ? (
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${statusColors[obj.status] || "bg-white/10 text-white/60"}`}>
+                          {obj.status}
+                        </span>
+                      ) : (
+                        <select
+                          value={obj.status}
+                          onChange={(e) => handleStatusChange(obj.id, e.target.value)}
+                          className={`px-2 py-1 rounded-full text-xs bg-[#1a1a1a] border border-white/10 outline-none ${statusColors[obj.status] || ""}`}
+                        >
+                          {statusOptions.map((s) => (
+                            <option key={s} value={s} className="bg-[#1a1a1a] text-white">
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </td>
                     <td className="py-3 pr-4">
                       <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => openEstimateModal(obj)}
-                          className="flex items-center gap-1.5 text-white/60 hover:text-red-400 transition-colors"
-                          title="Создать смету"
-                        >
-                          <Icon name="FilePlus2" size={16} />
-                        </button>
+                        {!isClient && (
+                          <button
+                            onClick={() => openEstimateModal(obj)}
+                            className="flex items-center gap-1.5 text-white/60 hover:text-red-400 transition-colors"
+                            title="Создать смету"
+                          >
+                            <Icon name="FilePlus2" size={16} />
+                          </button>
+                        )}
                         <button
                           onClick={() => openEstimatesList(obj)}
                           className="flex items-center gap-1.5 text-white/60 hover:text-white transition-colors"
@@ -176,13 +189,15 @@ export default function Objects() {
                         >
                           <Icon name="FileText" size={16} />
                         </button>
-                        <button
-                          onClick={() => handleDelete(obj.id)}
-                          className="text-white/40 hover:text-red-400 transition-colors"
-                          title="Удалить объект"
-                        >
-                          <Icon name="Trash2" size={16} />
-                        </button>
+                        {!isClient && (
+                          <button
+                            onClick={() => handleDelete(obj.id)}
+                            className="text-white/40 hover:text-red-400 transition-colors"
+                            title="Удалить объект"
+                          >
+                            <Icon name="Trash2" size={16} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

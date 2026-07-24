@@ -10,7 +10,7 @@ def get_conn():
 def cors_headers():
     return {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, X-Authorization',
         'Access-Control-Max-Age': '86400'
     }
@@ -31,17 +31,27 @@ def get_current_user(cur, event):
     if not token:
         return None
     cur.execute(
-        "SELECT u.id, u.company_id FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = %s AND s.expires_at > NOW()",
+        "SELECT u.id, u.company_id, u.role, u.full_name FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = %s AND s.expires_at > NOW()",
         (token,)
     )
     row = cur.fetchone()
     if not row:
         return None
-    return {'user_id': row[0], 'company_id': row[1]}
+    return {'user_id': row[0], 'company_id': row[1], 'role': row[2], 'full_name': row[3]}
+
+
+def has_object_access(cur, user, object_id):
+    if user['role'] != 'client':
+        return True
+    cur.execute(
+        "SELECT 1 FROM object_access WHERE user_id = %s AND object_id = %s",
+        (user['user_id'], object_id)
+    )
+    return cur.fetchone() is not None
 
 
 def handler(event: dict, context) -> dict:
-    '''Создание и просмотр смет по объектам с позициями услуг FixKey'''
+    '''Создание и просмотр смет по объектам с позициями услуг FixKey, заявки заказчиков на доп. работы'''
     method = event.get('httpMethod', 'GET')
 
     if method == 'OPTIONS':
@@ -55,10 +65,13 @@ def handler(event: dict, context) -> dict:
         if not user:
             return response(401, {'error': 'Не авторизован'})
         company_id = user['company_id']
+        is_client = user['role'] == 'client'
 
         params = event.get('queryStringParameters') or {}
         estimate_id = params.get('id')
         object_id = params.get('object_id')
+        item_id = params.get('item_id')
+        action = params.get('action')
 
         if method == 'GET':
             if estimate_id:
@@ -72,15 +85,20 @@ def handler(event: dict, context) -> dict:
                 est_keys = ['id', 'object_id', 'total_amount', 'created_at']
                 estimate = dict(zip(est_keys, row))
 
+                if not has_object_access(cur, user, estimate['object_id']):
+                    return response(403, {'error': 'Недостаточно прав'})
+
                 cur.execute(
-                    "SELECT id, name, unit, price, quantity, amount FROM estimate_items WHERE estimate_id = %s ORDER BY id",
+                    "SELECT ei.id, ei.name, ei.unit, ei.price, ei.quantity, ei.amount, ei.status, ei.proposed_by, u.full_name FROM estimate_items ei LEFT JOIN users u ON u.id = ei.proposed_by WHERE ei.estimate_id = %s ORDER BY ei.id",
                     (estimate_id,)
                 )
-                item_keys = ['id', 'name', 'unit', 'price', 'quantity', 'amount']
+                item_keys = ['id', 'name', 'unit', 'price', 'quantity', 'amount', 'status', 'proposed_by', 'proposed_by_name']
                 estimate['items'] = [dict(zip(item_keys, r)) for r in cur.fetchall()]
                 return response(200, estimate)
 
             if object_id:
+                if not has_object_access(cur, user, object_id):
+                    return response(403, {'error': 'Недостаточно прав'})
                 cur.execute(
                     "SELECT id, object_id, total_amount, created_at FROM estimates WHERE object_id = %s AND company_id = %s ORDER BY created_at DESC",
                     (object_id, company_id)
@@ -89,15 +107,98 @@ def handler(event: dict, context) -> dict:
                 keys = ['id', 'object_id', 'total_amount', 'created_at']
                 return response(200, {'estimates': [dict(zip(keys, r)) for r in rows]})
 
-            cur.execute(
-                "SELECT id, object_id, total_amount, created_at FROM estimates WHERE company_id = %s ORDER BY created_at DESC",
-                (company_id,)
-            )
+            if is_client:
+                cur.execute(
+                    "SELECT e.id, e.object_id, e.total_amount, e.created_at FROM estimates e JOIN object_access oa ON oa.object_id = e.object_id WHERE e.company_id = %s AND oa.user_id = %s ORDER BY e.created_at DESC",
+                    (company_id, user['user_id'])
+                )
+            else:
+                cur.execute(
+                    "SELECT id, object_id, total_amount, created_at FROM estimates WHERE company_id = %s ORDER BY created_at DESC",
+                    (company_id,)
+                )
             rows = cur.fetchall()
             keys = ['id', 'object_id', 'total_amount', 'created_at']
             return response(200, {'estimates': [dict(zip(keys, r)) for r in rows]})
 
+        if method == 'POST' and action == 'propose':
+            body = json.loads(event.get('body') or '{}')
+            est_id = body.get('estimate_id')
+            name = (body.get('name') or '').strip()
+            unit = (body.get('unit') or 'м²').strip()
+            price = float(body.get('price') or 0)
+            quantity = float(body.get('quantity') or 0)
+
+            if not is_client:
+                return response(403, {'error': 'Доступно только заказчику'})
+            if not est_id or not name or quantity <= 0:
+                return response(400, {'error': 'Заполните все поля позиции'})
+
+            cur.execute("SELECT object_id FROM estimates WHERE id = %s AND company_id = %s", (est_id, company_id))
+            est_row = cur.fetchone()
+            if not est_row:
+                return response(404, {'error': 'Смета не найдена'})
+            if not has_object_access(cur, user, est_row[0]):
+                return response(403, {'error': 'Недостаточно прав'})
+
+            amount = round(price * quantity, 2)
+            cur.execute(
+                "INSERT INTO estimate_items (estimate_id, name, unit, price, quantity, amount, status, proposed_by) VALUES (%s, %s, %s, %s, %s, %s, 'pending', %s) RETURNING id",
+                (est_id, name, unit, price, quantity, amount, user['user_id'])
+            )
+            new_item_id = cur.fetchone()[0]
+
+            cur.execute(
+                "SELECT object_code, client_name FROM objects WHERE id = %s",
+                (est_row[0],)
+            )
+            obj_row = cur.fetchone()
+            obj_label = obj_row[0] if obj_row else ''
+
+            cur.execute(
+                "INSERT INTO notifications (company_id, type, title, message, payload) VALUES (%s, %s, %s, %s, %s)",
+                (
+                    company_id, 'estimate_proposal',
+                    'Новая позиция от заказчика',
+                    f'{user["full_name"]} предложил добавить «{name}» в смету по объекту {obj_label}',
+                    json.dumps({'estimate_id': est_id, 'item_id': new_item_id, 'object_id': est_row[0]})
+                )
+            )
+
+            conn.commit()
+
+            return response(200, {'id': new_item_id, 'status': 'pending'})
+
+        if method == 'PUT' and action in ('approve', 'reject'):
+            if is_client:
+                return response(403, {'error': 'Недостаточно прав'})
+            if not item_id:
+                return response(400, {'error': 'Не указан id позиции'})
+
+            cur.execute(
+                "SELECT ei.estimate_id, ei.amount FROM estimate_items ei JOIN estimates e ON e.id = ei.estimate_id WHERE ei.id = %s AND e.company_id = %s",
+                (item_id, company_id)
+            )
+            row = cur.fetchone()
+            if not row:
+                return response(404, {'error': 'Позиция не найдена'})
+            est_id, amount = row
+
+            new_status = 'approved' if action == 'approve' else 'rejected'
+            cur.execute("UPDATE estimate_items SET status = %s WHERE id = %s", (new_status, item_id))
+
+            cur.execute(
+                "UPDATE estimates SET total_amount = (SELECT COALESCE(SUM(amount), 0) FROM estimate_items WHERE estimate_id = %s AND status = 'approved') WHERE id = %s",
+                (est_id, est_id)
+            )
+            conn.commit()
+
+            return response(200, {'success': True, 'status': new_status})
+
         if method == 'POST':
+            if is_client:
+                return response(403, {'error': 'Недостаточно прав'})
+
             body = json.loads(event.get('body') or '{}')
             obj_id = body.get('object_id')
             items = body.get('items') or []
@@ -139,7 +240,7 @@ def handler(event: dict, context) -> dict:
 
             for it in clean_items:
                 cur.execute(
-                    "INSERT INTO estimate_items (estimate_id, service_id, name, unit, price, quantity, amount) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                    "INSERT INTO estimate_items (estimate_id, service_id, name, unit, price, quantity, amount, status) VALUES (%s, %s, %s, %s, %s, %s, %s, 'approved')",
                     (new_id, it['service_id'], it['name'], it['unit'], it['price'], it['quantity'], it['amount'])
                 )
 
@@ -151,6 +252,8 @@ def handler(event: dict, context) -> dict:
             })
 
         if method == 'DELETE':
+            if is_client:
+                return response(403, {'error': 'Недостаточно прав'})
             if not estimate_id:
                 return response(400, {'error': 'Не указан id сметы'})
             cur.execute("DELETE FROM estimate_items WHERE estimate_id = %s", (estimate_id,))

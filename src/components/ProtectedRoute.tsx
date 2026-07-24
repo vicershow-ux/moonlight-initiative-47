@@ -3,7 +3,12 @@ import { Navigate } from "react-router-dom"
 import { useAuth } from "@/contexts/AuthContext"
 import Icon from "@/components/ui/icon"
 
-export function ProtectedRoute({ children }: { children: ReactNode }) {
+interface ProtectedRouteProps {
+  children: ReactNode
+  allowedRoles?: string[]
+}
+
+export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
 
   if (loading) {
@@ -16,6 +21,10 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (!user) {
     return <Navigate to="/" replace />
+  }
+
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/cabinet/objects" replace />
   }
 
   return <>{children}</>

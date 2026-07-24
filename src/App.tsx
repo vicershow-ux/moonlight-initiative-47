@@ -28,13 +28,13 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/cabinet" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/cabinet" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Dashboard /></ProtectedRoute>} />
             <Route path="/cabinet/objects" element={<ProtectedRoute><Objects /></ProtectedRoute>} />
-            <Route path="/cabinet/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
-            <Route path="/cabinet/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
-            <Route path="/cabinet/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
-            <Route path="/cabinet/company" element={<ProtectedRoute><Company /></ProtectedRoute>} />
-            <Route path="/cabinet/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
+            <Route path="/cabinet/documents" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Documents /></ProtectedRoute>} />
+            <Route path="/cabinet/customers" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Customers /></ProtectedRoute>} />
+            <Route path="/cabinet/services" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Services /></ProtectedRoute>} />
+            <Route path="/cabinet/company" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Company /></ProtectedRoute>} />
+            <Route path="/cabinet/team" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Team /></ProtectedRoute>} />
             <Route path="/cabinet/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

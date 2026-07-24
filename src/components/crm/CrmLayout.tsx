@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom"
 import Icon from "@/components/ui/icon"
 import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/lib/utils"
+import { NotificationBell } from "@/components/crm/NotificationBell"
 
 interface CrmLayoutProps {
   children: ReactNode
@@ -10,15 +11,15 @@ interface CrmLayoutProps {
   subtitle?: string
 }
 
-const navItems = [
-  { label: "Dashboard", icon: "LayoutDashboard", href: "/cabinet" },
-  { label: "Объекты", icon: "Building2", href: "/cabinet/objects" },
-  { label: "Документы", icon: "FileText", href: "/cabinet/documents" },
-  { label: "Заказчики", icon: "Users", href: "/cabinet/customers", badge: "PRO" },
-  { label: "Услуги", icon: "Wrench", href: "/cabinet/services" },
-  { label: "Компания", icon: "Building", href: "/cabinet/company" },
-  { label: "Команда", icon: "UsersRound", href: "/cabinet/team", badge: "PRO" },
-  { label: "Профиль", icon: "User", href: "/cabinet/profile" },
+const fullNavItems = [
+  { label: "Dashboard", icon: "LayoutDashboard", href: "/cabinet", roles: ["owner", "admin", "employee"] },
+  { label: "Объекты", icon: "Building2", href: "/cabinet/objects", roles: ["owner", "admin", "employee", "client"] },
+  { label: "Документы", icon: "FileText", href: "/cabinet/documents", roles: ["owner", "admin", "employee"] },
+  { label: "Заказчики", icon: "Users", href: "/cabinet/customers", roles: ["owner", "admin", "employee"], badge: "PRO" },
+  { label: "Услуги", icon: "Wrench", href: "/cabinet/services", roles: ["owner", "admin", "employee"] },
+  { label: "Компания", icon: "Building", href: "/cabinet/company", roles: ["owner", "admin", "employee"] },
+  { label: "Команда", icon: "UsersRound", href: "/cabinet/team", roles: ["owner", "admin", "employee"] },
+  { label: "Профиль", icon: "User", href: "/cabinet/profile", roles: ["owner", "admin", "employee", "client"] },
 ]
 
 export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
@@ -30,6 +31,9 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
     logout()
     navigate("/")
   }
+
+  const navItems = fullNavItems.filter((item) => !user?.role || item.roles.includes(user.role))
+  const showNotifications = user?.role === "owner" || user?.role === "admin" || user?.role === "employee"
 
   const today = new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
 
@@ -119,9 +123,12 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
 
       <main className="flex-1 min-h-screen overflow-y-auto">
         <div className="px-6 md:px-10 py-8 md:py-10 max-w-7xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">{title}</h1>
-            <p className="text-sm text-white/40 mt-1">{subtitle || today}</p>
+          <div className="mb-8 flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">{title}</h1>
+              <p className="text-sm text-white/40 mt-1">{subtitle || today}</p>
+            </div>
+            {showNotifications && <NotificationBell />}
           </div>
           {children}
         </div>

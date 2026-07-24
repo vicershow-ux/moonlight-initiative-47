@@ -43,15 +43,6 @@ async function parseResponse(res: Response) {
 }
 
 export const authApi = {
-  async register(payload: { full_name: string; email: string; password: string; company_name?: string }) {
-    const res = await fetch(`${AUTH_URL}?action=register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
-    return parseResponse(res) as Promise<{ token: string; user: UserData }>
-  },
-
   async login(payload: { email: string; password: string }) {
     const res = await fetch(`${AUTH_URL}?action=login`, {
       method: "POST",
@@ -180,6 +171,9 @@ export interface EstimateItem {
   price: number
   quantity: number
   amount: number
+  status?: "approved" | "pending" | "rejected"
+  proposed_by?: number | null
+  proposed_by_name?: string | null
 }
 
 export interface Estimate {
@@ -213,6 +207,100 @@ export const estimatesApi = {
   async remove(id: number) {
     const res = await fetch(`${ESTIMATES_URL}?id=${id}`, {
       method: "DELETE",
+      headers: { ...authHeaders() },
+    })
+    return parseResponse(res)
+  },
+
+  async propose(payload: { estimate_id: number; name: string; unit: string; price: number; quantity: number }) {
+    const res = await fetch(`${ESTIMATES_URL}?action=propose`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res)
+  },
+
+  async approveItem(itemId: number) {
+    const res = await fetch(`${ESTIMATES_URL}?action=approve&item_id=${itemId}`, {
+      method: "PUT",
+      headers: { ...authHeaders() },
+    })
+    return parseResponse(res)
+  },
+
+  async rejectItem(itemId: number) {
+    const res = await fetch(`${ESTIMATES_URL}?action=reject&item_id=${itemId}`, {
+      method: "PUT",
+      headers: { ...authHeaders() },
+    })
+    return parseResponse(res)
+  },
+}
+
+export interface TeamMember {
+  id: number
+  full_name: string
+  email: string
+  role: string
+  phone: string | null
+  created_at: string
+  objects?: { id: number; object_code: string; client_name: string }[]
+}
+
+export const teamApi = {
+  async list() {
+    const res = await fetch(`${AUTH_URL}?resource=team`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ members: TeamMember[] }>
+  },
+
+  async create(payload: { full_name: string; email: string; password: string; role: "employee" | "client"; phone?: string; object_ids?: number[] }) {
+    const res = await fetch(`${AUTH_URL}?resource=team`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<TeamMember>
+  },
+
+  async updateObjects(id: number, objectIds: number[]) {
+    const res = await fetch(`${AUTH_URL}?resource=team&id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ object_ids: objectIds }),
+    })
+    return parseResponse(res)
+  },
+
+  async remove(id: number) {
+    const res = await fetch(`${AUTH_URL}?resource=team&id=${id}`, {
+      method: "DELETE",
+      headers: { ...authHeaders() },
+    })
+    return parseResponse(res)
+  },
+}
+
+export interface NotificationItem {
+  id: number
+  type: string
+  title: string
+  message: string
+  payload: Record<string, unknown> | null
+  is_read: boolean
+  created_at: string
+}
+
+export const notificationsApi = {
+  async list() {
+    const res = await fetch(`${AUTH_URL}?resource=notifications`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ notifications: NotificationItem[]; unread_count: number }>
+  },
+
+  async markRead(id?: number) {
+    const url = id ? `${AUTH_URL}?resource=notifications&id=${id}` : `${AUTH_URL}?resource=notifications`
+    const res = await fetch(url, {
+      method: "PUT",
       headers: { ...authHeaders() },
     })
     return parseResponse(res)
