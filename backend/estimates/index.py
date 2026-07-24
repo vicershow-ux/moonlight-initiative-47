@@ -109,16 +109,16 @@ def handler(event: dict, context) -> dict:
 
             if is_client:
                 cur.execute(
-                    "SELECT e.id, e.object_id, e.total_amount, e.created_at FROM estimates e JOIN object_access oa ON oa.object_id = e.object_id WHERE e.company_id = %s AND oa.user_id = %s ORDER BY e.created_at DESC",
+                    "SELECT e.id, e.object_id, e.total_amount, e.created_at, o.object_code, o.client_name, o.object_type, o.area, EXISTS(SELECT 1 FROM estimate_items ei WHERE ei.estimate_id = e.id AND ei.status = 'pending') FROM estimates e JOIN object_access oa ON oa.object_id = e.object_id JOIN objects o ON o.id = e.object_id WHERE e.company_id = %s AND oa.user_id = %s ORDER BY e.created_at DESC",
                     (company_id, user['user_id'])
                 )
             else:
                 cur.execute(
-                    "SELECT id, object_id, total_amount, created_at FROM estimates WHERE company_id = %s ORDER BY created_at DESC",
+                    "SELECT e.id, e.object_id, e.total_amount, e.created_at, o.object_code, o.client_name, o.object_type, o.area, EXISTS(SELECT 1 FROM estimate_items ei WHERE ei.estimate_id = e.id AND ei.status = 'pending') FROM estimates e JOIN objects o ON o.id = e.object_id WHERE e.company_id = %s ORDER BY e.created_at DESC",
                     (company_id,)
                 )
             rows = cur.fetchall()
-            keys = ['id', 'object_id', 'total_amount', 'created_at']
+            keys = ['id', 'object_id', 'total_amount', 'created_at', 'object_code', 'client_name', 'object_type', 'area', 'has_pending']
             return response(200, {'estimates': [dict(zip(keys, r)) for r in rows]})
 
         if method == 'POST' and action == 'propose':

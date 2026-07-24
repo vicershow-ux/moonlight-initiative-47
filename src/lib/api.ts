@@ -182,11 +182,21 @@ export interface Estimate {
   total_amount: number
   created_at: string
   items?: EstimateItem[]
+  object_code?: string
+  client_name?: string
+  object_type?: string
+  area?: number
+  has_pending?: boolean
 }
 
 export const estimatesApi = {
   async listByObject(objectId: number) {
     const res = await fetch(`${ESTIMATES_URL}?object_id=${objectId}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ estimates: Estimate[] }>
+  },
+
+  async listAll() {
+    const res = await fetch(ESTIMATES_URL, { headers: { ...authHeaders() } })
     return parseResponse(res) as Promise<{ estimates: Estimate[] }>
   },
 
