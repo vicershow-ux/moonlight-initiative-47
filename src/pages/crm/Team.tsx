@@ -3,6 +3,7 @@ import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { teamApi, TeamMember } from "@/lib/api"
 import { useAuth } from "@/contexts/AuthContext"
+import { SetPasswordDialog } from "@/components/crm/SetPasswordDialog"
 import {
   Dialog,
   DialogContent,
@@ -36,6 +37,8 @@ export default function Team() {
   const [phone, setPhone] = useState("")
 
   const canManage = user?.role === "owner" || user?.role === "admin"
+
+  const [passwordFor, setPasswordFor] = useState<TeamMember | null>(null)
 
   const load = () => {
     setLoading(true)
@@ -148,12 +151,22 @@ export default function Team() {
                     {canManage && (
                       <td className="py-3 pr-4">
                         {m.role !== "owner" && (
-                          <button
-                            onClick={() => handleDelete(m.id)}
-                            className="text-white/40 hover:text-red-400 transition-colors"
-                          >
-                            <Icon name="Trash2" size={16} />
-                          </button>
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => setPasswordFor(m)}
+                              className="text-white/40 hover:text-white transition-colors"
+                              title="Задать пароль для входа"
+                            >
+                              <Icon name="KeyRound" size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(m.id)}
+                              className="text-white/40 hover:text-red-400 transition-colors"
+                              title="Удалить"
+                            >
+                              <Icon name="Trash2" size={16} />
+                            </button>
+                          </div>
                         )}
                       </td>
                     )}
@@ -231,6 +244,13 @@ export default function Team() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <SetPasswordDialog
+        open={!!passwordFor}
+        onOpenChange={(v) => { if (!v) setPasswordFor(null) }}
+        memberId={passwordFor?.id ?? null}
+        memberName={passwordFor?.full_name ?? ""}
+      />
     </CrmLayout>
   )
 }

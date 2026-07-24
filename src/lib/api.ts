@@ -272,6 +272,15 @@ export const teamApi = {
     return parseResponse(res)
   },
 
+  async setPassword(id: number, password: string) {
+    const res = await fetch(`${AUTH_URL}?resource=team&id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ password }),
+    })
+    return parseResponse(res)
+  },
+
   async remove(id: number) {
     const res = await fetch(`${AUTH_URL}?resource=team&id=${id}`, {
       method: "DELETE",

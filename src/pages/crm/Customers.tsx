@@ -3,6 +3,7 @@ import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { teamApi, objectsApi, TeamMember, ObjectItem } from "@/lib/api"
 import { useAuth } from "@/contexts/AuthContext"
+import { SetPasswordDialog } from "@/components/crm/SetPasswordDialog"
 import {
   Dialog,
   DialogContent,
@@ -27,6 +28,7 @@ export default function Customers() {
   const [selectedObjectIds, setSelectedObjectIds] = useState<number[]>([])
 
   const canManage = user?.role === "owner" || user?.role === "admin"
+  const [passwordFor, setPasswordFor] = useState<TeamMember | null>(null)
 
   const load = () => {
     setLoading(true)
@@ -198,6 +200,13 @@ export default function Customers() {
                             <Icon name="Pencil" size={16} />
                           </button>
                           <button
+                            onClick={() => setPasswordFor(c)}
+                            className="text-white/40 hover:text-white transition-colors"
+                            title="Задать пароль для входа"
+                          >
+                            <Icon name="KeyRound" size={16} />
+                          </button>
+                          <button
                             onClick={() => handleDelete(c.id)}
                             className="text-white/40 hover:text-red-400 transition-colors"
                             title="Удалить"
@@ -307,6 +316,13 @@ export default function Customers() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <SetPasswordDialog
+        open={!!passwordFor}
+        onOpenChange={(v) => { if (!v) setPasswordFor(null) }}
+        memberId={passwordFor?.id ?? null}
+        memberName={passwordFor?.full_name ?? ""}
+      />
     </CrmLayout>
   )
 }

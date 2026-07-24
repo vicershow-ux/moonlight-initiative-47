@@ -256,6 +256,17 @@ def handle_team(method, event, conn, cur):
                     )
             conn.commit()
 
+        new_password = body.get('password')
+        if new_password:
+            if len(new_password) < 6:
+                return response(400, {'error': 'Пароль должен быть не короче 6 символов'})
+            cur.execute(
+                "UPDATE users SET password_hash = %s WHERE id = %s AND company_id = %s",
+                (hash_password(new_password), member_id, company_id)
+            )
+            cur.execute("DELETE FROM sessions WHERE user_id = %s", (member_id,))
+            conn.commit()
+
         return response(200, {'success': True})
 
     if method == 'DELETE':
