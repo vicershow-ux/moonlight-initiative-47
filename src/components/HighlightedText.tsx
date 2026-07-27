@@ -36,7 +36,7 @@ export function HighlightedText({ children }: HighlightedTextProps) {
       >
         <path
           d="M0 8 Q50 2, 100 6 T200 8"
-          stroke="rgb(251 146 60)"
+          stroke="rgb(34 197 94)"
           strokeWidth="2"
           fill="none"
           strokeLinecap="round"

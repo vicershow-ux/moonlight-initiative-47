@@ -3,23 +3,23 @@ import { HighlightedText } from "./HighlightedText"
 
 const philosophyItems = [
   {
-    title: "Минимализм со смыслом",
+    title: "Прозрачная смета",
     description:
-      "Каждый элемент имеет свое назначение и пространство для дыхания. Мы убираем лишнее, чтобы раскрыть то, что действительно важно.",
+      "Фиксируем каждую позицию до начала работ. Никаких скрытых доплат — вы всегда знаете, за что платите.",
   },
   {
-    title: "Архитектурный подход",
+    title: "Контроль на каждом этапе",
     description:
-      "Планировки, вдохновленные структурой, ритмом и материальностью. Здания, которые говорят через пропорции и свет.",
+      "Прораб и менеджер сопровождают проект от демонтажа до финальной уборки, с фотоотчётами на каждом шаге.",
   },
   {
-    title: "Естественная динамика",
+    title: "Проверенные бригады",
     description:
-      "Движение поддерживает восприятие, но никогда не отвлекает. Анимация, которая ощущается естественно, как свет, скользящий по комнате.",
+      "Работаем только со штатными мастерами с опытом от 5 лет. Гарантия на все виды работ — в договоре.",
   },
   {
-    title: "Вневременная эстетика",
-    description: "Элегантный, спокойный и долговечный визуальный язык. Дизайн, который превосходит тренды и стареет с достоинством.",
+    title: "Соблюдение сроков",
+    description: "Строим реалистичный график и держим его. Если задерживаем — компенсируем неустойкой по договору.",
   },
 ]
 
@@ -53,17 +53,17 @@ export function Philosophy() {
         <div className="grid lg:grid-cols-2 gap-16 lg:gap-24">
           {/* Left column - Title and image */}
           <div className="lg:sticky lg:top-32 lg:self-start">
-            <p className="text-muted-foreground text-sm tracking-[0.3em] uppercase mb-6">Наша философия</p>
+            <p className="text-muted-foreground text-sm tracking-[0.3em] uppercase mb-6">О компании</p>
             <h2 className="text-6xl md:text-6xl font-medium leading-[1.15] tracking-tight mb-6 text-balance lg:text-8xl">
-              Дизайн с
+              Ремонт с
               <br />
-              <HighlightedText>намерением</HighlightedText>
+              <HighlightedText>гарантией</HighlightedText>
             </h2>
 
             <div className="relative hidden lg:block">
               <img
                 src="/images/exterior.png"
-                alt="Архитектурный эскиз рабочего пространства"
+                alt="Ремонт квартиры под ключ"
                 className="opacity-90 relative z-10 w-auto"
               />
             </div>
@@ -72,7 +72,7 @@ export function Philosophy() {
           {/* Right column - Description and Philosophy items */}
           <div className="space-y-6 lg:pt-48">
             <p className="text-muted-foreground text-lg leading-relaxed max-w-md mb-12">
-              Архитектура - это больше, чем конструкция. Это то, как мы воспринимаем мир. Мы создаем пространства, которые питают человеческий дух.
+              FixKey — команда, которая берёт на себя весь ремонт под ключ: от демонтажа до сдачи объекта. Мы отвечаем за результат договором и гарантией.
             </p>
 
             {philosophyItems.map((item, index) => (

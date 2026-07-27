@@ -6,21 +6,21 @@
 
 @layer base {
   :root {
-    /* Hously architecture color palette - warm neutrals with charcoal accents */
+    /* FixKey brand palette - dark navy neutrals with green accent */
     --background: 40 20% 97%;
-    --foreground: 30 10% 12%;
+    --foreground: 220 40% 10%;
     --card: 40 15% 98%;
-    --card-foreground: 30 10% 12%;
+    --card-foreground: 220 40% 10%;
     --popover: 40 15% 98%;
-    --popover-foreground: 30 10% 12%;
-    --primary: 30 10% 15%;
+    --popover-foreground: 220 40% 10%;
+    --primary: 220 45% 12%;
     --primary-foreground: 40 20% 97%;
     --secondary: 35 15% 92%;
-    --secondary-foreground: 30 10% 18%;
+    --secondary-foreground: 220 40% 14%;
     --muted: 35 15% 90%;
-    --muted-foreground: 30 10% 40%;
-    --accent: 25 20% 60%;
-    --accent-foreground: 30 10% 12%;
+    --muted-foreground: 220 15% 40%;
+    --accent: 142 71% 45%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 35 15% 88%;
