@@ -188,17 +188,15 @@ export default function EstimateCreate() {
   const handleSave = async () => {
     const ok = await doSave()
     if (ok) {
-      navigate(editMode ? `/cabinet/objects/${objectId}/estimates/${estimateId}` : `/cabinet/objects/${objectId}`)
+      navigate(`/cabinet/objects/${objectId}`)
     }
   }
 
   const handleClose = async () => {
     if (editMode) {
       await doSave()
-      navigate(`/cabinet/objects/${objectId}/estimates/${estimateId}`)
-    } else {
-      navigate(`/cabinet/objects/${objectId}`)
     }
+    navigate(`/cabinet/objects/${objectId}`)
   }
 
   if (loading || !object) {
