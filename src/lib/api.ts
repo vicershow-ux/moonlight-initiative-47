@@ -6,6 +6,7 @@ const SERVICES_URL = funcUrls.services
 const DASHBOARD_URL = funcUrls.dashboard
 const ESTIMATES_URL = funcUrls.estimates
 const LEADS_URL = funcUrls.leads
+const OBJECT_ROOMS_URL = funcUrls.object_rooms
 
 const TOKEN_KEY = "fixkey_token"
 
@@ -276,6 +277,53 @@ export const estimatesApi = {
   async rejectItem(itemId: number) {
     const res = await fetch(`${ESTIMATES_URL}?action=reject&item_id=${itemId}`, {
       method: "PUT",
+      headers: { ...authHeaders() },
+    })
+    return parseResponse(res)
+  },
+}
+
+export interface ObjectRoom {
+  id: number
+  object_id: number
+  name: string
+  room_type: string
+  area: number
+  perimeter: number
+  ceiling_height: number
+  wall_area: number
+  notes: string
+  created_at: string
+  updated_at: string
+}
+
+export const objectRoomsApi = {
+  async listByObject(objectId: number) {
+    const res = await fetch(`${OBJECT_ROOMS_URL}?object_id=${objectId}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ rooms: ObjectRoom[] }>
+  },
+
+  async create(payload: Partial<ObjectRoom> & { object_id: number; name: string }) {
+    const res = await fetch(OBJECT_ROOMS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<ObjectRoom>
+  },
+
+  async update(id: number, payload: Partial<ObjectRoom>) {
+    const res = await fetch(`${OBJECT_ROOMS_URL}?id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res)
+  },
+
+  async remove(id: number) {
+    const res = await fetch(`${OBJECT_ROOMS_URL}?id=${id}`, {
+      method: "DELETE",
       headers: { ...authHeaders() },
     })
     return parseResponse(res)

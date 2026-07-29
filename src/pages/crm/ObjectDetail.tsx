@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
-import { objectsApi, estimatesApi, Estimate, ObjectItem } from "@/lib/api"
+import { objectsApi, estimatesApi, objectRoomsApi, Estimate, ObjectItem, ObjectRoom } from "@/lib/api"
 import { EstimateModal } from "@/components/crm/EstimateModal"
 import { EstimatesListModal } from "@/components/crm/EstimatesListModal"
 import { printEstimate } from "@/lib/printEstimate"
@@ -34,6 +34,8 @@ export default function ObjectDetail() {
   const [estimates, setEstimates] = useState<Estimate[]>([])
   const [estimatesLoading, setEstimatesLoading] = useState(true)
   const [printingId, setPrintingId] = useState<number | null>(null)
+  const [rooms, setRooms] = useState<ObjectRoom[]>([])
+  const [roomsLoading, setRoomsLoading] = useState(true)
 
   const [estimateModalOpen, setEstimateModalOpen] = useState(false)
   const [estimatesListOpen, setEstimatesListOpen] = useState(false)
@@ -57,9 +59,19 @@ export default function ObjectDetail() {
       .finally(() => setEstimatesLoading(false))
   }
 
+  const loadRooms = () => {
+    if (!id) return
+    setRoomsLoading(true)
+    objectRoomsApi
+      .listByObject(Number(id))
+      .then((data) => setRooms(data.rooms))
+      .finally(() => setRoomsLoading(false))
+  }
+
   useEffect(() => {
     load()
     loadEstimates()
+    loadRooms()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
@@ -103,12 +115,18 @@ export default function ObjectDetail() {
         </div>
         {!isClient && (
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setEstimateModalOpen(true)}
-              className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg"
+            <Link
+              to={`/cabinet/objects/${object.id}/rooms`}
+              className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-4 py-2.5 rounded-lg"
             >
-              <Icon name="FilePlus2" size={16} />
-              Создать смету
+              <Icon name="DoorOpen" size={16} />
+              Помещения
+            </Link>
+            <button
+              className="flex items-center gap-2 bg-white/5 hover:bg-white/10 transition-colors text-white text-sm px-4 py-2.5 rounded-lg"
+            >
+              <Icon name="Pencil" size={16} />
+              Редактировать
             </button>
           </div>
         )}
@@ -236,14 +254,32 @@ export default function ObjectDetail() {
           <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
             <div className="flex items-center justify-between mb-3">
               <p className="font-medium">Эталонные помещения</p>
-              <button className="text-sm text-[#D4AF37] hover:text-[#B8860B] transition-colors">
+              <Link
+                to={`/cabinet/objects/${object.id}/rooms`}
+                className="text-sm text-[#D4AF37] hover:text-[#B8860B] transition-colors"
+              >
                 Управлять
-              </button>
+              </Link>
             </div>
-            <div className="bg-[#161616] border border-white/10 rounded-lg p-4">
-              <p className="text-sm font-medium">Санузел</p>
-              <p className="text-xs text-white/30 mt-1">Ванна и туалет · 3,50 м² · 156 к/п</p>
-            </div>
+            {roomsLoading ? (
+              <div className="flex justify-center py-6">
+                <Icon name="Loader2" size={18} className="animate-spin text-white/40" />
+              </div>
+            ) : rooms.length === 0 ? (
+              <p className="text-sm text-white/30">Помещений пока нет</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {rooms.map((room) => (
+                  <div key={room.id} className="bg-[#161616] border border-white/10 rounded-lg p-4">
+                    <p className="text-sm font-medium">{room.name}</p>
+                    <p className="text-xs text-white/30 mt-1">
+                      {room.room_type && `${room.room_type} · `}
+                      {room.area} м² · {room.perimeter} м/п
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
