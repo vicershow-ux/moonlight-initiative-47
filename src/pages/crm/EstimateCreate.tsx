@@ -152,12 +152,8 @@ export default function EstimateCreate() {
         Назад к объекту
       </Link>
 
-      <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-4 py-3 text-sm text-blue-200 mb-4">
-        Смета сохраняется как рабочий документ. Незаполненные количества допустимы; перед печатью или скачиванием итогового файла проверьте состав и объёмы работ.
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 flex flex-col gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
+        <div className="xl:col-span-3 flex flex-col gap-4">
           <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
             <p className="font-medium mb-4">Информация о договоре</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -283,18 +279,6 @@ export default function EstimateCreate() {
                 <span className="text-lg font-semibold">{formatMoney(total)}</span>
               </div>
             </div>
-          </div>
-
-          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
-            <p className="font-medium mb-3 flex items-center gap-2">
-              <Icon name="Lightbulb" size={16} className="text-[#D4AF37]" />
-              Советы
-            </p>
-            <ul className="text-xs text-white/50 flex flex-col gap-2">
-              <li>«Добавить из справочника» — для быстрого выбора нескольких работ</li>
-              <li>«Своя работа» — для добавления нестандартных работ</li>
-              <li>Скидка по позиции — в столбце %</li>
-            </ul>
           </div>
         </div>
       </div>
