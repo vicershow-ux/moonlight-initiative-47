@@ -1,7 +1,6 @@
 import { useState, useEffect, MouseEvent } from "react"
 import { cn } from "../lib/utils"
 import { AuthModal } from "./AuthModal"
-import Icon from "@/components/ui/icon"
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false)
@@ -41,9 +40,7 @@ export function Header() {
     >
       <nav className="container mx-auto px-6 flex items-center justify-between md:px-[24]">
         <a href="/" className="flex items-center gap-2 group" onClick={scrollToTop}>
-          <div className="w-8 h-8 rounded-lg bg-[rgb(34,197,94)] flex items-center justify-center">
-            <Icon name="KeyRound" size={18} className="text-white" />
-          </div>
+          <img src="/images/fixkey-logo.svg" alt="FixKey" className="w-8 h-8" />
           <span className="text-xl font-semibold tracking-tight text-white">FixKey</span>
         </a>
 
@@ -58,7 +55,7 @@ export function Header() {
             <li key={item.label}>
               <a
                 href={item.href}
-                className="hover:text-[rgb(34,197,94)] transition-colors duration-300 relative after:absolute after:bottom-0 after:left-0 after:h-px after:w-0 hover:after:w-full after:bg-[rgb(34,197,94)] after:transition-all after:duration-300 text-white"
+                className="hover:text-[#D4AF37] transition-colors duration-300 relative after:absolute after:bottom-0 after:left-0 after:h-px after:w-0 hover:after:w-full after:bg-[#D4AF37] after:transition-all after:duration-300 text-white"
               >
                 {item.label}
               </a>
@@ -112,7 +109,7 @@ export function Header() {
               <li key={item.label}>
                 <a
                   href={item.href}
-                  className="hover:text-[rgb(34,197,94)] transition-colors duration-300 text-white text-4xl font-light block"
+                  className="hover:text-[#D4AF37] transition-colors duration-300 text-white text-4xl font-light block"
                   onClick={closeMobileMenu}
                 >
                   {item.label}

@@ -145,7 +145,7 @@ export function Hero() {
           >
             {"Ремонт, которому"}
             <br />
-            <span className="text-[rgb(74,222,128)]">{"можно доверять"}</span>
+            <span className="text-[#D4AF37]">{"можно доверять"}</span>
           </h1>
         </div>
       </div>

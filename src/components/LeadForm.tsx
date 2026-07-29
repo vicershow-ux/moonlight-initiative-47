@@ -38,8 +38,8 @@ export function LeadForm() {
   if (success) {
     return (
       <div className="flex flex-col items-center gap-3 py-8">
-        <div className="w-12 h-12 rounded-full bg-[rgb(34,197,94)]/20 flex items-center justify-center">
-          <Icon name="Check" size={22} className="text-[rgb(74,222,128)]" />
+        <div className="w-12 h-12 rounded-full bg-[#D4AF37]/20 flex items-center justify-center">
+          <Icon name="Check" size={22} className="text-[#D4AF37]" />
         </div>
         <p className="text-lg font-medium">Заявка принята!</p>
         <p className="text-primary-foreground/60 text-sm">Свяжемся с вами в течение 24 часов</p>
@@ -89,7 +89,7 @@ export function LeadForm() {
       <button
         type="submit"
         disabled={loading}
-        className="inline-flex items-center justify-center gap-3 bg-[rgb(34,197,94)] text-white px-8 py-4 text-sm tracking-wide hover:bg-[rgb(22,163,74)] transition-colors duration-300 group disabled:opacity-60"
+        className="inline-flex items-center justify-center gap-3 bg-[#D4AF37] text-foreground px-8 py-4 text-sm tracking-wide hover:bg-[#B8860B] transition-colors duration-300 group disabled:opacity-60"
       >
         {loading ? (
           <Icon name="Loader2" size={16} className="animate-spin" />

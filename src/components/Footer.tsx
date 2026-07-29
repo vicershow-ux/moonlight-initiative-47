@@ -1,5 +1,3 @@
-import Icon from "@/components/ui/icon"
-
 export function Footer() {
   return (
     <footer className="py-16 md:py-24 border-t border-border">
@@ -8,9 +6,7 @@ export function Footer() {
           {/* Brand */}
           <div className="md:col-span-2">
             <a href="/" className="inline-flex items-center gap-2 mb-6">
-              <div className="w-8 h-8 rounded-lg bg-[rgb(34,197,94)] flex items-center justify-center">
-                <Icon name="KeyRound" size={18} className="text-white" />
-              </div>
+              <img src="/images/fixkey-logo.svg" alt="FixKey" className="w-8 h-8" />
               <span className="text-xl font-semibold tracking-tight">FixKey</span>
             </a>
             <p className="text-muted-foreground leading-relaxed max-w-sm">
