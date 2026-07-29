@@ -74,14 +74,16 @@ export interface ObjectItem {
   legal_status: string
   address: string
   payment_type: string
-  has_elevator: boolean
+  has_elevator: string
   residence_during_works: boolean
-  material_unloading: boolean
+  material_unloading: string
   completion_type: string
   warranty_waiver: boolean
   rough_material: string
   finish_material: string
   kitchen_furniture: string
+  measurer_comment: string
+  design_project: string
   created_at: string
   updated_at: string
 }

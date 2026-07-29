@@ -10,6 +10,7 @@ FIELDS = [
     'has_elevator', 'residence_during_works', 'material_unloading',
     'completion_type', 'warranty_waiver',
     'rough_material', 'finish_material', 'kitchen_furniture',
+    'measurer_comment', 'design_project',
 ]
 
 ALL_KEYS = ['id', 'object_code'] + FIELDS + ['created_at', 'updated_at']
@@ -115,6 +116,12 @@ def handler(event: dict, context) -> dict:
             if len(client_name) < 2:
                 return response(400, {'error': 'Введите имя клиента'})
 
+            design_project = body.get('design_project')
+            if isinstance(design_project, list):
+                design_project = json.dumps(design_project, ensure_ascii=False)
+            else:
+                design_project = (design_project or '').strip()
+
             values_map = {
                 'client_name': client_name,
                 'client_phone': (body.get('client_phone') or '').strip(),
@@ -125,14 +132,16 @@ def handler(event: dict, context) -> dict:
                 'legal_status': (body.get('legal_status') or 'физическое лицо').strip(),
                 'address': (body.get('address') or '').strip(),
                 'payment_type': (body.get('payment_type') or 'наличный расчет').strip(),
-                'has_elevator': bool(body.get('has_elevator', False)),
+                'has_elevator': (body.get('has_elevator') or '').strip(),
                 'residence_during_works': bool(body.get('residence_during_works', False)),
-                'material_unloading': bool(body.get('material_unloading', False)),
+                'material_unloading': (body.get('material_unloading') or '').strip(),
                 'completion_type': (body.get('completion_type') or 'стандарт').strip(),
                 'warranty_waiver': bool(body.get('warranty_waiver', False)),
-                'rough_material': (body.get('rough_material') or 'заказчика').strip(),
-                'finish_material': (body.get('finish_material') or 'заказчика').strip(),
-                'kitchen_furniture': (body.get('kitchen_furniture') or 'заказчика').strip(),
+                'rough_material': (body.get('rough_material') or '').strip(),
+                'finish_material': (body.get('finish_material') or '').strip(),
+                'kitchen_furniture': (body.get('kitchen_furniture') or '').strip(),
+                'measurer_comment': (body.get('measurer_comment') or '').strip(),
+                'design_project': design_project,
             }
 
             year = datetime.utcnow().strftime('%y')
@@ -171,8 +180,11 @@ def handler(event: dict, context) -> dict:
             values = []
             for key in FIELDS:
                 if key in body:
+                    value = body[key]
+                    if key == 'design_project' and isinstance(value, list):
+                        value = json.dumps(value, ensure_ascii=False)
                     fields.append(f"{key} = %s")
-                    values.append(body[key])
+                    values.append(value)
 
             if fields:
                 fields.append("updated_at = NOW()")

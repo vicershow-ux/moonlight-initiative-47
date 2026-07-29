@@ -1,17 +1,11 @@
 import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { objectsApi, ObjectItem } from "@/lib/api"
 import { EstimateModal } from "@/components/crm/EstimateModal"
 import { EstimatesListModal } from "@/components/crm/EstimatesListModal"
 import { useAuth } from "@/contexts/AuthContext"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 
 const statusColors: Record<string, string> = {
   "лид": "bg-purple-500/20 text-purple-300",
@@ -28,15 +22,6 @@ export default function Objects() {
   const isClient = user?.role === "client"
   const [objects, setObjects] = useState<ObjectItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [open, setOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState("")
-
-  const [clientName, setClientName] = useState("")
-  const [clientPhone, setClientPhone] = useState("")
-  const [objectType, setObjectType] = useState("вторичка")
-  const [area, setArea] = useState("")
-  const [status, setStatus] = useState("лид")
 
   const [estimateModalOpen, setEstimateModalOpen] = useState(false)
   const [estimatesListOpen, setEstimatesListOpen] = useState(false)
@@ -53,40 +38,6 @@ export default function Objects() {
   useEffect(() => {
     load()
   }, [])
-
-  const resetForm = () => {
-    setClientName("")
-    setClientPhone("")
-    setObjectType("вторичка")
-    setArea("")
-    setStatus("лид")
-    setError("")
-  }
-
-  const handleCreate = async () => {
-    setError("")
-    if (clientName.trim().length < 2) {
-      setError("Введите имя клиента")
-      return
-    }
-    setSaving(true)
-    try {
-      await objectsApi.create({
-        client_name: clientName,
-        client_phone: clientPhone,
-        object_type: objectType,
-        area: Number(area) || 0,
-        status,
-      })
-      setOpen(false)
-      resetForm()
-      load()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Ошибка сохранения")
-    } finally {
-      setSaving(false)
-    }
-  }
 
   const handleDelete = async (id: number) => {
     await objectsApi.remove(id)
@@ -112,13 +63,13 @@ export default function Objects() {
     <CrmLayout title="Объекты" subtitle={isClient ? "Ваши объекты" : "Все объекты вашей компании"}>
       {!isClient && (
         <div className="flex justify-end mb-6">
-          <button
-            onClick={() => setOpen(true)}
+          <Link
+            to="/cabinet/objects/new"
             className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg"
           >
             <Icon name="Plus" size={16} />
             Создать объект
-          </button>
+          </Link>
         </div>
       )}
 
@@ -216,92 +167,6 @@ export default function Objects() {
           </div>
         )}
       </div>
-
-      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm() }}>
-        <DialogContent className="bg-[#1f1f1f] border-white/10 text-white sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Новый объект</DialogTitle>
-          </DialogHeader>
-
-          <div className="flex flex-col gap-3 mt-2">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-white/50">Имя клиента</label>
-              <input
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                placeholder="Иванов Иван"
-                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-white/50">Телефон</label>
-              <input
-                value={clientPhone}
-                onChange={(e) => setClientPhone(e.target.value)}
-                placeholder="+7 900 000 00 00"
-                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-white/50">Тип</label>
-                <select
-                  value={objectType}
-                  onChange={(e) => setObjectType(e.target.value)}
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none"
-                >
-                  <option value="вторичка">вторичка</option>
-                  <option value="новостройка">новостройка</option>
-                  <option value="коммерция">коммерция</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-white/50">Площадь, м²</label>
-                <input
-                  value={area}
-                  onChange={(e) => setArea(e.target.value)}
-                  placeholder="30.5"
-                  type="number"
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-white/50">Статус</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none"
-              >
-                {statusOptions.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {error && (
-              <p className="text-sm text-red-400 flex items-center gap-1.5">
-                <Icon name="CircleAlert" size={15} />
-                {error}
-              </p>
-            )}
-
-            <button
-              onClick={handleCreate}
-              disabled={saving}
-              className="mt-2 flex items-center justify-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-3 rounded-lg disabled:opacity-60"
-            >
-              {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : "Создать объект"}
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <EstimateModal
         open={estimateModalOpen}

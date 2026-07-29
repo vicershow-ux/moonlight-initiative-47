@@ -163,11 +163,11 @@ export default function ObjectDetail() {
               </div>
               <div>
                 <p className="text-xs text-white/40 mb-1">Наличие лифта</p>
-                <p className="font-medium">{yesNo(object.has_elevator)}</p>
+                <p className="font-medium capitalize">{object.has_elevator || "не указано"}</p>
               </div>
               <div>
                 <p className="text-xs text-white/40 mb-1">Разгрузка материала</p>
-                <p className="font-medium">{yesNo(object.material_unloading)}</p>
+                <p className="font-medium capitalize">{object.material_unloading || "не указано"}</p>
               </div>
               <div>
                 <p className="text-xs text-white/40 mb-1">Комплектация</p>
@@ -187,24 +187,50 @@ export default function ObjectDetail() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
               <div>
                 <p className="text-xs text-white/40 mb-1">Черновой материал</p>
-                <p className="font-medium">{object.rough_material}</p>
+                <p className="font-medium capitalize">{object.rough_material || "не указано"}</p>
               </div>
               <div>
                 <p className="text-xs text-white/40 mb-1">Чистовой материал</p>
-                <p className="font-medium">{object.finish_material}</p>
+                <p className="font-medium capitalize">{object.finish_material || "не указано"}</p>
               </div>
               <div>
                 <p className="text-xs text-white/40 mb-1">Кухня и мебель</p>
-                <p className="font-medium">{object.kitchen_furniture}</p>
+                <p className="font-medium capitalize">{object.kitchen_furniture || "не указано"}</p>
               </div>
             </div>
           </div>
 
+          {object.measurer_comment && (
+            <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+              <p className="font-medium mb-3">Комментарий замерщика</p>
+              <p className="text-sm text-white/60 whitespace-pre-wrap">{object.measurer_comment}</p>
+            </div>
+          )}
+
           <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
             <p className="font-medium mb-3">Дизайн-проект</p>
-            <span className="inline-block px-3 py-1.5 rounded-lg text-sm bg-blue-500/15 text-blue-300">
-              Стандарт проект
-            </span>
+            {object.design_project ? (
+              <div className="flex flex-wrap gap-2">
+                {(() => {
+                  try {
+                    const list = JSON.parse(object.design_project) as string[]
+                    return list.map((dp) => (
+                      <span key={dp} className="inline-block px-3 py-1.5 rounded-lg text-sm bg-blue-500/15 text-blue-300">
+                        {dp}
+                      </span>
+                    ))
+                  } catch {
+                    return (
+                      <span className="inline-block px-3 py-1.5 rounded-lg text-sm bg-blue-500/15 text-blue-300">
+                        {object.design_project}
+                      </span>
+                    )
+                  }
+                })()}
+              </div>
+            ) : (
+              <p className="text-sm text-white/30">Не выбрано</p>
+            )}
           </div>
 
           <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
