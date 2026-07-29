@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { Link, useNavigate, useParams } from "react-router-dom"
+import { useEffect, useRef, useState } from "react"
+import { useNavigate, useParams } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import {
@@ -10,6 +10,7 @@ import {
   ObjectItem,
   ObjectRoom,
   ServiceItem,
+  Estimate,
 } from "@/lib/api"
 import { EstimateRoomBlock, RoomBlockState } from "@/components/crm/estimate-create/EstimateRoomBlock"
 
@@ -25,10 +26,44 @@ const emptyRoom = (): RoomBlockState => ({
   works: [],
 })
 
+const buildRoomsFromEstimate = (est: Estimate, objectRoomsList: ObjectRoom[]): RoomBlockState[] => {
+  const groups = new Map<string, RoomBlockState>()
+  ;(est.items || []).forEach((it) => {
+    const key = it.room_id != null ? `room-${it.room_id}` : it.room_name || "no-room"
+    if (!groups.has(key)) {
+      const tpl = it.room_id != null ? objectRoomsList.find((r) => r.id === it.room_id) : undefined
+      groups.set(key, {
+        key,
+        room_id: it.room_id ?? null,
+        name: it.room_name || tpl?.name || "",
+        area: tpl ? String(tpl.area) : "",
+        perimeter: tpl ? String(tpl.perimeter) : "",
+        works: [],
+      })
+    }
+    groups.get(key)!.works.push({
+      key: `item-${it.id ?? Math.random().toString(36).slice(2)}`,
+      service_id: it.service_id ?? null,
+      name: it.name,
+      category: it.category,
+      subcategory: it.subcategory,
+      unit: it.unit,
+      price: it.price,
+      quantity: it.quantity,
+      times: it.times ?? 1,
+      discountPercent: it.discount_percent ?? 0,
+      amount: it.amount,
+    })
+  })
+  const arr = Array.from(groups.values())
+  return arr.length > 0 ? arr : [emptyRoom()]
+}
+
 export default function EstimateCreate() {
-  const { id } = useParams()
+  const { id, estimateId } = useParams()
   const navigate = useNavigate()
   const objectId = Number(id)
+  const editMode = Boolean(estimateId)
 
   const [object, setObject] = useState<ObjectItem | null>(null)
   const [objectRooms, setObjectRooms] = useState<ObjectRoom[]>([])
@@ -36,6 +71,7 @@ export default function EstimateCreate() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const savedRef = useRef(false)
 
   const [contractNumber, setContractNumber] = useState("")
   const [contractDate, setContractDate] = useState("")
@@ -51,8 +87,9 @@ export default function EstimateCreate() {
       objectsApi.get(objectId).catch(() => null),
       objectRoomsApi.listByObject(objectId).then((d) => d.rooms).catch(() => []),
       servicesApi.list().then((d) => d.services).catch(() => []),
+      editMode ? estimatesApi.get(Number(estimateId)).catch(() => null) : Promise.resolve(null),
     ])
-      .then(([obj, roomsList, servicesList]) => {
+      .then(([obj, roomsList, servicesList, est]) => {
         if (!obj) {
           navigate("/cabinet/objects")
           return
@@ -60,10 +97,18 @@ export default function EstimateCreate() {
         setObject(obj)
         setObjectRooms(roomsList)
         setServices(servicesList)
+        if (est) {
+          setContractNumber(est.contract_number || "")
+          setContractDate(est.contract_date || "")
+          setDiscountPercent(est.discount_percent ? String(est.discount_percent) : "")
+          setDiscountAmount(est.discount_amount ? String(est.discount_amount) : "")
+          setNotes(est.notes || "")
+          setRooms(buildRoomsFromEstimate(est, roomsList))
+        }
       })
       .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id])
+  }, [id, estimateId])
 
   const updateRoom = (key: string, patch: Partial<RoomBlockState>) => {
     setRooms((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)))
@@ -87,9 +132,8 @@ export default function EstimateCreate() {
     : Number(discountAmount) || 0
   const total = Math.max(0, Math.round((subtotal - discountAmountNum) * 100) / 100)
 
-  const handleSave = async () => {
-    setError("")
-    if (!object) return
+  const doSave = async (): Promise<boolean> => {
+    if (!object) return false
 
     const items = rooms.flatMap((r) =>
       r.works
@@ -112,31 +156,54 @@ export default function EstimateCreate() {
 
     if (items.length === 0) {
       setError("Добавьте хотя бы одну позицию сметы")
-      return
+      return false
     }
 
     setSaving(true)
     try {
-      await estimatesApi.create({
-        object_id: object.id,
+      const payload = {
         items,
         contract_number: contractNumber,
         contract_date: contractDate || undefined,
         discount_percent: discountPercentNum,
         discount_amount: discountAmountNum,
         notes,
-      })
-      navigate(`/cabinet/objects/${objectId}`)
+      }
+      if (editMode) {
+        await estimatesApi.update(Number(estimateId), payload)
+      } else {
+        await estimatesApi.create({ object_id: object.id, ...payload })
+      }
+      savedRef.current = true
+      setError("")
+      return true
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ошибка сохранения сметы")
+      return false
     } finally {
       setSaving(false)
     }
   }
 
+  const handleSave = async () => {
+    const ok = await doSave()
+    if (ok) {
+      navigate(editMode ? `/cabinet/objects/${objectId}/estimates/${estimateId}` : `/cabinet/objects/${objectId}`)
+    }
+  }
+
+  const handleClose = async () => {
+    if (editMode) {
+      await doSave()
+      navigate(`/cabinet/objects/${objectId}/estimates/${estimateId}`)
+    } else {
+      navigate(`/cabinet/objects/${objectId}`)
+    }
+  }
+
   if (loading || !object) {
     return (
-      <CrmLayout title="Создание сметы">
+      <CrmLayout title={editMode ? "Редактирование сметы" : "Создание сметы"}>
         <div className="flex items-center justify-center py-24">
           <Icon name="Loader2" size={28} className="animate-spin text-white/40" />
         </div>
@@ -145,14 +212,17 @@ export default function EstimateCreate() {
   }
 
   return (
-    <CrmLayout title="Создание сметы" subtitle={`Объект: ${object.object_code} · ${object.client_name}`}>
-      <Link
-        to={`/cabinet/objects/${objectId}`}
+    <CrmLayout
+      title={editMode ? `Редактирование сметы №${estimateId}` : "Создание сметы"}
+      subtitle={`Объект: ${object.object_code} · ${object.client_name}`}
+    >
+      <button
+        onClick={handleClose}
         className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors mb-4"
       >
         <Icon name="ChevronLeft" size={16} />
-        Назад к объекту
-      </Link>
+        {editMode ? "Назад к смете" : "Назад к объекту"}
+      </button>
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
         <div className="xl:col-span-4 flex flex-col gap-4">
@@ -245,19 +315,19 @@ export default function EstimateCreate() {
           )}
 
           <div className="flex items-center justify-end gap-3 pb-4">
-            <Link
-              to={`/cabinet/objects/${objectId}`}
+            <button
+              onClick={handleClose}
               className="px-4 py-2.5 rounded-lg text-sm bg-white/5 hover:bg-white/10 transition-colors"
             >
-              Отмена
-            </Link>
+              {editMode ? "Закрыть" : "Отмена"}
+            </button>
             <button
               onClick={handleSave}
               disabled={saving}
               className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-5 py-2.5 rounded-lg disabled:opacity-60"
             >
               {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : null}
-              Сохранить черновик
+              {editMode ? "Сохранить изменения" : "Сохранить черновик"}
             </button>
           </div>
         </div>

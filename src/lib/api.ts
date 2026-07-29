@@ -287,6 +287,22 @@ export const estimatesApi = {
     return parseResponse(res) as Promise<Estimate>
   },
 
+  async update(id: number, payload: {
+    items: EstimateItem[]
+    contract_number?: string
+    contract_date?: string
+    discount_percent?: number
+    discount_amount?: number
+    notes?: string
+  }) {
+    const res = await fetch(`${ESTIMATES_URL}?id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<Estimate>
+  },
+
   async remove(id: number) {
     const res = await fetch(`${ESTIMATES_URL}?id=${id}`, {
       method: "DELETE",

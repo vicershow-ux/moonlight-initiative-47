@@ -252,6 +252,82 @@ def handler(event: dict, context) -> dict:
 
             return response(200, {'success': True, 'status': new_status})
 
+        if method == 'PUT' and not action:
+            if is_client:
+                return response(403, {'error': 'Недостаточно прав'})
+            if not estimate_id:
+                return response(400, {'error': 'Не указан id сметы'})
+
+            cur.execute("SELECT object_id FROM estimates WHERE id = %s AND company_id = %s", (estimate_id, company_id))
+            est_row = cur.fetchone()
+            if not est_row:
+                return response(404, {'error': 'Смета не найдена'})
+            obj_id = est_row[0]
+
+            body = json.loads(event.get('body') or '{}')
+            items = body.get('items') or []
+            contract_number = (body.get('contract_number') or '').strip()
+            contract_date = body.get('contract_date') or None
+            discount_percent = float(body.get('discount_percent') or 0)
+            discount_amount_input = float(body.get('discount_amount') or 0)
+            notes = (body.get('notes') or '').strip()
+
+            if not items:
+                return response(400, {'error': 'Добавьте хотя бы одну позицию сметы'})
+
+            subtotal = 0
+            clean_items = []
+            for it in items:
+                name = (it.get('name') or '').strip()
+                unit = (it.get('unit') or 'м²').strip()
+                price = float(it.get('price') or 0)
+                quantity = float(it.get('quantity') or 0)
+                times = float(it.get('times') or 1)
+                item_discount = float(it.get('discount_percent') or 0)
+                if not name or quantity <= 0:
+                    continue
+                amount = round(price * quantity * times * (1 - item_discount / 100), 2)
+                subtotal += amount
+                clean_items.append({
+                    'service_id': it.get('service_id'),
+                    'name': name, 'unit': unit, 'price': price,
+                    'quantity': quantity, 'times': times, 'discount_percent': item_discount,
+                    'amount': amount,
+                    'room_id': it.get('room_id'),
+                    'room_name': (it.get('room_name') or '').strip(),
+                    'category': (it.get('category') or '').strip(),
+                    'subcategory': (it.get('subcategory') or '').strip(),
+                })
+
+            if not clean_items:
+                return response(400, {'error': 'Добавьте хотя бы одну корректную позицию'})
+
+            discount_amount = discount_amount_input
+            if discount_percent > 0:
+                discount_amount = round(subtotal * discount_percent / 100, 2)
+            total = max(0, round(subtotal - discount_amount, 2))
+
+            cur.execute(
+                "UPDATE estimates SET total_amount = %s, subtotal_amount = %s, contract_number = %s, contract_date = %s, "
+                "discount_percent = %s, discount_amount = %s, notes = %s WHERE id = %s",
+                (total, subtotal, contract_number, contract_date, discount_percent, discount_amount, notes, estimate_id)
+            )
+            cur.execute("DELETE FROM estimate_items WHERE estimate_id = %s", (estimate_id,))
+            for it in clean_items:
+                cur.execute(
+                    "INSERT INTO estimate_items (estimate_id, service_id, name, unit, price, quantity, times, discount_percent, amount, status, room_id, room_name, category, subcategory) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'approved', %s, %s, %s, %s)",
+                    (estimate_id, it['service_id'], it['name'], it['unit'], it['price'], it['quantity'], it['times'], it['discount_percent'], it['amount'], it['room_id'], it['room_name'], it['category'], it['subcategory'])
+                )
+            conn.commit()
+
+            return response(200, {
+                'id': int(estimate_id), 'object_id': obj_id, 'total_amount': total, 'subtotal_amount': subtotal,
+                'contract_number': contract_number, 'contract_date': contract_date,
+                'discount_percent': discount_percent, 'discount_amount': discount_amount, 'notes': notes,
+                'items': clean_items,
+            })
+
         if method == 'POST':
             if is_client:
                 return response(403, {'error': 'Недостаточно прав'})

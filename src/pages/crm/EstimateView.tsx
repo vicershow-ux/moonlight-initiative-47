@@ -125,7 +125,7 @@ export default function EstimateView() {
           )}
           {!isClient && (
             <Link
-              to={`/cabinet/objects/${objectId}/estimates/new`}
+              to={`/cabinet/objects/${objectId}/estimates/${estimate.id}/edit`}
               className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg"
             >
               <Icon name="Pencil" size={14} />

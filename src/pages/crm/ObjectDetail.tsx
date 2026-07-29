@@ -86,6 +86,12 @@ export default function ObjectDetail() {
     }
   }
 
+  const handleDeleteEstimate = async (estimateId: number) => {
+    if (!window.confirm("Удалить смету безвозвратно?")) return
+    await estimatesApi.remove(estimateId)
+    setEstimates((prev) => prev.filter((e) => e.id !== estimateId))
+  }
+
   if (loading || !object) {
     return (
       <CrmLayout title="Объект">
@@ -338,7 +344,7 @@ export default function ObjectDetail() {
                       </Link>
                       {!isClient && (
                         <Link
-                          to={`/cabinet/objects/${object.id}/estimates/new`}
+                          to={`/cabinet/objects/${object.id}/estimates/${est.id}/edit`}
                           className="text-white/40 hover:text-white transition-colors"
                           title="Редактировать"
                         >
@@ -356,6 +362,15 @@ export default function ObjectDetail() {
                           <Icon name="Printer" size={15} />
                         )}
                       </button>
+                      {!isClient && (
+                        <button
+                          onClick={() => handleDeleteEstimate(est.id)}
+                          className="text-white/40 hover:text-red-400 transition-colors"
+                          title="Удалить"
+                        >
+                          <Icon name="Trash2" size={15} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
