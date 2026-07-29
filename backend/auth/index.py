@@ -3,8 +3,11 @@ import os
 import hashlib
 import secrets
 import re
+import base64
+import uuid
 from datetime import datetime, timedelta
 import psycopg2
+import boto3
 
 
 def get_conn():
@@ -293,6 +296,100 @@ def handle_team(method, event, conn, cur):
     return response(405, {'error': 'Метод не поддерживается'})
 
 
+COMPANY_FIELDS = [
+    'entity_type', 'contact_full_name', 'phone', 'email', 'website', 'activity_type',
+    'inn', 'legal_address', 'bank_name', 'bik', 'account_number', 'bank_inn', 'bank_kpp',
+    'correspondent_account', 'estimate_mode', 'currency', 'unit_system', 'signature_url'
+]
+
+
+def handle_company(method, event, conn, cur):
+    user = get_current_user(cur, event)
+    if not user:
+        return response(401, {'error': 'Не авторизован'})
+    company_id = user['company_id']
+
+    if method == 'GET':
+        cur.execute(
+            f"SELECT name, {', '.join(COMPANY_FIELDS)} FROM companies WHERE id = %s",
+            (company_id,)
+        )
+        row = cur.fetchone()
+        if not row:
+            return response(404, {'error': 'Компания не найдена'})
+        keys = ['name'] + COMPANY_FIELDS
+        return response(200, dict(zip(keys, row)))
+
+    if method == 'PUT':
+        if user['role'] not in ('owner', 'admin'):
+            return response(403, {'error': 'Недостаточно прав'})
+
+        body = json.loads(event.get('body') or '{}')
+
+        signature_url = None
+        signature_file = body.get('signature_file')
+        if signature_file:
+            try:
+                header, b64data = signature_file.split(',', 1) if ',' in signature_file else ('', signature_file)
+                file_bytes = base64.b64decode(b64data)
+                ext = 'png'
+                if 'jpeg' in header or 'jpg' in header:
+                    ext = 'jpg'
+                key = f"signatures/{company_id}/{uuid.uuid4().hex}.{ext}"
+                s3 = boto3.client(
+                    's3',
+                    endpoint_url='https://bucket.poehali.dev',
+                    aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+                    aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
+                )
+                content_type = 'image/jpeg' if ext == 'jpg' else 'image/png'
+                s3.put_object(Bucket='files', Key=key, Body=file_bytes, ContentType=content_type)
+                signature_url = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
+            except Exception:
+                return response(400, {'error': 'Не удалось загрузить файл подписи'})
+
+        set_clauses = []
+        values = []
+
+        name = body.get('name')
+        if name is not None:
+            set_clauses.append('name = %s')
+            values.append(name.strip())
+
+        for field in COMPANY_FIELDS:
+            if field == 'signature_url':
+                continue
+            if field in body:
+                set_clauses.append(f'{field} = %s')
+                values.append(body[field])
+
+        if signature_url:
+            set_clauses.append('signature_url = %s')
+            values.append(signature_url)
+
+        if not set_clauses:
+            return response(400, {'error': 'Нет данных для обновления'})
+
+        set_clauses.append('updated_at = NOW()')
+        values.append(company_id)
+
+        cur.execute(
+            f"UPDATE companies SET {', '.join(set_clauses)} WHERE id = %s",
+            values
+        )
+        conn.commit()
+
+        cur.execute(
+            f"SELECT name, {', '.join(COMPANY_FIELDS)} FROM companies WHERE id = %s",
+            (company_id,)
+        )
+        row = cur.fetchone()
+        keys = ['name'] + COMPANY_FIELDS
+        return response(200, dict(zip(keys, row)))
+
+    return response(405, {'error': 'Метод не поддерживается'})
+
+
 def handle_notifications(method, event, conn, cur):
     user = get_current_user(cur, event)
     if not user:
@@ -355,6 +452,8 @@ def handler(event: dict, context) -> dict:
             return handle_team(method, event, conn, cur)
         if resource == 'notifications':
             return handle_notifications(method, event, conn, cur)
+        if resource == 'company':
+            return handle_company(method, event, conn, cur)
         return handle_auth(method, event, conn, cur, action)
     finally:
         cur.close()

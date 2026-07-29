@@ -481,3 +481,41 @@ export const leadsApi = {
     return parseResponse(res) as Promise<{ success: boolean; object_code: string }>
   },
 }
+
+export interface CompanyData {
+  name: string
+  entity_type: string
+  contact_full_name: string
+  phone: string
+  email: string
+  website: string
+  activity_type: string
+  inn: string
+  legal_address: string
+  bank_name: string
+  bik: string
+  account_number: string
+  bank_inn: string
+  bank_kpp: string
+  correspondent_account: string
+  estimate_mode: string
+  currency: string
+  unit_system: string
+  signature_url: string
+}
+
+export const companyApi = {
+  async get() {
+    const res = await fetch(`${AUTH_URL}?resource=company`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<CompanyData>
+  },
+
+  async update(payload: Partial<CompanyData> & { signature_file?: string }) {
+    const res = await fetch(`${AUTH_URL}?resource=company`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<CompanyData>
+  },
+}
