@@ -205,6 +205,10 @@ def handler(event: dict, context) -> dict:
         if method == 'DELETE':
             if not service_id:
                 return response(400, {'error': 'Не указан id услуги'})
+            cur.execute("SELECT id FROM services WHERE id = %s AND company_id = %s", (service_id, company_id))
+            if not cur.fetchone():
+                return response(404, {'error': 'Услуга не найдена'})
+            cur.execute("UPDATE estimate_items SET service_id = NULL WHERE service_id = %s", (service_id,))
             cur.execute("DELETE FROM services WHERE id = %s AND company_id = %s", (service_id, company_id))
             conn.commit()
             return response(200, {'success': True})

@@ -184,7 +184,6 @@ export default function Services() {
                   <th className="text-left font-medium py-2 pr-4">Подкатегория</th>
                   <th className="text-left font-medium py-2 pr-4">Ед. изм.</th>
                   <th className="text-left font-medium py-2 pr-4">Цена</th>
-                  <th className="text-left font-medium py-2 pr-4">Статус</th>
                   <th className="text-left font-medium py-2 pr-4">Действия</th>
                 </tr>
               </thead>
@@ -196,11 +195,6 @@ export default function Services() {
                     <td className="py-3 pr-4 text-white/60">{s.subcategory || "—"}</td>
                     <td className="py-3 pr-4 text-white/60">{s.unit}</td>
                     <td className="py-3 pr-4 text-white/60">{formatMoney(s.price)}</td>
-                    <td className="py-3 pr-4">
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${s.is_active ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/40"}`}>
-                        {s.is_active ? "Активна" : "Отключена"}
-                      </span>
-                    </td>
                     <td className="py-3 pr-4">
                       <button
                         onClick={() => handleDelete(s.id)}

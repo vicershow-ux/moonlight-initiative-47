@@ -38,7 +38,6 @@ export default function ServiceCreate() {
   const [unit, setUnit] = useState("")
   const [price, setPrice] = useState("")
   const [description, setDescription] = useState("")
-  const [isActive, setIsActive] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
@@ -66,7 +65,6 @@ export default function ServiceCreate() {
         unit,
         price: Number(price) || 0,
         description: description.trim(),
-        is_active: isActive,
       })
       navigate("/cabinet/services")
     } catch (err) {
@@ -160,17 +158,6 @@ export default function ServiceCreate() {
             />
           </div>
 
-          <div className="sm:col-span-2">
-            <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
-                className="accent-[#D4AF37] w-4 h-4"
-              />
-              Услуга активна (доступна для добавления в сметы)
-            </label>
-          </div>
         </div>
 
         {error && (
