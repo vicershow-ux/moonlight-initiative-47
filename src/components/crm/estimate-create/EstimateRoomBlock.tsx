@@ -216,9 +216,9 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
             <table className="w-full text-sm table-fixed">
               <colgroup>
                 <col className="w-auto" />
-                <col className="w-[9%]" />
-                <col className="w-[9%]" />
-                <col className="w-[7%]" />
+                <col className="w-[8%]" />
+                <col className="w-[12%]" />
+                <col className="w-[10%]" />
                 <col className="w-[12%]" />
                 <col className="w-[10%]" />
                 <col className="w-[12%]" />
