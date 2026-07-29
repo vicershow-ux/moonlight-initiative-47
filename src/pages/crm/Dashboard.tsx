@@ -169,7 +169,7 @@ export default function Dashboard() {
           <p className="font-medium mb-4">Быстрые действия</p>
           <div className="flex flex-col gap-2">
             <Link
-              to="/cabinet/objects"
+              to="/cabinet/objects/new"
               className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-3 rounded-lg"
             >
               <Icon name="Plus" size={16} />
