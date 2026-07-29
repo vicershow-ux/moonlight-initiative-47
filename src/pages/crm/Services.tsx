@@ -71,7 +71,7 @@ export default function Services() {
       <div className="flex justify-end mb-6">
         <button
           onClick={() => setOpen(true)}
-          className="flex items-center gap-2 bg-green-500 hover:bg-green-600 transition-colors text-white text-sm px-4 py-2.5 rounded-lg"
+          className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg"
         >
           <Icon name="Plus" size={16} />
           Добавить услугу
@@ -133,7 +133,7 @@ export default function Services() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Демонтаж стен"
-                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-green-500/50"
+                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
               />
             </div>
 
@@ -159,7 +159,7 @@ export default function Services() {
                   onChange={(e) => setPrice(e.target.value)}
                   placeholder="500"
                   type="number"
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-green-500/50"
+                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
                 />
               </div>
             </div>
@@ -174,7 +174,7 @@ export default function Services() {
             <button
               onClick={handleCreate}
               disabled={saving}
-              className="mt-2 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 transition-colors text-white text-sm px-4 py-3 rounded-lg disabled:opacity-60"
+              className="mt-2 flex items-center justify-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-3 rounded-lg disabled:opacity-60"
             >
               {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : "Добавить услугу"}
             </button>

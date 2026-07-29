@@ -74,8 +74,8 @@ export default function Dashboard() {
         <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm text-white/50">Сметы за месяц</p>
-            <div className="w-9 h-9 rounded-lg bg-green-500/15 flex items-center justify-center">
-              <Icon name="Wallet" size={18} className="text-green-400" />
+            <div className="w-9 h-9 rounded-lg bg-[#D4AF37]/15 flex items-center justify-center">
+              <Icon name="Wallet" size={18} className="text-[#D4AF37]" />
             </div>
           </div>
           <p className="text-2xl font-semibold">{formatMoney(stats?.month_amount ?? 0)}</p>
@@ -105,7 +105,7 @@ export default function Dashboard() {
         <div className="lg:col-span-2 bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <p className="font-medium">Последние объекты</p>
-            <Link to="/cabinet/objects" className="text-sm text-green-400 hover:text-green-300">
+            <Link to="/cabinet/objects" className="text-sm text-[#D4AF37] hover:text-[#B8860B]">
               Все объекты →
             </Link>
           </div>
@@ -125,7 +125,7 @@ export default function Dashboard() {
                 <tbody>
                   {stats.recent_objects.map((obj) => (
                     <tr key={obj.id} className="border-b border-white/5 last:border-0">
-                      <td className="py-3 pr-4 text-green-400">{obj.object_code}</td>
+                      <td className="py-3 pr-4 text-[#D4AF37]">{obj.object_code}</td>
                       <td className="py-3 pr-4">
                         <p>{obj.client_name}</p>
                         <p className="text-xs text-white/30">{obj.client_phone}</p>
@@ -154,7 +154,7 @@ export default function Dashboard() {
           <div className="flex flex-col gap-2">
             <Link
               to="/cabinet/objects"
-              className="flex items-center gap-2 bg-green-500 hover:bg-green-600 transition-colors text-white text-sm px-4 py-3 rounded-lg"
+              className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-3 rounded-lg"
             >
               <Icon name="Plus" size={16} />
               Создать объект

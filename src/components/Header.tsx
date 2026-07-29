@@ -40,7 +40,7 @@ export function Header() {
     >
       <nav className="container mx-auto px-6 flex items-center justify-between md:px-[24]">
         <a href="/" className="flex items-center gap-2 group" onClick={scrollToTop}>
-          <img src="/images/fixkey-logo.svg" alt="FixKey" className="w-8 h-8" />
+          <img src="/images/fixkey-logo.svg" alt="FixKey" className="w-16 h-16 -my-4" />
           <span className="text-xl font-semibold tracking-tight text-white">FixKey</span>
         </a>
 

@@ -53,9 +53,7 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
         )}
       >
         <div className="px-5 py-6 flex items-center gap-2 border-b border-white/10">
-          <div className="w-8 h-8 rounded-lg bg-[rgb(34,197,94)] flex items-center justify-center">
-            <Icon name="KeyRound" size={18} className="text-white" />
-          </div>
+          <img src="/images/fixkey-logo.svg" alt="FixKey" className="w-14 h-14" />
           <span className="text-xl font-semibold tracking-tight">FixKey</span>
         </div>
 
@@ -77,7 +75,7 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
                     cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
                       isActive
-                        ? "bg-[rgb(34,197,94)] text-white"
+                        ? "bg-[#D4AF37] text-[#161616]"
                         : "text-white/60 hover:bg-white/5 hover:text-white"
                     )
                   }

@@ -9,8 +9,8 @@ export default function Company() {
     <CrmLayout title="Компания" subtitle="Данные вашей компании">
       <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-6 max-w-2xl">
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-14 h-14 rounded-xl bg-green-500/15 flex items-center justify-center">
-            <Icon name="Building" size={24} className="text-green-400" />
+          <div className="w-14 h-14 rounded-xl bg-[#D4AF37]/15 flex items-center justify-center">
+            <Icon name="Building" size={24} className="text-[#D4AF37]" />
           </div>
           <div>
             <p className="text-lg font-semibold">{user?.company_name}</p>

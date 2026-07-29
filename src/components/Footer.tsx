@@ -6,7 +6,7 @@ export function Footer() {
           {/* Brand */}
           <div className="md:col-span-2">
             <a href="/" className="inline-flex items-center gap-2 mb-6">
-              <img src="/images/fixkey-logo.svg" alt="FixKey" className="w-8 h-8" />
+              <img src="/images/fixkey-logo.svg" alt="FixKey" className="w-16 h-16 -my-4" />
               <span className="text-xl font-semibold tracking-tight">FixKey</span>
             </a>
             <p className="text-muted-foreground leading-relaxed max-w-sm">

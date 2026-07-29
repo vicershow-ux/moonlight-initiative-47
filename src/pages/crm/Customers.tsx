@@ -149,7 +149,7 @@ export default function Customers() {
         <div className="flex justify-end mb-6">
           <button
             onClick={openCreate}
-            className="flex items-center gap-2 bg-green-500 hover:bg-green-600 transition-colors text-white text-sm px-4 py-2.5 rounded-lg"
+            className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg"
           >
             <Icon name="UserPlus" size={16} />
             Создать логин заказчика
@@ -239,7 +239,7 @@ export default function Customers() {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Иванов Иван"
-                    className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-green-500/50"
+                    className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
                   />
                 </div>
 
@@ -250,7 +250,7 @@ export default function Customers() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="user@example.com"
-                    className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-green-500/50"
+                    className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
                   />
                 </div>
 
@@ -261,7 +261,7 @@ export default function Customers() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-green-500/50"
+                    className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
                   />
                 </div>
 
@@ -271,7 +271,7 @@ export default function Customers() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+7 900 000 00 00"
-                    className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-green-500/50"
+                    className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
                   />
                 </div>
               </>
@@ -289,9 +289,9 @@ export default function Customers() {
                         type="checkbox"
                         checked={selectedObjectIds.includes(o.id)}
                         onChange={() => toggleObject(o.id)}
-                        className="accent-green-500"
+                        className="accent-[#D4AF37]"
                       />
-                      <span className="text-green-400">{o.object_code}</span>
+                      <span className="text-[#D4AF37]">{o.object_code}</span>
                       <span className="text-white/50">— {o.client_name}</span>
                     </label>
                   ))}
@@ -309,7 +309,7 @@ export default function Customers() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="mt-2 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 transition-colors text-white text-sm px-4 py-3 rounded-lg disabled:opacity-60"
+              className="mt-2 flex items-center justify-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-3 rounded-lg disabled:opacity-60"
             >
               {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : editingId ? "Сохранить объекты" : "Создать логин заказчика"}
             </button>
