@@ -70,13 +70,31 @@ export interface ObjectItem {
   object_type: string
   area: number
   status: string
+  email: string
+  legal_status: string
+  address: string
+  payment_type: string
+  has_elevator: boolean
+  residence_during_works: boolean
+  material_unloading: boolean
+  completion_type: string
+  warranty_waiver: boolean
+  rough_material: string
+  finish_material: string
+  kitchen_furniture: string
   created_at: string
+  updated_at: string
 }
 
 export const objectsApi = {
   async list() {
     const res = await fetch(OBJECTS_URL, { headers: { ...authHeaders() } })
     return parseResponse(res) as Promise<{ objects: ObjectItem[] }>
+  },
+
+  async get(id: number) {
+    const res = await fetch(`${OBJECTS_URL}?id=${id}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<ObjectItem>
   },
 
   async create(payload: Partial<ObjectItem>) {

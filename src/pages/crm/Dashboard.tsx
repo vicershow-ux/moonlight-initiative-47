@@ -120,6 +120,8 @@ export default function Dashboard() {
                     <th className="text-left font-medium py-2 pr-4">Тип</th>
                     <th className="text-left font-medium py-2 pr-4">Площадь</th>
                     <th className="text-left font-medium py-2 pr-4">Статус</th>
+                    <th className="text-left font-medium py-2 pr-4">Дата создания</th>
+                    <th className="text-left font-medium py-2 pr-4">Действия</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -136,6 +138,20 @@ export default function Dashboard() {
                         <span className={`px-2 py-0.5 rounded-full text-xs ${statusColors[obj.status] || "bg-white/10 text-white/60"}`}>
                           {obj.status}
                         </span>
+                      </td>
+                      <td className="py-3 pr-4 text-white/40 text-xs">
+                        {new Date(obj.created_at).toLocaleDateString("ru-RU")}
+                      </td>
+                      <td className="py-3 pr-4">
+                        <div className="flex items-center gap-3">
+                          <Link
+                            to={`/cabinet/objects/${obj.id}`}
+                            className="text-white/60 hover:text-white transition-colors"
+                            title="Просмотр"
+                          >
+                            <Icon name="Eye" size={15} />
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   ))}

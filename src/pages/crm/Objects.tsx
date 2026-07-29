@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { objectsApi, ObjectItem } from "@/lib/api"
@@ -22,6 +23,7 @@ const statusColors: Record<string, string> = {
 const statusOptions = ["лид", "в работе", "завершён", "отменён"]
 
 export default function Objects() {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const isClient = user?.role === "client"
   const [objects, setObjects] = useState<ObjectItem[]>([])
@@ -173,6 +175,13 @@ export default function Objects() {
                     </td>
                     <td className="py-3 pr-4">
                       <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => navigate(`/cabinet/objects/${obj.id}`)}
+                          className="flex items-center gap-1.5 text-white/60 hover:text-white transition-colors"
+                          title="Просмотр объекта"
+                        >
+                          <Icon name="Eye" size={16} />
+                        </button>
                         {!isClient && (
                           <button
                             onClick={() => openEstimateModal(obj)}

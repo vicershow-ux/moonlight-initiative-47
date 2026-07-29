@@ -1,0 +1,348 @@
+import { useEffect, useState } from "react"
+import { Link, useNavigate, useParams } from "react-router-dom"
+import { CrmLayout } from "@/components/crm/CrmLayout"
+import Icon from "@/components/ui/icon"
+import { objectsApi, estimatesApi, Estimate, ObjectItem } from "@/lib/api"
+import { EstimateModal } from "@/components/crm/EstimateModal"
+import { EstimatesListModal } from "@/components/crm/EstimatesListModal"
+import { printEstimate } from "@/lib/printEstimate"
+import { useAuth } from "@/contexts/AuthContext"
+
+const statusColors: Record<string, string> = {
+  "лид": "bg-purple-500/20 text-purple-300",
+  "в работе": "bg-blue-500/20 text-blue-300",
+  "завершён": "bg-green-500/20 text-green-300",
+  "отменён": "bg-red-500/20 text-red-300",
+}
+
+const formatMoney = (n: number) =>
+  new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n) + " ₽"
+
+const formatDateTime = (d: string) =>
+  new Date(d).toLocaleString("ru-RU", { day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
+
+const yesNo = (v: boolean) => (v ? "Да" : "Нет")
+
+export default function ObjectDetail() {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const isClient = user?.role === "client"
+
+  const [object, setObject] = useState<ObjectItem | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [estimates, setEstimates] = useState<Estimate[]>([])
+  const [estimatesLoading, setEstimatesLoading] = useState(true)
+  const [printingId, setPrintingId] = useState<number | null>(null)
+
+  const [estimateModalOpen, setEstimateModalOpen] = useState(false)
+  const [estimatesListOpen, setEstimatesListOpen] = useState(false)
+
+  const load = () => {
+    if (!id) return
+    setLoading(true)
+    objectsApi
+      .get(Number(id))
+      .then(setObject)
+      .catch(() => navigate("/cabinet/objects"))
+      .finally(() => setLoading(false))
+  }
+
+  const loadEstimates = () => {
+    if (!id) return
+    setEstimatesLoading(true)
+    estimatesApi
+      .listByObject(Number(id))
+      .then((data) => setEstimates(data.estimates))
+      .finally(() => setEstimatesLoading(false))
+  }
+
+  useEffect(() => {
+    load()
+    loadEstimates()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
+
+  const handlePrint = async (estimateId: number) => {
+    if (!object) return
+    setPrintingId(estimateId)
+    try {
+      const full = await estimatesApi.get(estimateId)
+      printEstimate(full, object, user?.company_name || "")
+    } finally {
+      setPrintingId(null)
+    }
+  }
+
+  if (loading || !object) {
+    return (
+      <CrmLayout title="Объект">
+        <div className="flex items-center justify-center py-24">
+          <Icon name="Loader2" size={28} className="animate-spin text-white/40" />
+        </div>
+      </CrmLayout>
+    )
+  }
+
+  return (
+    <CrmLayout title={object.object_code} subtitle={`Создан ${formatDateTime(object.created_at)}`}>
+      <Link
+        to="/cabinet/objects"
+        className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors mb-4"
+      >
+        <Icon name="ChevronLeft" size={16} />
+        Назад к списку
+      </Link>
+
+      <div className="flex items-center justify-between mb-6 -mt-2">
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-semibold tracking-tight">{object.object_code}</h2>
+          <span className={`px-2 py-0.5 rounded-full text-xs ${statusColors[object.status] || "bg-white/10 text-white/60"}`}>
+            {object.status}
+          </span>
+        </div>
+        {!isClient && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setEstimateModalOpen(true)}
+              className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg"
+            >
+              <Icon name="FilePlus2" size={16} />
+              Создать смету
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+        <div className="lg:col-span-2 flex flex-col gap-4">
+          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+            <p className="font-medium mb-4">Информация о заказчике</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-xs text-white/40 mb-1">ФИО / Организация</p>
+                <p className="font-medium">{object.client_name}</p>
+              </div>
+              <div>
+                <p className="text-xs text-white/40 mb-1">Правовой статус</p>
+                <p className="font-medium">{object.legal_status}</p>
+              </div>
+              <div>
+                <p className="text-xs text-white/40 mb-1">Телефон</p>
+                <p className="font-medium">{object.client_phone || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-white/40 mb-1">Email</p>
+                <p className="font-medium text-[#D4AF37]">{object.email || "—"}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+            <p className="font-medium mb-4">Параметры объекта</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-xs text-white/40 mb-1">Тип объекта</p>
+                <p className="font-medium">{object.object_type}</p>
+              </div>
+              <div>
+                <p className="text-xs text-white/40 mb-1">Площадь</p>
+                <p className="font-medium">{object.area} м²</p>
+              </div>
+              <div className="sm:col-span-2">
+                <p className="text-xs text-white/40 mb-1">Адрес объекта</p>
+                <p className="font-medium">{object.address || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-white/40 mb-1">Тип оплаты</p>
+                <p className="font-medium">{object.payment_type}</p>
+              </div>
+              <div>
+                <p className="text-xs text-white/40 mb-1">Проживание на объекте</p>
+                <p className="font-medium">{yesNo(object.residence_during_works)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-white/40 mb-1">Наличие лифта</p>
+                <p className="font-medium">{yesNo(object.has_elevator)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-white/40 mb-1">Разгрузка материала</p>
+                <p className="font-medium">{yesNo(object.material_unloading)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-white/40 mb-1">Комплектация</p>
+                <p className="font-medium">{object.completion_type}</p>
+              </div>
+              <div>
+                <p className="text-xs text-white/40 mb-1">Отказ от гарантии</p>
+                <p className={`font-medium ${object.warranty_waiver ? "text-red-400" : "text-green-400"}`}>
+                  {yesNo(object.warranty_waiver)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+            <p className="font-medium mb-4">Материалы и мебель</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+              <div>
+                <p className="text-xs text-white/40 mb-1">Черновой материал</p>
+                <p className="font-medium">{object.rough_material}</p>
+              </div>
+              <div>
+                <p className="text-xs text-white/40 mb-1">Чистовой материал</p>
+                <p className="font-medium">{object.finish_material}</p>
+              </div>
+              <div>
+                <p className="text-xs text-white/40 mb-1">Кухня и мебель</p>
+                <p className="font-medium">{object.kitchen_furniture}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+            <p className="font-medium mb-3">Дизайн-проект</p>
+            <span className="inline-block px-3 py-1.5 rounded-lg text-sm bg-blue-500/15 text-blue-300">
+              Стандарт проект
+            </span>
+          </div>
+
+          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="font-medium">Эталонные помещения</p>
+              <button className="text-sm text-[#D4AF37] hover:text-[#B8860B] transition-colors">
+                Управлять
+              </button>
+            </div>
+            <div className="bg-[#161616] border border-white/10 rounded-lg p-4">
+              <p className="text-sm font-medium">Санузел</p>
+              <p className="text-xs text-white/30 mt-1">Ванна и туалет · 3,50 м² · 156 к/п</p>
+            </div>
+          </div>
+
+          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="font-medium">Документы объекта</p>
+              {!isClient && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setEstimateModalOpen(true)}
+                    className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-3 py-2 rounded-lg"
+                  >
+                    <Icon name="Plus" size={14} />
+                    Создать смету
+                  </button>
+                  <button className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg">
+                    <Icon name="FileSignature" size={14} />
+                    Составить договор
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <p className="text-xs text-white/40 uppercase tracking-wide mb-2">Сметы</p>
+            {estimatesLoading ? (
+              <div className="flex justify-center py-8">
+                <Icon name="Loader2" size={20} className="animate-spin text-white/40" />
+              </div>
+            ) : estimates.length === 0 ? (
+              <div className="text-center py-8 text-white/30 text-sm">
+                По этому объекту ещё нет смет
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {estimates.map((est, idx) => (
+                  <div key={est.id} className="bg-[#161616] border border-white/10 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-sm font-medium">Смета №{est.id} (v{idx + 1})</p>
+                      <span className={`px-2 py-0.5 rounded-full text-xs ${est.has_pending ? "bg-orange-500/20 text-orange-300" : "bg-white/10 text-white/50"}`}>
+                        {est.has_pending ? "Ожидает согласования" : "Не сформирована"}
+                      </span>
+                    </div>
+                    {est.has_pending && (
+                      <p className="text-xs text-orange-300 mb-1">Есть предложенные позиции</p>
+                    )}
+                    <p className="text-lg font-semibold mb-2">{formatMoney(est.total_amount)}</p>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setEstimatesListOpen(true)}
+                        className="text-white/40 hover:text-white transition-colors"
+                        title="Просмотр"
+                      >
+                        <Icon name="Eye" size={15} />
+                      </button>
+                      {!isClient && (
+                        <button
+                          className="text-white/40 hover:text-white transition-colors"
+                          title="Редактировать"
+                        >
+                          <Icon name="Pencil" size={15} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handlePrint(est.id)}
+                        className="text-white/40 hover:text-white transition-colors"
+                        title="Печать"
+                      >
+                        {printingId === est.id ? (
+                          <Icon name="Loader2" size={15} className="animate-spin" />
+                        ) : (
+                          <Icon name="Printer" size={15} />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+            <p className="font-medium mb-4">Информация</p>
+            <div className="flex flex-col gap-3 text-sm">
+              <div>
+                <p className="text-xs text-white/40 mb-1">Создал</p>
+                <p className="font-medium">{user?.full_name || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-white/40 mb-1">Дата создания</p>
+                <p className="font-medium">{formatDateTime(object.created_at)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-white/40 mb-1">Последнее обновление</p>
+                <p className="font-medium">{formatDateTime(object.updated_at)}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="font-medium">Файлы</p>
+              <button className="text-sm text-[#D4AF37] hover:text-[#B8860B] transition-colors">
+                + Загрузить
+              </button>
+            </div>
+            <div className="flex flex-col items-center justify-center py-8 text-white/30 text-sm gap-2">
+              <Icon name="FileX" size={24} className="text-white/20" />
+              Файлов пока нет
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <EstimateModal
+        open={estimateModalOpen}
+        onOpenChange={setEstimateModalOpen}
+        object={object}
+        onCreated={loadEstimates}
+      />
+      <EstimatesListModal
+        open={estimatesListOpen}
+        onOpenChange={setEstimatesListOpen}
+        object={object}
+      />
+    </CrmLayout>
+  )
+}
