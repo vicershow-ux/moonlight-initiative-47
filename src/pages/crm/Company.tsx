@@ -78,10 +78,15 @@ export default function Company() {
     reader.readAsDataURL(file)
   }
 
+  const isIndividual = form.entity_type === "Физическое лицо" || form.entity_type === "Самозанятый"
+
   const handleSave = async () => {
     setSaving(true)
     try {
       const payload: Partial<CompanyData> & { signature_file?: string } = { ...form }
+      if (isIndividual) {
+        payload.name = form.contact_full_name
+      }
       if (signatureFile) {
         payload.signature_file = signatureFile.dataUrl
       }
@@ -125,17 +130,6 @@ export default function Company() {
 
           <div className="p-6 space-y-5">
             <div>
-              <label className={labelClass}>Название компании <span className="text-[#D4AF37]">*</span></label>
-              <input
-                className={inputClass}
-                value={form.name}
-                onChange={(e) => update("name", e.target.value)}
-                placeholder="ООО «Название»"
-                disabled={!canEdit}
-              />
-            </div>
-
-            <div>
               <label className={labelClass}>Тип субъекта</label>
               <select
                 className={inputClass}
@@ -149,16 +143,41 @@ export default function Company() {
               </select>
             </div>
 
-            <div>
-              <label className={labelClass}>ФИО <span className="text-[#D4AF37]">*</span></label>
-              <input
-                className={inputClass}
-                value={form.contact_full_name}
-                onChange={(e) => update("contact_full_name", e.target.value)}
-                placeholder="Иванов Иван Иванович"
-                disabled={!canEdit}
-              />
-            </div>
+            {isIndividual ? (
+              <div>
+                <label className={labelClass}>ФИО <span className="text-[#D4AF37]">*</span></label>
+                <input
+                  className={inputClass}
+                  value={form.contact_full_name}
+                  onChange={(e) => update("contact_full_name", e.target.value)}
+                  placeholder="Иванов Иван Иванович"
+                  disabled={!canEdit}
+                />
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className={labelClass}>Название компании <span className="text-[#D4AF37]">*</span></label>
+                  <input
+                    className={inputClass}
+                    value={form.name}
+                    onChange={(e) => update("name", e.target.value)}
+                    placeholder="ООО «Название»"
+                    disabled={!canEdit}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>ФИО руководителя <span className="text-[#D4AF37]">*</span></label>
+                  <input
+                    className={inputClass}
+                    value={form.contact_full_name}
+                    onChange={(e) => update("contact_full_name", e.target.value)}
+                    placeholder="Иванов Иван Иванович"
+                    disabled={!canEdit}
+                  />
+                </div>
+              </>
+            )}
 
             <div>
               <label className={labelClass}>Телефон</label>
