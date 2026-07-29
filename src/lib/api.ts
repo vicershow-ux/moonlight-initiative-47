@@ -213,6 +213,16 @@ export interface EstimateItem {
   proposed_by_name?: string | null
   room_id?: number | null
   room_name?: string
+  category?: string
+  subcategory?: string
+}
+
+export interface EstimateRevision {
+  id: number
+  total_amount: number
+  created_at: string
+  revision_number: number
+  status: string
 }
 
 export interface Estimate {
@@ -229,9 +239,19 @@ export interface Estimate {
   items?: EstimateItem[]
   object_code?: string
   client_name?: string
+  client_phone?: string
+  email?: string
   object_type?: string
   area?: number
   has_pending?: boolean
+  status?: "draft" | "ready"
+  revision_number?: number
+  created_by?: number | null
+  created_by_name?: string | null
+  created_by_phone?: string | null
+  created_by_email?: string | null
+  company_name?: string
+  revisions?: EstimateRevision[]
 }
 
 export const estimatesApi = {
@@ -271,6 +291,15 @@ export const estimatesApi = {
     const res = await fetch(`${ESTIMATES_URL}?id=${id}`, {
       method: "DELETE",
       headers: { ...authHeaders() },
+    })
+    return parseResponse(res)
+  },
+
+  async setStatus(id: number, status: "draft" | "ready") {
+    const res = await fetch(`${ESTIMATES_URL}?action=set_status&id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ status }),
     })
     return parseResponse(res)
   },

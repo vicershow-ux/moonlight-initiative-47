@@ -53,12 +53,12 @@ def has_object_access(cur, user, object_id):
 ESTIMATE_KEYS = [
     'id', 'object_id', 'total_amount', 'created_at',
     'contract_number', 'contract_date', 'discount_percent', 'discount_amount',
-    'notes', 'subtotal_amount',
+    'notes', 'subtotal_amount', 'status', 'revision_number', 'created_by',
 ]
 
 
 def handler(event: dict, context) -> dict:
-    '''Создание и просмотр смет по объектам с позициями услуг, группировкой по помещениям, скидками и заявками заказчиков на доп. работы'''
+    '''Создание и просмотр смет по объектам с позициями услуг, группировкой по помещениям, скидками, статусами стадий и заявками заказчиков на доп. работы'''
     method = event.get('httpMethod', 'GET')
 
     if method == 'OPTIONS':
@@ -95,11 +95,40 @@ def handler(event: dict, context) -> dict:
                     return response(403, {'error': 'Недостаточно прав'})
 
                 cur.execute(
-                    "SELECT ei.id, ei.name, ei.unit, ei.price, ei.quantity, ei.times, ei.discount_percent, ei.amount, ei.status, ei.proposed_by, u.full_name, ei.room_id, ei.room_name "
+                    "SELECT o.object_code, o.client_name, o.client_phone, o.email, o.object_type, o.area "
+                    "FROM objects o WHERE o.id = %s",
+                    (estimate['object_id'],)
+                )
+                obj_row = cur.fetchone()
+                if obj_row:
+                    obj_keys = ['object_code', 'client_name', 'client_phone', 'email', 'object_type', 'area']
+                    estimate.update(dict(zip(obj_keys, obj_row)))
+
+                if estimate.get('created_by'):
+                    cur.execute("SELECT full_name, phone, email FROM users WHERE id = %s", (estimate['created_by'],))
+                    creator_row = cur.fetchone()
+                    if creator_row:
+                        estimate['created_by_name'] = creator_row[0]
+                        estimate['created_by_phone'] = creator_row[1]
+                        estimate['created_by_email'] = creator_row[2]
+
+                cur.execute("SELECT c.name FROM companies c WHERE c.id = %s", (company_id,))
+                company_row = cur.fetchone()
+                estimate['company_name'] = company_row[0] if company_row else ''
+
+                cur.execute(
+                    "SELECT id, total_amount, created_at, revision_number, status FROM estimates WHERE object_id = %s AND company_id = %s ORDER BY revision_number DESC",
+                    (estimate['object_id'], company_id)
+                )
+                rev_keys = ['id', 'total_amount', 'created_at', 'revision_number', 'status']
+                estimate['revisions'] = [dict(zip(rev_keys, r)) for r in cur.fetchall()]
+
+                cur.execute(
+                    "SELECT ei.id, ei.name, ei.unit, ei.price, ei.quantity, ei.times, ei.discount_percent, ei.amount, ei.status, ei.proposed_by, u.full_name, ei.room_id, ei.room_name, ei.category, ei.subcategory "
                     "FROM estimate_items ei LEFT JOIN users u ON u.id = ei.proposed_by WHERE ei.estimate_id = %s ORDER BY ei.room_id NULLS FIRST, ei.id",
                     (estimate_id,)
                 )
-                item_keys = ['id', 'name', 'unit', 'price', 'quantity', 'times', 'discount_percent', 'amount', 'status', 'proposed_by', 'proposed_by_name', 'room_id', 'room_name']
+                item_keys = ['id', 'name', 'unit', 'price', 'quantity', 'times', 'discount_percent', 'amount', 'status', 'proposed_by', 'proposed_by_name', 'room_id', 'room_name', 'category', 'subcategory']
                 estimate['items'] = [dict(zip(item_keys, r)) for r in cur.fetchall()]
                 return response(200, estimate)
 
@@ -107,7 +136,7 @@ def handler(event: dict, context) -> dict:
                 if not has_object_access(cur, user, object_id):
                     return response(403, {'error': 'Недостаточно прав'})
                 cur.execute(
-                    f"SELECT {', '.join(ESTIMATE_KEYS)} FROM estimates WHERE object_id = %s AND company_id = %s ORDER BY created_at DESC",
+                    f"SELECT {', '.join(ESTIMATE_KEYS)} FROM estimates WHERE object_id = %s AND company_id = %s ORDER BY revision_number DESC",
                     (object_id, company_id)
                 )
                 rows = cur.fetchall()
@@ -202,6 +231,27 @@ def handler(event: dict, context) -> dict:
 
             return response(200, {'success': True, 'status': new_status})
 
+        if method == 'PUT' and action == 'set_status':
+            if is_client:
+                return response(403, {'error': 'Недостаточно прав'})
+            if not estimate_id:
+                return response(400, {'error': 'Не указан id сметы'})
+
+            body = json.loads(event.get('body') or '{}')
+            new_status = (body.get('status') or '').strip()
+            if new_status not in ('draft', 'ready'):
+                return response(400, {'error': 'Недопустимый статус'})
+
+            cur.execute(
+                "UPDATE estimates SET status = %s WHERE id = %s AND company_id = %s RETURNING id",
+                (new_status, estimate_id, company_id)
+            )
+            if not cur.fetchone():
+                return response(404, {'error': 'Смета не найдена'})
+            conn.commit()
+
+            return response(200, {'success': True, 'status': new_status})
+
         if method == 'POST':
             if is_client:
                 return response(403, {'error': 'Недостаточно прав'})
@@ -244,6 +294,8 @@ def handler(event: dict, context) -> dict:
                     'amount': amount,
                     'room_id': it.get('room_id'),
                     'room_name': (it.get('room_name') or '').strip(),
+                    'category': (it.get('category') or '').strip(),
+                    'subcategory': (it.get('subcategory') or '').strip(),
                 })
 
             if not clean_items:
@@ -255,17 +307,23 @@ def handler(event: dict, context) -> dict:
             total = max(0, round(subtotal - discount_amount, 2))
 
             cur.execute(
-                "INSERT INTO estimates (company_id, object_id, total_amount, subtotal_amount, contract_number, contract_date, discount_percent, discount_amount, notes) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id, created_at",
-                (company_id, obj_id, total, subtotal, contract_number, contract_date, discount_percent, discount_amount, notes)
+                "SELECT COALESCE(MAX(revision_number), 0) FROM estimates WHERE object_id = %s AND company_id = %s",
+                (obj_id, company_id)
+            )
+            next_revision = (cur.fetchone()[0] or 0) + 1
+
+            cur.execute(
+                "INSERT INTO estimates (company_id, object_id, total_amount, subtotal_amount, contract_number, contract_date, discount_percent, discount_amount, notes, revision_number, created_by) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id, created_at",
+                (company_id, obj_id, total, subtotal, contract_number, contract_date, discount_percent, discount_amount, notes, next_revision, user['user_id'])
             )
             new_id, created_at = cur.fetchone()
 
             for it in clean_items:
                 cur.execute(
-                    "INSERT INTO estimate_items (estimate_id, service_id, name, unit, price, quantity, times, discount_percent, amount, status, room_id, room_name) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'approved', %s, %s)",
-                    (new_id, it['service_id'], it['name'], it['unit'], it['price'], it['quantity'], it['times'], it['discount_percent'], it['amount'], it['room_id'], it['room_name'])
+                    "INSERT INTO estimate_items (estimate_id, service_id, name, unit, price, quantity, times, discount_percent, amount, status, room_id, room_name, category, subcategory) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'approved', %s, %s, %s, %s)",
+                    (new_id, it['service_id'], it['name'], it['unit'], it['price'], it['quantity'], it['times'], it['discount_percent'], it['amount'], it['room_id'], it['room_name'], it['category'], it['subcategory'])
                 )
 
             conn.commit()
@@ -274,7 +332,7 @@ def handler(event: dict, context) -> dict:
                 'id': new_id, 'object_id': obj_id, 'total_amount': total, 'subtotal_amount': subtotal,
                 'contract_number': contract_number, 'contract_date': contract_date,
                 'discount_percent': discount_percent, 'discount_amount': discount_amount, 'notes': notes,
-                'created_at': created_at, 'items': clean_items
+                'created_at': created_at, 'items': clean_items, 'revision_number': next_revision, 'status': 'draft'
             })
 
         if method == 'DELETE':

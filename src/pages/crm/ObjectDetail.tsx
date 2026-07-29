@@ -314,33 +314,36 @@ export default function ObjectDetail() {
               </div>
             ) : (
               <div className="flex flex-col gap-2">
-                {estimates.map((est, idx) => (
+                {estimates.map((est) => (
                   <div key={est.id} className="bg-[#161616] border border-white/10 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-medium">Смета №{est.id} (v{idx + 1})</p>
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${est.has_pending ? "bg-orange-500/20 text-orange-300" : "bg-white/10 text-white/50"}`}>
-                        {est.has_pending ? "Ожидает согласования" : "Не сформирована"}
-                      </span>
+                      <p className="text-sm font-medium">Смета №{est.id} (ред. №{est.revision_number ?? 1})</p>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${est.status === "ready" ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"}`}>
+                          {est.status === "ready" ? "Готово" : "Черновик"}
+                        </span>
+                        {est.has_pending && (
+                          <span className="px-2 py-0.5 rounded-full text-xs bg-orange-500/20 text-orange-300">Ожидает согласования</span>
+                        )}
+                      </div>
                     </div>
-                    {est.has_pending && (
-                      <p className="text-xs text-orange-300 mb-1">Есть предложенные позиции</p>
-                    )}
                     <p className="text-lg font-semibold mb-2">{formatMoney(est.total_amount)}</p>
                     <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => setEstimatesListOpen(true)}
+                      <Link
+                        to={`/cabinet/objects/${object.id}/estimates/${est.id}`}
                         className="text-white/40 hover:text-white transition-colors"
                         title="Просмотр"
                       >
                         <Icon name="Eye" size={15} />
-                      </button>
+                      </Link>
                       {!isClient && (
-                        <button
+                        <Link
+                          to={`/cabinet/objects/${object.id}/estimates/new`}
                           className="text-white/40 hover:text-white transition-colors"
                           title="Редактировать"
                         >
                           <Icon name="Pencil" size={15} />
-                        </button>
+                        </Link>
                       )}
                       <button
                         onClick={() => handlePrint(est.id)}

@@ -105,6 +105,8 @@ export default function EstimateCreate() {
           amount: w.amount,
           room_id: r.room_id,
           room_name: r.name,
+          category: w.category,
+          subcategory: w.subcategory,
         }))
     )
 
