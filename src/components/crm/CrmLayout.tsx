@@ -53,7 +53,7 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
         )}
       >
         <div className="px-5 py-6 flex items-center gap-2 border-b border-white/10">
-          <img src="/images/fixkey-logo.svg" alt="FixKey" className="w-14 h-14" />
+          <img src="/fixkey-logo.png" alt="FixKey" className="w-14 h-14 object-contain" />
           <span className="text-xl font-semibold tracking-tight">FixKey</span>
         </div>
 
