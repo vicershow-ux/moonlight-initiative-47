@@ -146,7 +146,7 @@ export default function ObjectDetail() {
               </div>
               <div>
                 <p className="text-xs text-white/40 mb-1">Правовой статус</p>
-                <p className="font-medium">{object.legal_status}</p>
+                <p className="font-medium">{capitalizeFirst(object.legal_status)}</p>
               </div>
               <div>
                 <p className="text-xs text-white/40 mb-1">Телефон</p>
