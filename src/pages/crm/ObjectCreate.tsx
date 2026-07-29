@@ -24,6 +24,11 @@ const MATERIAL_OPTIONS = [
   { value: "заказчика", label: "Заказчика" },
   { value: "частично", label: "Частично" },
 ]
+const COMPLETION_TYPES = [
+  { value: "", label: "Не указано" },
+  { value: "стандарт", label: "Стандарт" },
+  { value: "премиум", label: "Премиум" },
+]
 const DESIGN_PROJECTS = [
   "Планировочное решение",
   "Экспресс проект",
@@ -62,6 +67,7 @@ export default function ObjectCreate() {
   const [email, setEmail] = useState("")
 
   const [hasElevator, setHasElevator] = useState("")
+  const [completionType, setCompletionType] = useState("")
   const [materialUnloading, setMaterialUnloading] = useState("")
   const [roughMaterial, setRoughMaterial] = useState("")
   const [finishMaterial, setFinishMaterial] = useState("")
@@ -127,6 +133,7 @@ export default function ObjectCreate() {
         client_phone: clientPhone,
         email,
         has_elevator: hasElevator,
+        completion_type: completionType,
         material_unloading: materialUnloading,
         rough_material: roughMaterial,
         finish_material: finishMaterial,
@@ -354,6 +361,19 @@ export default function ObjectCreate() {
                   className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none"
                 >
                   {YES_NO.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-white/50">Комплектация</label>
+                <select
+                  value={completionType}
+                  onChange={(e) => setCompletionType(e.target.value)}
+                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none"
+                >
+                  {COMPLETION_TYPES.map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
