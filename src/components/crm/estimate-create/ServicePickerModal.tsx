@@ -111,7 +111,7 @@ export function ServicePickerModal({ open, onOpenChange, services, onAdd }: Serv
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Поиск по названию, категории, подкатегории..."
-              className="w-full bg-[#161616] border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
+              className="w-full bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg pl-9 pr-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
             />
           </div>
 
@@ -121,7 +121,7 @@ export function ServicePickerModal({ open, onOpenChange, services, onAdd }: Serv
               <select
                 value={category}
                 onChange={(e) => { setCategory(e.target.value); setSubcategory("") }}
-                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
+                className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
               >
                 <option value="">Все категории</option>
                 {categories.map((c) => (
@@ -135,7 +135,7 @@ export function ServicePickerModal({ open, onOpenChange, services, onAdd }: Serv
                 <select
                   value={subcategory}
                   onChange={(e) => setSubcategory(e.target.value)}
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
+                  className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
                 >
                   <option value="">Все подкатегории</option>
                   {subcategories.map((sc) => (

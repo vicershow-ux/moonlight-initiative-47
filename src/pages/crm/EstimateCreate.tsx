@@ -167,7 +167,7 @@ export default function EstimateCreate() {
                   value={contractNumber}
                   onChange={(e) => setContractNumber(e.target.value)}
                   placeholder="Будет сгенерирован автоматически"
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
+                  className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -176,7 +176,7 @@ export default function EstimateCreate() {
                   value={contractDate}
                   onChange={(e) => setContractDate(e.target.value)}
                   type="date"
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
+                  className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
                 />
               </div>
             </div>
@@ -211,7 +211,7 @@ export default function EstimateCreate() {
                   onChange={(e) => { setDiscountPercent(e.target.value); setDiscountAmount("") }}
                   type="number"
                   placeholder="0"
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
+                  className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -222,7 +222,7 @@ export default function EstimateCreate() {
                   type="number"
                   placeholder="0"
                   disabled={discountPercentNum > 0}
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50 disabled:opacity-50"
+                  className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30 disabled:opacity-50"
                 />
               </div>
             </div>
@@ -235,7 +235,7 @@ export default function EstimateCreate() {
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Особые условия, комментарии..."
               rows={4}
-              className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none resize-none focus:border-[#D4AF37]/50 w-full"
+              className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-3 py-2.5 text-sm outline-none resize-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30 w-full"
             />
           </div>
 

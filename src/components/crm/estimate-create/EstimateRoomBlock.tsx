@@ -7,6 +7,8 @@ export interface RoomWorkItem {
   key: string
   service_id?: number | null
   name: string
+  category?: string
+  subcategory?: string
   unit: string
   price: number
   quantity: number
@@ -73,6 +75,8 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
         key: `${service.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         service_id: service.id,
         name: service.name,
+        category: service.category,
+        subcategory: service.subcategory,
         unit: service.unit,
         ...base,
         amount: calcAmount(base),
@@ -112,13 +116,8 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
   return (
     <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <input
-          value={room.name}
-          onChange={(e) => onChange({ name: e.target.value })}
-          placeholder="Название помещения"
-          className="bg-transparent text-base font-medium outline-none border-b border-transparent focus:border-white/20 pb-0.5"
-        />
-        <div className="flex items-center gap-2">
+        <p className="text-base font-medium">{room.name || "Помещение"}</p>
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="relative" ref={templateRef}>
             <button
               onClick={() => setTemplateOpen((v) => !v)}
@@ -173,7 +172,16 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs text-white/50">Название</label>
+          <input
+            value={room.name}
+            onChange={(e) => onChange({ name: e.target.value })}
+            placeholder="Санузел"
+            className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
+          />
+        </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-xs text-white/50">Площадь (м²)</label>
           <input
@@ -181,7 +189,7 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
             onChange={(e) => onChange({ area: e.target.value })}
             type="number"
             placeholder="0.00"
-            className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50"
+            className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -191,7 +199,7 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
             onChange={(e) => onChange({ perimeter: e.target.value })}
             type="number"
             placeholder="0.00"
-            className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50"
+            className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
           />
         </div>
       </div>
@@ -209,33 +217,37 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
               <thead>
                 <tr className="text-white/40 text-xs uppercase bg-white/5">
                   <th className="text-left font-medium py-2 px-3">Работа</th>
-                  <th className="text-left font-medium py-2 px-3 w-16">Ед.</th>
-                  <th className="text-left font-medium py-2 px-3 w-16">Кол-во</th>
-                  <th className="text-left font-medium py-2 px-3 w-14">Раз</th>
-                  <th className="text-left font-medium py-2 px-3 w-24">Цена</th>
-                  <th className="text-left font-medium py-2 px-3 w-20">Скидка%</th>
+                  <th className="text-left font-medium py-2 px-3 w-20">Ед.</th>
+                  <th className="text-left font-medium py-2 px-3 w-20">Кол-во</th>
+                  <th className="text-left font-medium py-2 px-3 w-16">Раз</th>
+                  <th className="text-left font-medium py-2 px-3 w-28">Цена</th>
+                  <th className="text-left font-medium py-2 px-3 w-24">Скидка%</th>
                   <th className="text-left font-medium py-2 px-3 w-28">Сумма</th>
                   <th className="w-16"></th>
                 </tr>
               </thead>
               <tbody>
                 {room.works.map((w) => (
-                  <tr key={w.key} className="border-t border-white/5">
-                    <td className="px-3 py-2">
-                      <div>
-                        <input
-                          value={w.name}
-                          onChange={(e) => updateWork(w.key, { name: e.target.value })}
-                          placeholder="Название работы"
-                          className="bg-transparent outline-none w-full text-sm"
-                        />
-                      </div>
+                  <tr key={w.key} className="border-t border-white/5 align-top">
+                    <td className="px-3 py-2 min-w-[240px]">
+                      <textarea
+                        value={w.name}
+                        onChange={(e) => updateWork(w.key, { name: e.target.value })}
+                        placeholder="Название работы"
+                        rows={2}
+                        className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-2.5 py-1.5 outline-none w-full text-sm font-medium resize-none leading-snug focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
+                      />
+                      {(w.category || w.subcategory) && (
+                        <p className="text-xs text-white/35 mt-1 px-0.5">
+                          {[w.category, w.subcategory].filter(Boolean).join(" → ")}
+                        </p>
+                      )}
                     </td>
                     <td className="px-3 py-2">
                       <input
                         value={w.unit}
                         onChange={(e) => updateWork(w.key, { unit: e.target.value })}
-                        className="bg-transparent outline-none w-full text-sm"
+                        className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-2.5 py-1.5 outline-none w-full text-sm focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
                       />
                     </td>
                     <td className="px-3 py-2">
@@ -243,7 +255,7 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
                         type="number"
                         value={w.quantity}
                         onChange={(e) => updateWork(w.key, { quantity: Number(e.target.value) || 0 })}
-                        className="bg-transparent outline-none w-full text-sm"
+                        className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-2.5 py-1.5 outline-none w-full text-sm focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
                       />
                     </td>
                     <td className="px-3 py-2">
@@ -251,7 +263,7 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
                         type="number"
                         value={w.times}
                         onChange={(e) => updateWork(w.key, { times: Number(e.target.value) || 0 })}
-                        className="bg-transparent outline-none w-full text-sm"
+                        className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-2.5 py-1.5 outline-none w-full text-sm focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
                       />
                     </td>
                     <td className="px-3 py-2">
@@ -259,7 +271,7 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
                         type="number"
                         value={w.price}
                         onChange={(e) => updateWork(w.key, { price: Number(e.target.value) || 0 })}
-                        className="bg-transparent outline-none w-full text-sm"
+                        className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-2.5 py-1.5 outline-none w-full text-sm focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
                       />
                     </td>
                     <td className="px-3 py-2">
@@ -267,11 +279,11 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
                         type="number"
                         value={w.discountPercent}
                         onChange={(e) => updateWork(w.key, { discountPercent: Number(e.target.value) || 0 })}
-                        className="bg-transparent outline-none w-full text-sm"
+                        className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-2.5 py-1.5 outline-none w-full text-sm focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
                       />
                     </td>
-                    <td className="px-3 py-2 text-white/70 whitespace-nowrap">{formatMoney(w.amount)}</td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 text-white/70 whitespace-nowrap pt-3.5">{formatMoney(w.amount)}</td>
+                    <td className="px-3 py-2 pt-3.5">
                       <div className="flex items-center gap-2">
                         <Icon name="GripVertical" size={14} className="text-white/20" />
                         <button
