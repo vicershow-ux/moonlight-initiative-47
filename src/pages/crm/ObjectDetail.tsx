@@ -174,7 +174,7 @@ export default function ObjectDetail() {
               </div>
               <div>
                 <p className="text-xs text-white/40 mb-1">Тип оплаты</p>
-                <p className="font-medium">{object.payment_type}</p>
+                <p className="font-medium capitalize">{object.payment_type}</p>
               </div>
               <div>
                 <p className="text-xs text-white/40 mb-1">Проживание на объекте</p>
@@ -190,7 +190,7 @@ export default function ObjectDetail() {
               </div>
               <div>
                 <p className="text-xs text-white/40 mb-1">Комплектация</p>
-                <p className="font-medium">{object.completion_type}</p>
+                <p className="font-medium capitalize">{object.completion_type}</p>
               </div>
               <div>
                 <p className="text-xs text-white/40 mb-1">Отказ от гарантии</p>
