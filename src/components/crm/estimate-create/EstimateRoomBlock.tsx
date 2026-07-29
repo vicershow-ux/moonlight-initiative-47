@@ -273,16 +273,16 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
                     <td className="px-2 py-2">
                       <input
                         type="number"
-                        value={w.quantity}
-                        onChange={(e) => updateWork(w.key, { quantity: Number(e.target.value) || 0 })}
+                        value={w.quantity === 0 ? "" : w.quantity}
+                        onChange={(e) => updateWork(w.key, { quantity: e.target.value === "" ? 0 : Number(e.target.value) })}
                         className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-2 py-1.5 outline-none w-full text-sm focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
                       />
                     </td>
                     <td className="px-2 py-2">
                       <input
                         type="number"
-                        value={w.times}
-                        onChange={(e) => updateWork(w.key, { times: Number(e.target.value) || 0 })}
+                        value={w.times === 0 ? "" : w.times}
+                        onChange={(e) => updateWork(w.key, { times: e.target.value === "" ? 0 : Number(e.target.value) })}
                         className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-2 py-1.5 outline-none w-full text-sm focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
                       />
                     </td>
@@ -292,8 +292,8 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
                       ) : (
                         <input
                           type="number"
-                          value={w.price}
-                          onChange={(e) => updateWork(w.key, { price: Number(e.target.value) || 0 })}
+                          value={w.price === 0 ? "" : w.price}
+                          onChange={(e) => updateWork(w.key, { price: e.target.value === "" ? 0 : Number(e.target.value) })}
                           className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-2 py-1.5 outline-none w-full text-sm focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
                         />
                       )}
@@ -301,8 +301,8 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
                     <td className="px-2 py-2">
                       <input
                         type="number"
-                        value={w.discountPercent}
-                        onChange={(e) => updateWork(w.key, { discountPercent: Number(e.target.value) || 0 })}
+                        value={w.discountPercent === 0 ? "" : w.discountPercent}
+                        onChange={(e) => updateWork(w.key, { discountPercent: e.target.value === "" ? 0 : Number(e.target.value) })}
                         className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-2 py-1.5 outline-none w-full text-sm focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
                       />
                     </td>
