@@ -1,4 +1,4 @@
-import { Estimate, ObjectItem } from "@/lib/api"
+import { Estimate, ObjectItem, EstimateItem } from "@/lib/api"
 
 const formatMoney = (n: number) =>
   new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n) + " ₽"
@@ -6,42 +6,93 @@ const formatMoney = (n: number) =>
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
 
+const formatDateTime = (d: string) =>
+  new Date(d).toLocaleString("ru-RU", { day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
+
 export function printEstimate(estimate: Estimate, object: ObjectItem, companyName: string) {
   const items = estimate.items || []
 
-  const groups = new Map<string, typeof items>()
+  const groups = new Map<string, EstimateItem[]>()
   items.forEach((it) => {
     const key = it.room_name || "Без помещения"
     if (!groups.has(key)) groups.set(key, [])
     groups.get(key)!.push(it)
   })
 
-  let counter = 0
-  const rows = Array.from(groups.entries())
-    .map(([roomName, groupItems]) => {
-      const roomHeader = groups.size > 1 || roomName !== "Без помещения"
-        ? `<tr class="room-row"><td colspan="6">${escapeHtml(roomName)}</td></tr>`
-        : ""
-      const itemRows = groupItems
-        .map((it) => {
-          counter += 1
-          return `
-        <tr>
-          <td class="num">${counter}</td>
-          <td>${escapeHtml(it.name)}</td>
-          <td class="center">${it.unit}</td>
-          <td class="center">${it.quantity}</td>
-          <td class="right">${formatMoney(it.price)}</td>
-          <td class="right">${formatMoney(it.amount)}</td>
-        </tr>`
-        })
-        .join("")
-      return roomHeader + itemRows
-    })
-    .join("")
-
   const subtotal = estimate.subtotal_amount ?? estimate.total_amount
   const discountAmount = estimate.discount_amount ?? 0
+
+  const roomsHtml = Array.from(groups.entries())
+    .map(([roomName, groupItems]) => {
+      const catGroups = new Map<string, EstimateItem[]>()
+      groupItems.forEach((it) => {
+        const key = it.category || "Прочие работы"
+        if (!catGroups.has(key)) catGroups.set(key, [])
+        catGroups.get(key)!.push(it)
+      })
+      const roomTotal = groupItems.reduce((s, it) => s + it.amount, 0)
+
+      const catsHtml = Array.from(catGroups.entries())
+        .map(([catName, catItems]) => {
+          const catTotal = catItems.reduce((s, it) => s + it.amount, 0)
+          const itemRows = catItems
+            .map(
+              (it, idx) => `
+            <tr>
+              <td class="num">${idx + 1}</td>
+              <td>${escapeHtml(it.name)}</td>
+              <td class="center">${escapeHtml(it.unit)}</td>
+              <td class="center">${it.quantity}</td>
+              <td class="center">${it.times ?? 1}</td>
+              <td class="right">${formatMoney(it.price)}</td>
+              <td class="right amount">${formatMoney(it.amount)}</td>
+            </tr>`
+            )
+            .join("")
+
+          return `
+        <div class="cat-block">
+          <table>
+            <thead>
+              <tr>
+                <th class="num">№</th>
+                <th>Наименование работы</th>
+                <th class="center">Ед.</th>
+                <th class="center">Кол-во</th>
+                <th class="center">Раз</th>
+                <th class="right">Цена</th>
+                <th class="right">Сумма</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="cat-row"><td colspan="7">${escapeHtml(catName)}</td></tr>
+              ${itemRows}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="6" class="right">Итого по категории</td>
+                <td class="right amount">${formatMoney(catTotal)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>`
+        })
+        .join("")
+
+      return `
+      <div class="room-block">
+        <h3 class="room-title">${escapeHtml(roomName)}</h3>
+        ${catsHtml}
+        <div class="room-total">
+          <div>
+            <div class="room-total-label">Итоговая сумма по помещению</div>
+            <div class="room-total-name">${escapeHtml(roomName)}</div>
+          </div>
+          <div class="room-total-amount">${formatMoney(roomTotal)}</div>
+        </div>
+      </div>`
+    })
+    .join("")
 
   const html = `
 <!DOCTYPE html>
@@ -55,7 +106,7 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
     font-family: 'Segoe UI', Arial, sans-serif;
     color: #1a1a1a;
     padding: 40px 48px;
-    max-width: 800px;
+    max-width: 850px;
     margin: 0 auto;
   }
   .header {
@@ -88,16 +139,34 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
     color: #666;
     font-size: 13px;
   }
+  .doc-subtitle h2 {
+    font-size: 19px;
+    margin: 0;
+    letter-spacing: -0.3px;
+  }
+  .doc-subtitle p {
+    margin: 4px 0 0;
+    color: #666;
+    font-size: 12px;
+  }
+  hr.thin {
+    border: none;
+    border-top: 1px solid #e5e5e5;
+    margin: 20px 0;
+  }
   .info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px 32px;
-    margin-bottom: 28px;
+    background: #fafafa;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 24px;
     font-size: 13px;
   }
   .info-grid .label {
-    color: #888;
-    font-size: 11px;
+    color: #999;
+    font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 2px;
@@ -105,60 +174,147 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
   .info-grid .value {
     font-weight: 500;
   }
+  .room-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin: 0 0 8px;
+  }
+  .room-block { margin-bottom: 22px; }
+  .cat-block {
+    border: 1px solid #e5e5e5;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
   table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
-    margin-bottom: 24px;
+    font-size: 12.5px;
   }
   thead th {
-    background: #1a1a1a;
-    color: #fff;
+    background: #f3f3f3;
+    color: #888;
     text-align: left;
-    padding: 10px 12px;
+    padding: 8px 10px;
     font-weight: 500;
-    font-size: 12px;
+    font-size: 10.5px;
     text-transform: uppercase;
     letter-spacing: 0.3px;
   }
   tbody td {
-    padding: 10px 12px;
-    border-bottom: 1px solid #eee;
+    padding: 8px 10px;
+    border-top: 1px solid #f0f0f0;
   }
-  .num { color: #999; width: 30px; }
+  .num { color: #aaa; width: 28px; }
   .center { text-align: center; }
   .right { text-align: right; }
-  .room-row td {
-    background: #f3f4f6;
-    font-weight: 700;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    border-bottom: none;
-  }
-  tfoot td {
-    padding: 8px 12px;
-    font-size: 13px;
+  .amount { font-weight: 600; }
+  .cat-row td {
+    background: rgba(192, 138, 42, 0.1);
+    color: #A9711F;
+    font-weight: 600;
+    font-size: 11px;
     border-top: none;
   }
-  tfoot tr.total-row td {
-    padding-top: 12px;
-    font-size: 15px;
-    font-weight: 700;
-    border-top: 2px solid #C08A2A;
-  }
-  .footer {
-    margin-top: 48px;
-    padding-top: 16px;
+  tfoot td {
+    padding: 8px 10px;
+    font-size: 12.5px;
+    background: #fafafa;
     border-top: 1px solid #eee;
-    font-size: 11px;
-    color: #999;
+  }
+  .room-total {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #F5EFE4;
+    border-left: 4px solid #C08A2A;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-top: 10px;
+  }
+  .room-total-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #A9711F;
+    font-weight: 700;
+  }
+  .room-total-name {
+    font-size: 13px;
+    color: #666;
+    margin-top: 2px;
+  }
+  .room-total-amount {
+    font-size: 18px;
+    font-weight: 700;
+    color: #A9711F;
+  }
+  .summary {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 24px;
+  }
+  .summary-box {
+    width: 100%;
+    max-width: 290px;
+    background: #fafafa;
+    border-radius: 10px;
+    padding: 16px;
+    font-size: 13px;
+  }
+  .summary-row {
     display: flex;
     justify-content: space-between;
+    margin-bottom: 6px;
+    color: #666;
+  }
+  .summary-row.discount { color: #A9711F; }
+  .summary-total {
+    display: flex;
+    justify-content: space-between;
+    font-size: 16px;
+    font-weight: 700;
+    padding-top: 8px;
+    border-top: 1px solid #e5e5e5;
+  }
+  .notes {
+    margin-bottom: 24px;
+    font-size: 13px;
+  }
+  .notes .label {
+    color: #999;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .parties {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+  .parties .label {
+    color: #999;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .parties .name { font-weight: 600; }
+  .parties .contact { color: #888; font-size: 12px; margin-top: 2px; }
+  .footer {
+    text-align: right;
+    font-size: 11px;
+    color: #bbb;
+    margin-top: 24px;
   }
   @media print {
     body { padding: 20px; }
     .no-print { display: none; }
+    .cat-block { break-inside: avoid; }
+    .room-block { break-inside: avoid; }
   }
 </style>
 </head>
@@ -171,13 +327,17 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
     </div>
   </div>
 
+  <div class="doc-subtitle">
+    <h2>СМЕТА НА РАБОТЫ</h2>
+    <p>Расчёт ремонтно-отделочных работ</p>
+    ${estimate.contract_number ? `<p>Приложение к договору № ${escapeHtml(estimate.contract_number)}${estimate.contract_date ? ` от ${formatDate(estimate.contract_date)}` : ""}</p>` : ""}
+  </div>
+
+  <hr class="thin" />
+
   <div class="info-grid">
     <div>
-      <div class="label">Исполнитель</div>
-      <div class="value">${escapeHtml(companyName)}</div>
-    </div>
-    <div>
-      <div class="label">Объект</div>
+      <div class="label">ID объекта</div>
       <div class="value">${escapeHtml(object.object_code)}</div>
     </div>
     <div>
@@ -185,71 +345,59 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
       <div class="value">${escapeHtml(object.client_name)}</div>
     </div>
     <div>
-      <div class="label">Телефон</div>
+      <div class="label">Контактный телефон</div>
       <div class="value">${escapeHtml(object.client_phone || "—")}</div>
     </div>
     <div>
-      <div class="label">Тип объекта</div>
-      <div class="value">${escapeHtml(object.object_type)}</div>
+      <div class="label">Характеристики объекта</div>
+      <div class="value">${escapeHtml(object.object_type)} · ${object.area} м²</div>
     </div>
-    <div>
-      <div class="label">Площадь</div>
-      <div class="value">${object.area} м²</div>
-    </div>
-    ${estimate.contract_number ? `
-    <div>
-      <div class="label">Договор №</div>
-      <div class="value">${escapeHtml(estimate.contract_number)}</div>
-    </div>` : ""}
-    ${estimate.contract_date ? `
-    <div>
-      <div class="label">Дата договора</div>
-      <div class="value">${formatDate(estimate.contract_date)}</div>
-    </div>` : ""}
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>№</th>
-        <th>Наименование работ / услуг</th>
-        <th class="center">Ед.</th>
-        <th class="center">Кол-во</th>
-        <th class="right">Цена</th>
-        <th class="right">Сумма</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${rows}
-    </tbody>
-    <tfoot>
-      <tr>
-        <td colspan="5" class="right">Сумма:</td>
-        <td class="right">${formatMoney(subtotal)}</td>
-      </tr>
+  ${roomsHtml}
+
+  <div class="summary">
+    <div class="summary-box">
+      <div class="summary-row">
+        <span>Сумма до скидки:</span>
+        <span>${formatMoney(subtotal)}</span>
+      </div>
       ${discountAmount > 0 ? `
-      <tr>
-        <td colspan="5" class="right">Скидка:</td>
-        <td class="right">-${formatMoney(discountAmount)}</td>
-      </tr>` : ""}
-      <tr class="total-row">
-        <td colspan="5" class="right">Итого:</td>
-        <td class="right">${formatMoney(estimate.total_amount)}</td>
-      </tr>
-    </tfoot>
-  </table>
+      <div class="summary-row discount">
+        <span>Скидка:</span>
+        <span>-${formatMoney(discountAmount)}</span>
+      </div>` : ""}
+      <div class="summary-total">
+        <span>ИТОГО К ОПЛАТЕ:</span>
+        <span>${formatMoney(estimate.total_amount)}</span>
+      </div>
+    </div>
+  </div>
 
   ${estimate.notes ? `
-  <div class="info-grid" style="margin-bottom: 24px;">
-    <div style="grid-column: span 2;">
-      <div class="label">Примечания</div>
-      <div class="value" style="font-weight: 400;">${escapeHtml(estimate.notes)}</div>
-    </div>
+  <div class="notes">
+    <div class="label">Примечания</div>
+    <div>${escapeHtml(estimate.notes)}</div>
   </div>` : ""}
 
+  <hr class="thin" />
+
+  <div class="parties">
+    <div>
+      <div class="label">Исполнитель</div>
+      <div class="name">${escapeHtml(estimate.created_by_name || companyName)}</div>
+      ${estimate.created_by_phone ? `<div class="contact">Тел: ${escapeHtml(estimate.created_by_phone)}</div>` : ""}
+      ${estimate.created_by_email ? `<div class="contact">Email: ${escapeHtml(estimate.created_by_email)}</div>` : ""}
+    </div>
+    <div>
+      <div class="label">Заказчик</div>
+      <div class="name">${escapeHtml(object.client_name)}</div>
+      ${object.client_phone ? `<div class="contact">Тел: ${escapeHtml(object.client_phone)}</div>` : ""}
+    </div>
+  </div>
+
   <div class="footer">
-    <span>Документ сформирован автоматически в FixKey</span>
-    <span>${formatDate(new Date().toISOString())}</span>
+    Сформировано ${formatDateTime(new Date().toISOString())}
   </div>
 </body>
 </html>`

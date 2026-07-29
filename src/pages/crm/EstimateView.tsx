@@ -282,12 +282,12 @@ export default function EstimateView() {
                 )
               })}
 
-              <div className="flex items-center justify-between bg-red-50 border-l-4 border-red-400 rounded px-4 py-3 mt-3">
+              <div className="flex items-center justify-between bg-[#F5EFE4] border-l-4 border-[#C08A2A] rounded px-4 py-3 mt-3">
                 <div>
-                  <p className="text-[10px] uppercase tracking-wide text-red-400 font-semibold">Итоговая сумма по помещению</p>
+                  <p className="text-[10px] uppercase tracking-wide text-[#A9711F] font-semibold">Итоговая сумма по помещению</p>
                   <p className="text-sm text-gray-600">{roomName}</p>
                 </div>
-                <p className="text-lg font-bold text-red-500">{formatMoney(roomTotal)}</p>
+                <p className="text-lg font-bold text-[#A9711F]">{formatMoney(roomTotal)}</p>
               </div>
             </div>
           )
@@ -300,7 +300,7 @@ export default function EstimateView() {
               <span>{formatMoney(subtotal)}</span>
             </div>
             {discountAmount > 0 && (
-              <div className="flex items-center justify-between mb-1.5 text-red-500">
+              <div className="flex items-center justify-between mb-1.5 text-[#A9711F]">
                 <span>Скидка:</span>
                 <span>-{formatMoney(discountAmount)}</span>
               </div>
