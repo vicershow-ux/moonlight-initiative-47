@@ -1,0 +1,33 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Create lead success",
+      "method": "POST",
+      "path": "/",
+      "body": {"client_name": "Иван Иванов", "client_phone": "+7 900 123 45 67", "comment": "Ремонт квартиры 60 м2"},
+      "expectedStatus": 200,
+      "expectedBody": {"success": true},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Missing name",
+      "method": "POST",
+      "path": "/",
+      "body": {"client_phone": "+7 900 123 45 67"},
+      "expectedStatus": 400
+    },
+    {
+      "name": "Missing phone",
+      "method": "POST",
+      "path": "/",
+      "body": {"client_name": "Иван Иванов"},
+      "expectedStatus": 400
+    }
+  ]
+}

@@ -1,5 +1,5 @@
-import { ArrowRight } from "lucide-react"
 import { HighlightedText } from "./HighlightedText"
+import { LeadForm } from "./LeadForm"
 
 export function CallToAction() {
   return (
@@ -18,21 +18,11 @@ export function CallToAction() {
             Оставьте заявку на бесплатный замер — рассчитаем смету и сроки в течение 24 часов.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a
-              href="mailto:hello@fixkey.ru"
-              className="inline-flex items-center justify-center gap-3 bg-primary-foreground text-foreground px-8 py-4 text-sm tracking-wide hover:bg-primary-foreground/90 transition-colors duration-300 group"
-            >
-              Оставить заявку
-              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-            </a>
-            <a
-              href="tel:+74951234567"
-              className="inline-flex items-center justify-center gap-2 border border-primary-foreground/30 px-8 py-4 text-sm tracking-wide hover:bg-primary-foreground/10 transition-colors duration-300"
-            >
-              Назначить звонок
-            </a>
-          </div>
+          <LeadForm />
+
+          <p className="text-primary-foreground/50 text-sm mt-8">
+            Или позвоните: <a href="tel:+74951234567" className="hover:text-primary-foreground transition-colors">+7 (495) 123-45-67</a>
+          </p>
         </div>
       </div>
     </section>

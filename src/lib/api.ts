@@ -5,6 +5,7 @@ const OBJECTS_URL = funcUrls.objects
 const SERVICES_URL = funcUrls.services
 const DASHBOARD_URL = funcUrls.dashboard
 const ESTIMATES_URL = funcUrls.estimates
+const LEADS_URL = funcUrls.leads
 
 const TOKEN_KEY = "fixkey_token"
 
@@ -323,5 +324,16 @@ export const notificationsApi = {
       headers: { ...authHeaders() },
     })
     return parseResponse(res)
+  },
+}
+
+export const leadsApi = {
+  async create(payload: { client_name: string; client_phone: string; comment?: string }) {
+    const res = await fetch(LEADS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<{ success: boolean; object_code: string }>
   },
 }
