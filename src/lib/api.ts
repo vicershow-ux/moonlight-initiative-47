@@ -205,6 +205,8 @@ export interface EstimateItem {
   unit: string
   price: number
   quantity: number
+  times?: number
+  discount_percent?: number
   amount: number
   status?: "approved" | "pending" | "rejected"
   proposed_by?: number | null

@@ -100,6 +100,8 @@ export default function EstimateCreate() {
           unit: w.unit,
           price: w.price,
           quantity: w.quantity,
+          times: w.times,
+          discount_percent: w.discountPercent,
           amount: w.amount,
           room_id: r.room_id,
           room_name: r.name,

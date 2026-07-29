@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import Icon from "@/components/ui/icon"
 import { ServiceItem, ObjectRoom } from "@/lib/api"
+import { ServicePickerModal } from "@/components/crm/estimate-create/ServicePickerModal"
 
 export interface RoomWorkItem {
   key: string
@@ -9,6 +10,8 @@ export interface RoomWorkItem {
   unit: string
   price: number
   quantity: number
+  times: number
+  discountPercent: number
   amount: number
 }
 
@@ -22,7 +25,7 @@ export interface RoomBlockState {
 }
 
 const formatMoney = (n: number) =>
-  new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n) + " ₽"
+  new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(n) + " ₽"
 
 interface EstimateRoomBlockProps {
   room: RoomBlockState
@@ -36,18 +39,22 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
   const [templateOpen, setTemplateOpen] = useState(false)
   const [servicePickerOpen, setServicePickerOpen] = useState(false)
   const templateRef = useRef<HTMLDivElement>(null)
-  const serviceRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (templateRef.current && !templateRef.current.contains(e.target as Node)) setTemplateOpen(false)
-      if (serviceRef.current && !serviceRef.current.contains(e.target as Node)) setServicePickerOpen(false)
     }
     document.addEventListener("mousedown", handleClick)
     return () => document.removeEventListener("mousedown", handleClick)
   }, [])
 
   const round2 = (n: number) => Math.round(n * 100) / 100
+
+  const calcAmount = (w: Pick<RoomWorkItem, "price" | "quantity" | "times" | "discountPercent">) => {
+    const raw = w.price * w.quantity * (w.times || 1)
+    const discounted = raw * (1 - (w.discountPercent || 0) / 100)
+    return round2(discounted)
+  }
 
   const applyTemplate = (tpl: ObjectRoom) => {
     onChange({
@@ -59,28 +66,29 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
     setTemplateOpen(false)
   }
 
-  const addService = (service: ServiceItem) => {
-    const work: RoomWorkItem = {
-      key: `${service.id}-${Date.now()}`,
-      service_id: service.id,
-      name: service.name,
-      unit: service.unit,
-      price: service.price,
-      quantity: 1,
-      amount: service.price,
-    }
-    onChange({ works: [...room.works, work] })
-    setServicePickerOpen(false)
+  const addServices = (selected: ServiceItem[]) => {
+    const newWorks: RoomWorkItem[] = selected.map((service) => {
+      const base = { price: service.price, quantity: 1, times: 1, discountPercent: 0 }
+      return {
+        key: `${service.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        service_id: service.id,
+        name: service.name,
+        unit: service.unit,
+        ...base,
+        amount: calcAmount(base),
+      }
+    })
+    onChange({ works: [...room.works, ...newWorks] })
   }
 
   const addCustomWork = () => {
+    const base = { price: 0, quantity: 1, times: 1, discountPercent: 0 }
     const work: RoomWorkItem = {
       key: `custom-${Date.now()}`,
       service_id: null,
       name: "",
       unit: "м²",
-      price: 0,
-      quantity: 1,
+      ...base,
       amount: 0,
     }
     onChange({ works: [...room.works, work] })
@@ -91,7 +99,7 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
       works: room.works.map((w) => {
         if (w.key !== key) return w
         const next = { ...w, ...patch }
-        next.amount = round2(next.price * next.quantity)
+        next.amount = calcAmount(next)
         return next
       }),
     })
@@ -103,7 +111,7 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
 
   return (
     <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <input
           value={room.name}
           onChange={(e) => onChange({ name: e.target.value })}
@@ -139,33 +147,13 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
             )}
           </div>
 
-          <div className="relative" ref={serviceRef}>
-            <button
-              onClick={() => setServicePickerOpen((v) => !v)}
-              className="flex items-center gap-1.5 text-sm text-white bg-blue-500 hover:bg-blue-600 transition-colors px-3 py-1.5 rounded-lg"
-            >
-              <Icon name="Plus" size={14} />
-              Добавить из справочника
-            </button>
-            {servicePickerOpen && (
-              <div className="absolute right-0 z-20 mt-1 w-72 bg-[#1f1f1f] border border-white/10 rounded-lg max-h-64 overflow-y-auto shadow-lg">
-                {services.length === 0 ? (
-                  <p className="text-xs text-white/30 px-3 py-2">Справочник услуг пуст</p>
-                ) : (
-                  services.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => addService(s)}
-                      className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-white/5 transition-colors"
-                    >
-                      <span className="text-sm truncate">{s.name}</span>
-                      <span className="text-xs text-white/40 whitespace-nowrap">{formatMoney(s.price)}/{s.unit}</span>
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
+          <button
+            onClick={() => setServicePickerOpen(true)}
+            className="flex items-center gap-1.5 text-sm text-white bg-blue-500 hover:bg-blue-600 transition-colors px-3 py-1.5 rounded-lg"
+          >
+            <Icon name="Plus" size={14} />
+            Добавить из справочника
+          </button>
 
           <button
             onClick={addCustomWork}
@@ -215,67 +203,103 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
           <p className="text-xs text-white/25 mt-1">Нажмите «Добавить из справочника» вверху</p>
         </div>
       ) : (
-        <div className="border border-white/10 rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-white/40 text-xs uppercase bg-white/5">
-                <th className="text-left font-medium py-2 px-3">Название</th>
-                <th className="text-left font-medium py-2 px-3 w-20">Ед.</th>
-                <th className="text-left font-medium py-2 px-3 w-24">Кол-во</th>
-                <th className="text-left font-medium py-2 px-3 w-28">Цена</th>
-                <th className="text-left font-medium py-2 px-3 w-28">Сумма</th>
-                <th className="w-10"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {room.works.map((w) => (
-                <tr key={w.key} className="border-t border-white/5">
-                  <td className="px-3 py-2">
-                    <input
-                      value={w.name}
-                      onChange={(e) => updateWork(w.key, { name: e.target.value })}
-                      placeholder="Название работы"
-                      className="bg-transparent outline-none w-full text-sm"
-                    />
-                  </td>
-                  <td className="px-3 py-2">
-                    <input
-                      value={w.unit}
-                      onChange={(e) => updateWork(w.key, { unit: e.target.value })}
-                      className="bg-transparent outline-none w-full text-sm"
-                    />
-                  </td>
-                  <td className="px-3 py-2">
-                    <input
-                      type="number"
-                      value={w.quantity}
-                      onChange={(e) => updateWork(w.key, { quantity: Number(e.target.value) || 0 })}
-                      className="bg-transparent outline-none w-full text-sm"
-                    />
-                  </td>
-                  <td className="px-3 py-2">
-                    <input
-                      type="number"
-                      value={w.price}
-                      onChange={(e) => updateWork(w.key, { price: Number(e.target.value) || 0 })}
-                      className="bg-transparent outline-none w-full text-sm"
-                    />
-                  </td>
-                  <td className="px-3 py-2 text-white/70">{formatMoney(w.amount)}</td>
-                  <td className="px-3 py-2">
-                    <button
-                      onClick={() => removeWork(w.key)}
-                      className="text-white/30 hover:text-red-400 transition-colors"
-                    >
-                      <Icon name="X" size={15} />
-                    </button>
-                  </td>
+        <>
+          <div className="border border-white/10 rounded-lg overflow-hidden overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-white/40 text-xs uppercase bg-white/5">
+                  <th className="text-left font-medium py-2 px-3">Работа</th>
+                  <th className="text-left font-medium py-2 px-3 w-16">Ед.</th>
+                  <th className="text-left font-medium py-2 px-3 w-16">Кол-во</th>
+                  <th className="text-left font-medium py-2 px-3 w-14">Раз</th>
+                  <th className="text-left font-medium py-2 px-3 w-24">Цена</th>
+                  <th className="text-left font-medium py-2 px-3 w-20">Скидка%</th>
+                  <th className="text-left font-medium py-2 px-3 w-28">Сумма</th>
+                  <th className="w-16"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {room.works.map((w) => (
+                  <tr key={w.key} className="border-t border-white/5">
+                    <td className="px-3 py-2">
+                      <div>
+                        <input
+                          value={w.name}
+                          onChange={(e) => updateWork(w.key, { name: e.target.value })}
+                          placeholder="Название работы"
+                          className="bg-transparent outline-none w-full text-sm"
+                        />
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                        value={w.unit}
+                        onChange={(e) => updateWork(w.key, { unit: e.target.value })}
+                        className="bg-transparent outline-none w-full text-sm"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                        type="number"
+                        value={w.quantity}
+                        onChange={(e) => updateWork(w.key, { quantity: Number(e.target.value) || 0 })}
+                        className="bg-transparent outline-none w-full text-sm"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                        type="number"
+                        value={w.times}
+                        onChange={(e) => updateWork(w.key, { times: Number(e.target.value) || 0 })}
+                        className="bg-transparent outline-none w-full text-sm"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                        type="number"
+                        value={w.price}
+                        onChange={(e) => updateWork(w.key, { price: Number(e.target.value) || 0 })}
+                        className="bg-transparent outline-none w-full text-sm"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                        type="number"
+                        value={w.discountPercent}
+                        onChange={(e) => updateWork(w.key, { discountPercent: Number(e.target.value) || 0 })}
+                        className="bg-transparent outline-none w-full text-sm"
+                      />
+                    </td>
+                    <td className="px-3 py-2 text-white/70 whitespace-nowrap">{formatMoney(w.amount)}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <Icon name="GripVertical" size={14} className="text-white/20" />
+                        <button
+                          onClick={() => removeWork(w.key)}
+                          className="text-white/30 hover:text-red-400 transition-colors"
+                        >
+                          <Icon name="Trash2" size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex items-center justify-end gap-2 mt-2 text-sm">
+            <span className="text-white/40">Итого по помещению:</span>
+            <span className="font-semibold">{formatMoney(room.works.reduce((s, w) => s + w.amount, 0))}</span>
+          </div>
+        </>
       )}
+
+      <ServicePickerModal
+        open={servicePickerOpen}
+        onOpenChange={setServicePickerOpen}
+        services={services}
+        onAdd={addServices}
+      />
     </div>
   )
 }

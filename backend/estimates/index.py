@@ -95,11 +95,11 @@ def handler(event: dict, context) -> dict:
                     return response(403, {'error': 'Недостаточно прав'})
 
                 cur.execute(
-                    "SELECT ei.id, ei.name, ei.unit, ei.price, ei.quantity, ei.amount, ei.status, ei.proposed_by, u.full_name, ei.room_id, ei.room_name "
+                    "SELECT ei.id, ei.name, ei.unit, ei.price, ei.quantity, ei.times, ei.discount_percent, ei.amount, ei.status, ei.proposed_by, u.full_name, ei.room_id, ei.room_name "
                     "FROM estimate_items ei LEFT JOIN users u ON u.id = ei.proposed_by WHERE ei.estimate_id = %s ORDER BY ei.room_id NULLS FIRST, ei.id",
                     (estimate_id,)
                 )
-                item_keys = ['id', 'name', 'unit', 'price', 'quantity', 'amount', 'status', 'proposed_by', 'proposed_by_name', 'room_id', 'room_name']
+                item_keys = ['id', 'name', 'unit', 'price', 'quantity', 'times', 'discount_percent', 'amount', 'status', 'proposed_by', 'proposed_by_name', 'room_id', 'room_name']
                 estimate['items'] = [dict(zip(item_keys, r)) for r in cur.fetchall()]
                 return response(200, estimate)
 
@@ -231,14 +231,17 @@ def handler(event: dict, context) -> dict:
                 unit = (it.get('unit') or 'м²').strip()
                 price = float(it.get('price') or 0)
                 quantity = float(it.get('quantity') or 0)
+                times = float(it.get('times') or 1)
+                item_discount = float(it.get('discount_percent') or 0)
                 if not name or quantity <= 0:
                     continue
-                amount = round(price * quantity, 2)
+                amount = round(price * quantity * times * (1 - item_discount / 100), 2)
                 subtotal += amount
                 clean_items.append({
                     'service_id': it.get('service_id'),
                     'name': name, 'unit': unit, 'price': price,
-                    'quantity': quantity, 'amount': amount,
+                    'quantity': quantity, 'times': times, 'discount_percent': item_discount,
+                    'amount': amount,
                     'room_id': it.get('room_id'),
                     'room_name': (it.get('room_name') or '').strip(),
                 })
@@ -260,9 +263,9 @@ def handler(event: dict, context) -> dict:
 
             for it in clean_items:
                 cur.execute(
-                    "INSERT INTO estimate_items (estimate_id, service_id, name, unit, price, quantity, amount, status, room_id, room_name) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, 'approved', %s, %s)",
-                    (new_id, it['service_id'], it['name'], it['unit'], it['price'], it['quantity'], it['amount'], it['room_id'], it['room_name'])
+                    "INSERT INTO estimate_items (estimate_id, service_id, name, unit, price, quantity, times, discount_percent, amount, status, room_id, room_name) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'approved', %s, %s)",
+                    (new_id, it['service_id'], it['name'], it['unit'], it['price'], it['quantity'], it['times'], it['discount_percent'], it['amount'], it['room_id'], it['room_name'])
                 )
 
             conn.commit()
