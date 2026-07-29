@@ -146,9 +146,7 @@ export default function ObjectRooms() {
       } else {
         await objectRoomsApi.create(payload)
       }
-      const data = await objectRoomsApi.listByObject(objectId)
-      setRooms(data.rooms)
-      setForms(data.rooms.map(toForm))
+      navigate(`/cabinet/objects/${objectId}`)
     } catch (err) {
       setErrors((prev) => ({ ...prev, [idx]: err instanceof Error ? err.message : "Ошибка сохранения" }))
     } finally {

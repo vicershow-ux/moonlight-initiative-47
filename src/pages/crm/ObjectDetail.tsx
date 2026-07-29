@@ -122,12 +122,13 @@ export default function ObjectDetail() {
               <Icon name="DoorOpen" size={16} />
               Помещения
             </Link>
-            <button
+            <Link
+              to={`/cabinet/objects/${object.id}/edit`}
               className="flex items-center gap-2 bg-white/5 hover:bg-white/10 transition-colors text-white text-sm px-4 py-2.5 rounded-lg"
             >
               <Icon name="Pencil" size={16} />
               Редактировать
-            </button>
+            </Link>
           </div>
         )}
       </div>
