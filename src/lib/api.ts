@@ -111,6 +111,8 @@ export interface ServiceItem {
   name: string
   unit: string
   price: number
+  category: string
+  subcategory: string
   created_at: string
 }
 
@@ -144,6 +146,15 @@ export const servicesApi = {
       headers: { ...authHeaders() },
     })
     return parseResponse(res)
+  },
+
+  async importExcel(fileBase64: string) {
+    const res = await fetch(`${SERVICES_URL}?action=import`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ file: fileBase64 }),
+    })
+    return parseResponse(res) as Promise<{ success: boolean; imported: number; skipped: number }>
   },
 }
 
