@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import Dashboard from "./pages/crm/Dashboard";
 import Objects from "./pages/crm/Objects";
 import Services from "./pages/crm/Services";
+import ServiceCreate from "./pages/crm/ServiceCreate";
 import Documents from "./pages/crm/Documents";
 import Customers from "./pages/crm/Customers";
 import Company from "./pages/crm/Company";
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/cabinet/documents" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Documents /></ProtectedRoute>} />
             <Route path="/cabinet/customers" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Customers /></ProtectedRoute>} />
             <Route path="/cabinet/services" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Services /></ProtectedRoute>} />
+            <Route path="/cabinet/services/new" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><ServiceCreate /></ProtectedRoute>} />
             <Route path="/cabinet/company" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Company /></ProtectedRoute>} />
             <Route path="/cabinet/team" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Team /></ProtectedRoute>} />
             <Route path="/cabinet/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

@@ -67,11 +67,11 @@ def handler(event: dict, context) -> dict:
 
         if method == 'GET':
             cur.execute(
-                "SELECT id, name, unit, price, category, subcategory, created_at FROM services WHERE company_id = %s ORDER BY created_at DESC",
+                "SELECT id, name, unit, price, category, subcategory, description, is_active, created_at FROM services WHERE company_id = %s ORDER BY created_at DESC",
                 (company_id,)
             )
             rows = cur.fetchall()
-            keys = ['id', 'name', 'unit', 'price', 'category', 'subcategory', 'created_at']
+            keys = ['id', 'name', 'unit', 'price', 'category', 'subcategory', 'description', 'is_active', 'created_at']
             return response(200, {'services': [dict(zip(keys, r)) for r in rows]})
 
         if method == 'POST' and action == 'import':
@@ -154,20 +154,28 @@ def handler(event: dict, context) -> dict:
             price = body.get('price') or 0
             category = (body.get('category') or '').strip()
             subcategory = (body.get('subcategory') or '').strip()
+            description = (body.get('description') or '').strip()
+            is_active = bool(body.get('is_active', True))
 
             if len(name) < 2:
                 return response(400, {'error': 'Введите название услуги'})
+            if len(category) < 1:
+                return response(400, {'error': 'Укажите категорию работ'})
+            if not unit:
+                return response(400, {'error': 'Выберите единицу измерения'})
 
             cur.execute(
-                "INSERT INTO services (company_id, name, unit, price, category, subcategory) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id, created_at",
-                (company_id, name, unit, price, category, subcategory)
+                "INSERT INTO services (company_id, name, unit, price, category, subcategory, description, is_active) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id, created_at",
+                (company_id, name, unit, price, category, subcategory, description, is_active)
             )
             new_id, created_at = cur.fetchone()
             conn.commit()
 
             return response(200, {
                 'id': new_id, 'name': name, 'unit': unit, 'price': price,
-                'category': category, 'subcategory': subcategory, 'created_at': created_at
+                'category': category, 'subcategory': subcategory,
+                'description': description, 'is_active': is_active, 'created_at': created_at
             })
 
         if method == 'PUT':
@@ -181,7 +189,7 @@ def handler(event: dict, context) -> dict:
 
             fields = []
             values = []
-            for key in ['name', 'unit', 'price', 'category', 'subcategory']:
+            for key in ['name', 'unit', 'price', 'category', 'subcategory', 'description', 'is_active']:
                 if key in body:
                     fields.append(f"{key} = %s")
                     values.append(body[key])

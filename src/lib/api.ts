@@ -113,6 +113,8 @@ export interface ServiceItem {
   price: number
   category: string
   subcategory: string
+  description: string
+  is_active: boolean
   created_at: string
 }
 
