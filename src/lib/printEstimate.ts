@@ -62,16 +62,20 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    border-bottom: 3px solid #22c55e;
+    border-bottom: 3px solid #C08A2A;
     padding-bottom: 16px;
     margin-bottom: 24px;
   }
   .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-size: 22px;
     font-weight: 700;
     letter-spacing: -0.5px;
   }
-  .brand span { color: #22c55e; }
+  .brand img { width: 34px; height: 34px; }
+  .brand span { color: #C08A2A; }
   .doc-title {
     text-align: right;
   }
@@ -141,7 +145,7 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
     padding-top: 12px;
     font-size: 15px;
     font-weight: 700;
-    border-top: 2px solid #1a1a1a;
+    border-top: 2px solid #C08A2A;
   }
   .footer {
     margin-top: 48px;
@@ -160,7 +164,7 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
 </head>
 <body>
   <div class="header">
-    <div class="brand">Fix<span>Key</span></div>
+    <div class="brand"><img src="${window.location.origin}/fixkey-logo.svg" alt="FixKey" />Fix<span>Key</span></div>
     <div class="doc-title">
       <h1>Смета № ${estimate.id}</h1>
       <p>от ${formatDate(estimate.created_at)}</p>
