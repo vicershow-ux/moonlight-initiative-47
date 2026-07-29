@@ -47,7 +47,7 @@ const emptyForm: CompanyData = {
 }
 
 export default function Company() {
-  const { user } = useAuth()
+  const { user, updateCompanyName } = useAuth()
   const [form, setForm] = useState<CompanyData>(emptyForm)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -89,6 +89,7 @@ export default function Company() {
       setForm({ ...emptyForm, ...updated })
       setSignatureFile(null)
       setSaved(true)
+      if (updated.name) updateCompanyName(updated.name)
     } finally {
       setSaving(false)
     }
@@ -123,6 +124,17 @@ export default function Company() {
           </div>
 
           <div className="p-6 space-y-5">
+            <div>
+              <label className={labelClass}>Название компании <span className="text-[#D4AF37]">*</span></label>
+              <input
+                className={inputClass}
+                value={form.name}
+                onChange={(e) => update("name", e.target.value)}
+                placeholder="ООО «Название»"
+                disabled={!canEdit}
+              />
+            </div>
+
             <div>
               <label className={labelClass}>Тип субъекта</label>
               <select

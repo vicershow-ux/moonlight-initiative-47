@@ -112,9 +112,21 @@ def handler(event: dict, context) -> dict:
                         estimate['created_by_phone'] = creator_row[1]
                         estimate['created_by_email'] = creator_row[2]
 
-                cur.execute("SELECT c.name FROM companies c WHERE c.id = %s", (company_id,))
+                cur.execute(
+                    "SELECT name, phone, email, website, inn, legal_address, bank_name, bik, account_number, "
+                    "bank_inn, bank_kpp, correspondent_account, signature_url FROM companies WHERE id = %s",
+                    (company_id,)
+                )
                 company_row = cur.fetchone()
-                estimate['company_name'] = company_row[0] if company_row else ''
+                company_keys = [
+                    'company_name', 'company_phone', 'company_email', 'company_website', 'company_inn',
+                    'company_legal_address', 'company_bank_name', 'company_bik', 'company_account_number',
+                    'company_bank_inn', 'company_bank_kpp', 'company_correspondent_account', 'company_signature_url'
+                ]
+                if company_row:
+                    estimate.update(dict(zip(company_keys, company_row)))
+                else:
+                    estimate.update({k: '' for k in company_keys})
 
                 cur.execute(
                     "SELECT id, total_amount, created_at, revision_number, status FROM estimates WHERE object_id = %s AND company_id = %s ORDER BY revision_number DESC",

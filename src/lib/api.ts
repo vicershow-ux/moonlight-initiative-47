@@ -251,6 +251,18 @@ export interface Estimate {
   created_by_phone?: string | null
   created_by_email?: string | null
   company_name?: string
+  company_phone?: string
+  company_email?: string
+  company_website?: string
+  company_inn?: string
+  company_legal_address?: string
+  company_bank_name?: string
+  company_bik?: string
+  company_account_number?: string
+  company_bank_inn?: string
+  company_bank_kpp?: string
+  company_correspondent_account?: string
+  company_signature_url?: string
   revisions?: EstimateRevision[]
 }
 

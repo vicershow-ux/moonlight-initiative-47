@@ -325,9 +325,21 @@ export default function EstimateView() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
           <div>
             <p className="text-[10px] uppercase text-gray-400 tracking-wide mb-1">Исполнитель</p>
-            <p className="font-semibold">{estimate.created_by_name || estimate.company_name}</p>
-            {estimate.created_by_phone && <p className="text-gray-500 text-xs mt-0.5">Тел: {estimate.created_by_phone}</p>}
-            {estimate.created_by_email && <p className="text-gray-500 text-xs">Email: {estimate.created_by_email}</p>}
+            <p className="font-semibold">{estimate.company_name || estimate.created_by_name}</p>
+            {estimate.created_by_name && estimate.company_name && (
+              <p className="text-gray-500 text-xs mt-0.5">{estimate.created_by_name}</p>
+            )}
+            {(estimate.created_by_phone || estimate.company_phone) && (
+              <p className="text-gray-500 text-xs mt-0.5">Тел: {estimate.created_by_phone || estimate.company_phone}</p>
+            )}
+            {(estimate.created_by_email || estimate.company_email) && (
+              <p className="text-gray-500 text-xs">Email: {estimate.created_by_email || estimate.company_email}</p>
+            )}
+            {estimate.company_inn && <p className="text-gray-500 text-xs">ИНН: {estimate.company_inn}</p>}
+            {estimate.company_legal_address && <p className="text-gray-500 text-xs">{estimate.company_legal_address}</p>}
+            {estimate.company_signature_url && (
+              <img src={estimate.company_signature_url} alt="Подпись" className="h-10 object-contain mt-2" />
+            )}
           </div>
           <div>
             <p className="text-[10px] uppercase text-gray-400 tracking-wide mb-1">Заказчик</p>
