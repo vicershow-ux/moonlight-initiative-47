@@ -209,12 +209,20 @@ export interface EstimateItem {
   status?: "approved" | "pending" | "rejected"
   proposed_by?: number | null
   proposed_by_name?: string | null
+  room_id?: number | null
+  room_name?: string
 }
 
 export interface Estimate {
   id: number
   object_id: number
   total_amount: number
+  subtotal_amount?: number
+  contract_number?: string
+  contract_date?: string | null
+  discount_percent?: number
+  discount_amount?: number
+  notes?: string
   created_at: string
   items?: EstimateItem[]
   object_code?: string
@@ -240,7 +248,15 @@ export const estimatesApi = {
     return parseResponse(res) as Promise<Estimate>
   },
 
-  async create(payload: { object_id: number; items: EstimateItem[] }) {
+  async create(payload: {
+    object_id: number
+    items: EstimateItem[]
+    contract_number?: string
+    contract_date?: string
+    discount_percent?: number
+    discount_amount?: number
+    notes?: string
+  }) {
     const res = await fetch(ESTIMATES_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },

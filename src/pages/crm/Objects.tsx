@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { objectsApi, ObjectItem } from "@/lib/api"
-import { EstimateModal } from "@/components/crm/EstimateModal"
 import { EstimatesListModal } from "@/components/crm/EstimatesListModal"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -23,7 +22,6 @@ export default function Objects() {
   const [objects, setObjects] = useState<ObjectItem[]>([])
   const [loading, setLoading] = useState(true)
 
-  const [estimateModalOpen, setEstimateModalOpen] = useState(false)
   const [estimatesListOpen, setEstimatesListOpen] = useState(false)
   const [selectedObject, setSelectedObject] = useState<ObjectItem | null>(null)
 
@@ -47,11 +45,6 @@ export default function Objects() {
   const handleStatusChange = async (id: number, newStatus: string) => {
     await objectsApi.update(id, { status: newStatus })
     load()
-  }
-
-  const openEstimateModal = (obj: ObjectItem) => {
-    setSelectedObject(obj)
-    setEstimateModalOpen(true)
   }
 
   const openEstimatesList = (obj: ObjectItem) => {
@@ -134,13 +127,13 @@ export default function Objects() {
                           <Icon name="Eye" size={16} />
                         </button>
                         {!isClient && (
-                          <button
-                            onClick={() => openEstimateModal(obj)}
+                          <Link
+                            to={`/cabinet/objects/${obj.id}/estimates/new`}
                             className="flex items-center gap-1.5 text-white/60 hover:text-[#D4AF37] transition-colors"
                             title="Создать смету"
                           >
                             <Icon name="FilePlus2" size={16} />
-                          </button>
+                          </Link>
                         )}
                         <button
                           onClick={() => openEstimatesList(obj)}
@@ -167,13 +160,6 @@ export default function Objects() {
           </div>
         )}
       </div>
-
-      <EstimateModal
-        open={estimateModalOpen}
-        onOpenChange={setEstimateModalOpen}
-        object={selectedObject}
-        onCreated={load}
-      />
 
       <EstimatesListModal
         open={estimatesListOpen}

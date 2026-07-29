@@ -50,8 +50,15 @@ def has_object_access(cur, user, object_id):
     return cur.fetchone() is not None
 
 
+ESTIMATE_KEYS = [
+    'id', 'object_id', 'total_amount', 'created_at',
+    'contract_number', 'contract_date', 'discount_percent', 'discount_amount',
+    'notes', 'subtotal_amount',
+]
+
+
 def handler(event: dict, context) -> dict:
-    '''Создание и просмотр смет по объектам с позициями услуг FixKey, заявки заказчиков на доп. работы'''
+    '''Создание и просмотр смет по объектам с позициями услуг, группировкой по помещениям, скидками и заявками заказчиков на доп. работы'''
     method = event.get('httpMethod', 'GET')
 
     if method == 'OPTIONS':
@@ -76,23 +83,23 @@ def handler(event: dict, context) -> dict:
         if method == 'GET':
             if estimate_id:
                 cur.execute(
-                    "SELECT id, object_id, total_amount, created_at FROM estimates WHERE id = %s AND company_id = %s",
+                    f"SELECT {', '.join(ESTIMATE_KEYS)} FROM estimates WHERE id = %s AND company_id = %s",
                     (estimate_id, company_id)
                 )
                 row = cur.fetchone()
                 if not row:
                     return response(404, {'error': 'Смета не найдена'})
-                est_keys = ['id', 'object_id', 'total_amount', 'created_at']
-                estimate = dict(zip(est_keys, row))
+                estimate = dict(zip(ESTIMATE_KEYS, row))
 
                 if not has_object_access(cur, user, estimate['object_id']):
                     return response(403, {'error': 'Недостаточно прав'})
 
                 cur.execute(
-                    "SELECT ei.id, ei.name, ei.unit, ei.price, ei.quantity, ei.amount, ei.status, ei.proposed_by, u.full_name FROM estimate_items ei LEFT JOIN users u ON u.id = ei.proposed_by WHERE ei.estimate_id = %s ORDER BY ei.id",
+                    "SELECT ei.id, ei.name, ei.unit, ei.price, ei.quantity, ei.amount, ei.status, ei.proposed_by, u.full_name, ei.room_id, ei.room_name "
+                    "FROM estimate_items ei LEFT JOIN users u ON u.id = ei.proposed_by WHERE ei.estimate_id = %s ORDER BY ei.room_id NULLS FIRST, ei.id",
                     (estimate_id,)
                 )
-                item_keys = ['id', 'name', 'unit', 'price', 'quantity', 'amount', 'status', 'proposed_by', 'proposed_by_name']
+                item_keys = ['id', 'name', 'unit', 'price', 'quantity', 'amount', 'status', 'proposed_by', 'proposed_by_name', 'room_id', 'room_name']
                 estimate['items'] = [dict(zip(item_keys, r)) for r in cur.fetchall()]
                 return response(200, estimate)
 
@@ -100,25 +107,25 @@ def handler(event: dict, context) -> dict:
                 if not has_object_access(cur, user, object_id):
                     return response(403, {'error': 'Недостаточно прав'})
                 cur.execute(
-                    "SELECT id, object_id, total_amount, created_at FROM estimates WHERE object_id = %s AND company_id = %s ORDER BY created_at DESC",
+                    f"SELECT {', '.join(ESTIMATE_KEYS)} FROM estimates WHERE object_id = %s AND company_id = %s ORDER BY created_at DESC",
                     (object_id, company_id)
                 )
                 rows = cur.fetchall()
-                keys = ['id', 'object_id', 'total_amount', 'created_at']
-                return response(200, {'estimates': [dict(zip(keys, r)) for r in rows]})
+                return response(200, {'estimates': [dict(zip(ESTIMATE_KEYS, r)) for r in rows]})
 
+            base_cols = ', '.join(f'e.{k}' for k in ESTIMATE_KEYS)
             if is_client:
                 cur.execute(
-                    "SELECT e.id, e.object_id, e.total_amount, e.created_at, o.object_code, o.client_name, o.object_type, o.area, EXISTS(SELECT 1 FROM estimate_items ei WHERE ei.estimate_id = e.id AND ei.status = 'pending') FROM estimates e JOIN object_access oa ON oa.object_id = e.object_id JOIN objects o ON o.id = e.object_id WHERE e.company_id = %s AND oa.user_id = %s ORDER BY e.created_at DESC",
+                    f"SELECT {base_cols}, o.object_code, o.client_name, o.object_type, o.area, EXISTS(SELECT 1 FROM estimate_items ei WHERE ei.estimate_id = e.id AND ei.status = 'pending') FROM estimates e JOIN object_access oa ON oa.object_id = e.object_id JOIN objects o ON o.id = e.object_id WHERE e.company_id = %s AND oa.user_id = %s ORDER BY e.created_at DESC",
                     (company_id, user['user_id'])
                 )
             else:
                 cur.execute(
-                    "SELECT e.id, e.object_id, e.total_amount, e.created_at, o.object_code, o.client_name, o.object_type, o.area, EXISTS(SELECT 1 FROM estimate_items ei WHERE ei.estimate_id = e.id AND ei.status = 'pending') FROM estimates e JOIN objects o ON o.id = e.object_id WHERE e.company_id = %s ORDER BY e.created_at DESC",
+                    f"SELECT {base_cols}, o.object_code, o.client_name, o.object_type, o.area, EXISTS(SELECT 1 FROM estimate_items ei WHERE ei.estimate_id = e.id AND ei.status = 'pending') FROM estimates e JOIN objects o ON o.id = e.object_id WHERE e.company_id = %s ORDER BY e.created_at DESC",
                     (company_id,)
                 )
             rows = cur.fetchall()
-            keys = ['id', 'object_id', 'total_amount', 'created_at', 'object_code', 'client_name', 'object_type', 'area', 'has_pending']
+            keys = ESTIMATE_KEYS + ['object_code', 'client_name', 'object_type', 'area', 'has_pending']
             return response(200, {'estimates': [dict(zip(keys, r)) for r in rows]})
 
         if method == 'POST' and action == 'propose':
@@ -202,6 +209,11 @@ def handler(event: dict, context) -> dict:
             body = json.loads(event.get('body') or '{}')
             obj_id = body.get('object_id')
             items = body.get('items') or []
+            contract_number = (body.get('contract_number') or '').strip()
+            contract_date = body.get('contract_date') or None
+            discount_percent = float(body.get('discount_percent') or 0)
+            discount_amount_input = float(body.get('discount_amount') or 0)
+            notes = (body.get('notes') or '').strip()
 
             if not obj_id:
                 return response(400, {'error': 'Не указан объект'})
@@ -212,7 +224,7 @@ def handler(event: dict, context) -> dict:
             if not cur.fetchone():
                 return response(404, {'error': 'Объект не найден'})
 
-            total = 0
+            subtotal = 0
             clean_items = []
             for it in items:
                 name = (it.get('name') or '').strip()
@@ -222,32 +234,43 @@ def handler(event: dict, context) -> dict:
                 if not name or quantity <= 0:
                     continue
                 amount = round(price * quantity, 2)
-                total += amount
+                subtotal += amount
                 clean_items.append({
                     'service_id': it.get('service_id'),
                     'name': name, 'unit': unit, 'price': price,
-                    'quantity': quantity, 'amount': amount
+                    'quantity': quantity, 'amount': amount,
+                    'room_id': it.get('room_id'),
+                    'room_name': (it.get('room_name') or '').strip(),
                 })
 
             if not clean_items:
                 return response(400, {'error': 'Добавьте хотя бы одну корректную позицию'})
 
+            discount_amount = discount_amount_input
+            if discount_percent > 0:
+                discount_amount = round(subtotal * discount_percent / 100, 2)
+            total = max(0, round(subtotal - discount_amount, 2))
+
             cur.execute(
-                "INSERT INTO estimates (company_id, object_id, total_amount) VALUES (%s, %s, %s) RETURNING id, created_at",
-                (company_id, obj_id, total)
+                "INSERT INTO estimates (company_id, object_id, total_amount, subtotal_amount, contract_number, contract_date, discount_percent, discount_amount, notes) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id, created_at",
+                (company_id, obj_id, total, subtotal, contract_number, contract_date, discount_percent, discount_amount, notes)
             )
             new_id, created_at = cur.fetchone()
 
             for it in clean_items:
                 cur.execute(
-                    "INSERT INTO estimate_items (estimate_id, service_id, name, unit, price, quantity, amount, status) VALUES (%s, %s, %s, %s, %s, %s, %s, 'approved')",
-                    (new_id, it['service_id'], it['name'], it['unit'], it['price'], it['quantity'], it['amount'])
+                    "INSERT INTO estimate_items (estimate_id, service_id, name, unit, price, quantity, amount, status, room_id, room_name) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, 'approved', %s, %s)",
+                    (new_id, it['service_id'], it['name'], it['unit'], it['price'], it['quantity'], it['amount'], it['room_id'], it['room_name'])
                 )
 
             conn.commit()
 
             return response(200, {
-                'id': new_id, 'object_id': obj_id, 'total_amount': total,
+                'id': new_id, 'object_id': obj_id, 'total_amount': total, 'subtotal_amount': subtotal,
+                'contract_number': contract_number, 'contract_date': contract_date,
+                'discount_percent': discount_percent, 'discount_amount': discount_amount, 'notes': notes,
                 'created_at': created_at, 'items': clean_items
             })
 

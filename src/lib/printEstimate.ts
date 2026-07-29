@@ -9,19 +9,39 @@ const formatDate = (d: string) =>
 export function printEstimate(estimate: Estimate, object: ObjectItem, companyName: string) {
   const items = estimate.items || []
 
-  const rows = items
-    .map(
-      (it, idx) => `
+  const groups = new Map<string, typeof items>()
+  items.forEach((it) => {
+    const key = it.room_name || "Без помещения"
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(it)
+  })
+
+  let counter = 0
+  const rows = Array.from(groups.entries())
+    .map(([roomName, groupItems]) => {
+      const roomHeader = groups.size > 1 || roomName !== "Без помещения"
+        ? `<tr class="room-row"><td colspan="6">${escapeHtml(roomName)}</td></tr>`
+        : ""
+      const itemRows = groupItems
+        .map((it) => {
+          counter += 1
+          return `
         <tr>
-          <td class="num">${idx + 1}</td>
+          <td class="num">${counter}</td>
           <td>${escapeHtml(it.name)}</td>
           <td class="center">${it.unit}</td>
           <td class="center">${it.quantity}</td>
           <td class="right">${formatMoney(it.price)}</td>
           <td class="right">${formatMoney(it.amount)}</td>
         </tr>`
-    )
+        })
+        .join("")
+      return roomHeader + itemRows
+    })
     .join("")
+
+  const subtotal = estimate.subtotal_amount ?? estimate.total_amount
+  const discountAmount = estimate.discount_amount ?? 0
 
   const html = `
 <!DOCTYPE html>
@@ -104,8 +124,21 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
   .num { color: #999; width: 30px; }
   .center { text-align: center; }
   .right { text-align: right; }
+  .room-row td {
+    background: #f3f4f6;
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-bottom: none;
+  }
   tfoot td {
-    padding: 14px 12px;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-top: none;
+  }
+  tfoot tr.total-row td {
+    padding-top: 12px;
     font-size: 15px;
     font-weight: 700;
     border-top: 2px solid #1a1a1a;
@@ -159,6 +192,16 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
       <div class="label">Площадь</div>
       <div class="value">${object.area} м²</div>
     </div>
+    ${estimate.contract_number ? `
+    <div>
+      <div class="label">Договор №</div>
+      <div class="value">${escapeHtml(estimate.contract_number)}</div>
+    </div>` : ""}
+    ${estimate.contract_date ? `
+    <div>
+      <div class="label">Дата договора</div>
+      <div class="value">${formatDate(estimate.contract_date)}</div>
+    </div>` : ""}
   </div>
 
   <table>
@@ -177,11 +220,28 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
     </tbody>
     <tfoot>
       <tr>
+        <td colspan="5" class="right">Сумма:</td>
+        <td class="right">${formatMoney(subtotal)}</td>
+      </tr>
+      ${discountAmount > 0 ? `
+      <tr>
+        <td colspan="5" class="right">Скидка:</td>
+        <td class="right">-${formatMoney(discountAmount)}</td>
+      </tr>` : ""}
+      <tr class="total-row">
         <td colspan="5" class="right">Итого:</td>
         <td class="right">${formatMoney(estimate.total_amount)}</td>
       </tr>
     </tfoot>
   </table>
+
+  ${estimate.notes ? `
+  <div class="info-grid" style="margin-bottom: 24px;">
+    <div style="grid-column: span 2;">
+      <div class="label">Примечания</div>
+      <div class="value" style="font-weight: 400;">${escapeHtml(estimate.notes)}</div>
+    </div>
+  </div>` : ""}
 
   <div class="footer">
     <span>Документ сформирован автоматически в FixKey</span>

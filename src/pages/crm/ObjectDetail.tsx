@@ -3,7 +3,6 @@ import { Link, useNavigate, useParams } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { objectsApi, estimatesApi, objectRoomsApi, Estimate, ObjectItem, ObjectRoom } from "@/lib/api"
-import { EstimateModal } from "@/components/crm/EstimateModal"
 import { EstimatesListModal } from "@/components/crm/EstimatesListModal"
 import { printEstimate } from "@/lib/printEstimate"
 import { useAuth } from "@/contexts/AuthContext"
@@ -39,7 +38,6 @@ export default function ObjectDetail() {
   const [rooms, setRooms] = useState<ObjectRoom[]>([])
   const [roomsLoading, setRoomsLoading] = useState(true)
 
-  const [estimateModalOpen, setEstimateModalOpen] = useState(false)
   const [estimatesListOpen, setEstimatesListOpen] = useState(false)
 
   const load = () => {
@@ -290,13 +288,13 @@ export default function ObjectDetail() {
               <p className="font-medium">Документы объекта</p>
               {!isClient && (
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setEstimateModalOpen(true)}
+                  <Link
+                    to={`/cabinet/objects/${object.id}/estimates/new`}
                     className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-3 py-2 rounded-lg"
                   >
                     <Icon name="Plus" size={14} />
                     Создать смету
-                  </button>
+                  </Link>
                   <button className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg">
                     <Icon name="FileSignature" size={14} />
                     Составить договор
@@ -397,12 +395,6 @@ export default function ObjectDetail() {
         </div>
       </div>
 
-      <EstimateModal
-        open={estimateModalOpen}
-        onOpenChange={setEstimateModalOpen}
-        object={object}
-        onCreated={loadEstimates}
-      />
       <EstimatesListModal
         open={estimatesListOpen}
         onOpenChange={setEstimatesListOpen}
