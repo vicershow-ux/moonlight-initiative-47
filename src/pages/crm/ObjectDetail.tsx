@@ -23,6 +23,8 @@ const formatDateTime = (d: string) =>
 
 const yesNo = (v: boolean) => (v ? "Да" : "Нет")
 
+const capitalizeFirst = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
+
 export default function ObjectDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -174,7 +176,7 @@ export default function ObjectDetail() {
               </div>
               <div>
                 <p className="text-xs text-white/40 mb-1">Тип оплаты</p>
-                <p className="font-medium capitalize">{object.payment_type}</p>
+                <p className="font-medium">{capitalizeFirst(object.payment_type)}</p>
               </div>
               <div>
                 <p className="text-xs text-white/40 mb-1">Проживание на объекте</p>
@@ -182,15 +184,15 @@ export default function ObjectDetail() {
               </div>
               <div>
                 <p className="text-xs text-white/40 mb-1">Наличие лифта</p>
-                <p className="font-medium capitalize">{object.has_elevator || "не указано"}</p>
+                <p className="font-medium">{capitalizeFirst(object.has_elevator) || "Не указано"}</p>
               </div>
               <div>
                 <p className="text-xs text-white/40 mb-1">Разгрузка материала</p>
-                <p className="font-medium capitalize">{object.material_unloading || "не указано"}</p>
+                <p className="font-medium">{capitalizeFirst(object.material_unloading) || "Не указано"}</p>
               </div>
               <div>
                 <p className="text-xs text-white/40 mb-1">Комплектация</p>
-                <p className="font-medium capitalize">{object.completion_type}</p>
+                <p className="font-medium">{capitalizeFirst(object.completion_type)}</p>
               </div>
               <div>
                 <p className="text-xs text-white/40 mb-1">Отказ от гарантии</p>
@@ -206,15 +208,15 @@ export default function ObjectDetail() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
               <div>
                 <p className="text-xs text-white/40 mb-1">Черновой материал</p>
-                <p className="font-medium capitalize">{object.rough_material || "не указано"}</p>
+                <p className="font-medium">{capitalizeFirst(object.rough_material) || "Не указано"}</p>
               </div>
               <div>
                 <p className="text-xs text-white/40 mb-1">Чистовой материал</p>
-                <p className="font-medium capitalize">{object.finish_material || "не указано"}</p>
+                <p className="font-medium">{capitalizeFirst(object.finish_material) || "Не указано"}</p>
               </div>
               <div>
                 <p className="text-xs text-white/40 mb-1">Кухня и мебель</p>
-                <p className="font-medium capitalize">{object.kitchen_furniture || "не указано"}</p>
+                <p className="font-medium">{capitalizeFirst(object.kitchen_furniture) || "Не указано"}</p>
               </div>
             </div>
           </div>
