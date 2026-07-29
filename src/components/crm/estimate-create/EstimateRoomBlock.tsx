@@ -172,14 +172,14 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs text-white/50">Название</label>
           <input
             value={room.name}
             onChange={(e) => onChange({ name: e.target.value })}
             placeholder="Санузел"
-            className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
+            className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -189,7 +189,7 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
             onChange={(e) => onChange({ area: e.target.value })}
             type="number"
             placeholder="0.00"
-            className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
+            className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -199,7 +199,7 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
             onChange={(e) => onChange({ perimeter: e.target.value })}
             type="number"
             placeholder="0.00"
-            className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
+            className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
           />
         </div>
       </div>
@@ -237,16 +237,22 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
                 </tr>
               </thead>
               <tbody>
-                {room.works.map((w) => (
+                {room.works.map((w) => {
+                  const isFromCatalog = !!w.service_id
+                  return (
                   <tr key={w.key} className="border-t border-white/5 align-top">
                     <td className="px-3 py-2">
-                      <textarea
-                        value={w.name}
-                        onChange={(e) => updateWork(w.key, { name: e.target.value })}
-                        placeholder="Название работы"
-                        rows={2}
-                        className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-2.5 py-1.5 outline-none w-full text-sm font-medium resize-none leading-snug focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
-                      />
+                      {isFromCatalog ? (
+                        <p className="px-2.5 py-1.5 text-sm font-medium leading-snug break-words">{w.name}</p>
+                      ) : (
+                        <textarea
+                          value={w.name}
+                          onChange={(e) => updateWork(w.key, { name: e.target.value })}
+                          placeholder="Название работы"
+                          rows={2}
+                          className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-2.5 py-1.5 outline-none w-full text-sm font-medium resize-none leading-snug focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
+                        />
+                      )}
                       {(w.category || w.subcategory) && (
                         <p className="text-xs text-white/35 mt-1 px-0.5 break-words">
                           {[w.category, w.subcategory].filter(Boolean).join(" → ")}
@@ -254,11 +260,15 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
                       )}
                     </td>
                     <td className="px-2 py-2">
-                      <input
-                        value={w.unit}
-                        onChange={(e) => updateWork(w.key, { unit: e.target.value })}
-                        className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-2 py-1.5 outline-none w-full text-sm focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
-                      />
+                      {isFromCatalog ? (
+                        <p className="px-2 py-1.5 text-sm">{w.unit}</p>
+                      ) : (
+                        <input
+                          value={w.unit}
+                          onChange={(e) => updateWork(w.key, { unit: e.target.value })}
+                          className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-2 py-1.5 outline-none w-full text-sm focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
+                        />
+                      )}
                     </td>
                     <td className="px-2 py-2">
                       <input
@@ -277,12 +287,16 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
                       />
                     </td>
                     <td className="px-2 py-2">
-                      <input
-                        type="number"
-                        value={w.price}
-                        onChange={(e) => updateWork(w.key, { price: Number(e.target.value) || 0 })}
-                        className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-2 py-1.5 outline-none w-full text-sm focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
-                      />
+                      {isFromCatalog ? (
+                        <p className="px-2 py-1.5 text-sm whitespace-nowrap">{formatMoney(w.price)}</p>
+                      ) : (
+                        <input
+                          type="number"
+                          value={w.price}
+                          onChange={(e) => updateWork(w.key, { price: Number(e.target.value) || 0 })}
+                          className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-2 py-1.5 outline-none w-full text-sm focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
+                        />
+                      )}
                     </td>
                     <td className="px-2 py-2">
                       <input
@@ -292,7 +306,9 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
                         className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-2 py-1.5 outline-none w-full text-sm focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
                       />
                     </td>
-                    <td className="px-2 py-2 text-white/70 pt-3.5 break-words">{formatMoney(w.amount)}</td>
+                    <td className="px-2 py-2 text-white/70 pt-3.5 break-words">
+                      {w.quantity > 0 && w.times > 0 && w.price > 0 ? formatMoney(w.amount) : "—"}
+                    </td>
                     <td className="px-2 py-2 pt-3.5">
                       <button
                         onClick={() => removeWork(w.key)}
@@ -302,14 +318,23 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
                       </button>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
-          <div className="flex items-center justify-end gap-2 mt-2 text-sm">
-            <span className="text-white/40">Итого по помещению:</span>
-            <span className="font-semibold">{formatMoney(room.works.reduce((s, w) => s + w.amount, 0))}</span>
-          </div>
+          {room.works.some((w) => w.quantity > 0 && w.times > 0 && w.price > 0) && (
+            <div className="flex items-center justify-end gap-2 mt-2 text-sm">
+              <span className="text-white/40">Итого по помещению:</span>
+              <span className="font-semibold">
+                {formatMoney(
+                  room.works
+                    .filter((w) => w.quantity > 0 && w.times > 0 && w.price > 0)
+                    .reduce((s, w) => s + w.amount, 0)
+                )}
+              </span>
+            </div>
+          )}
         </>
       )}
 

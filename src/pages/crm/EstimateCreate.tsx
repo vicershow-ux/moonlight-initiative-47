@@ -152,8 +152,8 @@ export default function EstimateCreate() {
         Назад к объекту
       </Link>
 
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
-        <div className="xl:col-span-3 flex flex-col gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+        <div className="xl:col-span-4 flex flex-col gap-4">
           <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
             <p className="font-medium mb-4">Информация о договоре</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
