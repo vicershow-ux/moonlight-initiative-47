@@ -3,49 +3,10 @@ import { Link, useNavigate } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { objectsApi } from "@/lib/api"
-
-const OBJECT_TYPES = ["Новостройка", "Вторичка", "Дом", "Частичный ремонт"]
-const LEGAL_STATUSES = [
-  { value: "физическое лицо", label: "Физическое лицо" },
-  { value: "юридическое лицо", label: "Юридическое лицо" },
-]
-const PAYMENT_TYPES = [
-  { value: "наличный расчет", label: "Наличный расчет" },
-  { value: "безналичный расчет", label: "Безналичный расчет" },
-]
-const YES_NO = [
-  { value: "", label: "Не указано" },
-  { value: "есть", label: "Есть" },
-  { value: "нет", label: "Нет" },
-]
-const MATERIAL_OPTIONS = [
-  { value: "", label: "Не указано" },
-  { value: "наш", label: "Наш" },
-  { value: "заказчика", label: "Заказчика" },
-  { value: "частично", label: "Частично" },
-]
-const COMPLETION_TYPES = [
-  { value: "", label: "Не указано" },
-  { value: "стандарт", label: "Стандарт" },
-  { value: "премиум", label: "Премиум" },
-]
-const DESIGN_PROJECTS = [
-  "Планировочное решение",
-  "Экспресс проект",
-  "Экспресс + визуализация",
-  "Стандарт проект",
-  "Стандарт + визуализация",
-  "Премиум проект",
-  "Премиум + визуализация",
-  "Инженерный проект (ЭОМ, ВИК)",
-  "Авторский надзор",
-]
-
-const steps = [
-  { label: "Основные данные" },
-  { label: "Данные заказчика" },
-  { label: "Дополнительно" },
-]
+import { ObjectCreateStepper } from "@/components/crm/object-create/ObjectCreateStepper"
+import { ObjectCreateStep1 } from "@/components/crm/object-create/ObjectCreateStep1"
+import { ObjectCreateStep2 } from "@/components/crm/object-create/ObjectCreateStep2"
+import { ObjectCreateStep3 } from "@/components/crm/object-create/ObjectCreateStep3"
 
 export default function ObjectCreate() {
   const navigate = useNavigate()
@@ -158,300 +119,58 @@ export default function ObjectCreate() {
         Назад к списку
       </Link>
 
-      <div className="flex items-center mb-6 max-w-2xl">
-        {steps.map((s, idx) => {
-          const num = idx + 1
-          const isActive = step === num
-          const isDone = step > num
-          return (
-            <div key={s.label} className="flex items-center flex-1 last:flex-none">
-              <div className="flex flex-col items-center gap-1.5">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                    isDone
-                      ? "bg-green-500 text-white"
-                      : isActive
-                        ? "bg-[#D4AF37] text-[#161616]"
-                        : "bg-white/10 text-white/40"
-                  }`}
-                >
-                  {isDone ? <Icon name="Check" size={16} /> : num}
-                </div>
-                <span className={`text-xs whitespace-nowrap ${isActive || isDone ? "text-white" : "text-white/40"}`}>
-                  {s.label}
-                </span>
-              </div>
-              {idx < steps.length - 1 && (
-                <div className={`flex-1 h-0.5 mx-2 mb-5 ${isDone ? "bg-green-500" : "bg-white/10"}`} />
-              )}
-            </div>
-          )
-        })}
-      </div>
+      <ObjectCreateStepper step={step} />
 
       <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-6 max-w-4xl">
         {step === 1 && (
-          <div className="flex flex-col gap-5">
-            <p className="font-medium">Основная информация об объекте</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-white/50">
-                  Тип объекта <span className="text-red-400">*</span>
-                </label>
-                <select
-                  value={objectType}
-                  onChange={(e) => setObjectType(e.target.value)}
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none"
-                >
-                  <option value="">Выберите тип</option>
-                  {OBJECT_TYPES.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-white/50">
-                  Площадь объекта (м²) <span className="text-red-400">*</span>
-                </label>
-                <input
-                  value={area}
-                  onChange={(e) => setArea(e.target.value)}
-                  placeholder="0.00"
-                  type="number"
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5 sm:col-span-2">
-                <label className="text-xs text-white/50">Адрес объекта (необязательно)</label>
-                <input
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="г. Москва, ул. Примерная, д. 1, кв. 1"
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-white/50">
-                  Правовой статус <span className="text-red-400">*</span>
-                </label>
-                <select
-                  value={legalStatus}
-                  onChange={(e) => setLegalStatus(e.target.value)}
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none"
-                >
-                  <option value="">Выберите статус</option>
-                  {LEGAL_STATUSES.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-white/50">
-                  Тип оплаты <span className="text-red-400">*</span>
-                </label>
-                <select
-                  value={paymentType}
-                  onChange={(e) => setPaymentType(e.target.value)}
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none"
-                >
-                  <option value="">Выберите тип</option>
-                  {PAYMENT_TYPES.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex items-center gap-2 sm:col-span-2">
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={residenceDuringWorks}
-                    onChange={(e) => setResidenceDuringWorks(e.target.checked)}
-                    className="w-4 h-4 rounded border-white/20 bg-[#161616]"
-                  />
-                  Проживание на объекте
-                </label>
-              </div>
-
-              <div className="flex items-center gap-2 sm:col-span-2 -mt-3">
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={warrantyWaiver}
-                    onChange={(e) => setWarrantyWaiver(e.target.checked)}
-                    className="w-4 h-4 rounded border-white/20 bg-[#161616]"
-                  />
-                  Отказ от гарантии
-                </label>
-              </div>
-
-              <div className="flex flex-col gap-1.5 sm:col-span-2">
-                <label className="text-xs text-white/50">Комментарий замерщика (необязательно)</label>
-                <textarea
-                  value={measurerComment}
-                  onChange={(e) => setMeasurerComment(e.target.value)}
-                  placeholder="Дополнительные заметки о замерах объекта..."
-                  rows={4}
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none resize-none focus:border-[#D4AF37]/50"
-                />
-              </div>
-            </div>
-          </div>
+          <ObjectCreateStep1
+            objectType={objectType}
+            setObjectType={setObjectType}
+            area={area}
+            setArea={setArea}
+            address={address}
+            setAddress={setAddress}
+            legalStatus={legalStatus}
+            setLegalStatus={setLegalStatus}
+            paymentType={paymentType}
+            setPaymentType={setPaymentType}
+            residenceDuringWorks={residenceDuringWorks}
+            setResidenceDuringWorks={setResidenceDuringWorks}
+            warrantyWaiver={warrantyWaiver}
+            setWarrantyWaiver={setWarrantyWaiver}
+            measurerComment={measurerComment}
+            setMeasurerComment={setMeasurerComment}
+          />
         )}
 
         {step === 2 && (
-          <div className="flex flex-col gap-5">
-            <p className="font-medium">Информация о заказчике</p>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-white/50">
-                ФИО заказчика <span className="text-red-400">*</span>
-              </label>
-              <input
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                placeholder="Иванов Иван Иванович или наименование компании"
-                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-white/50">
-                  Телефон <span className="text-red-400">*</span>
-                </label>
-                <input
-                  value={clientPhone}
-                  onChange={(e) => setClientPhone(e.target.value)}
-                  placeholder="+7 (999) 123-45-67"
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-white/50">Email (необязательно)</label>
-                <input
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="example@mail.ru"
-                  type="email"
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
-                />
-              </div>
-            </div>
-          </div>
+          <ObjectCreateStep2
+            clientName={clientName}
+            setClientName={setClientName}
+            clientPhone={clientPhone}
+            setClientPhone={setClientPhone}
+            email={email}
+            setEmail={setEmail}
+          />
         )}
 
         {step === 3 && (
-          <div className="flex flex-col gap-5">
-            <div>
-              <p className="font-medium">Дополнительные параметры</p>
-              <p className="text-xs text-white/40 mt-1">Эти поля необязательны для заполнения</p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-white/50">Наличие лифта</label>
-                <select
-                  value={hasElevator}
-                  onChange={(e) => setHasElevator(e.target.value)}
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none"
-                >
-                  {YES_NO.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-white/50">Комплектация</label>
-                <select
-                  value={completionType}
-                  onChange={(e) => setCompletionType(e.target.value)}
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none"
-                >
-                  {COMPLETION_TYPES.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-white/50">Разгрузка материала</label>
-                <select
-                  value={materialUnloading}
-                  onChange={(e) => setMaterialUnloading(e.target.value)}
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none"
-                >
-                  {YES_NO.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-white/50">Черновой материал</label>
-                <select
-                  value={roughMaterial}
-                  onChange={(e) => setRoughMaterial(e.target.value)}
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none"
-                >
-                  {MATERIAL_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-white/50">Чистовой материал</label>
-                <select
-                  value={finishMaterial}
-                  onChange={(e) => setFinishMaterial(e.target.value)}
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none"
-                >
-                  {MATERIAL_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-white/50">Кухня и мебель</label>
-                <select
-                  value={kitchenFurniture}
-                  onChange={(e) => setKitchenFurniture(e.target.value)}
-                  className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none"
-                >
-                  {MATERIAL_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs text-white/50 mb-2">Дизайн-проект (можно выбрать несколько)</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {DESIGN_PROJECTS.map((dp) => (
-                  <label
-                    key={dp}
-                    className="flex items-center gap-2 text-sm bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 cursor-pointer hover:border-white/20 transition-colors"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={designProjects.includes(dp)}
-                      onChange={() => toggleDesignProject(dp)}
-                      className="w-4 h-4 rounded border-white/20 bg-[#161616]"
-                    />
-                    {dp}
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
+          <ObjectCreateStep3
+            hasElevator={hasElevator}
+            setHasElevator={setHasElevator}
+            completionType={completionType}
+            setCompletionType={setCompletionType}
+            materialUnloading={materialUnloading}
+            setMaterialUnloading={setMaterialUnloading}
+            roughMaterial={roughMaterial}
+            setRoughMaterial={setRoughMaterial}
+            finishMaterial={finishMaterial}
+            setFinishMaterial={setFinishMaterial}
+            kitchenFurniture={kitchenFurniture}
+            setKitchenFurniture={setKitchenFurniture}
+            designProjects={designProjects}
+            toggleDesignProject={toggleDesignProject}
+          />
         )}
 
         {error && (
