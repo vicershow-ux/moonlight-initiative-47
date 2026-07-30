@@ -1,6 +1,8 @@
 import { ChangeEvent, useEffect, useState } from "react"
 import Icon from "@/components/ui/icon"
 import { siteApi, SiteProject, SiteSettings } from "@/lib/api"
+import { resizeImageToDataUrl } from "@/lib/imageUpload"
+import { useToast } from "@/hooks/use-toast"
 
 interface ProjectsTabProps {
   form: SiteSettings
@@ -8,6 +10,7 @@ interface ProjectsTabProps {
 }
 
 export function ProjectsTab({ form, update }: ProjectsTabProps) {
+  const { toast } = useToast()
   const [items, setItems] = useState<SiteProject[]>([])
   const [loading, setLoading] = useState(true)
   const [savingId, setSavingId] = useState<number | null>(null)
@@ -32,15 +35,18 @@ export function ProjectsTab({ form, update }: ProjectsTabProps) {
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, [field]: value } : it)))
   }
 
-  const handleFile = (id: number, e: ChangeEvent<HTMLInputElement>) => {
+  const handleFile = async (id: number, e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      setPreviews((prev) => ({ ...prev, [id]: reader.result as string }))
-      setPendingFiles((prev) => ({ ...prev, [id]: reader.result as string }))
+    try {
+      const resized = await resizeImageToDataUrl(file, 1200)
+      setPreviews((prev) => ({ ...prev, [id]: resized }))
+      setPendingFiles((prev) => ({ ...prev, [id]: resized }))
+    } catch {
+      toast({ variant: "destructive", title: "Не удалось обработать изображение" })
+    } finally {
+      e.target.value = ""
     }
-    reader.readAsDataURL(file)
   }
 
   const handleSave = async (item: SiteProject) => {
@@ -61,7 +67,10 @@ export function ProjectsTab({ form, update }: ProjectsTabProps) {
         delete next[item.id]
         return next
       })
+      toast({ title: "Сохранено" })
       load()
+    } catch (err) {
+      toast({ variant: "destructive", title: err instanceof Error ? err.message : "Не удалось сохранить" })
     } finally {
       setSavingId(null)
     }

@@ -1,14 +1,17 @@
 import { ChangeEvent, useRef, useState } from "react"
 import Icon from "@/components/ui/icon"
 import { SiteSettings } from "@/lib/api"
+import { resizeImageToDataUrl } from "@/lib/imageUpload"
+import { useToast } from "@/hooks/use-toast"
 
 interface HeroAboutTabProps {
   form: SiteSettings
   update: (field: keyof SiteSettings, value: string) => void
-  onFileSelected: (field: "hero_bg_image_file" | "hero_fg_image_file" | "about_image_file", file: File) => void
+  onFileSelected: (field: "hero_bg_image_file" | "hero_fg_image_file" | "about_image_file", dataUrl: string) => void
 }
 
 export function HeroAboutTab({ form, update, onFileSelected }: HeroAboutTabProps) {
+  const { toast } = useToast()
   const inputClass =
     "w-full bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
   const labelClass = "text-xs text-white/50 mb-1.5 block"
@@ -21,17 +24,22 @@ export function HeroAboutTab({ form, update, onFileSelected }: HeroAboutTabProps
   const [heroFgPreview, setHeroFgPreview] = useState<string | null>(null)
   const [aboutPreview, setAboutPreview] = useState<string | null>(null)
 
-  const handleFile = (
+  const handleFile = async (
     field: "hero_bg_image_file" | "hero_fg_image_file" | "about_image_file",
     setPreview: (v: string) => void,
     e: ChangeEvent<HTMLInputElement>
   ) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => setPreview(reader.result as string)
-    reader.readAsDataURL(file)
-    onFileSelected(field, file)
+    try {
+      const resized = await resizeImageToDataUrl(file, 1600)
+      setPreview(resized)
+      onFileSelected(field, resized)
+    } catch {
+      toast({ variant: "destructive", title: "Не удалось обработать изображение" })
+    } finally {
+      e.target.value = ""
+    }
   }
 
   const ImagePicker = ({

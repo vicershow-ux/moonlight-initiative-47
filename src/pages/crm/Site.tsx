@@ -5,6 +5,7 @@ import Icon from "@/components/ui/icon"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { siteApi, SiteSettings } from "@/lib/api"
 import { useAuth } from "@/contexts/AuthContext"
+import { useToast } from "@/hooks/use-toast"
 import { BrandTab } from "@/components/crm/site/BrandTab"
 import { HeroAboutTab } from "@/components/crm/site/HeroAboutTab"
 import { PhilosophyTab } from "@/components/crm/site/PhilosophyTab"
@@ -32,6 +33,7 @@ type PendingFiles = Partial<Record<
 
 export default function Site() {
   const { user } = useAuth()
+  const { toast } = useToast()
   const canManage = user?.role === "owner" || user?.position === "super_admin"
 
   const [form, setForm] = useState<SiteSettings>(emptyForm)
@@ -57,13 +59,9 @@ export default function Site() {
     setSaved(false)
   }
 
-  const onFileSelected = (field: keyof PendingFiles, file: File) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      setPendingFiles((prev) => ({ ...prev, [field]: reader.result as string }))
-      setSaved(false)
-    }
-    reader.readAsDataURL(file)
+  const onFileSelected = (field: keyof PendingFiles, dataUrl: string) => {
+    setPendingFiles((prev) => ({ ...prev, [field]: dataUrl }))
+    setSaved(false)
   }
 
   const handleSave = async () => {
@@ -74,6 +72,13 @@ export default function Site() {
       setForm({ ...emptyForm, ...updated })
       setPendingFiles({})
       setSaved(true)
+      toast({ title: "Сохранено" })
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Не удалось сохранить",
+        description: err instanceof Error ? err.message : "Попробуйте загрузить фото меньшего размера",
+      })
     } finally {
       setSaving(false)
     }

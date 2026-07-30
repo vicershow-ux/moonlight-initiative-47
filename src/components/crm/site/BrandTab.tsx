@@ -1,14 +1,17 @@
 import { ChangeEvent, useRef, useState } from "react"
 import Icon from "@/components/ui/icon"
 import { SiteSettings } from "@/lib/api"
+import { resizeImageToDataUrl } from "@/lib/imageUpload"
+import { useToast } from "@/hooks/use-toast"
 
 interface BrandTabProps {
   form: SiteSettings
   update: (field: keyof SiteSettings, value: string) => void
-  onFileSelected: (field: "logo_file" | "favicon_file", file: File) => void
+  onFileSelected: (field: "logo_file" | "favicon_file", dataUrl: string) => void
 }
 
 export function BrandTab({ form, update, onFileSelected }: BrandTabProps) {
+  const { toast } = useToast()
   const logoInputRef = useRef<HTMLInputElement>(null)
   const faviconInputRef = useRef<HTMLInputElement>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
@@ -18,16 +21,20 @@ export function BrandTab({ form, update, onFileSelected }: BrandTabProps) {
     "w-full bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
   const labelClass = "text-xs text-white/50 mb-1.5 block"
 
-  const handleFile = (field: "logo_file" | "favicon_file", e: ChangeEvent<HTMLInputElement>) => {
+  const handleFile = async (field: "logo_file" | "favicon_file", e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (field === "logo_file") setLogoPreview(reader.result as string)
-      else setFaviconPreview(reader.result as string)
+    try {
+      const maxDim = field === "favicon_file" ? 256 : 512
+      const resized = await resizeImageToDataUrl(file, maxDim)
+      if (field === "logo_file") setLogoPreview(resized)
+      else setFaviconPreview(resized)
+      onFileSelected(field, resized)
+    } catch {
+      toast({ variant: "destructive", title: "Не удалось обработать изображение" })
+    } finally {
+      e.target.value = ""
     }
-    reader.readAsDataURL(file)
-    onFileSelected(field, file)
   }
 
   return (
