@@ -33,6 +33,7 @@ export interface UserData {
   full_name: string
   email: string
   role: string
+  position?: string
   company_id: number
   company_name: string
   totp_enabled?: boolean
@@ -472,6 +473,7 @@ export interface TeamMember {
   full_name: string
   email: string
   role: string
+  position?: string
   phone: string | null
   created_at: string
   is_active: boolean
@@ -485,7 +487,7 @@ export const teamApi = {
     return parseResponse(res) as Promise<{ members: TeamMember[] }>
   },
 
-  async create(payload: { full_name: string; email: string; password: string; role: "employee" | "client"; phone?: string; object_ids?: number[] }) {
+  async create(payload: { full_name: string; email: string; password: string; role: "employee" | "client"; phone?: string; object_ids?: number[]; position?: string }) {
     const res = await fetch(`${AUTH_URL}?resource=team`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -517,6 +519,15 @@ export const teamApi = {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ is_active: isActive }),
+    })
+    return parseResponse(res)
+  },
+
+  async setPosition(id: number, position: string) {
+    const res = await fetch(`${AUTH_URL}?resource=team&id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ position }),
     })
     return parseResponse(res)
   },

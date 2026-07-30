@@ -4,6 +4,7 @@ import Icon from "@/components/ui/icon"
 import { teamApi, TeamMember } from "@/lib/api"
 import { useAuth } from "@/contexts/AuthContext"
 import { SetPasswordDialog } from "@/components/crm/SetPasswordDialog"
+import { positionOptions, getPositionLabel, getPositionColor, PositionKey } from "@/lib/positions"
 import {
   Dialog,
   DialogContent,
@@ -18,21 +19,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-const roleLabels: Record<string, string> = {
-  owner: "Владелец компании",
-  admin: "Супер-администратор",
-  employee: "Сотрудник",
-}
-
-const roleColors: Record<string, string> = {
-  owner: "bg-red-500/20 text-red-300",
-  admin: "bg-orange-500/20 text-orange-300",
-  employee: "bg-blue-500/20 text-blue-300",
-}
-
-type RoleFilter = "all" | "owner" | "admin" | "employee"
-type StatusFilter = "all" | "active" | "inactive"
-type SortKey = "created_desc" | "created_asc" | "name_asc" | "name_desc"
+type RoleFilter = "all" | PositionKey
+type StatusFilter = "all" | "active" | "inactive" | "never"
+type SortKey = "created_desc" | "created_asc" | "name_asc" | "last_login" | "position"
 
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" })
@@ -61,6 +50,7 @@ export default function Team() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [phone, setPhone] = useState("")
+  const [position, setPosition] = useState<PositionKey>("manager")
 
   const [search, setSearch] = useState("")
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all")
@@ -89,6 +79,7 @@ export default function Team() {
     setEmail("")
     setPassword("")
     setPhone("")
+    setPosition("manager")
     setError("")
   }
 
@@ -115,6 +106,7 @@ export default function Team() {
         password,
         role: "employee",
         phone,
+        position,
       })
       setOpen(false)
       resetForm()
@@ -142,6 +134,11 @@ export default function Team() {
     }
   }
 
+  const handleChangePosition = async (m: TeamMember, newPosition: string) => {
+    await teamApi.setPosition(m.id, newPosition)
+    setMembers((prev) => prev.map((x) => (x.id === m.id ? { ...x, position: newPosition } : x)))
+  }
+
   const owner = members.find((m) => m.role === "owner")
 
   const stats = useMemo(() => {
@@ -160,10 +157,14 @@ export default function Team() {
       )
     }
     if (roleFilter !== "all") {
-      list = list.filter((m) => m.role === roleFilter)
+      list = list.filter((m) => m.position === roleFilter)
     }
     if (statusFilter !== "all") {
-      list = list.filter((m) => (statusFilter === "active" ? m.is_active : !m.is_active))
+      list = list.filter((m) => {
+        if (statusFilter === "active") return m.is_active
+        if (statusFilter === "inactive") return !m.is_active
+        return !m.last_login_at
+      })
     }
     list = [...list].sort((a, b) => {
       switch (sortKey) {
@@ -171,8 +172,10 @@ export default function Team() {
           return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         case "name_asc":
           return a.full_name.localeCompare(b.full_name)
-        case "name_desc":
-          return b.full_name.localeCompare(a.full_name)
+        case "last_login":
+          return new Date(b.last_login_at || 0).getTime() - new Date(a.last_login_at || 0).getTime()
+        case "position":
+          return getPositionLabel(a.position).localeCompare(getPositionLabel(b.position))
         case "created_desc":
         default:
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -322,8 +325,9 @@ export default function Team() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Все роли</SelectItem>
-                    <SelectItem value="admin">Супер-администратор</SelectItem>
-                    <SelectItem value="employee">Сотрудник</SelectItem>
+                    {positionOptions.map((p) => (
+                      <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -335,8 +339,9 @@ export default function Team() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Все</SelectItem>
-                    <SelectItem value="active">Активные</SelectItem>
-                    <SelectItem value="inactive">Отключённые</SelectItem>
+                    <SelectItem value="active">Активен</SelectItem>
+                    <SelectItem value="inactive">Отключён</SelectItem>
+                    <SelectItem value="never">Не входил ни разу</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -348,9 +353,9 @@ export default function Team() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="created_desc">По дате добавления</SelectItem>
-                    <SelectItem value="created_asc">По дате добавления (старые)</SelectItem>
                     <SelectItem value="name_asc">По имени А-Я</SelectItem>
-                    <SelectItem value="name_desc">По имени Я-А</SelectItem>
+                    <SelectItem value="last_login">По последнему входу</SelectItem>
+                    <SelectItem value="position">По роли</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -359,9 +364,6 @@ export default function Team() {
             <div className="flex items-center justify-between mt-4 flex-wrap gap-2">
               <p className="text-xs text-white/40">Найдено сотрудников: {filtered.length}</p>
               <div className="flex items-center gap-3">
-                <p className="text-xs text-white/30">
-                  Сортировка: {sortKey.includes("desc") ? (sortKey === "name_desc" ? "Я-А / по убыванию" : "R-A / по убыванию") : "А-Я / по возрастанию"}
-                </p>
                 <button onClick={resetFilters} className="text-xs text-[#D4AF37] hover:underline">
                   Сбросить фильтры
                 </button>
@@ -415,9 +417,22 @@ export default function Team() {
                           </div>
                         </td>
                         <td className="py-3 pr-4">
-                          <span className={`px-2 py-0.5 rounded-full text-xs ${roleColors[m.role] || "bg-white/10 text-white/60"}`}>
-                            {roleLabels[m.role] || m.role}
-                          </span>
+                          {canManage ? (
+                            <Select value={m.position || "manager"} onValueChange={(v) => handleChangePosition(m, v)}>
+                              <SelectTrigger className={`h-7 w-auto border-none px-2 py-0.5 rounded-full text-xs ${getPositionColor(m.position)}`}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {positionOptions.map((p) => (
+                                  <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <span className={`px-2 py-0.5 rounded-full text-xs ${getPositionColor(m.position)}`}>
+                              {getPositionLabel(m.position)}
+                            </span>
+                          )}
                         </td>
                         <td className="py-3 pr-4">
                           <span className={`px-2 py-0.5 rounded-full text-xs ${m.is_active ? "bg-green-500/20 text-green-300" : "bg-red-500/20 text-red-300"}`}>
@@ -517,6 +532,20 @@ export default function Team() {
                 placeholder="+7 900 000 00 00"
                 className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
               />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-white/50">Роль</label>
+              <Select value={position} onValueChange={(v) => setPosition(v as PositionKey)}>
+                <SelectTrigger className="bg-[#161616] border-white/10 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {positionOptions.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {error && (

@@ -1,15 +1,18 @@
 import { ReactNode } from "react"
-import { Navigate } from "react-router-dom"
+import { Navigate, useLocation } from "react-router-dom"
 import { useAuth } from "@/contexts/AuthContext"
 import Icon from "@/components/ui/icon"
+import { hasHrefAccess } from "@/lib/positions"
 
 interface ProtectedRouteProps {
   children: ReactNode
   allowedRoles?: string[]
+  section?: string
 }
 
-export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, allowedRoles, section }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
+  const location = useLocation()
 
   if (loading) {
     return (
@@ -24,6 +27,11 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/cabinet/objects" replace />
+  }
+
+  const sectionHref = section || location.pathname
+  if (!hasHrefAccess(user.role, user.position, sectionHref)) {
     return <Navigate to="/cabinet/objects" replace />
   }
 

@@ -106,7 +106,7 @@ def handle_auth(method, event, conn, cur, action):
         password = body.get('password') or ''
 
         cur.execute(
-            "SELECT u.id, u.full_name, u.email, u.role, u.company_id, c.name, u.password_hash, u.totp_enabled, u.totp_secret, u.is_active "
+            "SELECT u.id, u.full_name, u.email, u.role, u.company_id, c.name, u.password_hash, u.totp_enabled, u.totp_secret, u.is_active, u.position "
             "FROM users u JOIN companies c ON c.id = u.company_id WHERE u.email = %s",
             (email,)
         )
@@ -114,7 +114,7 @@ def handle_auth(method, event, conn, cur, action):
         if not row:
             return response(401, {'error': 'Неверный email или пароль'})
 
-        user_id, full_name, user_email, role, company_id, company_name, stored_hash, totp_enabled, totp_secret, is_active = row
+        user_id, full_name, user_email, role, company_id, company_name, stored_hash, totp_enabled, totp_secret, is_active, position = row
 
         if stored_hash != hash_password(password):
             return response(401, {'error': 'Неверный email или пароль'})
@@ -143,7 +143,7 @@ def handle_auth(method, event, conn, cur, action):
 
         return response(200, {
             'token': token,
-            'user': {'id': user_id, 'full_name': full_name, 'email': user_email, 'role': role, 'company_id': company_id, 'company_name': company_name}
+            'user': {'id': user_id, 'full_name': full_name, 'email': user_email, 'role': role, 'position': position, 'company_id': company_id, 'company_name': company_name}
         })
 
     if method == 'POST' and action == 'verify_2fa':
@@ -161,14 +161,14 @@ def handle_auth(method, event, conn, cur, action):
         user_id = row[0]
 
         cur.execute(
-            "SELECT u.full_name, u.email, u.role, u.company_id, c.name, u.totp_secret "
+            "SELECT u.full_name, u.email, u.role, u.company_id, c.name, u.totp_secret, u.position "
             "FROM users u JOIN companies c ON c.id = u.company_id WHERE u.id = %s",
             (user_id,)
         )
         urow = cur.fetchone()
         if not urow:
             return response(404, {'error': 'Пользователь не найден'})
-        full_name, user_email, role, company_id, company_name, totp_secret = urow
+        full_name, user_email, role, company_id, company_name, totp_secret, position = urow
 
         totp = pyotp.TOTP(totp_secret)
         if not totp.verify(code, valid_window=1):
@@ -187,7 +187,7 @@ def handle_auth(method, event, conn, cur, action):
 
         return response(200, {
             'token': token,
-            'user': {'id': user_id, 'full_name': full_name, 'email': user_email, 'role': role, 'company_id': company_id, 'company_name': company_name}
+            'user': {'id': user_id, 'full_name': full_name, 'email': user_email, 'role': role, 'position': position, 'company_id': company_id, 'company_name': company_name}
         })
 
     if method == 'GET' and action == 'me':
@@ -202,13 +202,13 @@ def handle_auth(method, event, conn, cur, action):
         company_row = cur.fetchone()
         company_name = company_row[0] if company_row else ''
 
-        cur.execute("SELECT email, totp_enabled FROM users WHERE id = %s", (user['user_id'],))
-        email, totp_enabled = cur.fetchone()
+        cur.execute("SELECT email, totp_enabled, position FROM users WHERE id = %s", (user['user_id'],))
+        email, totp_enabled, position = cur.fetchone()
 
         return response(200, {
             'user': {
                 'id': user['user_id'], 'full_name': user['full_name'], 'email': email,
-                'role': user['role'], 'company_id': user['company_id'], 'company_name': company_name,
+                'role': user['role'], 'position': position, 'company_id': user['company_id'], 'company_name': company_name,
                 'totp_enabled': totp_enabled
             }
         })
@@ -230,11 +230,11 @@ def handle_team(method, event, conn, cur):
 
     if method == 'GET':
         cur.execute(
-            "SELECT id, full_name, email, role, phone, created_at, is_active, last_login_at FROM users WHERE company_id = %s ORDER BY created_at DESC",
+            "SELECT id, full_name, email, role, phone, created_at, is_active, last_login_at, position FROM users WHERE company_id = %s ORDER BY created_at DESC",
             (company_id,)
         )
         rows = cur.fetchall()
-        keys = ['id', 'full_name', 'email', 'role', 'phone', 'created_at', 'is_active', 'last_login_at']
+        keys = ['id', 'full_name', 'email', 'role', 'phone', 'created_at', 'is_active', 'last_login_at', 'position']
         members = []
         for r in rows:
             m = dict(zip(keys, r))
@@ -259,9 +259,13 @@ def handle_team(method, event, conn, cur):
         role = (body.get('role') or 'employee').strip()
         phone = (body.get('phone') or '').strip()
         object_ids = body.get('object_ids') or []
+        position = (body.get('position') or 'manager').strip()
 
+        allowed_positions = ('super_admin', 'director', 'estimator', 'surveyor', 'foreman', 'manager')
         if role not in ('employee', 'client'):
             return response(400, {'error': 'Недопустимая роль'})
+        if role == 'employee' and position not in allowed_positions:
+            return response(400, {'error': 'Недопустимая должность'})
         if len(full_name) < 2:
             return response(400, {'error': 'Введите имя'})
         if not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', email):
@@ -277,8 +281,8 @@ def handle_team(method, event, conn, cur):
 
         pwd_hash = hash_password(password)
         cur.execute(
-            "INSERT INTO users (company_id, full_name, email, password_hash, role, phone) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id, created_at",
-            (company_id, full_name, email, pwd_hash, role, phone)
+            "INSERT INTO users (company_id, full_name, email, password_hash, role, phone, position) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id, created_at",
+            (company_id, full_name, email, pwd_hash, role, phone, position if role == 'employee' else 'manager')
         )
         new_id, created_at = cur.fetchone()
 
@@ -296,7 +300,7 @@ def handle_team(method, event, conn, cur):
         return response(200, {
             'id': new_id, 'full_name': full_name, 'email': email,
             'role': role, 'phone': phone, 'created_at': created_at,
-            'is_active': True, 'last_login_at': None
+            'is_active': True, 'last_login_at': None, 'position': position
         })
 
     if method == 'PUT':
@@ -345,6 +349,19 @@ def handle_team(method, event, conn, cur):
             )
             if not new_active:
                 cur.execute("DELETE FROM sessions WHERE user_id = %s", (member_id,))
+            conn.commit()
+
+        if 'position' in body:
+            if row[1] == 'owner':
+                return response(400, {'error': 'Нельзя изменить должность владельца компании'})
+            new_position = (body.get('position') or '').strip()
+            allowed_positions = ('super_admin', 'director', 'estimator', 'surveyor', 'foreman', 'manager')
+            if new_position not in allowed_positions:
+                return response(400, {'error': 'Недопустимая должность'})
+            cur.execute(
+                "UPDATE users SET position = %s WHERE id = %s AND company_id = %s",
+                (new_position, member_id, company_id)
+            )
             conn.commit()
 
         return response(200, {'success': True})
