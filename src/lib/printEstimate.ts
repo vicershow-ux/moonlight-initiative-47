@@ -305,6 +305,27 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
   .parties .name { font-weight: 600; }
   .parties .contact { color: #888; font-size: 12px; margin-top: 2px; }
   .parties .signature { height: 40px; object-fit: contain; margin-top: 8px; }
+  .signatures {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 32px;
+    margin-bottom: 12px;
+  }
+  .signature-block .label {
+    color: #999;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 28px;
+  }
+  .signature-block .signature-line {
+    border-top: 1px solid #999;
+    padding-top: 6px;
+    font-size: 13px;
+    text-align: center;
+    color: #333;
+  }
   .footer {
     text-align: right;
     font-size: 11px;
@@ -359,11 +380,11 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
 
   <div class="summary">
     <div class="summary-box">
+      ${discountAmount > 0 ? `
       <div class="summary-row">
         <span>Сумма до скидки:</span>
         <span>${formatMoney(subtotal)}</span>
       </div>
-      ${discountAmount > 0 ? `
       <div class="summary-row discount">
         <span>Скидка:</span>
         <span>-${formatMoney(discountAmount)}</span>
@@ -389,6 +410,7 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
       <div class="name">${escapeHtml(estimate.company_name || companyName)}</div>
       ${estimate.company_phone ? `<div class="contact">Тел: ${escapeHtml(estimate.company_phone)}</div>` : ""}
       ${estimate.company_email ? `<div class="contact">Email: ${escapeHtml(estimate.company_email)}</div>` : ""}
+      ${estimate.company_website ? `<div class="contact">${escapeHtml(estimate.company_website)}</div>` : ""}
       ${estimate.company_inn ? `<div class="contact">ИНН: ${escapeHtml(estimate.company_inn)}</div>` : ""}
       ${estimate.company_legal_address ? `<div class="contact">${escapeHtml(estimate.company_legal_address)}</div>` : ""}
       ${estimate.company_signature_url ? `<img class="signature" src="${estimate.company_signature_url}" alt="Подпись" />` : ""}
@@ -397,6 +419,17 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
       <div class="label">Заказчик</div>
       <div class="name">${escapeHtml(object.client_name)}</div>
       ${object.client_phone ? `<div class="contact">Тел: ${escapeHtml(object.client_phone)}</div>` : ""}
+    </div>
+  </div>
+
+  <div class="signatures">
+    <div class="signature-block">
+      <div class="label">Исполнитель</div>
+      <div class="signature-line">${escapeHtml(estimate.company_name || companyName)}</div>
+    </div>
+    <div class="signature-block">
+      <div class="label">Заказчик</div>
+      <div class="signature-line">${escapeHtml(object.client_name)}</div>
     </div>
   </div>
 
