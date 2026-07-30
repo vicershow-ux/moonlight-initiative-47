@@ -1,12 +1,20 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react"
 import { authApi, getToken, setToken, clearToken, UserData } from "@/lib/api"
 
+interface LoginOutcome {
+  requires2fa: boolean
+  challengeToken?: string
+}
+
 interface AuthContextValue {
   user: UserData | null
   loading: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<LoginOutcome>
+  verify2fa: (challengeToken: string, code: string) => Promise<void>
   logout: () => void
   updateCompanyName: (name: string) => void
+  updateProfile: (data: { full_name?: string; email?: string }) => void
+  setTotpEnabled: (enabled: boolean) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -28,8 +36,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false))
   }, [])
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<LoginOutcome> => {
     const data = await authApi.login({ email, password })
+    if (data.requires_2fa) {
+      return { requires2fa: true, challengeToken: data.challenge_token }
+    }
+    if (data.token && data.user) {
+      setToken(data.token)
+      setUser(data.user)
+    }
+    return { requires2fa: false }
+  }
+
+  const verify2fa = async (challengeToken: string, code: string) => {
+    const data = await authApi.verify2fa({ challenge_token: challengeToken, code })
     setToken(data.token)
     setUser(data.user)
   }
@@ -43,8 +63,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser((prev) => (prev ? { ...prev, company_name: name } : prev))
   }
 
+  const updateProfile = (data: { full_name?: string; email?: string }) => {
+    setUser((prev) => (prev ? { ...prev, ...data } : prev))
+  }
+
+  const setTotpEnabled = (enabled: boolean) => {
+    setUser((prev) => (prev ? { ...prev, totp_enabled: enabled } : prev))
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, updateCompanyName }}>
+    <AuthContext.Provider
+      value={{ user, loading, login, verify2fa, logout, updateCompanyName, updateProfile, setTotpEnabled }}
+    >
       {children}
     </AuthContext.Provider>
   )

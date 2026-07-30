@@ -1,0 +1,2 @@
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS pending_totp_secret VARCHAR(64) NOT NULL DEFAULT '';

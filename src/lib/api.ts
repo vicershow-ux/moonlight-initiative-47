@@ -34,6 +34,7 @@ export interface UserData {
   role: string
   company_id: number
   company_name: string
+  totp_enabled?: boolean
 }
 
 async function parseResponse(res: Response) {
@@ -44,9 +45,25 @@ async function parseResponse(res: Response) {
   return data
 }
 
+export interface LoginResult {
+  token?: string
+  user?: UserData
+  requires_2fa?: boolean
+  challenge_token?: string
+}
+
 export const authApi = {
   async login(payload: { email: string; password: string }) {
     const res = await fetch(`${AUTH_URL}?action=login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<LoginResult>
+  },
+
+  async verify2fa(payload: { challenge_token: string; code: string }) {
+    const res = await fetch(`${AUTH_URL}?action=verify_2fa`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -60,6 +77,53 @@ export const authApi = {
       headers: { ...authHeaders() },
     })
     return parseResponse(res) as Promise<{ user: UserData }>
+  },
+}
+
+export const profileApi = {
+  async update(payload: { full_name?: string; email?: string; current_password?: string; new_password?: string }) {
+    const res = await fetch(`${AUTH_URL}?resource=profile`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<{ full_name: string; email: string }>
+  },
+
+  async remove() {
+    const res = await fetch(`${AUTH_URL}?resource=profile`, {
+      method: "DELETE",
+      headers: { ...authHeaders() },
+    })
+    return parseResponse(res)
+  },
+}
+
+export const twoFactorApi = {
+  async setup() {
+    const res = await fetch(`${AUTH_URL}?resource=2fa&action=setup`, {
+      method: "POST",
+      headers: { ...authHeaders() },
+    })
+    return parseResponse(res) as Promise<{ secret: string; otp_uri: string }>
+  },
+
+  async confirm(code: string) {
+    const res = await fetch(`${AUTH_URL}?resource=2fa&action=confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ code }),
+    })
+    return parseResponse(res) as Promise<{ success: boolean; totp_enabled: boolean }>
+  },
+
+  async disable(password: string) {
+    const res = await fetch(`${AUTH_URL}?resource=2fa&action=disable`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ password }),
+    })
+    return parseResponse(res) as Promise<{ success: boolean; totp_enabled: boolean }>
   },
 }
 

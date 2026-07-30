@@ -8,6 +8,7 @@ import uuid
 from datetime import datetime, timedelta
 import psycopg2
 import boto3
+import pyotp
 
 
 def get_conn():
@@ -104,17 +105,71 @@ def handle_auth(method, event, conn, cur, action):
         password = body.get('password') or ''
 
         cur.execute(
-            "SELECT u.id, u.full_name, u.email, u.role, u.company_id, c.name, u.password_hash FROM users u JOIN companies c ON c.id = u.company_id WHERE u.email = %s",
+            "SELECT u.id, u.full_name, u.email, u.role, u.company_id, c.name, u.password_hash, u.totp_enabled, u.totp_secret "
+            "FROM users u JOIN companies c ON c.id = u.company_id WHERE u.email = %s",
             (email,)
         )
         row = cur.fetchone()
         if not row:
             return response(401, {'error': 'Неверный email или пароль'})
 
-        user_id, full_name, user_email, role, company_id, company_name, stored_hash = row
+        user_id, full_name, user_email, role, company_id, company_name, stored_hash, totp_enabled, totp_secret = row
 
         if stored_hash != hash_password(password):
             return response(401, {'error': 'Неверный email или пароль'})
+
+        if totp_enabled:
+            challenge_token = make_token()
+            expires_at = datetime.utcnow() + timedelta(minutes=10)
+            cur.execute(
+                "INSERT INTO two_factor_challenges (user_id, token, expires_at) VALUES (%s, %s, %s)",
+                (user_id, challenge_token, expires_at)
+            )
+            conn.commit()
+            return response(200, {'requires_2fa': True, 'challenge_token': challenge_token})
+
+        token = make_token()
+        expires_at = datetime.utcnow() + timedelta(days=30)
+        cur.execute(
+            "INSERT INTO sessions (user_id, token, expires_at) VALUES (%s, %s, %s)",
+            (user_id, token, expires_at)
+        )
+        conn.commit()
+
+        return response(200, {
+            'token': token,
+            'user': {'id': user_id, 'full_name': full_name, 'email': user_email, 'role': role, 'company_id': company_id, 'company_name': company_name}
+        })
+
+    if method == 'POST' and action == 'verify_2fa':
+        body = json.loads(event.get('body') or '{}')
+        challenge_token = body.get('challenge_token') or ''
+        code = (body.get('code') or '').strip()
+
+        cur.execute(
+            "SELECT user_id FROM two_factor_challenges WHERE token = %s AND expires_at > NOW()",
+            (challenge_token,)
+        )
+        row = cur.fetchone()
+        if not row:
+            return response(401, {'error': 'Сессия подтверждения истекла, войдите заново'})
+        user_id = row[0]
+
+        cur.execute(
+            "SELECT u.full_name, u.email, u.role, u.company_id, c.name, u.totp_secret "
+            "FROM users u JOIN companies c ON c.id = u.company_id WHERE u.id = %s",
+            (user_id,)
+        )
+        urow = cur.fetchone()
+        if not urow:
+            return response(404, {'error': 'Пользователь не найден'})
+        full_name, user_email, role, company_id, company_name, totp_secret = urow
+
+        totp = pyotp.TOTP(totp_secret)
+        if not totp.verify(code, valid_window=1):
+            return response(401, {'error': 'Неверный код'})
+
+        cur.execute("DELETE FROM two_factor_challenges WHERE token = %s", (challenge_token,))
 
         token = make_token()
         expires_at = datetime.utcnow() + timedelta(days=30)
@@ -141,13 +196,14 @@ def handle_auth(method, event, conn, cur, action):
         company_row = cur.fetchone()
         company_name = company_row[0] if company_row else ''
 
-        cur.execute("SELECT email FROM users WHERE id = %s", (user['user_id'],))
-        email = cur.fetchone()[0]
+        cur.execute("SELECT email, totp_enabled FROM users WHERE id = %s", (user['user_id'],))
+        email, totp_enabled = cur.fetchone()
 
         return response(200, {
             'user': {
                 'id': user['user_id'], 'full_name': user['full_name'], 'email': email,
-                'role': user['role'], 'company_id': user['company_id'], 'company_name': company_name
+                'role': user['role'], 'company_id': user['company_id'], 'company_name': company_name,
+                'totp_enabled': totp_enabled
             }
         })
 
@@ -390,6 +446,138 @@ def handle_company(method, event, conn, cur):
     return response(405, {'error': 'Метод не поддерживается'})
 
 
+def handle_profile(method, event, conn, cur):
+    user = get_current_user(cur, event)
+    if not user:
+        return response(401, {'error': 'Не авторизован'})
+    user_id = user['user_id']
+
+    if method == 'PUT':
+        body = json.loads(event.get('body') or '{}')
+
+        full_name = body.get('full_name')
+        email = body.get('email')
+        current_password = body.get('current_password')
+        new_password = body.get('new_password')
+
+        set_clauses = []
+        values = []
+
+        if full_name is not None:
+            full_name = full_name.strip()
+            if len(full_name) < 2:
+                return response(400, {'error': 'Введите имя'})
+            set_clauses.append('full_name = %s')
+            values.append(full_name)
+
+        if email is not None:
+            email = email.strip().lower()
+            if not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', email):
+                return response(400, {'error': 'Некорректный email'})
+            cur.execute("SELECT id FROM users WHERE email = %s AND id != %s", (email, user_id))
+            if cur.fetchone():
+                return response(409, {'error': 'Этот email уже используется'})
+            set_clauses.append('email = %s')
+            values.append(email)
+
+        if new_password:
+            if not current_password:
+                return response(400, {'error': 'Введите текущий пароль'})
+            cur.execute("SELECT password_hash FROM users WHERE id = %s", (user_id,))
+            stored_hash = cur.fetchone()[0]
+            if stored_hash != hash_password(current_password):
+                return response(401, {'error': 'Неверный текущий пароль'})
+            if len(new_password) < 6:
+                return response(400, {'error': 'Новый пароль должен быть не короче 6 символов'})
+            set_clauses.append('password_hash = %s')
+            values.append(hash_password(new_password))
+
+        if not set_clauses:
+            return response(400, {'error': 'Нет данных для обновления'})
+
+        values.append(user_id)
+        cur.execute(f"UPDATE users SET {', '.join(set_clauses)} WHERE id = %s", values)
+        conn.commit()
+
+        cur.execute("SELECT full_name, email FROM users WHERE id = %s", (user_id,))
+        updated_name, updated_email = cur.fetchone()
+
+        return response(200, {'full_name': updated_name, 'email': updated_email})
+
+    if method == 'DELETE':
+        cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
+        row = cur.fetchone()
+        if row and row[0] == 'owner':
+            return response(400, {'error': 'Владелец не может удалить свой аккаунт. Передайте права другому пользователю или обратитесь в поддержку'})
+
+        cur.execute("DELETE FROM object_access WHERE user_id = %s", (user_id,))
+        cur.execute("DELETE FROM two_factor_challenges WHERE user_id = %s", (user_id,))
+        cur.execute("DELETE FROM sessions WHERE user_id = %s", (user_id,))
+        cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        conn.commit()
+        return response(200, {'success': True})
+
+    return response(405, {'error': 'Метод не поддерживается'})
+
+
+def handle_2fa(method, event, conn, cur, action):
+    user = get_current_user(cur, event)
+    if not user:
+        return response(401, {'error': 'Не авторизован'})
+    user_id = user['user_id']
+
+    if method == 'POST' and action == 'setup':
+        cur.execute("SELECT email, totp_enabled FROM users WHERE id = %s", (user_id,))
+        email, totp_enabled = cur.fetchone()
+        if totp_enabled:
+            return response(400, {'error': '2FA уже включена'})
+
+        secret = pyotp.random_base32()
+        cur.execute("UPDATE users SET pending_totp_secret = %s WHERE id = %s", (secret, user_id))
+        conn.commit()
+
+        otp_uri = pyotp.TOTP(secret).provisioning_uri(name=email, issuer_name='FixKey')
+        return response(200, {'secret': secret, 'otp_uri': otp_uri})
+
+    if method == 'POST' and action == 'confirm':
+        body = json.loads(event.get('body') or '{}')
+        code = (body.get('code') or '').strip()
+
+        cur.execute("SELECT pending_totp_secret FROM users WHERE id = %s", (user_id,))
+        pending_secret = cur.fetchone()[0]
+        if not pending_secret:
+            return response(400, {'error': 'Сначала запросите настройку 2FA'})
+
+        totp = pyotp.TOTP(pending_secret)
+        if not totp.verify(code, valid_window=1):
+            return response(401, {'error': 'Неверный код'})
+
+        cur.execute(
+            "UPDATE users SET totp_secret = %s, totp_enabled = TRUE, pending_totp_secret = '' WHERE id = %s",
+            (pending_secret, user_id)
+        )
+        conn.commit()
+        return response(200, {'success': True, 'totp_enabled': True})
+
+    if method == 'POST' and action == 'disable':
+        body = json.loads(event.get('body') or '{}')
+        password = body.get('password') or ''
+
+        cur.execute("SELECT password_hash FROM users WHERE id = %s", (user_id,))
+        stored_hash = cur.fetchone()[0]
+        if stored_hash != hash_password(password):
+            return response(401, {'error': 'Неверный пароль'})
+
+        cur.execute(
+            "UPDATE users SET totp_secret = '', totp_enabled = FALSE, pending_totp_secret = '' WHERE id = %s",
+            (user_id,)
+        )
+        conn.commit()
+        return response(200, {'success': True, 'totp_enabled': False})
+
+    return response(404, {'error': 'Неизвестное действие'})
+
+
 def handle_notifications(method, event, conn, cur):
     user = get_current_user(cur, event)
     if not user:
@@ -434,7 +622,7 @@ def handle_notifications(method, event, conn, cur):
 
 
 def handler(event: dict, context) -> dict:
-    '''Аутентификация, управление командой (сотрудники/заказчики) и уведомления FixKey'''
+    '''Аутентификация, 2FA, профиль пользователя, управление командой (сотрудники/заказчики) и уведомления FixKey'''
     method = event.get('httpMethod', 'GET')
 
     if method == 'OPTIONS':
@@ -454,6 +642,10 @@ def handler(event: dict, context) -> dict:
             return handle_notifications(method, event, conn, cur)
         if resource == 'company':
             return handle_company(method, event, conn, cur)
+        if resource == 'profile':
+            return handle_profile(method, event, conn, cur)
+        if resource == '2fa':
+            return handle_2fa(method, event, conn, cur, action)
         return handle_auth(method, event, conn, cur, action)
     finally:
         cur.close()
