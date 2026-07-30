@@ -1,4 +1,20 @@
+import { useSiteContent } from "@/hooks/useSiteContent"
+
 export function Footer() {
+  const { content } = useSiteContent()
+  const s = content?.settings
+  const brandName = s?.brand_name || "FixKey"
+  const logoUrl = s?.logo_url || "/fixkey-logo.svg"
+  const footerDescription =
+    s?.footer_description ||
+    "Ремонт квартир и домов под ключ с гарантией результата. Прозрачная смета и контроль на каждом этапе."
+  const email = s?.email || "hello@fixkey.ru"
+  const phone = s?.phone || "+7 (495) 123-45-67"
+  const phoneHref = `tel:${phone.replace(/[^\d+]/g, "")}`
+  const telegramUrl = s?.telegram_url || "#"
+  const vkUrl = s?.vk_url || "#"
+  const copyrightText = s?.copyright_text || "© 2025 FixKey. Все права защищены."
+
   return (
     <footer className="py-16 md:py-24 border-t border-border">
       <div className="container mx-auto px-6 md:px-12">
@@ -6,11 +22,11 @@ export function Footer() {
           {/* Brand */}
           <div className="md:col-span-2">
             <a href="/" className="inline-flex items-center gap-2 mb-6">
-              <img src="/fixkey-logo.svg" alt="FixKey" className="w-16 h-16 -my-4 object-contain" />
-              <span className="text-xl font-semibold tracking-tight">FixKey</span>
+              <img src={logoUrl} alt={brandName} className="w-16 h-16 -my-4 object-contain" />
+              <span className="text-xl font-semibold tracking-tight">{brandName}</span>
             </a>
             <p className="text-muted-foreground leading-relaxed max-w-sm">
-              Ремонт квартир и домов под ключ с гарантией результата. Прозрачная смета и контроль на каждом этапе.
+              {footerDescription}
             </p>
           </div>
 
@@ -46,22 +62,22 @@ export function Footer() {
             <h4 className="text-sm font-medium mb-4">Связь</h4>
             <ul className="space-y-3 text-sm text-muted-foreground">
               <li>
-                <a href="mailto:hello@fixkey.ru" className="hover:text-foreground transition-colors">
-                  hello@fixkey.ru
+                <a href={`mailto:${email}`} className="hover:text-foreground transition-colors">
+                  {email}
                 </a>
               </li>
               <li>
-                <a href="tel:+74951234567" className="hover:text-foreground transition-colors">
-                  +7 (495) 123-45-67
+                <a href={phoneHref} className="hover:text-foreground transition-colors">
+                  {phone}
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-foreground transition-colors">
+                <a href={telegramUrl} className="hover:text-foreground transition-colors">
                   Телеграм
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-foreground transition-colors">
+                <a href={vkUrl} className="hover:text-foreground transition-colors">
                   ВКонтакте
                 </a>
               </li>
@@ -71,7 +87,7 @@ export function Footer() {
 
         {/* Bottom bar */}
         <div className="pt-8 border-t border-border flex flex-col md:flex-row md:items-center justify-between gap-4 text-sm text-muted-foreground">
-          <p>© 2025 FixKey. Все права защищены.</p>
+          <p>{copyrightText}</p>
           <div className="flex gap-6">
             <a href="#" className="hover:text-foreground transition-colors">
               Политика конфиденциальности

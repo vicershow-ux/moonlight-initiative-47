@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react"
 import { ArrowUpRight } from "lucide-react"
+import { useSiteContent } from "@/hooks/useSiteContent"
 
-const projects = [
+const defaultProjects = [
   {
     id: 1,
     title: "Квартира на Тверской",
@@ -37,6 +38,13 @@ const projects = [
 ]
 
 export function Projects() {
+  const { content } = useSiteContent()
+  const projectsEyebrow = content?.settings.projects_eyebrow || "Портфолио"
+  const projectsTitle = content?.settings.projects_title || "Наши объекты"
+  const projects = content?.projects?.length
+    ? content.projects.map((p) => ({ id: p.id, title: p.title, category: p.category, location: p.location, year: p.year, image: p.image_url }))
+    : defaultProjects
+
   const [hoveredId, setHoveredId] = useState<number | null>(null)
   const [revealedImages, setRevealedImages] = useState<Set<number>>(new Set())
   const imageRefs = useRef<(HTMLDivElement | null)[]>([])
@@ -68,8 +76,8 @@ export function Projects() {
       <div className="container mx-auto px-6 md:px-12">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-16">
           <div>
-            <p className="text-muted-foreground text-sm tracking-[0.3em] uppercase mb-6">Портфолио</p>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium tracking-tight">Наши объекты</h2>
+            <p className="text-muted-foreground text-sm tracking-[0.3em] uppercase mb-6">{projectsEyebrow}</p>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium tracking-tight">{projectsTitle}</h2>
           </div>
           <a
             href="#"

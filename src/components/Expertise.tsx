@@ -1,34 +1,47 @@
 import { useEffect, useRef, useState } from "react"
 import { Home, Building, Armchair, Trees } from "lucide-react"
 import { HighlightedText } from "./HighlightedText"
+import { useSiteContent } from "@/hooks/useSiteContent"
 
-const expertiseAreas = [
+const iconMap: Record<string, typeof Home> = { Home, Building, Armchair, Trees }
+
+const defaultExpertiseAreas = [
   {
     title: "Ремонт квартир под ключ",
     description: "Берём на себя весь цикл: демонтаж, черновые работы, чистовая отделка, сдача объекта с фотоотчётом.",
-    icon: Home,
+    icon: "Home",
   },
   {
     title: "Ремонт коммерческих помещений",
     description:
       "Офисы, магазины, шоу-румы — работаем в сжатые сроки, не останавливая бизнес заказчика дольше необходимого.",
-    icon: Building,
+    icon: "Building",
   },
   {
     title: "Дизайн-проект интерьера",
     description:
       "Разрабатываем визуализацию и рабочую документацию, чтобы результат совпал с ожиданиями до начала работ.",
-    icon: Armchair,
+    icon: "Armchair",
   },
   {
     title: "Комплексное снабжение",
     description:
       "Закупаем материалы и технику по вашему бюджету напрямую у поставщиков — без переплат и простоев на объекте.",
-    icon: Trees,
+    icon: "Trees",
   },
 ]
 
 export function Expertise() {
+  const { content } = useSiteContent()
+  const s = content?.settings
+  const servicesEyebrow = s?.services_eyebrow || "Наши услуги"
+  const servicesTitleHighlight = s?.services_title_highlight || "Опыт"
+  const servicesTitleRest = s?.services_title_rest || ", проверенный сотнями объектов"
+  const servicesDescription =
+    s?.services_description ||
+    "Каждый проект курирует прораб с профильным образованием и опытом от 5 лет — от первого замера до сдачи ключей."
+  const expertiseAreas = content?.expertise?.length ? content.expertise : defaultExpertiseAreas
+
   const [visibleItems, setVisibleItems] = useState<number[]>([])
   const sectionRef = useRef<HTMLElement>(null)
   const itemRefs = useRef<(HTMLDivElement | null)[]>([])
@@ -57,23 +70,21 @@ export function Expertise() {
     <section id="services" ref={sectionRef} className="py-32 md:py-29">
       <div className="container mx-auto px-6 md:px-12">
         <div className="max-w-3xl mb-20">
-          <p className="text-muted-foreground text-sm tracking-[0.3em] uppercase mb-6">Наши услуги</p>
+          <p className="text-muted-foreground text-sm tracking-[0.3em] uppercase mb-6">{servicesEyebrow}</p>
           <h2 className="text-6xl font-medium leading-[1.15] tracking-tight mb-6 text-balance lg:text-8xl">
-            <HighlightedText>Опыт</HighlightedText>, проверенный
-            <br />
-            сотнями объектов
+            <HighlightedText>{servicesTitleHighlight}</HighlightedText>{servicesTitleRest}
           </h2>
           <p className="text-muted-foreground text-lg leading-relaxed">
-            Каждый проект курирует прораб с профильным образованием и опытом от 5 лет — от первого замера до сдачи ключей.
+            {servicesDescription}
           </p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-x-12 gap-y-16">
           {expertiseAreas.map((area, index) => {
-            const Icon = area.icon
+            const Icon = iconMap[area.icon] || Home
             return (
               <div
-                key={area.title}
+                key={index}
                 ref={(el) => {
                   itemRefs.current[index] = el
                 }}

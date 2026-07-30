@@ -1,8 +1,13 @@
 import { useState, useEffect, MouseEvent } from "react"
 import { cn } from "../lib/utils"
 import { AuthModal } from "./AuthModal"
+import { useSiteContent } from "@/hooks/useSiteContent"
 
 export function Header() {
+  const { content } = useSiteContent()
+  const brandName = content?.settings.brand_name || "FixKey"
+  const logoUrl = content?.settings.logo_url || "/fixkey-logo.svg"
+
   const [scrolled, setScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
@@ -40,8 +45,8 @@ export function Header() {
     >
       <nav className="container mx-auto px-6 flex items-center justify-between md:px-[24]">
         <a href="/" className="flex items-center gap-2 group" onClick={scrollToTop}>
-          <img src="/fixkey-logo.svg" alt="FixKey" className="w-16 h-16 -my-4 object-contain" />
-          <span className="text-xl font-semibold tracking-tight text-white">FixKey</span>
+          <img src={logoUrl} alt={brandName} className="w-16 h-16 -my-4 object-contain" />
+          <span className="text-xl font-semibold tracking-tight text-white">{brandName}</span>
         </a>
 
         <ul className="hidden md:flex items-center gap-10 text-sm tracking-wide">

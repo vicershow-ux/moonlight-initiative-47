@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState } from "react"
 import { ArrowDown } from "lucide-react"
+import { useSiteContent } from "@/hooks/useSiteContent"
 
 export function Hero() {
+  const { content } = useSiteContent()
+  const s = content?.settings
+  const heroEyebrow = s?.hero_eyebrow || "Ремонт под ключ"
+  const heroTitleLine1 = s?.hero_title_line1 || "Ремонт, которому"
+  const heroTitleLine2 = s?.hero_title_line2 || "можно доверять"
+  const heroBgImage = s?.hero_bg_image || "/images/hously-background.png"
+  const heroFgImage = s?.hero_fg_image || "/images/hously-foreground.png"
+
   const contentRef = useRef<HTMLDivElement>(null)
   const heroRef = useRef<HTMLElement>(null)
   const titleRef = useRef<HTMLHeadingElement>(null)
@@ -120,7 +129,7 @@ export function Hero() {
     <section id="hero" ref={heroRef} className="relative min-h-screen flex items-center justify-center overflow-hidden">
       <div className="absolute inset-0 z-0">
         <img
-          src="/images/hously-background.png"
+          src={heroBgImage}
           alt="Ремонт квартиры под ключ"
           className="w-full h-full object-cover object-center"
         />
@@ -137,22 +146,22 @@ export function Hero() {
         }}
       >
         <div className="mb-72 md:mb-60 lg:mb-80">
-          <p className="text-sm tracking-[0.3em] uppercase text-center text-secondary mb-0">{"Ремонт под ключ"}</p>
+          <p className="text-sm tracking-[0.3em] uppercase text-center text-secondary mb-0">{heroEyebrow}</p>
 
           <h1
             ref={titleRef}
             className="text-7xl font-medium text-balance text-center text-white mb-0 tracking-tight leading-[0.9] lg:text-8xl"
           >
-            {"Ремонт, которому"}
+            {heroTitleLine1}
             <br />
-            <span className="text-[#D4AF37]">{"можно доверять"}</span>
+            <span className="text-[#D4AF37]">{heroTitleLine2}</span>
           </h1>
         </div>
       </div>
 
       <div className="absolute inset-0 z-20 pointer-events-none">
         <img
-          src="/images/hously-foreground.png"
+          src={heroFgImage}
           alt="Качественный ремонт квартиры"
           className="w-full h-full object-cover object-center"
         />

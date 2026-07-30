@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react"
 import { HighlightedText } from "./HighlightedText"
+import { useSiteContent } from "@/hooks/useSiteContent"
 
-const philosophyItems = [
+const defaultPhilosophyItems = [
   {
     title: "Прозрачная смета",
     description:
@@ -24,6 +25,17 @@ const philosophyItems = [
 ]
 
 export function Philosophy() {
+  const { content } = useSiteContent()
+  const s = content?.settings
+  const aboutEyebrow = s?.about_eyebrow || "О компании"
+  const aboutTitleLine1 = s?.about_title_line1 || "Ремонт с"
+  const aboutTitleHighlight = s?.about_title_highlight || "гарантией"
+  const aboutDescription =
+    s?.about_description ||
+    "FixKey — команда, которая берёт на себя весь ремонт под ключ: от демонтажа до сдачи объекта. Мы отвечаем за результат договором и гарантией."
+  const aboutImage = s?.about_image || "/images/exterior.png"
+  const philosophyItems = content?.philosophy?.length ? content.philosophy : defaultPhilosophyItems
+
   const [visibleItems, setVisibleItems] = useState<number[]>([])
   const itemRefs = useRef<(HTMLDivElement | null)[]>([])
 
@@ -53,16 +65,16 @@ export function Philosophy() {
         <div className="grid lg:grid-cols-2 gap-16 lg:gap-24">
           {/* Left column - Title and image */}
           <div className="lg:sticky lg:top-32 lg:self-start">
-            <p className="text-muted-foreground text-sm tracking-[0.3em] uppercase mb-6">О компании</p>
+            <p className="text-muted-foreground text-sm tracking-[0.3em] uppercase mb-6">{aboutEyebrow}</p>
             <h2 className="text-6xl md:text-6xl font-medium leading-[1.15] tracking-tight mb-6 text-balance lg:text-8xl">
-              Ремонт с
+              {aboutTitleLine1}
               <br />
-              <HighlightedText>гарантией</HighlightedText>
+              <HighlightedText>{aboutTitleHighlight}</HighlightedText>
             </h2>
 
             <div className="relative hidden lg:block">
               <img
-                src="/images/exterior.png"
+                src={aboutImage}
                 alt="Ремонт квартиры под ключ"
                 className="opacity-90 relative z-10 w-auto"
               />
@@ -72,12 +84,12 @@ export function Philosophy() {
           {/* Right column - Description and Philosophy items */}
           <div className="space-y-6 lg:pt-48">
             <p className="text-muted-foreground text-lg leading-relaxed max-w-md mb-12">
-              FixKey — команда, которая берёт на себя весь ремонт под ключ: от демонтажа до сдачи объекта. Мы отвечаем за результат договором и гарантией.
+              {aboutDescription}
             </p>
 
             {philosophyItems.map((item, index) => (
               <div
-                key={item.title}
+                key={index}
                 ref={(el) => {
                   itemRefs.current[index] = el
                 }}

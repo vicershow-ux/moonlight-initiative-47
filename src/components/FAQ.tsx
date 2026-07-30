@@ -1,7 +1,8 @@
 import { useState } from "react"
 import { Plus } from "lucide-react"
+import { useSiteContent } from "@/hooks/useSiteContent"
 
-const faqs = [
+const defaultFaqs = [
   {
     question: "В каких регионах вы работаете?",
     answer:
@@ -35,6 +36,11 @@ const faqs = [
 ]
 
 export function FAQ() {
+  const { content } = useSiteContent()
+  const faqEyebrow = content?.settings.faq_eyebrow || "Вопросы"
+  const faqTitle = content?.settings.faq_title || "Частые вопросы"
+  const faqs = content?.faq?.length ? content.faq : defaultFaqs
+
   const [openIndex, setOpenIndex] = useState<number | null>(null)
 
   const toggleQuestion = (index: number) => {
@@ -45,9 +51,9 @@ export function FAQ() {
     <section id="faq" className="py-20 md:py-29">
       <div className="container mx-auto px-6 md:px-12">
         <div className="max-w-3xl mb-16">
-          <p className="text-muted-foreground text-sm tracking-[0.3em] uppercase mb-6">Вопросы</p>
+          <p className="text-muted-foreground text-sm tracking-[0.3em] uppercase mb-6">{faqEyebrow}</p>
           <h2 className="text-6xl font-medium leading-[1.15] tracking-tight mb-6 text-balance lg:text-7xl">
-            Частые вопросы
+            {faqTitle}
           </h2>
         </div>
 
