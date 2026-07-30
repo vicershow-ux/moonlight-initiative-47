@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
-import { estimatesApi, objectsApi, Estimate, ObjectItem } from "@/lib/api"
+import { estimatesApi, objectsApi, objectStatusesApi, Estimate, ObjectItem, ObjectStatus } from "@/lib/api"
 import { printEstimate, downloadEstimatePdf } from "@/lib/printEstimate"
+import { getStatusBadgeClass } from "@/lib/objectStatusColors"
 import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/lib/utils"
 
@@ -22,17 +23,11 @@ const formatMoney = (n: number) =>
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" })
 
-const objectStatusColors: Record<string, string> = {
-  "лид": "bg-purple-500/20 text-purple-300",
-  "в работе": "bg-blue-500/20 text-blue-300",
-  "завершён": "bg-green-500/20 text-green-300",
-  "отменён": "bg-red-500/20 text-red-300",
-}
-
 export default function Documents() {
   const { user } = useAuth()
   const [estimates, setEstimates] = useState<Estimate[]>([])
   const [objectsMap, setObjectsMap] = useState<Record<number, ObjectItem>>({})
+  const [objectStatuses, setObjectStatuses] = useState<ObjectStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<TabKey>("all")
   const [search, setSearch] = useState("")
@@ -41,12 +36,13 @@ export default function Documents() {
 
   const load = () => {
     setLoading(true)
-    Promise.all([estimatesApi.listAll(), objectsApi.list()])
-      .then(([estData, objData]) => {
+    Promise.all([estimatesApi.listAll(), objectsApi.list(), objectStatusesApi.list()])
+      .then(([estData, objData, statusData]) => {
         setEstimates(estData.estimates)
         const map: Record<number, ObjectItem> = {}
         objData.objects.forEach((o) => { map[o.id] = o })
         setObjectsMap(map)
+        setObjectStatuses(statusData.statuses)
       })
       .finally(() => setLoading(false))
   }
@@ -189,7 +185,7 @@ export default function Documents() {
                         {obj?.status ? (
                           <span className={cn(
                             "px-2 py-0.5 rounded-full text-xs",
-                            objectStatusColors[obj.status] || "bg-white/10 text-white/60"
+                            getStatusBadgeClass(objectStatuses.find((s) => s.name === obj.status)?.color)
                           )}>
                             {obj.status}
                           </span>

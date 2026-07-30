@@ -80,6 +80,45 @@ def handle_auth(method, event, conn, cur, action):
         cur.execute("INSERT INTO companies (name) VALUES (%s) RETURNING id", (company_name,))
         company_id = cur.fetchone()[0]
 
+        default_statuses = [
+            ('лид', 'purple', 10, True, False, False),
+            ('на замере', 'blue', 20, False, False, False),
+            ('КП отправлено', 'cyan', 30, False, False, False),
+            ('на подписании', 'yellow', 40, False, True, False),
+            ('ожидание предоплаты', 'orange', 50, False, True, False),
+            ('в работе', 'green', 60, False, True, False),
+            ('на паузе', 'gray', 70, False, True, False),
+            ('работы завершены', 'teal', 80, False, True, False),
+            ('ожидание финального платежа', 'emerald', 90, False, True, False),
+            ('закрыт', 'slate', 100, False, False, True),
+            ('отменён', 'red', 110, False, False, True),
+        ]
+        status_ids = {}
+        for s_name, s_color, s_order, s_default, s_active, s_final in default_statuses:
+            cur.execute(
+                "INSERT INTO object_statuses (company_id, name, color, sort_order, is_default, is_active_stage, is_final) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                (company_id, s_name, s_color, s_order, s_default, s_active, s_final)
+            )
+            status_ids[s_name] = cur.fetchone()[0]
+
+        default_transitions = [
+            ('лид', 'на замере'), ('лид', 'отменён'),
+            ('на замере', 'КП отправлено'), ('на замере', 'отменён'),
+            ('КП отправлено', 'на подписании'), ('КП отправлено', 'отменён'),
+            ('на подписании', 'ожидание предоплаты'),
+            ('ожидание предоплаты', 'в работе'),
+            ('в работе', 'на паузе'), ('в работе', 'работы завершены'),
+            ('на паузе', 'в работе'),
+            ('работы завершены', 'ожидание финального платежа'),
+            ('ожидание финального платежа', 'закрыт'),
+        ]
+        for from_name, to_name in default_transitions:
+            cur.execute(
+                "INSERT INTO object_status_transitions (company_id, from_status_id, to_status_id) VALUES (%s, %s, %s)",
+                (company_id, status_ids[from_name], status_ids[to_name])
+            )
+
         pwd_hash = hash_password(password)
         cur.execute(
             "INSERT INTO users (company_id, full_name, email, password_hash, role) VALUES (%s, %s, %s, %s, 'owner') RETURNING id",

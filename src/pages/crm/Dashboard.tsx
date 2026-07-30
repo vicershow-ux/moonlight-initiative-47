@@ -2,25 +2,23 @@ import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
-import { dashboardApi, DashboardStats } from "@/lib/api"
-
-const statusColors: Record<string, string> = {
-  "лид": "bg-purple-500/20 text-purple-300",
-  "в работе": "bg-blue-500/20 text-blue-300",
-  "завершён": "bg-green-500/20 text-green-300",
-  "отменён": "bg-red-500/20 text-red-300",
-}
+import { dashboardApi, DashboardStats, objectStatusesApi, ObjectStatus } from "@/lib/api"
+import { getStatusBadgeClass } from "@/lib/objectStatusColors"
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [statuses, setStatuses] = useState<ObjectStatus[]>([])
 
   useEffect(() => {
     dashboardApi
       .stats()
       .then(setStats)
       .finally(() => setLoading(false))
+    objectStatusesApi.list().then((data) => setStatuses(data.statuses))
   }, [])
+
+  const colorFor = (name: string) => statuses.find((s) => s.name === name)?.color
 
   const formatMoney = (n: number) =>
     new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n) + " ₽"
@@ -88,7 +86,7 @@ export default function Dashboard() {
             {stats && stats.statuses.length > 0 ? (
               stats.statuses.map((s) => (
                 <div key={s.status} className="flex items-center justify-between text-sm">
-                  <span className={`px-2 py-0.5 rounded-full text-xs ${statusColors[s.status] || "bg-white/10 text-white/60"}`}>
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${getStatusBadgeClass(colorFor(s.status))}`}>
                     {s.status}
                   </span>
                   <span className="font-medium">{s.count}</span>
@@ -135,7 +133,7 @@ export default function Dashboard() {
                       <td className="py-3 pr-4 text-white/60">{obj.object_type}</td>
                       <td className="py-3 pr-4 text-white/60">{obj.area} м²</td>
                       <td className="py-3 pr-4">
-                        <span className={`px-2 py-0.5 rounded-full text-xs ${statusColors[obj.status] || "bg-white/10 text-white/60"}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${getStatusBadgeClass(colorFor(obj.status))}`}>
                           {obj.status}
                         </span>
                       </td>

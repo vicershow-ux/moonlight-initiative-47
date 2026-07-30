@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { Link } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { useAuth } from "@/contexts/AuthContext"
@@ -122,12 +123,18 @@ export default function Company() {
           <p className="text-sm text-white/40 mt-0.5">Реквизиты, брендинг и дефолтные настройки компании</p>
         </div>
 
-        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl overflow-hidden">
-          <div className="flex items-center gap-2 px-6 py-4 border-b border-white/10 bg-white/[0.02]">
+        <Link
+          to="/cabinet/company/pipeline"
+          className="flex items-center justify-between gap-2 px-6 py-4 mb-6 border border-white/10 rounded-xl bg-[#1f1f1f] hover:border-[#D4AF37]/40 transition-colors group"
+        >
+          <div className="flex items-center gap-2">
             <Icon name="GitBranch" size={16} className="text-[#D4AF37]" />
             <span className="text-sm font-medium">Воронка объектов</span>
           </div>
+          <Icon name="ChevronRight" size={16} className="text-white/30 group-hover:text-white/60 transition-colors" />
+        </Link>
 
+        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl overflow-hidden">
           <div className="p-6 space-y-5">
             <div>
               <label className={labelClass}>Тип субъекта</label>

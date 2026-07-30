@@ -1,0 +1,24 @@
+export const statusColorOptions = [
+  { value: "purple", label: "Фиолетовый", badge: "bg-purple-500/20 text-purple-300", dot: "bg-purple-400" },
+  { value: "blue", label: "Синий", badge: "bg-blue-500/20 text-blue-300", dot: "bg-blue-400" },
+  { value: "cyan", label: "Голубой", badge: "bg-cyan-500/20 text-cyan-300", dot: "bg-cyan-400" },
+  { value: "yellow", label: "Жёлтый", badge: "bg-yellow-500/20 text-yellow-300", dot: "bg-yellow-400" },
+  { value: "orange", label: "Оранжевый", badge: "bg-orange-500/20 text-orange-300", dot: "bg-orange-400" },
+  { value: "green", label: "Зелёный", badge: "bg-green-500/20 text-green-300", dot: "bg-green-400" },
+  { value: "teal", label: "Бирюзовый", badge: "bg-teal-500/20 text-teal-300", dot: "bg-teal-400" },
+  { value: "emerald", label: "Изумрудный", badge: "bg-emerald-500/20 text-emerald-300", dot: "bg-emerald-400" },
+  { value: "gray", label: "Серый", badge: "bg-white/10 text-white/60", dot: "bg-white/40" },
+  { value: "slate", label: "Тёмно-серый", badge: "bg-slate-500/20 text-slate-300", dot: "bg-slate-400" },
+  { value: "red", label: "Красный", badge: "bg-red-500/20 text-red-300", dot: "bg-red-400" },
+]
+
+export const statusColorMap: Record<string, string> = Object.fromEntries(
+  statusColorOptions.map((c) => [c.value, c.badge])
+)
+
+export const statusDotMap: Record<string, string> = Object.fromEntries(
+  statusColorOptions.map((c) => [c.value, c.dot])
+)
+
+export const getStatusBadgeClass = (color?: string) => statusColorMap[color || "gray"] || statusColorMap.gray
+export const getStatusDotClass = (color?: string) => statusDotMap[color || "gray"] || statusDotMap.gray

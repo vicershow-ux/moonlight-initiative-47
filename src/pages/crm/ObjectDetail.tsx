@@ -2,18 +2,12 @@ import { useEffect, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
-import { objectsApi, estimatesApi, objectRoomsApi, Estimate, ObjectItem, ObjectRoom } from "@/lib/api"
+import { objectsApi, objectStatusesApi, estimatesApi, objectRoomsApi, Estimate, ObjectItem, ObjectRoom, ObjectStatus } from "@/lib/api"
 import { EstimatesListModal } from "@/components/crm/EstimatesListModal"
 import { printEstimate } from "@/lib/printEstimate"
 import { getEstimateStatusColor, getEstimateStatusLabel } from "@/lib/estimateStatus"
+import { getStatusBadgeClass } from "@/lib/objectStatusColors"
 import { useAuth } from "@/contexts/AuthContext"
-
-const statusColors: Record<string, string> = {
-  "лид": "bg-purple-500/20 text-purple-300",
-  "в работе": "bg-blue-500/20 text-blue-300",
-  "завершён": "bg-green-500/20 text-green-300",
-  "отменён": "bg-red-500/20 text-red-300",
-}
 
 const formatMoney = (n: number) =>
   new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n) + " ₽"
@@ -38,6 +32,7 @@ export default function ObjectDetail() {
   const [printingId, setPrintingId] = useState<number | null>(null)
   const [rooms, setRooms] = useState<ObjectRoom[]>([])
   const [roomsLoading, setRoomsLoading] = useState(true)
+  const [statuses, setStatuses] = useState<ObjectStatus[]>([])
 
   const [estimatesListOpen, setEstimatesListOpen] = useState(false)
 
@@ -49,6 +44,7 @@ export default function ObjectDetail() {
       .then(setObject)
       .catch(() => navigate("/cabinet/objects"))
       .finally(() => setLoading(false))
+    objectStatusesApi.list().then((data) => setStatuses(data.statuses))
   }
 
   const loadEstimates = () => {
@@ -116,7 +112,7 @@ export default function ObjectDetail() {
       <div className="flex items-center justify-between mb-6 -mt-2">
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-semibold tracking-tight">{object.object_code}</h2>
-          <span className={`px-2 py-0.5 rounded-full text-xs ${statusColors[object.status] || "bg-white/10 text-white/60"}`}>
+          <span className={`px-2 py-0.5 rounded-full text-xs ${getStatusBadgeClass(statuses.find((s) => s.name === object.status)?.color)}`}>
             {object.status}
           </span>
         </div>

@@ -8,6 +8,7 @@ const DASHBOARD_URL = funcUrls.dashboard
 const ESTIMATES_URL = funcUrls.estimates
 const LEADS_URL = funcUrls.leads
 const OBJECT_ROOMS_URL = funcUrls.object_rooms
+const OBJECT_STATUSES_URL = funcUrls.object_statuses
 
 const TOKEN_KEY = "fixkey_token"
 
@@ -613,5 +614,73 @@ export const companyApi = {
       body: JSON.stringify(payload),
     })
     return parseResponse(res) as Promise<CompanyData>
+  },
+}
+
+export interface ObjectStatus {
+  id: number
+  name: string
+  color: string
+  sort_order: number
+  is_default: boolean
+  is_active_stage: boolean
+  is_final: boolean
+  is_archived: boolean
+  object_count: number
+}
+
+export interface ObjectStatusTransition {
+  from_status_id: number
+  to_status_id: number
+}
+
+export const objectStatusesApi = {
+  async list() {
+    const res = await fetch(OBJECT_STATUSES_URL, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ statuses: ObjectStatus[]; transitions: ObjectStatusTransition[] }>
+  },
+
+  async create(payload: { name: string; color: string; is_active_stage?: boolean; is_final?: boolean }) {
+    const res = await fetch(OBJECT_STATUSES_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<ObjectStatus>
+  },
+
+  async update(id: number, payload: Partial<{ name: string; color: string; is_active_stage: boolean; is_final: boolean; is_archived: boolean }>) {
+    const res = await fetch(`${OBJECT_STATUSES_URL}?id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res)
+  },
+
+  async reorder(order: number[]) {
+    const res = await fetch(`${OBJECT_STATUSES_URL}?action=reorder`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ order }),
+    })
+    return parseResponse(res)
+  },
+
+  async remove(id: number) {
+    const res = await fetch(`${OBJECT_STATUSES_URL}?id=${id}`, {
+      method: "DELETE",
+      headers: { ...authHeaders() },
+    })
+    return parseResponse(res)
+  },
+
+  async setTransitions(fromId: number, toIds: number[]) {
+    const res = await fetch(`${OBJECT_STATUSES_URL}?action=transitions&id=${fromId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ to_status_ids: toIds }),
+    })
+    return parseResponse(res)
   },
 }

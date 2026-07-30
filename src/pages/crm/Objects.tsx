@@ -1,19 +1,11 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
-import { objectsApi, ObjectItem } from "@/lib/api"
+import { objectsApi, objectStatusesApi, ObjectItem, ObjectStatus, ObjectStatusTransition } from "@/lib/api"
 import { EstimatesListModal } from "@/components/crm/EstimatesListModal"
+import { getStatusBadgeClass } from "@/lib/objectStatusColors"
 import { useAuth } from "@/contexts/AuthContext"
-
-const statusColors: Record<string, string> = {
-  "лид": "bg-purple-500/20 text-purple-300",
-  "в работе": "bg-blue-500/20 text-blue-300",
-  "завершён": "bg-green-500/20 text-green-300",
-  "отменён": "bg-red-500/20 text-red-300",
-}
-
-const statusOptions = ["лид", "в работе", "завершён", "отменён"]
 
 export default function Objects() {
   const navigate = useNavigate()
@@ -21,15 +13,35 @@ export default function Objects() {
   const isClient = user?.role === "client"
   const [objects, setObjects] = useState<ObjectItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [statuses, setStatuses] = useState<ObjectStatus[]>([])
+  const [transitions, setTransitions] = useState<ObjectStatusTransition[]>([])
 
   const [estimatesListOpen, setEstimatesListOpen] = useState(false)
   const [selectedObject, setSelectedObject] = useState<ObjectItem | null>(null)
 
+  const statusByName = useMemo(() => {
+    const map = new Map<string, ObjectStatus>()
+    statuses.forEach((s) => map.set(s.name, s))
+    return map
+  }, [statuses])
+
+  const getAllowedNextStatuses = (currentName: string) => {
+    const current = statusByName.get(currentName)
+    if (!current) return statuses.filter((s) => !s.is_archived)
+    const allowedIds = new Set(
+      transitions.filter((t) => t.from_status_id === current.id).map((t) => t.to_status_id)
+    )
+    return statuses.filter((s) => !s.is_archived && (s.id === current.id || allowedIds.has(s.id)))
+  }
+
   const load = () => {
     setLoading(true)
-    objectsApi
-      .list()
-      .then((data) => setObjects(data.objects))
+    Promise.all([objectsApi.list(), objectStatusesApi.list()])
+      .then(([objData, statusData]) => {
+        setObjects(objData.objects)
+        setStatuses(statusData.statuses)
+        setTransitions(statusData.transitions)
+      })
       .finally(() => setLoading(false))
   }
 
@@ -100,18 +112,18 @@ export default function Objects() {
                     <td className="py-3 pr-4 text-white/60">{obj.area} м²</td>
                     <td className="py-3 pr-4">
                       {isClient ? (
-                        <span className={`px-2 py-0.5 rounded-full text-xs ${statusColors[obj.status] || "bg-white/10 text-white/60"}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${getStatusBadgeClass(statusByName.get(obj.status)?.color)}`}>
                           {obj.status}
                         </span>
                       ) : (
                         <select
                           value={obj.status}
                           onChange={(e) => handleStatusChange(obj.id, e.target.value)}
-                          className={`px-2 py-1 rounded-full text-xs bg-[#1a1a1a] border border-white/10 outline-none ${statusColors[obj.status] || ""}`}
+                          className={`px-2 py-1 rounded-full text-xs bg-[#1a1a1a] border border-white/10 outline-none ${getStatusBadgeClass(statusByName.get(obj.status)?.color)}`}
                         >
-                          {statusOptions.map((s) => (
-                            <option key={s} value={s} className="bg-[#1a1a1a] text-white">
-                              {s}
+                          {getAllowedNextStatuses(obj.status).map((s) => (
+                            <option key={s.id} value={s.name} className="bg-[#1a1a1a] text-white">
+                              {s.name}
                             </option>
                           ))}
                         </select>
