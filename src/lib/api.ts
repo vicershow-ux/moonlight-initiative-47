@@ -9,6 +9,7 @@ const ESTIMATES_URL = funcUrls.estimates
 const LEADS_URL = funcUrls.leads
 const OBJECT_ROOMS_URL = funcUrls.object_rooms
 const OBJECT_STATUSES_URL = funcUrls.object_statuses
+const SITE_URL = funcUrls.site
 
 const TOKEN_KEY = "fixkey_token"
 
@@ -682,5 +683,254 @@ export const objectStatusesApi = {
       body: JSON.stringify({ to_status_ids: toIds }),
     })
     return parseResponse(res)
+  },
+}
+
+export interface SiteSettings {
+  brand_name: string
+  logo_url: string
+  favicon_url: string
+  meta_title: string
+  meta_description: string
+  phone: string
+  email: string
+  telegram_url: string
+  vk_url: string
+  hero_eyebrow: string
+  hero_title_line1: string
+  hero_title_line2: string
+  hero_bg_image: string
+  hero_fg_image: string
+  about_eyebrow: string
+  about_title_line1: string
+  about_title_highlight: string
+  about_description: string
+  about_image: string
+  projects_eyebrow: string
+  projects_title: string
+  services_eyebrow: string
+  services_title_highlight: string
+  services_title_rest: string
+  services_description: string
+  faq_eyebrow: string
+  faq_title: string
+  cta_eyebrow: string
+  cta_title_line1: string
+  cta_title_highlight: string
+  cta_description: string
+  footer_description: string
+  copyright_text: string
+}
+
+export interface SitePhilosophyItem {
+  id: number
+  sort_order: number
+  title: string
+  description: string
+}
+
+export interface SiteProject {
+  id: number
+  sort_order: number
+  title: string
+  category: string
+  location: string
+  year: string
+  image_url: string
+}
+
+export interface SiteExpertiseItem {
+  id: number
+  sort_order: number
+  title: string
+  description: string
+  icon: string
+}
+
+export interface SiteFaqItem {
+  id: number
+  sort_order: number
+  question: string
+  answer: string
+}
+
+export interface SitePublicContent {
+  settings: SiteSettings
+  philosophy: SitePhilosophyItem[]
+  projects: SiteProject[]
+  expertise: SiteExpertiseItem[]
+  faq: SiteFaqItem[]
+}
+
+export const siteApi = {
+  async getPublic() {
+    const res = await fetch(`${SITE_URL}?resource=public`)
+    return parseResponse(res) as Promise<SitePublicContent>
+  },
+
+  async getSettings() {
+    const res = await fetch(`${SITE_URL}?resource=settings`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<SiteSettings>
+  },
+
+  async updateSettings(payload: Partial<SiteSettings> & Record<`${string}_file`, string | undefined>) {
+    const res = await fetch(`${SITE_URL}?resource=settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<SiteSettings>
+  },
+
+  philosophy: {
+    async list() {
+      const res = await fetch(`${SITE_URL}?resource=philosophy`, { headers: { ...authHeaders() } })
+      return parseResponse(res) as Promise<{ items: SitePhilosophyItem[] }>
+    },
+    async create(payload: { title: string; description: string }) {
+      const res = await fetch(`${SITE_URL}?resource=philosophy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify(payload),
+      })
+      return parseResponse(res)
+    },
+    async update(id: number, payload: Partial<{ title: string; description: string }>) {
+      const res = await fetch(`${SITE_URL}?resource=philosophy&id=${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify(payload),
+      })
+      return parseResponse(res)
+    },
+    async reorder(order: number[]) {
+      const res = await fetch(`${SITE_URL}?resource=philosophy&action=reorder`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ order }),
+      })
+      return parseResponse(res)
+    },
+    async remove(id: number) {
+      const res = await fetch(`${SITE_URL}?resource=philosophy&id=${id}`, {
+        method: "DELETE",
+        headers: { ...authHeaders() },
+      })
+      return parseResponse(res)
+    },
+  },
+
+  projects: {
+    async list() {
+      const res = await fetch(`${SITE_URL}?resource=projects`, { headers: { ...authHeaders() } })
+      return parseResponse(res) as Promise<{ items: SiteProject[] }>
+    },
+    async create(payload: { title: string; category: string; location: string; year: string; image_url?: string; image_file?: string }) {
+      const res = await fetch(`${SITE_URL}?resource=projects`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify(payload),
+      })
+      return parseResponse(res)
+    },
+    async update(id: number, payload: Partial<{ title: string; category: string; location: string; year: string; image_url: string; image_file: string }>) {
+      const res = await fetch(`${SITE_URL}?resource=projects&id=${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify(payload),
+      })
+      return parseResponse(res)
+    },
+    async reorder(order: number[]) {
+      const res = await fetch(`${SITE_URL}?resource=projects&action=reorder`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ order }),
+      })
+      return parseResponse(res)
+    },
+    async remove(id: number) {
+      const res = await fetch(`${SITE_URL}?resource=projects&id=${id}`, {
+        method: "DELETE",
+        headers: { ...authHeaders() },
+      })
+      return parseResponse(res)
+    },
+  },
+
+  expertise: {
+    async list() {
+      const res = await fetch(`${SITE_URL}?resource=expertise`, { headers: { ...authHeaders() } })
+      return parseResponse(res) as Promise<{ items: SiteExpertiseItem[] }>
+    },
+    async create(payload: { title: string; description: string; icon: string }) {
+      const res = await fetch(`${SITE_URL}?resource=expertise`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify(payload),
+      })
+      return parseResponse(res)
+    },
+    async update(id: number, payload: Partial<{ title: string; description: string; icon: string }>) {
+      const res = await fetch(`${SITE_URL}?resource=expertise&id=${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify(payload),
+      })
+      return parseResponse(res)
+    },
+    async reorder(order: number[]) {
+      const res = await fetch(`${SITE_URL}?resource=expertise&action=reorder`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ order }),
+      })
+      return parseResponse(res)
+    },
+    async remove(id: number) {
+      const res = await fetch(`${SITE_URL}?resource=expertise&id=${id}`, {
+        method: "DELETE",
+        headers: { ...authHeaders() },
+      })
+      return parseResponse(res)
+    },
+  },
+
+  faq: {
+    async list() {
+      const res = await fetch(`${SITE_URL}?resource=faq`, { headers: { ...authHeaders() } })
+      return parseResponse(res) as Promise<{ items: SiteFaqItem[] }>
+    },
+    async create(payload: { question: string; answer: string }) {
+      const res = await fetch(`${SITE_URL}?resource=faq`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify(payload),
+      })
+      return parseResponse(res)
+    },
+    async update(id: number, payload: Partial<{ question: string; answer: string }>) {
+      const res = await fetch(`${SITE_URL}?resource=faq&id=${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify(payload),
+      })
+      return parseResponse(res)
+    },
+    async reorder(order: number[]) {
+      const res = await fetch(`${SITE_URL}?resource=faq&action=reorder`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ order }),
+      })
+      return parseResponse(res)
+    },
+    async remove(id: number) {
+      const res = await fetch(`${SITE_URL}?resource=faq&id=${id}`, {
+        method: "DELETE",
+        headers: { ...authHeaders() },
+      })
+      return parseResponse(res)
+    },
   },
 }

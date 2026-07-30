@@ -1,0 +1,7 @@
+{
+  "tests": [
+    {"name": "OPTIONS preflight", "method": "OPTIONS", "path": "/", "expectedStatus": 200},
+    {"name": "Public settings", "method": "GET", "path": "/?resource=public", "expectedStatus": 200},
+    {"name": "Unauthorized settings GET", "method": "GET", "path": "/?resource=settings", "expectedStatus": 401}
+  ]
+}
