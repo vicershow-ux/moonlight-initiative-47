@@ -48,7 +48,8 @@ def get_current_user(cur, event):
     if not token:
         return None
     cur.execute(
-        "SELECT u.id, u.company_id, u.role, u.full_name FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = %s AND s.expires_at > NOW()",
+        "SELECT u.id, u.company_id, u.role, u.full_name FROM sessions s JOIN users u ON u.id = s.user_id "
+        "WHERE s.token = %s AND s.expires_at > NOW() AND u.is_active = TRUE",
         (token,)
     )
     row = cur.fetchone()
@@ -105,7 +106,7 @@ def handle_auth(method, event, conn, cur, action):
         password = body.get('password') or ''
 
         cur.execute(
-            "SELECT u.id, u.full_name, u.email, u.role, u.company_id, c.name, u.password_hash, u.totp_enabled, u.totp_secret "
+            "SELECT u.id, u.full_name, u.email, u.role, u.company_id, c.name, u.password_hash, u.totp_enabled, u.totp_secret, u.is_active "
             "FROM users u JOIN companies c ON c.id = u.company_id WHERE u.email = %s",
             (email,)
         )
@@ -113,10 +114,13 @@ def handle_auth(method, event, conn, cur, action):
         if not row:
             return response(401, {'error': 'Неверный email или пароль'})
 
-        user_id, full_name, user_email, role, company_id, company_name, stored_hash, totp_enabled, totp_secret = row
+        user_id, full_name, user_email, role, company_id, company_name, stored_hash, totp_enabled, totp_secret, is_active = row
 
         if stored_hash != hash_password(password):
             return response(401, {'error': 'Неверный email или пароль'})
+
+        if not is_active:
+            return response(403, {'error': 'Доступ отключён. Обратитесь к владельцу компании'})
 
         if totp_enabled:
             challenge_token = make_token()
@@ -134,6 +138,7 @@ def handle_auth(method, event, conn, cur, action):
             "INSERT INTO sessions (user_id, token, expires_at) VALUES (%s, %s, %s)",
             (user_id, token, expires_at)
         )
+        cur.execute("UPDATE users SET last_login_at = NOW() WHERE id = %s", (user_id,))
         conn.commit()
 
         return response(200, {
@@ -177,6 +182,7 @@ def handle_auth(method, event, conn, cur, action):
             "INSERT INTO sessions (user_id, token, expires_at) VALUES (%s, %s, %s)",
             (user_id, token, expires_at)
         )
+        cur.execute("UPDATE users SET last_login_at = NOW() WHERE id = %s", (user_id,))
         conn.commit()
 
         return response(200, {
@@ -224,11 +230,11 @@ def handle_team(method, event, conn, cur):
 
     if method == 'GET':
         cur.execute(
-            "SELECT id, full_name, email, role, phone, created_at FROM users WHERE company_id = %s ORDER BY created_at DESC",
+            "SELECT id, full_name, email, role, phone, created_at, is_active, last_login_at FROM users WHERE company_id = %s ORDER BY created_at DESC",
             (company_id,)
         )
         rows = cur.fetchall()
-        keys = ['id', 'full_name', 'email', 'role', 'phone', 'created_at']
+        keys = ['id', 'full_name', 'email', 'role', 'phone', 'created_at', 'is_active', 'last_login_at']
         members = []
         for r in rows:
             m = dict(zip(keys, r))
@@ -289,7 +295,8 @@ def handle_team(method, event, conn, cur):
 
         return response(200, {
             'id': new_id, 'full_name': full_name, 'email': email,
-            'role': role, 'phone': phone, 'created_at': created_at
+            'role': role, 'phone': phone, 'created_at': created_at,
+            'is_active': True, 'last_login_at': None
         })
 
     if method == 'PUT':
@@ -324,6 +331,20 @@ def handle_team(method, event, conn, cur):
                 (hash_password(new_password), member_id, company_id)
             )
             cur.execute("DELETE FROM sessions WHERE user_id = %s", (member_id,))
+            conn.commit()
+
+        if 'is_active' in body:
+            if row[1] == 'owner':
+                return response(400, {'error': 'Нельзя отключить владельца компании'})
+            if int(member_id) == user['user_id']:
+                return response(400, {'error': 'Нельзя отключить самого себя'})
+            new_active = bool(body['is_active'])
+            cur.execute(
+                "UPDATE users SET is_active = %s WHERE id = %s AND company_id = %s",
+                (new_active, member_id, company_id)
+            )
+            if not new_active:
+                cur.execute("DELETE FROM sessions WHERE user_id = %s", (member_id,))
             conn.commit()
 
         return response(200, {'success': True})

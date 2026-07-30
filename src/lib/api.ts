@@ -474,6 +474,8 @@ export interface TeamMember {
   role: string
   phone: string | null
   created_at: string
+  is_active: boolean
+  last_login_at: string | null
   objects?: { id: number; object_code: string; client_name: string }[]
 }
 
@@ -506,6 +508,15 @@ export const teamApi = {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ password }),
+    })
+    return parseResponse(res)
+  },
+
+  async setActive(id: number, isActive: boolean) {
+    const res = await fetch(`${AUTH_URL}?resource=team&id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ is_active: isActive }),
     })
     return parseResponse(res)
   },
