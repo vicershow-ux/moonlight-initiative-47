@@ -14,7 +14,7 @@ export default function Index() {
 
   useEffect(() => {
     if (!content) return
-    const { meta_title, meta_description, favicon_url } = content.settings
+    const { meta_title, meta_description } = content.settings
 
     if (meta_title) document.title = meta_title
 
@@ -26,15 +26,6 @@ export default function Index() {
         document.head.appendChild(descTag)
       }
       descTag.setAttribute("content", meta_description)
-    }
-
-    if (favicon_url) {
-      const iconSelectors = ['link[rel="icon"]', 'link[rel="shortcut icon"]', 'link[rel="apple-touch-icon"]']
-      iconSelectors.forEach((selector) => {
-        document.querySelectorAll(selector).forEach((el) => {
-          el.setAttribute("href", favicon_url)
-        })
-      })
     }
   }, [content])
 

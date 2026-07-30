@@ -4,7 +4,6 @@ export function Footer() {
   const { content } = useSiteContent()
   const s = content?.settings
   const brandName = s?.brand_name || "FixKey"
-  const logoUrl = s?.logo_url || "/fixkey-logo.svg"
   const footerDescription =
     s?.footer_description ||
     "Ремонт квартир и домов под ключ с гарантией результата. Прозрачная смета и контроль на каждом этапе."
@@ -22,7 +21,6 @@ export function Footer() {
           {/* Brand */}
           <div className="md:col-span-2">
             <a href="/" className="inline-flex items-center gap-2 mb-6">
-              <img src={logoUrl} alt={brandName} className="w-64 h-64 -my-16 object-contain" />
               <span className="text-xl font-semibold tracking-tight">{brandName}</span>
             </a>
             <p className="text-muted-foreground leading-relaxed max-w-sm">
