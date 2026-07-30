@@ -4,24 +4,11 @@ import Icon from "@/components/ui/icon"
 import { teamApi, TeamMember } from "@/lib/api"
 import { useAuth } from "@/contexts/AuthContext"
 import { SetPasswordDialog } from "@/components/crm/SetPasswordDialog"
-import { positionOptions, getPositionLabel, getPositionColor, PositionKey } from "@/lib/positions"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-
-type RoleFilter = "all" | PositionKey
-type StatusFilter = "all" | "active" | "inactive" | "never"
-type SortKey = "created_desc" | "created_asc" | "name_asc" | "last_login" | "position"
+import { getPositionLabel, PositionKey } from "@/lib/positions"
+import { TeamOwnerCard } from "@/components/crm/team/TeamOwnerCard"
+import { TeamStatsBar } from "@/components/crm/team/TeamStatsBar"
+import { TeamMembersPanel, RoleFilter, StatusFilter, SortKey } from "@/components/crm/team/TeamMembersPanel"
+import { CreateMemberDialog } from "@/components/crm/team/CreateMemberDialog"
 
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" })
@@ -208,363 +195,53 @@ export default function Team() {
         </div>
       )}
 
-      {owner && (
-        <div className="relative bg-gradient-to-br from-[#3a1f14] via-[#2a1a12] to-[#1f1f1f] border border-white/10 rounded-xl p-5 mb-6 overflow-hidden">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-full bg-[#D4AF37]/20 text-[#D4AF37] flex items-center justify-center text-sm font-semibold shrink-0">
-                {initials(owner.full_name)}
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-medium">{owner.full_name}</p>
-                  <span className="px-2 py-0.5 rounded-full text-xs bg-red-500/20 text-red-300">Владелец компании</span>
-                  <span className="px-2 py-0.5 rounded-full text-xs bg-white/10 text-white/60">Супер-администратор</span>
-                </div>
-                <p className="text-sm text-[#D4AF37] mt-0.5">{owner.email}</p>
-                <p className="text-xs text-white/40 mt-2 max-w-xl">
-                  Этот пользователь является владельцем компании и имеет полный доступ к управлению настройками, сотрудниками, приглашениями и критичными действиями.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs">
-                <p className="text-white/40 mb-0.5">Последний вход</p>
-                <p className="font-medium">{owner.last_login_at ? formatDateTime(owner.last_login_at) : "—"}</p>
-              </div>
-              <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs">
-                <p className="text-white/40 mb-0.5">Дата назначения</p>
-                <p className="font-medium">{formatDateTime(owner.created_at)}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {owner && <TeamOwnerCard owner={owner} formatDateTime={formatDateTime} initials={initials} />}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-4">
-          <p className="text-xs text-white/40 mb-2">Всего сотрудников</p>
-          <p className="text-2xl font-semibold">{stats.total}</p>
-          <p className="text-xs text-white/30 mt-1">Все пользователи компании</p>
-        </div>
-        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-4">
-          <p className="text-xs text-white/40 mb-2">Активные</p>
-          <p className="text-2xl font-semibold text-green-400">{stats.active}</p>
-          <p className="text-xs text-white/30 mt-1">Есть доступ и возможность входа</p>
-        </div>
-        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-4">
-          <p className="text-xs text-white/40 mb-2">Отключённые</p>
-          <p className="text-2xl font-semibold text-red-400">{stats.inactive}</p>
-          <p className="text-xs text-white/30 mt-1">Доступ временно отключён</p>
-        </div>
-        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-4">
-          <p className="text-xs text-white/40 mb-2">Ожидают приглашение</p>
-          <p className="text-2xl font-semibold">{stats.invites}</p>
-          <p className="text-xs text-white/30 mt-1">Ещё не приняли приглашение</p>
-        </div>
-      </div>
+      <TeamStatsBar stats={stats} tab={tab} setTab={setTab} />
 
-      <div className="flex items-center gap-1 bg-[#1f1f1f] border border-white/10 rounded-lg p-1 mb-6 w-fit">
-        <button
-          onClick={() => setTab("members")}
-          className={`px-4 py-2 rounded-md text-sm transition-colors ${tab === "members" ? "bg-[#D4AF37] text-[#161616]" : "text-white/50 hover:text-white"}`}
-        >
-          Сотрудники
-        </button>
-        <button
-          onClick={() => setTab("invites")}
-          className={`px-4 py-2 rounded-md text-sm transition-colors ${tab === "invites" ? "bg-[#D4AF37] text-[#161616]" : "text-white/50 hover:text-white"}`}
-        >
-          Приглашения
-        </button>
-      </div>
+      <TeamMembersPanel
+        tab={tab}
+        members={members}
+        filtered={filtered}
+        loading={loading}
+        canManage={canManage}
+        search={search}
+        setSearch={setSearch}
+        roleFilter={roleFilter}
+        setRoleFilter={setRoleFilter}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        sortKey={sortKey}
+        setSortKey={setSortKey}
+        resetFilters={resetFilters}
+        togglingId={togglingId}
+        handleToggleActive={handleToggleActive}
+        handleChangePosition={handleChangePosition}
+        handleDelete={handleDelete}
+        setPasswordFor={setPasswordFor}
+        setOpen={setOpen}
+        formatDate={formatDate}
+        formatDateTime={formatDateTime}
+        initials={initials}
+      />
 
-      {tab === "invites" ? (
-        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
-          {members.filter((m) => m.role !== "owner").length === 0 ? (
-            <div className="text-center py-16 text-white/30 text-sm">Пока нет добавленных сотрудников</div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {members
-                .filter((m) => m.role !== "owner")
-                .map((m) => (
-                  <div key={m.id} className="flex items-center justify-between bg-[#161616] border border-white/10 rounded-lg px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-medium">
-                        {initials(m.full_name)}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{m.full_name}</p>
-                        <p className="text-xs text-white/40">{m.email}</p>
-                      </div>
-                    </div>
-                    <p className="text-xs text-white/40">Добавлен {formatDate(m.created_at)}</p>
-                  </div>
-                ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        <>
-          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5 mb-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <label className="text-xs text-white/50 mb-1.5 block">Поиск сотрудника</label>
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Имя или email"
-                  className="w-full bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-white/50 mb-1.5 block">Роль</label>
-                <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as RoleFilter)}>
-                  <SelectTrigger className="bg-[#161616] border-white/10 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Все роли</SelectItem>
-                    {positionOptions.map((p) => (
-                      <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-xs text-white/50 mb-1.5 block">Статус</label>
-                <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-                  <SelectTrigger className="bg-[#161616] border-white/10 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Все</SelectItem>
-                    <SelectItem value="active">Активен</SelectItem>
-                    <SelectItem value="inactive">Отключён</SelectItem>
-                    <SelectItem value="never">Не входил ни разу</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-xs text-white/50 mb-1.5 block">Сортировка</label>
-                <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
-                  <SelectTrigger className="bg-[#161616] border-white/10 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="created_desc">По дате добавления</SelectItem>
-                    <SelectItem value="name_asc">По имени А-Я</SelectItem>
-                    <SelectItem value="last_login">По последнему входу</SelectItem>
-                    <SelectItem value="position">По роли</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between mt-4 flex-wrap gap-2">
-              <p className="text-xs text-white/40">Найдено сотрудников: {filtered.length}</p>
-              <div className="flex items-center gap-3">
-                <button onClick={resetFilters} className="text-xs text-[#D4AF37] hover:underline">
-                  Сбросить фильтры
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
-            {loading ? (
-              <div className="flex justify-center py-16">
-                <Icon name="Loader2" size={24} className="animate-spin text-white/40" />
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="text-center py-16">
-                <p className="font-medium mb-1">Сотрудников пока нет</p>
-                <p className="text-sm text-white/30 mb-4">Добавьте первого сотрудника, чтобы распределить роли и доступ внутри компании.</p>
-                {canManage && (
-                  <button
-                    onClick={() => setOpen(true)}
-                    className="bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg"
-                  >
-                    Пригласить первого сотрудника
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-white/40 text-xs uppercase border-b border-white/10">
-                      <th className="text-left font-medium py-2 pr-4">Сотрудник</th>
-                      <th className="text-left font-medium py-2 pr-4">Роль</th>
-                      <th className="text-left font-medium py-2 pr-4">Статус</th>
-                      <th className="text-left font-medium py-2 pr-4">Последний вход</th>
-                      <th className="text-left font-medium py-2 pr-4">Дата добавления</th>
-                      {canManage && <th className="text-left font-medium py-2 pr-4">Действия</th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((m) => (
-                      <tr key={m.id} className="border-b border-white/5 last:border-0">
-                        <td className="py-3 pr-4">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-medium shrink-0">
-                              {initials(m.full_name)}
-                            </div>
-                            <div>
-                              <p className="font-medium">{m.full_name}</p>
-                              <p className="text-xs text-white/40">{m.email}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 pr-4">
-                          {canManage ? (
-                            <Select value={m.position || "manager"} onValueChange={(v) => handleChangePosition(m, v)}>
-                              <SelectTrigger className={`h-7 w-auto border-none px-2 py-0.5 rounded-full text-xs ${getPositionColor(m.position)}`}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {positionOptions.map((p) => (
-                                  <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <span className={`px-2 py-0.5 rounded-full text-xs ${getPositionColor(m.position)}`}>
-                              {getPositionLabel(m.position)}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3 pr-4">
-                          <span className={`px-2 py-0.5 rounded-full text-xs ${m.is_active ? "bg-green-500/20 text-green-300" : "bg-red-500/20 text-red-300"}`}>
-                            {m.is_active ? "Активен" : "Отключён"}
-                          </span>
-                        </td>
-                        <td className="py-3 pr-4 text-white/40">
-                          {m.last_login_at ? formatDateTime(m.last_login_at) : "—"}
-                        </td>
-                        <td className="py-3 pr-4 text-white/40">{formatDate(m.created_at)}</td>
-                        {canManage && (
-                          <td className="py-3 pr-4">
-                            <div className="flex items-center gap-3">
-                              <button
-                                onClick={() => handleToggleActive(m)}
-                                disabled={togglingId === m.id}
-                                className="text-white/40 hover:text-white transition-colors disabled:opacity-50"
-                                title={m.is_active ? "Отключить доступ" : "Включить доступ"}
-                              >
-                                {togglingId === m.id ? (
-                                  <Icon name="Loader2" size={16} className="animate-spin" />
-                                ) : (
-                                  <Icon name={m.is_active ? "UserX" : "UserCheck"} size={16} />
-                                )}
-                              </button>
-                              <button
-                                onClick={() => setPasswordFor(m)}
-                                className="text-white/40 hover:text-white transition-colors"
-                                title="Задать пароль для входа"
-                              >
-                                <Icon name="KeyRound" size={16} />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(m.id)}
-                                className="text-white/40 hover:text-red-400 transition-colors"
-                                title="Удалить"
-                              >
-                                <Icon name="Trash2" size={16} />
-                              </button>
-                            </div>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
-      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm() }}>
-        <DialogContent className="bg-[#1f1f1f] border-white/10 text-white sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Новый сотрудник</DialogTitle>
-          </DialogHeader>
-
-          <div className="flex flex-col gap-3 mt-2">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-white/50">Имя</label>
-              <input
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Иванов Иван"
-                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-white/50">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="user@example.com"
-                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-white/50">Пароль</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-white/50">Телефон</label>
-              <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+7 900 000 00 00"
-                className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-white/50">Роль</label>
-              <Select value={position} onValueChange={(v) => setPosition(v as PositionKey)}>
-                <SelectTrigger className="bg-[#161616] border-white/10 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {positionOptions.map((p) => (
-                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {error && (
-              <p className="text-sm text-red-400 flex items-center gap-1.5">
-                <Icon name="CircleAlert" size={15} />
-                {error}
-              </p>
-            )}
-
-            <button
-              onClick={handleCreate}
-              disabled={saving}
-              className="mt-2 flex items-center justify-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-3 rounded-lg disabled:opacity-60"
-            >
-              {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : "Пригласить сотрудника"}
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <CreateMemberDialog
+        open={open}
+        onOpenChange={(v) => { setOpen(v); if (!v) resetForm() }}
+        fullName={fullName}
+        setFullName={setFullName}
+        email={email}
+        setEmail={setEmail}
+        password={password}
+        setPassword={setPassword}
+        phone={phone}
+        setPhone={setPhone}
+        position={position}
+        setPosition={setPosition}
+        error={error}
+        saving={saving}
+        onCreate={handleCreate}
+      />
 
       <SetPasswordDialog
         open={!!passwordFor}
