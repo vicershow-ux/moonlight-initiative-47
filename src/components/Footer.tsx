@@ -22,7 +22,7 @@ export function Footer() {
           {/* Brand */}
           <div className="md:col-span-2">
             <a href="/" className="inline-flex items-center gap-2 mb-6">
-              <img src={logoUrl} alt={brandName} className="w-16 h-16 -my-4 object-contain" />
+              <img src={logoUrl} alt={brandName} className="w-64 h-64 -my-16 object-contain" />
               <span className="text-xl font-semibold tracking-tight">{brandName}</span>
             </a>
             <p className="text-muted-foreground leading-relaxed max-w-sm">

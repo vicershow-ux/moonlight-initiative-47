@@ -45,7 +45,7 @@ export function Header() {
     >
       <nav className="container mx-auto px-6 flex items-center justify-between md:px-[24]">
         <a href="/" className="flex items-center gap-2 group" onClick={scrollToTop}>
-          <img src={logoUrl} alt={brandName} className="w-16 h-16 -my-4 object-contain" />
+          <img src={logoUrl} alt={brandName} className="w-64 h-64 -my-16 object-contain" />
           <span className="text-xl font-semibold tracking-tight text-white">{brandName}</span>
         </a>
 
