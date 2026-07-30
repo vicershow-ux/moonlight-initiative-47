@@ -40,6 +40,14 @@ const defaultOptions: Required<ContractOptions> = {
   customer_director_position: "",
   customer_director_name: "",
   customer_basis: "",
+  contractor_ogrnip: "",
+  contractor_country: "",
+  contractor_residence_basis: "",
+  contractor_work_permit: "",
+  contractor_org_name: "",
+  contractor_director_position: "",
+  contractor_director_name: "",
+  contractor_basis: "",
   customer_name: "",
   contractor_name: "",
   object_address: "",
@@ -314,20 +322,70 @@ export default function ContractEdit() {
             { value: "legal", label: "Юридическое лицо" },
           ]}
         />
-        <p>
-          <InlineInput value={options.contractor_name} onChange={(v) => updateOption("contractor_name", v)} placeholder="Наименование подрядчика" minWidth={150} />
-          , действующ
-          <InlineSelect value={options.contractor_gender} onChange={(v) => updateOption("contractor_gender", v)} options={genderOptions} />
-          как{" "}
-          {{
-            individual: "физическое лицо",
-            self_employed: "самозанятый (НПД)",
-            foreign_citizen: "иностранный гражданин",
-            entrepreneur: "индивидуальный предприниматель",
-            legal: "юридическое лицо",
-          }[options.contractor_type]}
-          {" "}(далее — «Подрядчик»), с другой стороны,
-        </p>
+        {options.contractor_type === "individual" && (
+          <p>
+            <InlineInput value={options.contractor_name} onChange={(v) => updateOption("contractor_name", v)} placeholder="ФИО подрядчика" minWidth={150} />
+            , действующ
+            <InlineSelect value={options.contractor_gender} onChange={(v) => updateOption("contractor_gender", v)} options={genderOptions} />
+            как физическое лицо (далее — «Подрядчик»), с другой стороны,
+          </p>
+        )}
+        {options.contractor_type === "self_employed" && (
+          <p>
+            <InlineInput value={options.contractor_name} onChange={(v) => updateOption("contractor_name", v)} placeholder="ФИО подрядчика" minWidth={150} />
+            , действующ
+            <InlineSelect value={options.contractor_gender} onChange={(v) => updateOption("contractor_gender", v)} options={genderOptions} />
+            как физическое лицо с применением налогового режима «налог на профессиональный доход» (далее — «Подрядчик»), с другой
+            стороны,
+          </p>
+        )}
+        {options.contractor_type === "foreign_citizen" && (
+          <p>
+            <InlineInput value={options.contractor_name} onChange={(v) => updateOption("contractor_name", v)} placeholder="ФИО подрядчика" minWidth={150} />
+            , граждан
+            <InlineSelect
+              value={options.contractor_gender}
+              onChange={(v) => updateOption("contractor_gender", v)}
+              options={[{ value: "m", label: "ин" }, { value: "f", label: "ка" }]}
+            />
+            {" "}
+            <InlineInput value={options.contractor_country} onChange={(v) => updateOption("contractor_country", v)} placeholder="укажите страну" minWidth={110} />
+            , основанием пребывания на территории Российской Федерации является{" "}
+            <InlineInput value={options.contractor_residence_basis} onChange={(v) => updateOption("contractor_residence_basis", v)} placeholder="например ВНЖ" minWidth={100} />
+            , наличие разрешения на работу подтверждается{" "}
+            <InlineInput value={options.contractor_work_permit} onChange={(v) => updateOption("contractor_work_permit", v)} placeholder="например патент" minWidth={110} />
+            , действующ
+            <InlineSelect value={options.contractor_gender} onChange={(v) => updateOption("contractor_gender", v)} options={genderOptions} />
+            как физическое лицо (далее — «Подрядчик»), с другой стороны,
+          </p>
+        )}
+        {options.contractor_type === "entrepreneur" && (
+          <p>
+            Индивидуальный предприниматель{" "}
+            <InlineInput value={options.contractor_name} onChange={(v) => updateOption("contractor_name", v)} placeholder="ФИО" minWidth={130} />
+            , зарегистрирован
+            <InlineSelect
+              value={options.contractor_gender}
+              onChange={(v) => updateOption("contractor_gender", v)}
+              options={[{ value: "m", label: "ный" }, { value: "f", label: "ная" }]}
+            />
+            в реестре индивидуальных предпринимателей под №{" "}
+            <InlineInput value={options.contractor_ogrnip} onChange={(v) => updateOption("contractor_ogrnip", v)} placeholder="указать ОГРНИП" minWidth={110} />
+            {" "}(далее — «Подрядчик»), с другой стороны,
+          </p>
+        )}
+        {options.contractor_type === "legal" && (
+          <p>
+            <InlineInput value={options.contractor_org_name} onChange={(v) => updateOption("contractor_org_name", v)} placeholder="Наименование" minWidth={130} />
+            , именуемое в дальнейшем «Подрядчик», от имени которого действует{" "}
+            <InlineInput value={options.contractor_director_position} onChange={(v) => updateOption("contractor_director_position", v)} placeholder="Директор" minWidth={90} />
+            {" "}
+            <InlineInput value={options.contractor_director_name} onChange={(v) => updateOption("contractor_director_name", v)} placeholder="ФИО" minWidth={90} />
+            {" "}на основании{" "}
+            <InlineInput value={options.contractor_basis} onChange={(v) => updateOption("contractor_basis", v)} placeholder="Устава" minWidth={70} />
+            , с другой стороны,
+          </p>
+        )}
         <p>
           вместе именуемые «Стороны», а индивидуально — «Сторона», заключили настоящий договор подряда на ремонт квартиры
           (далее — «Договор») о нижеследующем:

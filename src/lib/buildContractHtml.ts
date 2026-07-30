@@ -31,32 +31,45 @@ const STAGED_DETAIL = `
 <p>1.4.4. Этап 4 — Финишные работы: укладка напольных покрытий, затирка швов плитки, поклейка обоев / покраска, монтаж натяжных потолков, установка дверей, чистовой сантехники, розеток, выключателей, светильников, плинтусов и декоративных элементов.</p>
 `.trim()
 
-function partyIntro(ctx: ContractContext): string {
+function customerIntro(ctx: ContractContext): string {
   const { options: o, object } = ctx
   const customerName = o.customer_name || object.client_name || ""
-  const companyName = ctx.company?.name || ctx.company?.contact_full_name || o.contractor_name || ""
-
-  let customer = ""
   if (o.customer_type === "individual") {
-    customer = `${esc(customerName)}, действующ${g(o, "customer")} как физическое лицо (далее — «Заказчик»), с одной стороны, и`
-  } else if (o.customer_type === "entrepreneur") {
-    customer = `Индивидуальный предприниматель ${esc(customerName)}, зарегистрированн${g(o, "customer")} в реестре индивидуальных предпринимателей под № ${esc(o.customer_ogrnip) || "____________"} (далее — «Заказчик»), с одной стороны, и`
-  } else {
-    const org = o.customer_org_name || customerName
-    customer = `${esc(org)}, именуемое в дальнейшем «Заказчик», от имени которого действует ${esc(o.customer_director_position) || "генеральный директор"} ${esc(o.customer_director_name) || esc(customerName)} на основании ${esc(o.customer_basis) || "Устава"}, с одной стороны, и`
+    return `${esc(customerName)}, действующ${g(o, "customer")} как физическое лицо (далее — «Заказчик»), с одной стороны, и`
   }
+  if (o.customer_type === "entrepreneur") {
+    const suffix = o.customer_gender === "f" ? "ная" : "ный"
+    return `Индивидуальный предприниматель ${esc(customerName)}, зарегистрирован${suffix} в реестре индивидуальных предпринимателей под № ${esc(o.customer_ogrnip) || "____________"} (далее — «Заказчик»), с одной стороны, и`
+  }
+  const org = o.customer_org_name || customerName
+  return `${esc(org)}, именуемое в дальнейшем «Заказчик», от имени которого действует ${esc(o.customer_director_position) || "генеральный директор"} ${esc(o.customer_director_name) || esc(customerName)} на основании ${esc(o.customer_basis) || "Устава"}, с одной стороны, и`
+}
 
-  const contractorLabel = {
-    individual: "физическое лицо",
-    self_employed: "самозанятый (НПД)",
-    foreign_citizen: "иностранный гражданин",
-    entrepreneur: "индивидуальный предприниматель",
-    legal: "юридическое лицо",
-  }[o.contractor_type]
+function contractorIntro(ctx: ContractContext): string {
+  const { options: o } = ctx
+  const name = ctx.company?.name || ctx.company?.contact_full_name || o.contractor_name || ""
+  const gg = g(o, "contractor")
 
-  const contractor = `${esc(companyName)}, действующ${g(o, "contractor")} как ${contractorLabel} (далее — «Подрядчик»), с другой стороны,`
+  if (o.contractor_type === "individual") {
+    return `${esc(name)}, действующ${gg} как физическое лицо (далее — «Подрядчик»), с другой стороны,`
+  }
+  if (o.contractor_type === "self_employed") {
+    return `${esc(name)}, действующ${gg} как физическое лицо с применением налогового режима «налог на профессиональный доход» (далее — «Подрядчик»), с другой стороны,`
+  }
+  if (o.contractor_type === "foreign_citizen") {
+    const citizen = o.contractor_gender === "f" ? "гражданка" : "гражданин"
+    return `${esc(name)}, ${citizen} ${esc(o.contractor_country) || "____________"}, основанием пребывания на территории Российской Федерации является ${esc(o.contractor_residence_basis) || "____________"}, наличие разрешения на работу подтверждается ${esc(o.contractor_work_permit) || "____________"}, действующ${gg} как физическое лицо (далее — «Подрядчик»), с другой стороны,`
+  }
+  if (o.contractor_type === "entrepreneur") {
+    const suffix = o.contractor_gender === "f" ? "ная" : "ный"
+    return `Индивидуальный предприниматель ${esc(name)}, зарегистрирован${suffix} в реестре индивидуальных предпринимателей под № ${esc(o.contractor_ogrnip) || "____________"} (далее — «Подрядчик»), с другой стороны,`
+  }
+  const org = o.contractor_org_name || name
+  return `${esc(org)}, именуемое в дальнейшем «Подрядчик», от имени которого действует ${esc(o.contractor_director_position) || "Директор"} ${esc(o.contractor_director_name) || esc(name)} на основании ${esc(o.contractor_basis) || "Устава"}, с другой стороны,`
+}
 
-  return `<p>${customer} ${contractor} вместе именуемые «Стороны», а индивидуально — «Сторона», заключили настоящий договор подряда на ремонт квартиры (далее — «Договор») о нижеследующем:</p>`
+function partyIntro(ctx: ContractContext): string {
+  return `<p>${customerIntro(ctx)} ${contractorIntro(ctx)} вместе именуемые «Стороны», а индивидуально — «Сторона», заключили настоящий договор подряда на ремонт квартиры (далее — «Договор») о нижеследующем:</p>`
 }
 
 export function buildContractHtml(ctx: ContractContext): string {

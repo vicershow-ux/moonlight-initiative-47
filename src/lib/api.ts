@@ -445,6 +445,15 @@ export interface ContractOptions {
   customer_director_position?: string
   customer_director_name?: string
   customer_basis?: string
+  // Ручные поля подрядчика
+  contractor_ogrnip?: string
+  contractor_country?: string
+  contractor_residence_basis?: string
+  contractor_work_permit?: string
+  contractor_org_name?: string
+  contractor_director_position?: string
+  contractor_director_name?: string
+  contractor_basis?: string
   // Редактируемые (подтянутые, но с возможностью правки) поля
   customer_name?: string
   contractor_name?: string
