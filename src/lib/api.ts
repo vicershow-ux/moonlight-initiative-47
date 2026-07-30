@@ -435,6 +435,23 @@ export interface ContractOptions {
   payment_order?: "advance_staged" | "full_prepayment" | "on_completion"
   payment_schedule?: "advance_4_stages" | "advance_3_stages" | "advance_2_stages" | "custom_schedule"
   duration_months?: string
+  // Ручные поля внутри текста
+  city?: string
+  customer_gender?: "m" | "f"
+  contractor_gender?: "m" | "f"
+  customer_org_name?: string
+  customer_ogrnip?: string
+  customer_ogrn?: string
+  customer_director_position?: string
+  customer_director_name?: string
+  customer_basis?: string
+  // Редактируемые (подтянутые, но с возможностью правки) поля
+  customer_name?: string
+  contractor_name?: string
+  object_address?: string
+  hidden_defects?: "include" | "exclude"
+  payment_days?: string
+  payment_method?: "cash_or_bank" | "bank_only" | "cash_only"
 }
 
 export interface Contract {
