@@ -16,70 +16,15 @@ function loadImageFromDataUrl(dataUrl: string): Promise<HTMLImageElement> {
   })
 }
 
-const isGrayish = (r: number, g: number, b: number, maxDiff = 12) =>
-  Math.max(r, g, b) - Math.min(r, g, b) <= maxDiff
-
-const quantize = (v: number) => Math.round(v / 4) * 4
-
 /**
- * Ищет в изображении пару светлых серых/белых цветов, из которых обычно
- * состоит "шахматный" паттерн прозрачности, запечённый графическими
- * редакторами прямо в пиксели (вместо настоящего альфа-канала).
+ * Убирает серую/светлую обводку ("гало"), которую графические редакторы часто
+ * запекают вдоль контура рисунка на прозрачном PNG — это остаточный цвет
+ * шахматного фона предпросмотра, смешанный в пиксели рядом с настоящей
+ * прозрачностью. Работает как разрастание (BFS) от уже прозрачных пикселей:
+ * соседние малонасыщенные (серые) пиксели тоже стираются, на ограниченную
+ * глубину — так мы задеваем только тонкую кайму у края, а не весь рисунок.
  */
-function detectCheckerColors(
-  data: Uint8ClampedArray,
-  width: number,
-  height: number
-): [number, number, number][] | null {
-  const freq = new Map<string, { count: number; r: number; g: number; b: number }>()
-  const step = width * height > 300 * 300 ? 2 : 1
-  let sampled = 0
-
-  for (let y = 0; y < height; y += step) {
-    for (let x = 0; x < width; x += step) {
-      const idx = (y * width + x) * 4
-      const a = data[idx + 3]
-      if (a < 250) continue
-      const r = data[idx]
-      const g = data[idx + 1]
-      const b = data[idx + 2]
-      if (!isGrayish(r, g, b)) continue
-      if (Math.max(r, g, b) < 140) continue
-      sampled++
-      const key = `${quantize(r)},${quantize(g)},${quantize(b)}`
-      const entry = freq.get(key)
-      if (entry) entry.count++
-      else freq.set(key, { count: 1, r, g, b })
-    }
-  }
-
-  if (sampled === 0) return null
-
-  const sorted = [...freq.values()].sort((a, b) => b.count - a.count)
-  if (sorted.length < 2) return null
-
-  const top2Share = (sorted[0].count + sorted[1].count) / sampled
-  if (top2Share < 0.25) return null
-
-  const [c1, c2] = sorted
-  const diff = Math.abs(c1.r - c2.r) + Math.abs(c1.g - c2.g) + Math.abs(c1.b - c2.b)
-  if (diff < 20) return null
-
-  return [
-    [c1.r, c1.g, c1.b],
-    [c2.r, c2.g, c2.b],
-  ]
-}
-
-/**
- * Если изображение содержит запечённый в пиксели "шахматный" фон (типичный
- * индикатор прозрачности в графредакторах), заливает эти области настоящей
- * прозрачностью. Сначала стирает области, связанные с краями канваса (внешний
- * фон), затем отдельно ищет замкнутые "дырки" с тем же паттерном внутри самого
- * рисунка (например, внутри букв "О", "А", "Р") — они не связаны с краями и
- * иначе остаются нетронутыми.
- */
-function removeCheckerboardBackground(canvas: HTMLCanvasElement): boolean {
+function removeGreyHalo(canvas: HTMLCanvasElement, maxDepth = 12): boolean {
   const ctx = canvas.getContext("2d")
   if (!ctx) return false
 
@@ -88,78 +33,78 @@ function removeCheckerboardBackground(canvas: HTMLCanvasElement): boolean {
 
   const imageData = ctx.getImageData(0, 0, width, height)
   const data = imageData.data
-
-  const colors = detectCheckerColors(data, width, height)
-  if (!colors) return false
-
-  const matches = (r: number, g: number, b: number) =>
-    colors.some(([cr, cg, cb]) => Math.abs(r - cr) <= 18 && Math.abs(g - cg) <= 18 && Math.abs(b - cb) <= 18)
-
   const total = width * height
+
+  const isTransparent = (idx: number) => data[idx * 4 + 3] <= 5
+  const isGreyish = (idx: number) => {
+    const p = idx * 4
+    const r = data[p]
+    const g = data[p + 1]
+    const b = data[p + 2]
+    const maxc = Math.max(r, g, b)
+    const minc = Math.min(r, g, b)
+    return maxc - minc <= 20 && maxc >= 80
+  }
+
   const visited = new Uint8Array(total)
-  const stack: number[] = []
-  let removedAny = false
+  const queue: number[] = []
+  let head = 0
+  const depthOf = new Int16Array(total).fill(-1)
 
-  const floodFillFrom = (startIdx: number) => {
-    if (visited[startIdx]) return
-    const sp = startIdx * 4
-    if (!matches(data[sp], data[sp + 1], data[sp + 2])) return
-    visited[startIdx] = 1
-    stack.push(startIdx)
+  for (let idx = 0; idx < total; idx++) {
+    if (isTransparent(idx)) {
+      visited[idx] = 1
+      depthOf[idx] = 0
+      queue.push(idx)
+    }
+  }
 
-    while (stack.length) {
-      const idx = stack.pop() as number
-      const x = idx % width
-      const y = Math.floor(idx / width)
-      const p = idx * 4
-      data[p + 3] = 0
-      removedAny = true
+  const toClear: number[] = []
 
-      const neighbors: [number, number][] = [
-        [x - 1, y],
-        [x + 1, y],
-        [x, y - 1],
-        [x, y + 1],
-      ]
-      for (const [nx, ny] of neighbors) {
-        if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue
-        const nIdx = ny * width + nx
-        if (visited[nIdx]) continue
-        const np = nIdx * 4
-        if (matches(data[np], data[np + 1], data[np + 2])) {
-          visited[nIdx] = 1
-          stack.push(nIdx)
-        }
+  while (head < queue.length) {
+    const idx = queue[head++]
+    const d = depthOf[idx]
+    if (d >= maxDepth) continue
+
+    const x = idx % width
+    const y = Math.floor(idx / width)
+    const neighbors: [number, number][] = [
+      [x - 1, y],
+      [x + 1, y],
+      [x, y - 1],
+      [x, y + 1],
+    ]
+    for (const [nx, ny] of neighbors) {
+      if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue
+      const nIdx = ny * width + nx
+      if (visited[nIdx]) continue
+      if (isTransparent(nIdx)) {
+        visited[nIdx] = 1
+        depthOf[nIdx] = 0
+        queue.push(nIdx)
+      } else if (isGreyish(nIdx)) {
+        visited[nIdx] = 1
+        depthOf[nIdx] = d + 1
+        toClear.push(nIdx)
+        queue.push(nIdx)
       }
     }
   }
 
-  // Проход 1: внешний фон, связанный с краями изображения.
-  for (let x = 0; x < width; x++) {
-    floodFillFrom(x)
-    floodFillFrom((height - 1) * width + x)
-  }
-  for (let y = 0; y < height; y++) {
-    floodFillFrom(y * width)
-    floodFillFrom(y * width + (width - 1))
+  if (toClear.length === 0) return false
+
+  for (const idx of toClear) {
+    data[idx * 4 + 3] = 0
   }
 
-  // Проход 2: замкнутые "дырки" внутри рисунка (не связаны с краями канваса).
-  for (let idx = 0; idx < total; idx++) {
-    if (!visited[idx]) floodFillFrom(idx)
-  }
-
-  if (removedAny) {
-    ctx.putImageData(imageData, 0, 0)
-  }
-  return removedAny
+  ctx.putImageData(imageData, 0, 0)
+  return true
 }
 
 /**
  * Уменьшает изображение до maxDimension по большей стороне и сжимает его,
  * чтобы уменьшить размер base64-пейлоада перед отправкой на backend.
- * Для PNG/WebP также пытается автоматически распознать запечённый в пиксели
- * "шахматный" фон и превратить его в настоящую прозрачность.
+ * Для PNG/WebP также убирает серую обводку вдоль контура (см. removeGreyHalo).
  * SVG не трогаем — это векторный формат.
  */
 export async function resizeImageToDataUrl(file: File, maxDimension: number, quality = 0.85): Promise<string> {
@@ -180,7 +125,7 @@ export async function resizeImageToDataUrl(file: File, maxDimension: number, qua
   sourceCtx.drawImage(img, 0, 0)
 
   if (canSupportAlpha) {
-    removeCheckerboardBackground(sourceCanvas)
+    removeGreyHalo(sourceCanvas)
   }
 
   let { width, height } = img
