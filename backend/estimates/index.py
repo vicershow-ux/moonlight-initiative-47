@@ -104,14 +104,6 @@ def handler(event: dict, context) -> dict:
                     obj_keys = ['object_code', 'client_name', 'client_phone', 'email', 'object_type', 'area']
                     estimate.update(dict(zip(obj_keys, obj_row)))
 
-                if estimate.get('created_by'):
-                    cur.execute("SELECT full_name, phone, email FROM users WHERE id = %s", (estimate['created_by'],))
-                    creator_row = cur.fetchone()
-                    if creator_row:
-                        estimate['created_by_name'] = creator_row[0]
-                        estimate['created_by_phone'] = creator_row[1]
-                        estimate['created_by_email'] = creator_row[2]
-
                 cur.execute(
                     "SELECT name, phone, email, website, inn, legal_address, bank_name, bik, account_number, "
                     "bank_inn, bank_kpp, correspondent_account, signature_url FROM companies WHERE id = %s",

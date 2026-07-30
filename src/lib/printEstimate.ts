@@ -387,9 +387,8 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
     <div>
       <div class="label">Исполнитель</div>
       <div class="name">${escapeHtml(estimate.company_name || companyName)}</div>
-      ${estimate.created_by_name && estimate.company_name ? `<div class="contact">${escapeHtml(estimate.created_by_name)}</div>` : ""}
-      ${(estimate.created_by_phone || estimate.company_phone) ? `<div class="contact">Тел: ${escapeHtml(estimate.created_by_phone || estimate.company_phone || "")}</div>` : ""}
-      ${(estimate.created_by_email || estimate.company_email) ? `<div class="contact">Email: ${escapeHtml(estimate.created_by_email || estimate.company_email || "")}</div>` : ""}
+      ${estimate.company_phone ? `<div class="contact">Тел: ${escapeHtml(estimate.company_phone)}</div>` : ""}
+      ${estimate.company_email ? `<div class="contact">Email: ${escapeHtml(estimate.company_email)}</div>` : ""}
       ${estimate.company_inn ? `<div class="contact">ИНН: ${escapeHtml(estimate.company_inn)}</div>` : ""}
       ${estimate.company_legal_address ? `<div class="contact">${escapeHtml(estimate.company_legal_address)}</div>` : ""}
       ${estimate.company_signature_url ? `<img class="signature" src="${estimate.company_signature_url}" alt="Подпись" />` : ""}

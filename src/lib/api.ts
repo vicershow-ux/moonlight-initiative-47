@@ -311,9 +311,6 @@ export interface Estimate {
   status?: "draft" | "ready"
   revision_number?: number
   created_by?: number | null
-  created_by_name?: string | null
-  created_by_phone?: string | null
-  created_by_email?: string | null
   company_name?: string
   company_phone?: string
   company_email?: string

@@ -168,7 +168,7 @@ export default function Profile() {
 
           <div className="space-y-4 max-w-md">
             <div>
-              <label className={labelClass}>Имя</label>
+              <label className={labelClass}>Ф.И.О.</label>
               <input
                 className={inputClass}
                 value={fullName}
