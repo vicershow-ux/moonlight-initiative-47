@@ -53,7 +53,14 @@ export function BrandTab({ form, update, onFileSelected }: BrandTabProps) {
         <div>
           <label className={labelClass}>Логотип</label>
           <div className="flex items-center gap-3">
-            <div className="w-14 h-14 rounded-lg bg-[#161616] border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
+            <div
+              className="w-14 h-14 rounded-lg border border-white/10 flex items-center justify-center overflow-hidden shrink-0"
+              style={{
+                backgroundImage:
+                  "conic-gradient(#4a4a4a 90deg, #2a2a2a 90deg 180deg, #4a4a4a 180deg 270deg, #2a2a2a 270deg)",
+                backgroundSize: "12px 12px",
+              }}
+            >
               <img src={logoPreview || form.logo_url || "/fixkey-logo.svg"} alt="Логотип" className="w-full h-full object-contain" />
             </div>
             <button
@@ -71,12 +78,22 @@ export function BrandTab({ form, update, onFileSelected }: BrandTabProps) {
               onChange={(e) => handleFile("logo_file", e)}
             />
           </div>
+          <p className="text-[11px] text-white/30 mt-1.5">
+            Шахматный узор в превью — это область прозрачности. Такой фон при загрузке автоматически распознаётся и делается прозрачным.
+          </p>
         </div>
 
         <div>
           <label className={labelClass}>Favicon (иконка вкладки)</label>
           <div className="flex items-center gap-3">
-            <div className="w-14 h-14 rounded-lg bg-[#161616] border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
+            <div
+              className="w-14 h-14 rounded-lg border border-white/10 flex items-center justify-center overflow-hidden shrink-0"
+              style={{
+                backgroundImage:
+                  "conic-gradient(#4a4a4a 90deg, #2a2a2a 90deg 180deg, #4a4a4a 180deg 270deg, #2a2a2a 270deg)",
+                backgroundSize: "12px 12px",
+              }}
+            >
               <img src={faviconPreview || form.favicon_url || "/favicon-32.png"} alt="Favicon" className="w-8 h-8 object-contain" />
             </div>
             <button
