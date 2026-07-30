@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
+import { Link } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { estimatesApi, objectsApi, Estimate, ObjectItem } from "@/lib/api"
-import { printEstimate } from "@/lib/printEstimate"
+import { printEstimate, downloadEstimatePdf } from "@/lib/printEstimate"
 import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/lib/utils"
 
@@ -36,6 +37,7 @@ export default function Documents() {
   const [tab, setTab] = useState<TabKey>("all")
   const [search, setSearch] = useState("")
   const [printingId, setPrintingId] = useState<number | null>(null)
+  const [downloadingId, setDownloadingId] = useState<number | null>(null)
 
   const load = () => {
     setLoading(true)
@@ -67,6 +69,18 @@ export default function Documents() {
       printEstimate(full, obj, user?.company_name || "")
     } finally {
       setPrintingId(null)
+    }
+  }
+
+  const handleDownloadPdf = async (est: Estimate) => {
+    const obj = objectsMap[est.object_id]
+    if (!obj) return
+    setDownloadingId(est.id)
+    try {
+      const full = await estimatesApi.get(est.id)
+      await downloadEstimatePdf(full, obj, user?.company_name || "")
+    } finally {
+      setDownloadingId(null)
     }
   }
 
@@ -194,23 +208,41 @@ export default function Documents() {
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => handlePrint(e)}
+                          <Link
+                            to={`/cabinet/objects/${e.object_id}/estimates/${e.id}`}
                             className="text-white/40 hover:text-white transition-colors"
-                            title="Просмотр / печать"
+                            title="Просмотр"
                           >
-                            {printingId === e.id ? (
-                              <Icon name="Loader2" size={15} className="animate-spin" />
-                            ) : (
-                              <Icon name="Eye" size={15} />
-                            )}
-                          </button>
+                            <Icon name="Eye" size={15} />
+                          </Link>
+                          <Link
+                            to={`/cabinet/objects/${e.object_id}/estimates/${e.id}/edit`}
+                            className="text-white/40 hover:text-white transition-colors"
+                            title="Редактировать"
+                          >
+                            <Icon name="Pencil" size={15} />
+                          </Link>
                           <button
                             onClick={() => handlePrint(e)}
                             className="text-white/40 hover:text-white transition-colors"
                             title="Печать"
                           >
-                            <Icon name="Printer" size={15} />
+                            {printingId === e.id ? (
+                              <Icon name="Loader2" size={15} className="animate-spin" />
+                            ) : (
+                              <Icon name="Printer" size={15} />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleDownloadPdf(e)}
+                            className="text-white/40 hover:text-white transition-colors"
+                            title="Скачать PDF"
+                          >
+                            {downloadingId === e.id ? (
+                              <Icon name="Loader2" size={15} className="animate-spin" />
+                            ) : (
+                              <Icon name="Download" size={15} />
+                            )}
                           </button>
                           <button
                             onClick={() => handleDelete(e.id)}

@@ -9,7 +9,7 @@ const formatDate = (d: string) =>
 const formatDateTime = (d: string) =>
   new Date(d).toLocaleString("ru-RU", { day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
 
-export function printEstimate(estimate: Estimate, object: ObjectItem, companyName: string) {
+function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyName: string) {
   const items = estimate.items || []
 
   const groups = new Map<string, EstimateItem[]>()
@@ -439,6 +439,12 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
 </body>
 </html>`
 
+  return html
+}
+
+export function printEstimate(estimate: Estimate, object: ObjectItem, companyName: string) {
+  const html = buildEstimateDocument(estimate, object, companyName)
+
   const printWindow = window.open("", "_blank", "width=900,height=1000")
   if (!printWindow) return
   printWindow.document.open()
@@ -448,6 +454,46 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
     printWindow.focus()
     printWindow.print()
   }
+}
+
+export async function downloadEstimatePdf(estimate: Estimate, object: ObjectItem, companyName: string) {
+  const html = buildEstimateDocument(estimate, object, companyName)
+
+  const container = document.createElement("div")
+  container.style.position = "fixed"
+  container.style.left = "-10000px"
+  container.style.top = "0"
+  document.body.appendChild(container)
+
+  const iframe = document.createElement("iframe")
+  iframe.style.width = "850px"
+  iframe.style.border = "none"
+  container.appendChild(iframe)
+
+  await new Promise<void>((resolve) => {
+    iframe.onload = () => resolve()
+    iframe.srcdoc = html
+  })
+
+  const target = iframe.contentDocument?.body
+  if (!target) {
+    document.body.removeChild(container)
+    return
+  }
+
+  const html2pdf = (await import("html2pdf.js")).default
+  await html2pdf()
+    .set({
+      margin: 0,
+      filename: `Смета №${estimate.id}.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+    })
+    .from(target)
+    .save()
+
+  document.body.removeChild(container)
 }
 
 function escapeHtml(str: string) {
