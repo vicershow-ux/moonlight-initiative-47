@@ -1,5 +1,5 @@
 import { ObjectItem, Estimate, CompanyData, ContractOptions } from "@/lib/api"
-import { moneyWordsRu, monthsWordsRu } from "@/lib/numberToWordsRu"
+import { moneyWordsRu, moneyInWords, monthsWordsRu } from "@/lib/numberToWordsRu"
 
 export interface ContractContext {
   object: ObjectItem
@@ -103,10 +103,13 @@ export function buildContractHtml(ctx: ContractContext): string {
   }[o.work_start]
 
   const durationNum = Number(o.duration_months) || 6
+  const fixedAmount = o.fixed_amount ? Number(o.fixed_amount) || 0 : total
+  const scheduleBase = o.cost_type === "fixed" ? fixedAmount : total
 
+  const formattedFixed = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(Math.round(fixedAmount))
   const costHtml =
     o.cost_type === "fixed"
-      ? `<p>3.1. Общая стоимость Работ по настоящему Договору составляет ${moneyWordsRu(total)} и является твёрдой и окончательной.</p>`
+      ? `<p>3.1. Общая стоимость Работ по настоящему Договору составляет ${formattedFixed} рублей (${moneyInWords(fixedAmount)}) и является твёрдой и окончательной.</p>`
       : "<p>3.1. Стоимость Работ определяется в соответствии со Сметой (Приложение №1) и может уточняться по соглашению Сторон при изменении объёмов Работ.</p>"
 
   const paymentOrder = {
@@ -138,7 +141,7 @@ export function buildContractHtml(ctx: ContractContext): string {
     ? schedule
         .map(
           ([label, pct, when], i) =>
-            `<p>3.2.${i + 1}. ${label} — ${moneyWordsRu((total * pct) / 100)} (${pct}%). Оплачивается Заказчиком ${when}.</p>`
+            `<p>3.2.${i + 1}. ${label} — ${moneyWordsRu((scheduleBase * pct) / 100)} (${pct}%). Оплачивается Заказчиком ${when}.</p>`
         )
         .join("")
     : "<p>3.2.1. График платежей определяется индивидуальным соглашением Сторон (Приложение №4).</p>"

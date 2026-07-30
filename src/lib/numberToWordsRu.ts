@@ -62,6 +62,14 @@ export function moneyWordsRu(amount: number): string {
   return `${formatted} (${words} ${rubleWord})`
 }
 
+// Только пропись со словом «рублей», без числа (для шаблонов вида "1000 рублей (одна тысяча рублей)")
+export function moneyInWords(amount: number): string {
+  const n = Math.round(amount || 0)
+  const words = numberToWordsRu(n)
+  const rubleWord = pluralize(n, ["рубль", "рубля", "рублей"])
+  return `${words} ${rubleWord}`
+}
+
 const MONTH_FORMS: [string, string, string] = ["месяц", "месяца", "месяцев"]
 
 export function monthsWordsRu(n: number): string {

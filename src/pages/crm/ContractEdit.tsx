@@ -15,7 +15,7 @@ import {
   ContractOptions,
 } from "@/lib/api"
 import { buildContractHtml } from "@/lib/buildContractHtml"
-import { moneyWordsRu, monthsWordsRu } from "@/lib/numberToWordsRu"
+import { moneyWordsRu, moneyInWords, monthsWordsRu } from "@/lib/numberToWordsRu"
 
 const formatMoney = (n: number) =>
   new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n) + " ₽"
@@ -50,6 +50,7 @@ const defaultOptions: Required<ContractOptions> = {
   contractor_basis: "",
   design_author: "",
   custom_stages_text: "",
+  fixed_amount: "",
   customer_name: "",
   contractor_name: "",
   object_address: "",
@@ -132,6 +133,7 @@ export default function ContractEdit() {
   )
   const total = estimate?.total_amount ?? 0
   const durationNum = Number(options.duration_months) || 6
+  const fixedAmountNum = options.fixed_amount ? Number(options.fixed_amount) || 0 : total
 
   const doSave = async (): Promise<boolean> => {
     if (!object) return false
@@ -529,12 +531,24 @@ export default function ContractEdit() {
             { value: "by_estimate", label: "Стоимость по смете" },
           ]}
         />
-        <p>
-          3.1.{" "}
-          {options.cost_type === "fixed"
-            ? `Общая стоимость Работ по настоящему Договору составляет ${moneyWordsRu(total)} и является твёрдой и окончательной.`
-            : "Стоимость Работ определяется в соответствии со Сметой (Приложение №1) и может уточняться по соглашению Сторон при изменении объёмов Работ."}
-        </p>
+        {options.cost_type === "fixed" ? (
+          <p>
+            3.1. Общая стоимость Работ по настоящему Договору составляет{" "}
+            <InlineInput
+              value={options.fixed_amount}
+              onChange={(v) => updateOption("fixed_amount", v)}
+              placeholder={total ? String(Math.round(total)) : "сумма"}
+              minWidth={90}
+              type="number"
+            />
+            {" "}рублей (<span className="text-[#D4463C]">{moneyInWords(fixedAmountNum)}</span>) и является твёрдой и окончательной.
+          </p>
+        ) : (
+          <p>
+            3.1. Стоимость Работ определяется в соответствии со Сметой (Приложение №1) и может уточняться по соглашению Сторон при
+            изменении объёмов Работ.
+          </p>
+        )}
 
         <ToggleGroup
           label="Порядок оплаты"
@@ -567,7 +581,7 @@ export default function ContractEdit() {
             { value: "custom_schedule", label: "Свой график" },
           ]}
         />
-        <PaymentSchedule scheduleKey={options.payment_schedule} total={total} />
+        <PaymentSchedule scheduleKey={options.payment_schedule} total={options.cost_type === "fixed" ? fixedAmountNum : total} />
 
         <p>
           3.3. Оплата по каждому этапу производится в течение{" "}
