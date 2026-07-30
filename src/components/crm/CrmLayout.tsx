@@ -12,13 +12,23 @@ interface CrmLayoutProps {
   subtitle?: string
 }
 
-const fullNavItems = [
+interface NavItem {
+  label: string
+  icon: string
+  href: string
+  roles: string[]
+  siteOnly?: boolean
+  badge?: string
+}
+
+const fullNavItems: NavItem[] = [
   { label: "Dashboard", icon: "LayoutDashboard", href: "/cabinet", roles: ["owner", "admin", "employee"] },
   { label: "Объекты", icon: "Building2", href: "/cabinet/objects", roles: ["owner", "admin", "employee", "client"] },
   { label: "Документы", icon: "FileText", href: "/cabinet/documents", roles: ["owner", "admin", "employee"] },
   { label: "Заказчики", icon: "Users", href: "/cabinet/customers", roles: ["owner", "admin", "employee"] },
   { label: "Услуги", icon: "Wrench", href: "/cabinet/services", roles: ["owner", "admin", "employee"] },
   { label: "Компания", icon: "Building", href: "/cabinet/company", roles: ["owner", "admin", "employee"] },
+  { label: "Сайт", icon: "Globe", href: "/cabinet/site", roles: ["owner", "admin", "employee"], siteOnly: true },
   { label: "Команда", icon: "UsersRound", href: "/cabinet/team", roles: ["owner", "admin", "employee"] },
   { label: "Профиль", icon: "User", href: "/cabinet/profile", roles: ["owner", "admin", "employee", "client"] },
 ]
@@ -33,8 +43,12 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
     navigate("/")
   }
 
+  const canManageSite = user?.role === "owner" || user?.position === "super_admin"
   const navItems = fullNavItems.filter(
-    (item) => (!user?.role || item.roles.includes(user.role)) && hasHrefAccess(user?.role, user?.position, item.href)
+    (item) =>
+      (!user?.role || item.roles.includes(user.role)) &&
+      hasHrefAccess(user?.role, user?.position, item.href) &&
+      (!item.siteOnly || canManageSite)
   )
   const showNotifications = user?.role === "owner" || user?.role === "admin" || user?.role === "employee"
 

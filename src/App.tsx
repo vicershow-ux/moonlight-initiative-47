@@ -22,6 +22,7 @@ import Documents from "./pages/crm/Documents";
 import Customers from "./pages/crm/Customers";
 import Company from "./pages/crm/Company";
 import ObjectPipeline from "./pages/crm/ObjectPipeline";
+import Site from "./pages/crm/Site";
 import Team from "./pages/crm/Team";
 import Profile from "./pages/crm/Profile";
 
@@ -51,6 +52,7 @@ const App = () => (
             <Route path="/cabinet/services/new" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><ServiceCreate /></ProtectedRoute>} />
             <Route path="/cabinet/company" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Company /></ProtectedRoute>} />
             <Route path="/cabinet/company/pipeline" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]} section="/cabinet/company"><ObjectPipeline /></ProtectedRoute>} />
+            <Route path="/cabinet/site" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]} section="/cabinet/company"><Site /></ProtectedRoute>} />
             <Route path="/cabinet/team" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Team /></ProtectedRoute>} />
             <Route path="/cabinet/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
