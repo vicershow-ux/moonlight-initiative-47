@@ -51,7 +51,7 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
 
       <aside
         className={cn(
-          "fixed md:static z-40 h-screen w-64 bg-[#1a1a1a] border-r border-white/10 flex flex-col transition-transform duration-300",
+          "fixed top-0 left-0 z-40 h-screen w-64 bg-[#1a1a1a] border-r border-white/10 flex flex-col transition-transform duration-300",
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
@@ -122,7 +122,7 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
         />
       )}
 
-      <main className="flex-1 min-h-screen overflow-y-auto">
+      <main className="flex-1 min-h-screen overflow-y-auto md:ml-64">
         <div className="px-6 md:px-10 py-8 md:py-10 max-w-7xl mx-auto">
           <div className="mb-8 flex items-start justify-between gap-4">
             <div>
