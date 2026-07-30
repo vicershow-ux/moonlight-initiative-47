@@ -74,8 +74,10 @@ function detectCheckerColors(
 /**
  * Если изображение содержит запечённый в пиксели "шахматный" фон (типичный
  * индикатор прозрачности в графредакторах), заливает эти области настоящей
- * прозрачностью. Работает через заливку от краёв канваса, чтобы не задеть
- * похожие по цвету участки самого логотипа.
+ * прозрачностью. Сначала стирает области, связанные с краями канваса (внешний
+ * фон), затем отдельно ищет замкнутые "дырки" с тем же паттерном внутри самого
+ * рисунка (например, внутри букв "О", "А", "Р") — они не связаны с краями и
+ * иначе остаются нетронутыми.
  */
 function removeCheckerboardBackground(canvas: HTMLCanvasElement): boolean {
   const ctx = canvas.getContext("2d")
@@ -93,55 +95,58 @@ function removeCheckerboardBackground(canvas: HTMLCanvasElement): boolean {
   const matches = (r: number, g: number, b: number) =>
     colors.some(([cr, cg, cb]) => Math.abs(r - cr) <= 18 && Math.abs(g - cg) <= 18 && Math.abs(b - cb) <= 18)
 
-  const visited = new Uint8Array(width * height)
+  const total = width * height
+  const visited = new Uint8Array(total)
   const stack: number[] = []
-
-  const seedIfMatch = (x: number, y: number) => {
-    const idx = y * width + x
-    if (visited[idx]) return
-    const p = idx * 4
-    if (matches(data[p], data[p + 1], data[p + 2])) {
-      visited[idx] = 1
-      stack.push(idx)
-    }
-  }
-
-  for (let x = 0; x < width; x++) {
-    seedIfMatch(x, 0)
-    seedIfMatch(x, height - 1)
-  }
-  for (let y = 0; y < height; y++) {
-    seedIfMatch(0, y)
-    seedIfMatch(width - 1, y)
-  }
-
-  if (stack.length === 0) return false
-
   let removedAny = false
-  while (stack.length) {
-    const idx = stack.pop() as number
-    const x = idx % width
-    const y = Math.floor(idx / width)
-    const p = idx * 4
-    data[p + 3] = 0
-    removedAny = true
 
-    const neighbors: [number, number][] = [
-      [x - 1, y],
-      [x + 1, y],
-      [x, y - 1],
-      [x, y + 1],
-    ]
-    for (const [nx, ny] of neighbors) {
-      if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue
-      const nIdx = ny * width + nx
-      if (visited[nIdx]) continue
-      const np = nIdx * 4
-      if (matches(data[np], data[np + 1], data[np + 2])) {
-        visited[nIdx] = 1
-        stack.push(nIdx)
+  const floodFillFrom = (startIdx: number) => {
+    if (visited[startIdx]) return
+    const sp = startIdx * 4
+    if (!matches(data[sp], data[sp + 1], data[sp + 2])) return
+    visited[startIdx] = 1
+    stack.push(startIdx)
+
+    while (stack.length) {
+      const idx = stack.pop() as number
+      const x = idx % width
+      const y = Math.floor(idx / width)
+      const p = idx * 4
+      data[p + 3] = 0
+      removedAny = true
+
+      const neighbors: [number, number][] = [
+        [x - 1, y],
+        [x + 1, y],
+        [x, y - 1],
+        [x, y + 1],
+      ]
+      for (const [nx, ny] of neighbors) {
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue
+        const nIdx = ny * width + nx
+        if (visited[nIdx]) continue
+        const np = nIdx * 4
+        if (matches(data[np], data[np + 1], data[np + 2])) {
+          visited[nIdx] = 1
+          stack.push(nIdx)
+        }
       }
     }
+  }
+
+  // Проход 1: внешний фон, связанный с краями изображения.
+  for (let x = 0; x < width; x++) {
+    floodFillFrom(x)
+    floodFillFrom((height - 1) * width + x)
+  }
+  for (let y = 0; y < height; y++) {
+    floodFillFrom(y * width)
+    floodFillFrom(y * width + (width - 1))
+  }
+
+  // Проход 2: замкнутые "дырки" внутри рисунка (не связаны с краями канваса).
+  for (let idx = 0; idx < total; idx++) {
+    if (!visited[idx]) floodFillFrom(idx)
   }
 
   if (removedAny) {
