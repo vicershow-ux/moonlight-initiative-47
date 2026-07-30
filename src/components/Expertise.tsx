@@ -71,7 +71,7 @@ export function Expertise() {
       <div className="container mx-auto px-6 md:px-12">
         <div className="max-w-3xl mb-20">
           <p className="text-muted-foreground text-sm tracking-[0.3em] uppercase mb-6">{servicesEyebrow}</p>
-          <h2 className="text-6xl font-medium leading-[1.15] tracking-tight mb-6 text-balance lg:text-8xl">
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-medium leading-[1.15] tracking-tight mb-6 text-balance lg:text-8xl">
             <HighlightedText>{servicesTitleHighlight}</HighlightedText>{servicesTitleRest}
           </h2>
           <p className="text-muted-foreground text-lg leading-relaxed">
