@@ -2,8 +2,11 @@ import { useEffect, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { estimatesApi, Estimate, EstimateItem } from "@/lib/api"
-import { printEstimate } from "@/lib/printEstimate"
+import { printEstimate, downloadEstimatePdf } from "@/lib/printEstimate"
+import { estimateStatusOptions, getEstimateStatusColor, getEstimateStatusLabel, EstimateStatus } from "@/lib/estimateStatus"
 import { useAuth } from "@/contexts/AuthContext"
 
 const formatMoney = (n: number) =>
@@ -25,8 +28,10 @@ export default function EstimateView() {
   const [estimate, setEstimate] = useState<Estimate | null>(null)
   const [loading, setLoading] = useState(true)
   const [printing, setPrinting] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const [savingStatus, setSavingStatus] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const load = () => {
     if (!estimateId) return
@@ -63,15 +68,46 @@ export default function EstimateView() {
     }
   }
 
-  const handleToggleStatus = async () => {
+  const handleStatusChange = async (newStatus: EstimateStatus) => {
     if (!estimate) return
     setSavingStatus(true)
     try {
-      const newStatus = estimate.status === "ready" ? "draft" : "ready"
       await estimatesApi.setStatus(estimate.id, newStatus)
       setEstimate((prev) => (prev ? { ...prev, status: newStatus } : prev))
     } finally {
       setSavingStatus(false)
+    }
+  }
+
+  const handleDownloadPdf = async () => {
+    if (!estimate) return
+    setDownloading(true)
+    try {
+      await downloadEstimatePdf(
+        estimate,
+        {
+          object_code: estimate.object_code || "",
+          client_name: estimate.client_name || "",
+          client_phone: estimate.client_phone || "",
+          object_type: estimate.object_type || "",
+          area: estimate.area || 0,
+        } as never,
+        estimate.company_name || user?.company_name || ""
+      )
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!estimate) return
+    if (!window.confirm("Удалить смету безвозвратно?")) return
+    setDeleting(true)
+    try {
+      await estimatesApi.remove(estimate.id)
+      navigate(`/cabinet/objects/${objectId}`)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -95,7 +131,6 @@ export default function EstimateView() {
 
   const subtotal = estimate.subtotal_amount ?? estimate.total_amount
   const discountAmount = estimate.discount_amount ?? 0
-  const isReady = estimate.status === "ready"
   const revisions = estimate.revisions || []
 
   return (
@@ -110,19 +145,9 @@ export default function EstimateView() {
         </Link>
 
         <div className="flex items-center gap-2">
-          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${isReady ? "bg-green-500/20 text-green-300" : "bg-orange-500/20 text-orange-300"}`}>
-            {isReady ? "Готово" : "Черновик"}
+          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getEstimateStatusColor(estimate.status)}`}>
+            {getEstimateStatusLabel(estimate.status)}
           </span>
-          {!isClient && (
-            <button
-              onClick={handleToggleStatus}
-              disabled={savingStatus}
-              className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 transition-colors text-sm px-3 py-2 rounded-lg disabled:opacity-60"
-            >
-              {savingStatus ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="RefreshCcw" size={14} />}
-              {isReady ? "Вернуть в черновик" : "Отметить готовой"}
-            </button>
-          )}
           {!isClient && (
             <Link
               to={`/cabinet/objects/${objectId}/estimates/${estimate.id}/edit`}
@@ -135,13 +160,79 @@ export default function EstimateView() {
           <button
             onClick={handlePrint}
             disabled={printing}
-            className="flex items-center gap-1.5 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-3 py-2 rounded-lg disabled:opacity-60"
+            title="Печать"
+            className="flex items-center justify-center w-9 h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg disabled:opacity-60"
           >
-            {printing ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Printer" size={14} />}
-            Печать
+            {printing ? <Icon name="Loader2" size={15} className="animate-spin" /> : <Icon name="Printer" size={15} />}
           </button>
+          <button
+            onClick={handleDownloadPdf}
+            disabled={downloading}
+            title="Скачать PDF"
+            className="flex items-center justify-center w-9 h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg disabled:opacity-60"
+          >
+            {downloading ? <Icon name="Loader2" size={15} className="animate-spin" /> : <Icon name="Download" size={15} />}
+          </button>
+          {!isClient && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  title="Ещё"
+                  className="flex items-center justify-center w-9 h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg"
+                >
+                  <Icon name="MoreVertical" size={15} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="text-red-500 focus:text-red-500"
+                >
+                  <Icon name="Trash2" size={14} className="mr-2" />
+                  Удалить смету
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
+
+      {!isClient && (
+        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl mb-4 p-5">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <p className="text-sm font-medium flex items-center gap-2">
+                Сформированная редакция №{estimate.revision_number ?? 1}
+                <span className={`px-2 py-0.5 rounded-full text-[10px] ${getEstimateStatusColor(estimate.status)}`}>
+                  {getEstimateStatusLabel(estimate.status)}
+                </span>
+              </p>
+              <p className="text-xs text-white/40 mt-1">
+                Сформирована {formatDateTime(estimate.created_at)}. Стадия описывает процесс вне SMPro и не ограничивает редактирование.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select
+                value={estimate.status || "ready"}
+                onValueChange={(v) => handleStatusChange(v as EstimateStatus)}
+                disabled={savingStatus}
+              >
+                <SelectTrigger className="w-[200px] bg-[#161616] border-white/10 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {estimateStatusOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      )}
 
       {revisions.length > 1 && (
         <div className="bg-[#1f1f1f] border border-white/10 rounded-xl mb-4 overflow-hidden">
@@ -166,8 +257,8 @@ export default function EstimateView() {
                   <span className="flex items-center gap-2">
                     Редакция №{rev.revision_number}
                     {rev.id === estimate.id && <span className="text-[#D4AF37] text-xs">(текущая)</span>}
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] ${rev.status === "ready" ? "bg-green-500/20 text-green-300" : "bg-orange-500/20 text-orange-300"}`}>
-                      {rev.status === "ready" ? "Готово" : "Черновик"}
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] ${getEstimateStatusColor(rev.status)}`}>
+                      {getEstimateStatusLabel(rev.status)}
                     </span>
                   </span>
                   <span className="text-white/40">{formatDate(rev.created_at)} · {formatMoney(rev.total_amount)}</span>

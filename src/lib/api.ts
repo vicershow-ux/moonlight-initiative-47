@@ -1,4 +1,5 @@
 import funcUrls from "../../backend/func2url.json"
+import { EstimateStatus } from "@/lib/estimateStatus"
 
 const AUTH_URL = funcUrls.auth
 const OBJECTS_URL = funcUrls.objects
@@ -308,7 +309,7 @@ export interface Estimate {
   object_type?: string
   area?: number
   has_pending?: boolean
-  status?: "draft" | "ready"
+  status?: EstimateStatus
   revision_number?: number
   created_by?: number | null
   company_name?: string
@@ -384,7 +385,7 @@ export const estimatesApi = {
     return parseResponse(res)
   },
 
-  async setStatus(id: number, status: "draft" | "ready") {
+  async setStatus(id: number, status: EstimateStatus) {
     const res = await fetch(`${ESTIMATES_URL}?action=set_status&id=${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...authHeaders() },

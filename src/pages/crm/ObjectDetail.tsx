@@ -5,6 +5,7 @@ import Icon from "@/components/ui/icon"
 import { objectsApi, estimatesApi, objectRoomsApi, Estimate, ObjectItem, ObjectRoom } from "@/lib/api"
 import { EstimatesListModal } from "@/components/crm/EstimatesListModal"
 import { printEstimate } from "@/lib/printEstimate"
+import { getEstimateStatusColor, getEstimateStatusLabel } from "@/lib/estimateStatus"
 import { useAuth } from "@/contexts/AuthContext"
 
 const statusColors: Record<string, string> = {
@@ -325,8 +326,8 @@ export default function ObjectDetail() {
                     <div className="flex items-center justify-between mb-1">
                       <p className="text-sm font-medium">Смета №{est.id} (ред. №{est.revision_number ?? 1})</p>
                       <div className="flex items-center gap-1.5">
-                        <span className={`px-2 py-0.5 rounded-full text-xs ${est.status === "ready" ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"}`}>
-                          {est.status === "ready" ? "Готово" : "Черновик"}
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${getEstimateStatusColor(est.status)}`}>
+                          {getEstimateStatusLabel(est.status)}
                         </span>
                         {est.has_pending && (
                           <span className="px-2 py-0.5 rounded-full text-xs bg-orange-500/20 text-orange-300">Ожидает согласования</span>

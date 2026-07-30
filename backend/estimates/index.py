@@ -243,7 +243,8 @@ def handler(event: dict, context) -> dict:
 
             body = json.loads(event.get('body') or '{}')
             new_status = (body.get('status') or '').strip()
-            if new_status not in ('draft', 'ready'):
+            allowed_statuses = ('ready', 'in_approval', 'in_signing', 'needs_revision', 'approved', 'inactive')
+            if new_status not in allowed_statuses:
                 return response(400, {'error': 'Недопустимый статус'})
 
             cur.execute(
@@ -412,7 +413,7 @@ def handler(event: dict, context) -> dict:
                 'id': new_id, 'object_id': obj_id, 'total_amount': total, 'subtotal_amount': subtotal,
                 'contract_number': contract_number, 'contract_date': contract_date,
                 'discount_percent': discount_percent, 'discount_amount': discount_amount, 'notes': notes,
-                'created_at': created_at, 'items': clean_items, 'revision_number': next_revision, 'status': 'draft'
+                'created_at': created_at, 'items': clean_items, 'revision_number': next_revision, 'status': 'ready'
             })
 
         if method == 'DELETE':
