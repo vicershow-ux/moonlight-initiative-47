@@ -2,8 +2,9 @@ import { useEffect, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
-import { objectsApi, objectStatusesApi, estimatesApi, objectRoomsApi, Estimate, ObjectItem, ObjectRoom, ObjectStatus } from "@/lib/api"
+import { objectsApi, objectStatusesApi, estimatesApi, objectRoomsApi, contractsApi, Estimate, ObjectItem, ObjectRoom, ObjectStatus, Contract } from "@/lib/api"
 import { EstimatesListModal } from "@/components/crm/EstimatesListModal"
+import { CreateContractModal } from "@/components/crm/CreateContractModal"
 import { printEstimate } from "@/lib/printEstimate"
 import { getEstimateStatusColor, getEstimateStatusLabel } from "@/lib/estimateStatus"
 import { getStatusBadgeClass } from "@/lib/objectStatusColors"
@@ -33,8 +34,11 @@ export default function ObjectDetail() {
   const [rooms, setRooms] = useState<ObjectRoom[]>([])
   const [roomsLoading, setRoomsLoading] = useState(true)
   const [statuses, setStatuses] = useState<ObjectStatus[]>([])
+  const [contracts, setContracts] = useState<Contract[]>([])
+  const [contractsLoading, setContractsLoading] = useState(true)
 
   const [estimatesListOpen, setEstimatesListOpen] = useState(false)
+  const [createContractOpen, setCreateContractOpen] = useState(false)
 
   const load = () => {
     if (!id) return
@@ -65,10 +69,20 @@ export default function ObjectDetail() {
       .finally(() => setRoomsLoading(false))
   }
 
+  const loadContracts = () => {
+    if (!id) return
+    setContractsLoading(true)
+    contractsApi
+      .listByObject(Number(id))
+      .then((data) => setContracts(data.contracts))
+      .finally(() => setContractsLoading(false))
+  }
+
   useEffect(() => {
     load()
     loadEstimates()
     loadRooms()
+    loadContracts()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
@@ -87,6 +101,33 @@ export default function ObjectDetail() {
     if (!window.confirm("Удалить смету безвозвратно?")) return
     await estimatesApi.remove(estimateId)
     setEstimates((prev) => prev.filter((e) => e.id !== estimateId))
+  }
+
+  const handleDeleteContract = async (contractId: number) => {
+    if (!window.confirm("Удалить договор безвозвратно?")) return
+    await contractsApi.remove(contractId)
+    setContracts((prev) => prev.filter((c) => c.id !== contractId))
+  }
+
+  const handlePrintContract = (contract: Contract) => {
+    const win = window.open("", "_blank")
+    if (!win) return
+    win.document.write(`
+      <html>
+        <head>
+          <title>Договор № ${contract.contract_number}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 32px; line-height: 1.5; color: #161616; }
+            h2, h3 { color: #161616; }
+            table { border-collapse: collapse; }
+          </style>
+        </head>
+        <body>${contract.content_html}</body>
+      </html>
+    `)
+    win.document.close()
+    win.focus()
+    win.print()
   }
 
   if (loading || !object) {
@@ -298,7 +339,10 @@ export default function ObjectDetail() {
                     <Icon name="Plus" size={14} />
                     Создать смету
                   </Link>
-                  <button className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg">
+                  <button
+                    onClick={() => setCreateContractOpen(true)}
+                    className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg"
+                  >
                     <Icon name="FileSignature" size={14} />
                     Составить договор
                   </button>
@@ -373,6 +417,62 @@ export default function ObjectDetail() {
                 ))}
               </div>
             )}
+
+            <p className="text-xs text-white/40 uppercase tracking-wide mb-2 mt-6">Договоры</p>
+            {contractsLoading ? (
+              <div className="flex justify-center py-8">
+                <Icon name="Loader2" size={20} className="animate-spin text-white/40" />
+              </div>
+            ) : contracts.length === 0 ? (
+              <div className="text-center py-8 text-white/30 text-sm">
+                По этому объекту ещё нет договоров
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {contracts.map((c) => (
+                  <div key={c.id} className="bg-[#161616] border border-white/10 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-sm font-medium">Договор № {c.contract_number}</p>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs ${
+                          c.status === "signed" ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"
+                        }`}
+                      >
+                        {c.status === "signed" ? "Подписан" : "Черновик"}
+                      </span>
+                    </div>
+                    <p className="text-lg font-semibold mb-2">{formatMoney(c.total_amount)}</p>
+                    <div className="flex items-center gap-3">
+                      {!isClient && (
+                        <Link
+                          to={`/cabinet/objects/${object.id}/contracts/${c.id}/edit`}
+                          className="text-white/40 hover:text-white transition-colors"
+                          title="Редактировать"
+                        >
+                          <Icon name="Pencil" size={15} />
+                        </Link>
+                      )}
+                      <button
+                        onClick={() => handlePrintContract(c)}
+                        className="text-white/40 hover:text-white transition-colors"
+                        title="Печать"
+                      >
+                        <Icon name="Printer" size={15} />
+                      </button>
+                      {!isClient && (
+                        <button
+                          onClick={() => handleDeleteContract(c.id)}
+                          className="text-white/40 hover:text-red-400 transition-colors"
+                          title="Удалить"
+                        >
+                          <Icon name="Trash2" size={15} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -413,6 +513,11 @@ export default function ObjectDetail() {
       <EstimatesListModal
         open={estimatesListOpen}
         onOpenChange={setEstimatesListOpen}
+        object={object}
+      />
+      <CreateContractModal
+        open={createContractOpen}
+        onOpenChange={setCreateContractOpen}
         object={object}
       />
     </CrmLayout>

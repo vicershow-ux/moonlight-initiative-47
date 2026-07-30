@@ -16,6 +16,7 @@ import ObjectRooms from "./pages/crm/ObjectRooms";
 import ObjectEdit from "./pages/crm/ObjectEdit";
 import EstimateCreate from "./pages/crm/EstimateCreate";
 import EstimateView from "./pages/crm/EstimateView";
+import ContractEdit from "./pages/crm/ContractEdit";
 import Services from "./pages/crm/Services";
 import ServiceCreate from "./pages/crm/ServiceCreate";
 import Documents from "./pages/crm/Documents";
@@ -46,6 +47,8 @@ const App = () => (
             <Route path="/cabinet/objects/:id/estimates/new" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><EstimateCreate /></ProtectedRoute>} />
             <Route path="/cabinet/objects/:id/estimates/:estimateId/edit" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><EstimateCreate /></ProtectedRoute>} />
             <Route path="/cabinet/objects/:id/estimates/:estimateId" element={<ProtectedRoute><EstimateView /></ProtectedRoute>} />
+            <Route path="/cabinet/objects/:id/contracts/new" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><ContractEdit /></ProtectedRoute>} />
+            <Route path="/cabinet/objects/:id/contracts/:contractId/edit" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><ContractEdit /></ProtectedRoute>} />
             <Route path="/cabinet/documents" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Documents /></ProtectedRoute>} />
             <Route path="/cabinet/customers" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Customers /></ProtectedRoute>} />
             <Route path="/cabinet/services" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Services /></ProtectedRoute>} />

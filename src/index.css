@@ -107,3 +107,20 @@
   stroke-dashoffset: 1000;
   animation: draw-stroke 1.5s ease-out forwards;
 }
+
+.contract-preview h2,
+.contract-preview h3 {
+  color: #fff;
+}
+
+.contract-preview p {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.contract-preview table {
+  width: 100%;
+}
+
+.contract-preview strong {
+  color: #fff;
+}

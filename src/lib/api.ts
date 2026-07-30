@@ -10,6 +10,7 @@ const LEADS_URL = funcUrls.leads
 const OBJECT_ROOMS_URL = funcUrls.object_rooms
 const OBJECT_STATUSES_URL = funcUrls.object_statuses
 const SITE_URL = funcUrls.site
+const CONTRACTS_URL = funcUrls.contracts
 
 const TOKEN_KEY = "fixkey_token"
 
@@ -417,6 +418,114 @@ export const estimatesApi = {
   async rejectItem(itemId: number) {
     const res = await fetch(`${ESTIMATES_URL}?action=reject&item_id=${itemId}`, {
       method: "PUT",
+      headers: { ...authHeaders() },
+    })
+    return parseResponse(res)
+  },
+}
+
+export interface ContractOptions {
+  customer_type?: "individual" | "legal" | "entrepreneur"
+  contractor_type?: "individual" | "self_employed" | "foreign_citizen" | "entrepreneur" | "legal"
+  design_project?: "none" | "with_project"
+  work_order?: "staged" | "single" | "custom"
+  subcontractors?: "allowed" | "personal_only"
+  work_start?: "advance_and_handover" | "advance_only" | "signing"
+  cost_type?: "fixed" | "by_estimate"
+  payment_order?: "advance_staged" | "full_prepayment" | "on_completion"
+  payment_schedule?: "advance_4_stages" | "advance_3_stages" | "advance_2_stages" | "custom_schedule"
+  duration_months?: string
+}
+
+export interface Contract {
+  id: number
+  object_id: number
+  estimate_id?: number | null
+  contract_number: string
+  contract_date: string
+  status: "draft" | "signed"
+  template_key: string
+  options: ContractOptions
+  content_html: string
+  total_amount: number
+  created_by?: number | null
+  created_at: string
+  updated_at: string
+  object_code?: string
+  client_name?: string
+  address?: string
+}
+
+export const contractsApi = {
+  async listByObject(objectId: number) {
+    const res = await fetch(`${CONTRACTS_URL}?object_id=${objectId}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ contracts: Contract[] }>
+  },
+
+  async listAll() {
+    const res = await fetch(CONTRACTS_URL, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ contracts: Contract[] }>
+  },
+
+  async get(id: number) {
+    const res = await fetch(`${CONTRACTS_URL}?id=${id}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<Contract>
+  },
+
+  async generate(payload: {
+    object_id: number
+    estimate_id?: number
+    options: ContractOptions
+    contract_number?: string
+    contract_date?: string
+  }) {
+    const res = await fetch(`${CONTRACTS_URL}?action=generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<{ content_html: string; total_amount: number; contract_number: string }>
+  },
+
+  async create(payload: {
+    object_id: number
+    estimate_id?: number
+    contract_number: string
+    contract_date: string
+    template_key?: string
+    options: ContractOptions
+    content_html: string
+    total_amount: number
+    status?: string
+  }) {
+    const res = await fetch(CONTRACTS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<Contract>
+  },
+
+  async update(id: number, payload: Partial<{
+    contract_number: string
+    contract_date: string
+    status: string
+    options: ContractOptions
+    content_html: string
+    total_amount: number
+    estimate_id: number
+  }>) {
+    const res = await fetch(`${CONTRACTS_URL}?id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<Contract>
+  },
+
+  async remove(id: number) {
+    const res = await fetch(`${CONTRACTS_URL}?id=${id}`, {
+      method: "DELETE",
       headers: { ...authHeaders() },
     })
     return parseResponse(res)
