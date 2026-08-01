@@ -15,7 +15,7 @@ import {
   ContractOptions,
 } from "@/lib/api"
 import { buildContractHtml } from "@/lib/buildContractHtml"
-import { moneyInWords, monthsWordsRu } from "@/lib/numberToWordsRu"
+import { moneyInWords, durationWordsOnlyRu } from "@/lib/numberToWordsRu"
 
 const formatMoney = (n: number) =>
   new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n) + " ₽"
@@ -31,6 +31,12 @@ const defaultOptions: Required<ContractOptions> = {
   payment_order: "advance_staged",
   payment_schedule: "advance_4_stages",
   duration_months: "6",
+  duration_unit: "months",
+  work_stages: [
+    "Подготовительные и черновые работы: демонтаж, возведение перегородок, грунтовка, штукатурка стен, стяжка пола, частичное выполнение инженерных и электромонтажных работ",
+    "Санузел и ванная: гидроизоляция, укладка плитки, монтаж сантехнических коммуникаций и оборудования, электромонтаж, монтаж вентиляции",
+  ],
+  guarantee_months: "12",
   city: "",
   customer_gender: "m",
   contractor_gender: "m",
@@ -75,6 +81,12 @@ const genderOptions = [
 const daysKindOptions = [
   { value: "working" as const, label: "рабочих дней" },
   { value: "calendar" as const, label: "календарных дней" },
+]
+
+const durationUnitOptions = [
+  { value: "months" as const, label: "месяцев" },
+  { value: "working_days" as const, label: "рабочих дней" },
+  { value: "calendar_days" as const, label: "календарных дней" },
 ]
 
 export default function ContractEdit() {
@@ -146,6 +158,7 @@ export default function ContractEdit() {
   )
   const total = estimate?.total_amount ?? 0
   const durationNum = Number(options.duration_months) || 6
+  const guaranteeNum = Number(options.guarantee_months) || 12
   const fixedAmountNum = options.fixed_amount ? Number(options.fixed_amount) || 0 : total
 
   const doSave = async (): Promise<boolean> => {
@@ -473,16 +486,7 @@ export default function ContractEdit() {
             Сметой (Приложение №1).
           </p>
         ) : (
-          <div>
-            <p className="mb-1">1.4. Состав и порядок этапов работ:</p>
-            <textarea
-              value={options.custom_stages_text}
-              onChange={(e) => updateOption("custom_stages_text", e.target.value)}
-              placeholder="Введите свой вариант текста..."
-              rows={4}
-              className="w-full bg-[#2a2320] border border-[#D4463C]/40 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#D4463C] focus:ring-1 focus:ring-[#D4463C]/40 placeholder:text-white/30 resize-y"
-            />
-          </div>
+          <WorkStages stages={options.work_stages || []} onChange={(next) => updateOption("work_stages", next)} />
         )}
 
         {/* Субподрядчики */}
@@ -518,7 +522,9 @@ export default function ContractEdit() {
         <p>
           2.1. Общий срок выполнения Работ составляет{" "}
           <InlineInput value={options.duration_months} onChange={(v) => updateOption("duration_months", v)} placeholder="6" minWidth={40} type="number" />
-          {" "}месяцев ({monthsWordsRu(durationNum)}). Течение срока начинается{" "}
+          {" "}
+          <InlineSelect value={options.duration_unit || "months"} onChange={(v) => updateOption("duration_unit", v)} options={durationUnitOptions} />
+          {" "}(<span className="text-[#D4463C]">{durationWordsOnlyRu(durationNum, options.duration_unit || "months")}</span>). Течение срока начинается{" "}
           {{
             advance_and_handover:
               "с момента выполнения Заказчиком двух условий: внесения аванса, предусмотренного п. 3.2.1 настоящего Договора, и передачи Подрядчику ключей от Объекта с подписанием Сторонами Акта приёма-передачи Объекта в ремонт",
@@ -667,7 +673,11 @@ export default function ContractEdit() {
         <p>5.2. За нарушение сроков оплаты по вине Заказчика — неустойка 0,1% от неоплаченной суммы за каждый день просрочки.</p>
 
         <h3 className="text-white font-semibold mt-6 mb-2">6. Гарантии</h3>
-        <p>6.1. Гарантия на выполненные Работы — 12 месяцев с момента подписания Акта сдачи-приёмки.</p>
+        <p>
+          6.1. Гарантия на выполненные Работы —{" "}
+          <InlineInput value={options.guarantee_months} onChange={(v) => updateOption("guarantee_months", v)} placeholder="12" minWidth={40} type="number" />
+          {" "}(<span className="text-[#D4463C]">{durationWordsOnlyRu(guaranteeNum, "months")}</span>) с момента подписания Акта сдачи-приёмки.
+        </p>
 
         <h3 className="text-white font-semibold mt-6 mb-2">7. Порядок приёмки работ</h3>
         <p>
@@ -813,5 +823,47 @@ function CustomSchedule({ stages, onChange }: { stages: CustomStage[]; onChange:
         Добавить этап
       </button>
     </>
+  )
+}
+
+function WorkStages({ stages, onChange }: { stages: string[]; onChange: (next: string[]) => void }) {
+  const update = (i: number, value: string) => onChange(stages.map((s, idx) => (idx === i ? value : s)))
+  const remove = (i: number) => onChange(stages.filter((_, idx) => idx !== i))
+  const add = () => onChange([...stages, ""])
+
+  return (
+    <div className="space-y-2">
+      <p className="mb-1">1.4. Работы выполняются поэтапно в соответствии со следующим графиком:</p>
+      {stages.map((s, i) => (
+        <div key={i} className="group flex items-start gap-2">
+          <span className="pt-2 shrink-0 whitespace-nowrap">1.4.{i + 1}. Этап {i + 1} —</span>
+          <textarea
+            value={s}
+            onChange={(e) => update(i, e.target.value)}
+            placeholder="Опишите работы этапа..."
+            rows={2}
+            className="flex-1 bg-[#2a2320] border border-[#D4463C]/40 rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-[#D4463C] focus:ring-1 focus:ring-[#D4463C]/40 placeholder:text-white/30 resize-y"
+          />
+          {stages.length > 1 && (
+            <button
+              type="button"
+              onClick={() => remove(i)}
+              className="pt-2 text-white/30 hover:text-[#D4463C] opacity-0 group-hover:opacity-100 transition shrink-0"
+              title="Удалить этап"
+            >
+              <Icon name="X" size={16} />
+            </button>
+          )}
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={add}
+        className="inline-flex items-center gap-1 text-sm text-[#D4463C] hover:text-[#e85c52] transition"
+      >
+        <Icon name="Plus" size={15} />
+        Добавить этап
+      </button>
+    </div>
   )
 }

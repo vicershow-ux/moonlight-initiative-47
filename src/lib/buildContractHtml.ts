@@ -1,5 +1,5 @@
 import { ObjectItem, Estimate, CompanyData, ContractOptions } from "@/lib/api"
-import { moneyInWords, monthsWordsRu } from "@/lib/numberToWordsRu"
+import { moneyInWords, durationWordsRu } from "@/lib/numberToWordsRu"
 
 export interface ContractContext {
   object: ObjectItem
@@ -82,13 +82,18 @@ export function buildContractHtml(ctx: ContractContext): string {
       ? `<p>Работы выполняются в соответствии с дизайн-проектом, разработанным ${esc(o.design_author) || "____________"} и согласованным Сторонами, который является неотъемлемой частью настоящего Договора (Приложение №2).</p>`
       : ""
 
-  const customStages = esc(o.custom_stages_text).trim()
+  const workStages = (o.work_stages || []).filter((s) => s.trim())
+  const workStagesHtml = workStages.length
+    ? `<p>1.4. Работы выполняются поэтапно в соответствии со следующим графиком:</p>\n${workStages
+        .map((s, i) => `<p>1.4.${i + 1}. Этап ${i + 1} — ${esc(s.trim())}.</p>`)
+        .join("")}`
+    : `<p>1.4. Состав и порядок этапов работ определяется Сторонами.</p>`
   const workOrderHtml =
     o.work_order === "staged"
       ? `<p>1.4. Работы выполняются поэтапно в соответствии со следующим графиком:</p>\n${STAGED_DETAIL}`
       : o.work_order === "single"
       ? "<p>1.4. Работы выполняются единым комплексом без разбивки на отдельные этапы. Промежуточные сроки и объёмы определяются Сметой (Приложение №1).</p>"
-      : `<p>1.4. Состав и порядок этапов работ:</p><p>${customStages || "____________"}</p>`
+      : workStagesHtml
 
   const subHtml =
     o.subcontractors === "allowed"
@@ -103,6 +108,9 @@ export function buildContractHtml(ctx: ContractContext): string {
   }[o.work_start]
 
   const durationNum = Number(o.duration_months) || 6
+  const durationText = durationWordsRu(durationNum, o.duration_unit || "months")
+  const guaranteeNum = Number(o.guarantee_months) || 12
+  const guaranteeText = durationWordsRu(guaranteeNum, "months")
   const fixedAmount = o.fixed_amount ? Number(o.fixed_amount) || 0 : total
   const scheduleBase = o.cost_type === "fixed" ? fixedAmount : total
 
@@ -195,7 +203,7 @@ ${workOrderHtml}
 ${subHtml}
 
 <h3>2. Сроки выполнения работ</h3>
-<p>2.1. Общий срок выполнения Работ составляет ${monthsWordsRu(durationNum)}. Течение срока начинается ${workStart}.</p>
+<p>2.1. Общий срок выполнения Работ составляет ${durationText}. Течение срока начинается ${workStart}.</p>
 <p>2.2. В случае нарушения Заказчиком обязательств, препятствующих выполнению Работ (задержка предоставления материалов, непредоставление доступа на Объект, несвоевременное согласование скрытых работ, задержка оплаты этапов), Подрядчик вправе приостановить выполнение Работ.</p>
 <p>2.3. При приостановке Работ по указанным причинам сроки соразмерно отодвигаются на всё время просрочки со стороны Заказчика. Подрядчик не несёт ответственности за нарушение общих сроков Договора в данном случае.</p>
 
@@ -216,7 +224,7 @@ ${hiddenDefectsHtml}
 <p>5.2. За нарушение сроков оплаты по вине Заказчика Подрядчик вправе потребовать неустойку 0,1% от неоплаченной суммы за каждый день просрочки.</p>
 
 <h3>6. Гарантии</h3>
-<p>6.1. Подрядчик предоставляет гарантию на выполненные Работы сроком 12 месяцев с момента подписания Акта сдачи-приёмки.</p>
+<p>6.1. Подрядчик предоставляет гарантию на выполненные Работы сроком ${guaranteeText} с момента подписания Акта сдачи-приёмки.</p>
 <p>6.2. Гарантия не распространяется на дефекты, возникшие вследствие нормального износа, нарушения правил эксплуатации или вмешательства третьих лиц.</p>
 
 <h3>7. Порядок приёмки работ</h3>

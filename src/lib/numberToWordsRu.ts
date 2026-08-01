@@ -76,3 +76,29 @@ export function monthsWordsRu(n: number): string {
   const words = numberToWordsRu(n)
   return `${n} (${words}) ${pluralize(n, MONTH_FORMS)}`
 }
+
+const DURATION_UNIT_FORMS: Record<string, [string, string, string]> = {
+  months: ["месяц", "месяца", "месяцев"],
+  working_days: ["рабочий день", "рабочих дня", "рабочих дней"],
+  calendar_days: ["календарный день", "календарных дня", "календарных дней"],
+}
+
+// Пропись срока с указанием единицы: "6 (шесть) месяцев", "10 (десять) рабочих дней"
+export function durationWordsRu(n: number, unit: string): string {
+  const forms = DURATION_UNIT_FORMS[unit] || DURATION_UNIT_FORMS.months
+  const words = numberToWordsRu(n)
+  return `${n} (${words}) ${pluralize(n, forms)}`
+}
+
+// Пропись срока без числа: "шесть месяцев", "десять рабочих дней" — для вставки в скобки
+export function durationWordsOnlyRu(n: number, unit: string): string {
+  const forms = DURATION_UNIT_FORMS[unit] || DURATION_UNIT_FORMS.months
+  const words = numberToWordsRu(n)
+  return `${words} ${pluralize(n, forms)}`
+}
+
+// Только слово единицы во множественном родительном (для лейблов селекта): "месяцев" и т.п.
+export function durationUnitLabel(unit: string): string {
+  const forms = DURATION_UNIT_FORMS[unit] || DURATION_UNIT_FORMS.months
+  return forms[2]
+}

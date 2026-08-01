@@ -435,6 +435,9 @@ export interface ContractOptions {
   payment_order?: "advance_staged" | "full_prepayment" | "on_completion"
   payment_schedule?: "advance_4_stages" | "advance_3_stages" | "advance_2_stages" | "custom_schedule"
   duration_months?: string
+  duration_unit?: "months" | "working_days" | "calendar_days"
+  work_stages?: string[]
+  guarantee_months?: string
   // Ручные поля внутри текста
   city?: string
   customer_gender?: "m" | "f"
