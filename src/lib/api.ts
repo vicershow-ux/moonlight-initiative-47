@@ -489,6 +489,9 @@ export interface ContractOptions {
   claim_days_kind?: "working" | "calendar"
   dispute_venue?: "customer" | "contractor" | "specific"
   dispute_court?: string
+  // 9. Заключительные положения
+  copies_total?: string
+  copies_per_party?: string
 }
 
 export interface Contract {

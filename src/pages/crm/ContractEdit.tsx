@@ -86,7 +86,20 @@ const defaultOptions: Required<ContractOptions> = {
   claim_days_kind: "working",
   dispute_venue: "customer",
   dispute_court: "",
+  copies_total: "двух",
+  copies_per_party: "одному",
 }
+
+const copiesTotalOptions = [
+  { value: "двух", label: "двух" },
+  { value: "трёх", label: "трёх" },
+  { value: "четырёх", label: "четырёх" },
+]
+
+const copiesPerPartyOptions = [
+  { value: "одному", label: "одному" },
+  { value: "двум", label: "двум" },
+]
 
 const genderOptions = [
   { value: "m" as const, label: "ий" },
@@ -854,13 +867,55 @@ export default function ContractEdit() {
           )}
         </p>
 
-        {/* Остальные разделы (без переключателей) */}
-        <h3 className="text-white font-semibold mt-6 mb-2">9. Права и обязанности сторон</h3>
-        <p>9.1. Подрядчик обязуется выполнить Работы качественно, в срок и передать результат Заказчику по Акту сдачи-приёмки.</p>
-        <p>9.2. Заказчик обязуется обеспечить доступ на Объект, своевременно принимать этапы Работ и производить оплату.</p>
+        {/* 9. Заключительные положения */}
+        <h3 className="text-white font-semibold mt-6 mb-2">9. Заключительные положения</h3>
+        <p>
+          9.1. Настоящий Договор вступает в силу с момента его подписания обеими Сторонами и действует до полного исполнения
+          Сторонами своих обязательств.
+        </p>
+        <p>
+          9.2. Договор составлен в{" "}
+          <InlineSelect value={options.copies_total} onChange={(v) => updateOption("copies_total", v)} options={copiesTotalOptions} />
+          {" "}экземплярах, имеющих равную юридическую силу, — по{" "}
+          <InlineSelect value={options.copies_per_party} onChange={(v) => updateOption("copies_per_party", v)} options={copiesPerPartyOptions} />
+          {" "}для каждой из Сторон.
+        </p>
 
-        <h3 className="text-white font-semibold mt-6 mb-2">10. Заключительные положения</h3>
-        <p>10.1. Договор составлен в двух экземплярах, имеющих одинаковую юридическую силу, и действует до полного исполнения обязательств.</p>
+        {/* 10. Реквизиты и подписи сторон */}
+        <h3 className="text-white font-semibold mt-6 mb-2">10. Реквизиты и подписи сторон</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-white/10 pt-4">
+          <div className="md:border-r md:border-white/10 md:pr-6">
+            <p className="text-xs uppercase tracking-wide text-white/50 mb-2">Подрядчик (Исполнитель)</p>
+            <p className="font-semibold text-white">{company?.name || company?.contact_full_name || options.contractor_name || "—"}</p>
+            {company?.phone && <p className="text-sm text-white/70">Тел.: {company.phone}</p>}
+            {company?.email && <p className="text-sm text-white/70">Email: {company.email}</p>}
+            {company?.inn && <p className="text-sm text-white/70">ИНН: {company.inn}</p>}
+            {company?.legal_address && <p className="text-sm text-white/70">Юр. адрес: {company.legal_address}</p>}
+            {company?.bank_name && <p className="text-sm text-white/70">Банк: {company.bank_name}</p>}
+            {company?.account_number && <p className="text-sm text-white/70">Р/с: {company.account_number}</p>}
+            <div className="mt-10">
+              <p className="text-xs uppercase tracking-wide text-white/50 mb-6">От имени Подрядчика</p>
+              <div className="border-t border-white/30 pt-1 max-w-[240px]">
+                <p className="font-semibold text-white text-sm">{company?.contact_full_name || options.contractor_name || "—"}</p>
+                <p className="text-xs text-white/40">(подпись, М.П.)</p>
+              </div>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-white/50 mb-2">Заказчик</p>
+            <p className="font-semibold text-white">{options.customer_name || object?.client_name || "—"}</p>
+            {object?.client_phone && <p className="text-sm text-white/70">Тел.: {object.client_phone}</p>}
+            {object?.email && <p className="text-sm text-white/70">Email: {object.email}</p>}
+            {options.object_address && <p className="text-sm text-white/70">Адрес: {options.object_address}</p>}
+            <div className="mt-10">
+              <p className="text-xs uppercase tracking-wide text-white/50 mb-6">От имени Заказчика</p>
+              <div className="border-t border-white/30 pt-1 max-w-[240px]">
+                <p className="font-semibold text-white text-sm">{options.customer_name || object?.client_name || "—"}</p>
+                <p className="text-xs text-white/40">(подпись)</p>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Статус договора */}
         <div className="mt-6">
