@@ -1,5 +1,5 @@
 import { ObjectItem, Estimate, CompanyData, ContractOptions } from "@/lib/api"
-import { moneyWordsRu, moneyInWords, monthsWordsRu } from "@/lib/numberToWordsRu"
+import { moneyInWords, monthsWordsRu } from "@/lib/numberToWordsRu"
 
 export interface ContractContext {
   object: ObjectItem
@@ -137,14 +137,20 @@ export function buildContractHtml(ctx: ContractContext): string {
     custom_schedule: [],
   }
   const schedule = scheduleMap[o.payment_schedule] || scheduleMap.advance_4_stages
-  const scheduleHtml = schedule.length
-    ? schedule
-        .map(
-          ([label, pct, when], i) =>
-            `<p>3.2.${i + 1}. ${label} — ${moneyWordsRu((scheduleBase * pct) / 100)} (${pct}%). Оплачивается Заказчиком ${when}.</p>`
-        )
-        .join("")
-    : "<p>3.2.1. График платежей определяется индивидуальным соглашением Сторон (Приложение №4).</p>"
+  const scheduleHtml =
+    o.payment_order !== "advance_staged"
+      ? ""
+      : schedule.length
+        ? schedule
+            .map(([label, , when], i) => {
+              const manual = o.schedule_amounts?.[i]
+              const pctFromMap = scheduleMap[o.payment_schedule]?.[i]?.[1] ?? 0
+              const amountNum = manual ? Number(manual) || 0 : (scheduleBase * pctFromMap) / 100
+              const formatted = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(Math.round(amountNum))
+              return `<p>3.2.${i + 1}. ${label} — ${formatted} рублей (${moneyInWords(amountNum)}). Оплачивается Заказчиком ${when}.</p>`
+            })
+            .join("")
+        : "<p>3.2.1. График платежей определяется индивидуальным соглашением Сторон (Приложение №4).</p>"
 
   const paymentDays = o.payment_days || "5"
   const paymentMethod = {

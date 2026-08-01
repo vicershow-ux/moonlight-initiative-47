@@ -457,6 +457,7 @@ export interface ContractOptions {
   design_author?: string
   custom_stages_text?: string
   fixed_amount?: string
+  schedule_amounts?: Record<string, string>
   // Редактируемые (подтянутые, но с возможностью правки) поля
   customer_name?: string
   contractor_name?: string

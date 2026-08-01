@@ -15,7 +15,7 @@ import {
   ContractOptions,
 } from "@/lib/api"
 import { buildContractHtml } from "@/lib/buildContractHtml"
-import { moneyWordsRu, moneyInWords, monthsWordsRu } from "@/lib/numberToWordsRu"
+import { moneyInWords, monthsWordsRu } from "@/lib/numberToWordsRu"
 
 const formatMoney = (n: number) =>
   new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n) + " ₽"
@@ -51,6 +51,7 @@ const defaultOptions: Required<ContractOptions> = {
   design_author: "",
   custom_stages_text: "",
   fixed_amount: "",
+  schedule_amounts: {},
   customer_name: "",
   contractor_name: "",
   object_address: "",
@@ -570,18 +571,30 @@ export default function ContractEdit() {
           }[options.payment_order]}
         </p>
 
-        <ToggleGroup
-          label="График платежей"
-          value={options.payment_schedule}
-          onChange={(v) => updateOption("payment_schedule", v)}
-          options={[
-            { value: "advance_4_stages", label: "Аванс + 4 этапа" },
-            { value: "advance_3_stages", label: "Аванс + 3 этапа" },
-            { value: "advance_2_stages", label: "Аванс + 2 этапа" },
-            { value: "custom_schedule", label: "Свой график" },
-          ]}
-        />
-        <PaymentSchedule scheduleKey={options.payment_schedule} total={options.cost_type === "fixed" ? fixedAmountNum : total} />
+        {options.payment_order === "advance_staged" && (
+          <>
+            <ToggleGroup
+              label="График платежей"
+              value={options.payment_schedule}
+              onChange={(v) => updateOption("payment_schedule", v)}
+              options={[
+                { value: "advance_4_stages", label: "Аванс + 4 этапа" },
+                { value: "advance_3_stages", label: "Аванс + 3 этапа" },
+                { value: "advance_2_stages", label: "Аванс + 2 этапа" },
+                { value: "custom_schedule", label: "Свой график" },
+              ]}
+            />
+            <PaymentSchedule
+              scheduleKey={options.payment_schedule}
+              total={options.cost_type === "fixed" ? fixedAmountNum : total}
+              amounts={options.schedule_amounts}
+              onAmountChange={(idx, v) => {
+                const next = { ...(options.schedule_amounts || {}), [idx]: v }
+                updateOption("schedule_amounts", next)
+              }}
+            />
+          </>
+        )}
 
         <p>
           3.3. Оплата по каждому этапу производится в течение{" "}
@@ -673,7 +686,17 @@ export default function ContractEdit() {
   )
 }
 
-function PaymentSchedule({ scheduleKey, total }: { scheduleKey: string; total: number }) {
+function PaymentSchedule({
+  scheduleKey,
+  total,
+  amounts,
+  onAmountChange,
+}: {
+  scheduleKey: string
+  total: number
+  amounts?: Record<string, string>
+  onAmountChange: (idx: number, value: string) => void
+}) {
   const scheduleMap: Record<string, [string, number, string][]> = {
     advance_4_stages: [
       ["Аванс", 25, "до начала выполнения Работ"],
@@ -698,11 +721,23 @@ function PaymentSchedule({ scheduleKey, total }: { scheduleKey: string; total: n
   }
   return (
     <>
-      {schedule.map(([label, pct, when], i) => (
-        <p key={i}>
-          3.2.{i + 1}. {label} — {moneyWordsRu((total * pct) / 100)} ({pct}%). Оплачивается Заказчиком {when}.
-        </p>
-      ))}
+      {schedule.map(([label, pct, when], i) => {
+        const manual = amounts?.[i]
+        const amountNum = manual ? Number(manual) || 0 : (total * pct) / 100
+        return (
+          <p key={i}>
+            3.2.{i + 1}. {label} —{" "}
+            <InlineInput
+              value={manual ?? ""}
+              onChange={(v) => onAmountChange(i, v)}
+              placeholder={String(Math.round((total * pct) / 100))}
+              minWidth={90}
+              type="number"
+            />
+            {" "}рублей (<span className="text-[#D4463C]">{moneyInWords(amountNum)}</span>). Оплачивается Заказчиком {when}.
+          </p>
+        )
+      })}
     </>
   )
 }
