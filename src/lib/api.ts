@@ -463,6 +463,7 @@ export interface ContractOptions {
   contractor_name?: string
   object_address?: string
   hidden_defects?: "include" | "exclude"
+  custom_stages?: { label: string; amount: string; when: string }[]
   payment_days?: string
   payment_days_kind?: "working" | "calendar"
   acceptance_days?: string

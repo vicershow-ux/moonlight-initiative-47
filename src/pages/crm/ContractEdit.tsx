@@ -56,6 +56,10 @@ const defaultOptions: Required<ContractOptions> = {
   contractor_name: "",
   object_address: "",
   hidden_defects: "include",
+  custom_stages: [
+    { label: "Аванс", amount: "", when: "до начала выполнения Работ" },
+    { label: "Этап 1", amount: "", when: "по завершении Работ и подписания Акта сдачи-приёмки" },
+  ],
   payment_days: "5",
   payment_days_kind: "working",
   acceptance_days: "3",
@@ -600,6 +604,8 @@ export default function ContractEdit() {
                 const next = { ...(options.schedule_amounts || {}), [idx]: v }
                 updateOption("schedule_amounts", next)
               }}
+              customStages={options.custom_stages || []}
+              onCustomStagesChange={(next) => updateOption("custom_stages", next)}
             />
           </>
         )}
@@ -702,17 +708,28 @@ export default function ContractEdit() {
   )
 }
 
+type CustomStage = { label: string; amount: string; when: string }
+
 function PaymentSchedule({
   scheduleKey,
   total,
   amounts,
   onAmountChange,
+  customStages,
+  onCustomStagesChange,
 }: {
   scheduleKey: string
   total: number
   amounts?: Record<string, string>
   onAmountChange: (idx: number, value: string) => void
+  customStages: CustomStage[]
+  onCustomStagesChange: (next: CustomStage[]) => void
 }) {
+  if (scheduleKey === "custom_schedule") {
+    return (
+      <CustomSchedule stages={customStages} onChange={onCustomStagesChange} />
+    )
+  }
   const scheduleMap: Record<string, [string, number, string][]> = {
     advance_4_stages: [
       ["Аванс", 25, "до начала выполнения Работ"],
@@ -729,12 +746,8 @@ function PaymentSchedule({
       ["Аванс", 50, "до начала выполнения Работ"],
       ["Этап 1", 50, "по завершении Работ и подписания Акта сдачи-приёмки"],
     ],
-    custom_schedule: [],
   }
   const schedule = scheduleMap[scheduleKey] || scheduleMap.advance_4_stages
-  if (!schedule.length) {
-    return <p>3.2.1. График платежей определяется индивидуальным соглашением Сторон (Приложение №4).</p>
-  }
   return (
     <>
       {schedule.map(([label, pct, when], i) => {
@@ -754,6 +767,51 @@ function PaymentSchedule({
           </p>
         )
       })}
+    </>
+  )
+}
+
+function CustomSchedule({ stages, onChange }: { stages: CustomStage[]; onChange: (next: CustomStage[]) => void }) {
+  const update = (i: number, patch: Partial<CustomStage>) => {
+    onChange(stages.map((s, idx) => (idx === i ? { ...s, ...patch } : s)))
+  }
+  const remove = (i: number) => onChange(stages.filter((_, idx) => idx !== i))
+  const add = () =>
+    onChange([...stages, { label: `Этап ${stages.length}`, amount: "", when: "по завершении Работ и подписания Акта сдачи-приёмки" }])
+
+  return (
+    <>
+      {stages.map((s, i) => {
+        const amountNum = Number(s.amount) || 0
+        return (
+          <p key={i} className="group flex items-baseline flex-wrap gap-y-1">
+            <span>3.2.{i + 1}.{" "}</span>
+            <InlineInput value={s.label} onChange={(v) => update(i, { label: v })} placeholder="Название этапа" minWidth={80} />
+            {" "}—{" "}
+            <InlineInput value={s.amount} onChange={(v) => update(i, { amount: v })} placeholder="сумма" minWidth={90} type="number" />
+            {" "}рублей (<span className="text-[#D4463C]">{moneyInWords(amountNum)}</span>). Оплачивается Заказчиком{" "}
+            <InlineInput value={s.when} onChange={(v) => update(i, { when: v })} placeholder="условие оплаты" minWidth={200} />.
+            {stages.length > 1 && (
+              <button
+                type="button"
+                onClick={() => remove(i)}
+                className="ml-1 text-white/30 hover:text-[#D4463C] opacity-0 group-hover:opacity-100 transition"
+                title="Удалить этап"
+              >
+                <Icon name="X" size={15} />
+              </button>
+            )}
+          </p>
+        )
+      })}
+      <button
+        type="button"
+        onClick={add}
+        className="inline-flex items-center gap-1 text-sm text-[#D4463C] hover:text-[#e85c52] transition mt-1"
+      >
+        <Icon name="Plus" size={15} />
+        Добавить этап
+      </button>
     </>
   )
 }
