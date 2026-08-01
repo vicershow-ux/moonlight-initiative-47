@@ -75,6 +75,17 @@ const defaultOptions: Required<ContractOptions> = {
   acceptance_days: "5",
   acceptance_days_kind: "working",
   payment_method: "cash_or_bank",
+  warranty_mode: "custom",
+  defect_fix_days: "10",
+  defect_fix_days_kind: "working",
+  penalty_work_pct: "0,1",
+  penalty_work_max_pct: "10",
+  penalty_pay_pct: "0,1",
+  penalty_pay_max_pct: "10",
+  claim_days: "10",
+  claim_days_kind: "working",
+  dispute_venue: "customer",
+  dispute_court: "",
 }
 
 const genderOptions = [
@@ -750,24 +761,103 @@ export default function ContractEdit() {
           }[options.doc_delivery]}
         </p>
 
-        {/* Остальные разделы (без переключателей) */}
-        <h3 className="text-white font-semibold mt-6 mb-2">6. Права и обязанности сторон</h3>
-        <p>6.1. Подрядчик обязуется выполнить Работы качественно, в срок и передать результат Заказчику по Акту сдачи-приёмки.</p>
-        <p>6.2. Заказчик обязуется обеспечить доступ на Объект, своевременно принимать этапы Работ и производить оплату.</p>
-
-        <h3 className="text-white font-semibold mt-6 mb-2">7. Ответственность сторон</h3>
-        <p>7.1. За нарушение сроков по вине Подрядчика — неустойка 0,1% от стоимости не выполненного в срок этапа за каждый день просрочки.</p>
-        <p>7.2. За нарушение сроков оплаты по вине Заказчика — неустойка 0,1% от неоплаченной суммы за каждый день просрочки.</p>
-
-        <h3 className="text-white font-semibold mt-6 mb-2">8. Гарантии</h3>
+        {/* 6. Гарантия на работы */}
+        <h3 className="text-white font-semibold mt-6 mb-2">6. Гарантия на работы</h3>
+        <ToggleGroup
+          label="Гарантия на работы"
+          value={options.warranty_mode}
+          onChange={(v) => updateOption("warranty_mode", v)}
+          options={[
+            { value: "custom", label: "Установить гарантию" },
+            { value: "by_law", label: "По закону" },
+          ]}
+        />
+        {options.warranty_mode === "by_law" ? (
+          <p>6.1. Гарантийный срок на выполненные Работы определяется в соответствии с действующим законодательством Российской Федерации.</p>
+        ) : (
+          <p>
+            6.1. Гарантийный срок на выполненные Работы составляет{" "}
+            <InlineInput value={options.guarantee_months} onChange={(v) => updateOption("guarantee_months", v)} placeholder="6" minWidth={40} type="number" />
+            {" "}(<span className="text-[#D4463C]">{durationWordsOnlyRu(guaranteeNum, "months")}</span>) с даты подписания итогового Акта сдачи-приёмки Работ по Договору.
+          </p>
+        )}
         <p>
-          8.1. Гарантия на выполненные Работы —{" "}
-          <InlineInput value={options.guarantee_months} onChange={(v) => updateOption("guarantee_months", v)} placeholder="12" minWidth={40} type="number" />
-          {" "}(<span className="text-[#D4463C]">{durationWordsOnlyRu(guaranteeNum, "months")}</span>) с момента подписания Акта сдачи-приёмки.
+          6.2. Подрядчик несёт ответственность за недостатки Работ, обнаруженные в пределах гарантийного срока, и обязуется устранить
+          их за свой счёт в течение{" "}
+          <InlineInput value={options.defect_fix_days} onChange={(v) => updateOption("defect_fix_days", v)} placeholder="10" minWidth={40} type="number" />
+          {" "}
+          <InlineSelect value={options.defect_fix_days_kind || "working"} onChange={(v) => updateOption("defect_fix_days_kind", v)} options={daysKindOptions} />
+          {" "}с момента получения соответствующего уведомления от Заказчика, если не докажет, что они произошли вследствие
+          нормального износа Объекта, неправильной его эксплуатации либо ненадлежащего ремонта Объекта, произведённого самим
+          Заказчиком или привлечёнными им третьими лицами.
+        </p>
+        <p>
+          6.3. Ответственность за нарушение сроков. В случае просрочки выполнения Работ по вине Подрядчика Заказчик вправе
+          потребовать уплаты неустойки (пени) в размере{" "}
+          <InlineInput value={options.penalty_work_pct} onChange={(v) => updateOption("penalty_work_pct", v)} placeholder="0,1" minWidth={44} />
+          {" "}% от стоимости невыполненного этапа Работ за каждый день просрочки, но не более{" "}
+          <InlineInput value={options.penalty_work_max_pct} onChange={(v) => updateOption("penalty_work_max_pct", v)} placeholder="10" minWidth={44} />
+          {" "}% от общей стоимости Договора.
+        </p>
+        <p>
+          6.4. Ответственность за нарушение оплаты. В случае просрочки оплаты выполненных Работ по вине Заказчика Подрядчик вправе
+          потребовать уплаты неустойки (пени) в размере{" "}
+          <InlineInput value={options.penalty_pay_pct} onChange={(v) => updateOption("penalty_pay_pct", v)} placeholder="0,1" minWidth={44} />
+          {" "}% от суммы просроченного платежа за каждый день просрочки, но не более{" "}
+          <InlineInput value={options.penalty_pay_max_pct} onChange={(v) => updateOption("penalty_pay_max_pct", v)} placeholder="10" minWidth={44} />
+          {" "}% от общей стоимости Договора.
+        </p>
+        <p>
+          6.5. Стороны несут ответственность за неисполнение или ненадлежащее исполнение своих обязательств в соответствии с
+          законодательством Российской Федерации.
         </p>
 
-        <h3 className="text-white font-semibold mt-6 mb-2">9. Форс-мажор и разрешение споров</h3>
-        <p>9.1. Стороны не отвечают за неисполнение обязательств вследствие обстоятельств непреодолимой силы. Споры разрешаются переговорами, а при недостижении согласия — в суде по месту нахождения Объекта.</p>
+        {/* 7. Форс-мажор */}
+        <h3 className="text-white font-semibold mt-6 mb-2">7. Форс-мажор</h3>
+        <p>
+          7.1. Стороны освобождаются от ответственности за частичное или полное неисполнение обязательств по настоящему Договору,
+          если это неисполнение явилось следствием обстоятельств непреодолимой силы (форс-мажор), возникших после заключения
+          Договора, которые Стороны не могли предвидеть или предотвратить разумными мерами.
+        </p>
+
+        {/* 8. Разрешение споров */}
+        <h3 className="text-white font-semibold mt-6 mb-2">8. Разрешение споров</h3>
+        <p>
+          8.1. Споры и разногласия, возникающие между Сторонами, решаются путём переговоров и предъявления письменной претензии.
+          Срок рассмотрения претензии —{" "}
+          <InlineInput value={options.claim_days} onChange={(v) => updateOption("claim_days", v)} placeholder="10" minWidth={40} type="number" />
+          {" "}
+          <InlineSelect value={options.claim_days_kind || "working"} onChange={(v) => updateOption("claim_days_kind", v)} options={daysKindOptions} />
+          {" "}с момента её получения.
+        </p>
+        <ToggleGroup
+          label="Порядок разрешения споров"
+          value={options.dispute_venue}
+          onChange={(v) => updateOption("dispute_venue", v)}
+          options={[
+            { value: "customer", label: "По месту Заказчика" },
+            { value: "contractor", label: "По месту Подрядчика" },
+            { value: "specific", label: "Конкретный суд" },
+          ]}
+        />
+        <p>
+          8.2. При недостижении согласия споры подлежат разрешению в судебном порядке{" "}
+          {options.dispute_venue === "specific" ? (
+            <>
+              в{" "}
+              <InlineInput value={options.dispute_court} onChange={(v) => updateOption("dispute_court", v)} placeholder="наименование суда" minWidth={160} />.
+            </>
+          ) : options.dispute_venue === "contractor" ? (
+            "по месту нахождения Подрядчика в соответствии с действующим законодательством Российской Федерации."
+          ) : (
+            "по месту нахождения Заказчика в соответствии с действующим законодательством Российской Федерации."
+          )}
+        </p>
+
+        {/* Остальные разделы (без переключателей) */}
+        <h3 className="text-white font-semibold mt-6 mb-2">9. Права и обязанности сторон</h3>
+        <p>9.1. Подрядчик обязуется выполнить Работы качественно, в срок и передать результат Заказчику по Акту сдачи-приёмки.</p>
+        <p>9.2. Заказчик обязуется обеспечить доступ на Объект, своевременно принимать этапы Работ и производить оплату.</p>
 
         <h3 className="text-white font-semibold mt-6 mb-2">10. Заключительные положения</h3>
         <p>10.1. Договор составлен в двух экземплярах, имеющих одинаковую юридическую силу, и действует до полного исполнения обязательств.</p>

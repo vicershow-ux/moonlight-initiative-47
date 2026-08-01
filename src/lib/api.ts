@@ -476,6 +476,19 @@ export interface ContractOptions {
   acceptance_days?: string
   acceptance_days_kind?: "working" | "calendar"
   payment_method?: "cash_or_bank" | "bank_only" | "cash_only"
+  // 6. Гарантия
+  warranty_mode?: "custom" | "by_law"
+  defect_fix_days?: string
+  defect_fix_days_kind?: "working" | "calendar"
+  penalty_work_pct?: string
+  penalty_work_max_pct?: string
+  penalty_pay_pct?: string
+  penalty_pay_max_pct?: string
+  // 8. Разрешение споров
+  claim_days?: string
+  claim_days_kind?: "working" | "calendar"
+  dispute_venue?: "customer" | "contractor" | "specific"
+  dispute_court?: string
 }
 
 export interface Contract {
