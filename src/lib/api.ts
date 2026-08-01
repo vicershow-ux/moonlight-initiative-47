@@ -464,6 +464,9 @@ export interface ContractOptions {
   object_address?: string
   hidden_defects?: "include" | "exclude"
   payment_days?: string
+  payment_days_kind?: "working" | "calendar"
+  acceptance_days?: string
+  acceptance_days_kind?: "working" | "calendar"
   payment_method?: "cash_or_bank" | "bank_only" | "cash_only"
 }
 

@@ -57,12 +57,20 @@ const defaultOptions: Required<ContractOptions> = {
   object_address: "",
   hidden_defects: "include",
   payment_days: "5",
+  payment_days_kind: "working",
+  acceptance_days: "3",
+  acceptance_days_kind: "working",
   payment_method: "cash_or_bank",
 }
 
 const genderOptions = [
   { value: "m" as const, label: "ий" },
   { value: "f" as const, label: "ая" },
+]
+
+const daysKindOptions = [
+  { value: "working" as const, label: "рабочих дней" },
+  { value: "calendar" as const, label: "календарных дней" },
 ]
 
 export default function ContractEdit() {
@@ -599,7 +607,9 @@ export default function ContractEdit() {
         <p>
           3.3. Оплата по каждому этапу производится в течение{" "}
           <InlineInput value={options.payment_days} onChange={(v) => updateOption("payment_days", v)} placeholder="5" minWidth={40} type="number" />
-          {" "}рабочих дней с момента подписания Заказчиком соответствующего Акта сдачи-приёмки Работ.
+          {" "}
+          <InlineSelect value={options.payment_days_kind || "working"} onChange={(v) => updateOption("payment_days_kind", v)} options={daysKindOptions} />
+          {" "}с момента подписания Заказчиком соответствующего Акта сдачи-приёмки Работ.
         </p>
 
         {/* Способ оплаты */}
@@ -654,7 +664,13 @@ export default function ContractEdit() {
         <p>6.1. Гарантия на выполненные Работы — 12 месяцев с момента подписания Акта сдачи-приёмки.</p>
 
         <h3 className="text-white font-semibold mt-6 mb-2">7. Порядок приёмки работ</h3>
-        <p>7.1. Заказчик принимает Работы в течение 3 рабочих дней либо предоставляет мотивированный отказ. Приёмка оформляется двусторонним Актом.</p>
+        <p>
+          7.1. Заказчик принимает Работы в течение{" "}
+          <InlineInput value={options.acceptance_days} onChange={(v) => updateOption("acceptance_days", v)} placeholder="3" minWidth={40} type="number" />
+          {" "}
+          <InlineSelect value={options.acceptance_days_kind || "working"} onChange={(v) => updateOption("acceptance_days_kind", v)} options={daysKindOptions} />
+          {" "}либо предоставляет мотивированный отказ. Приёмка оформляется двусторонним Актом.
+        </p>
 
         <h3 className="text-white font-semibold mt-6 mb-2">8. Форс-мажор и разрешение споров</h3>
         <p>8.1. Стороны не отвечают за неисполнение обязательств вследствие обстоятельств непреодолимой силы. Споры разрешаются переговорами, а при недостижении согласия — в суде по месту нахождения Объекта.</p>
