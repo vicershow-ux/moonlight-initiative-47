@@ -13,6 +13,7 @@ import { ProjectsTab } from "@/components/crm/site/ProjectsTab"
 import { ExpertiseTab } from "@/components/crm/site/ExpertiseTab"
 import { FaqTab } from "@/components/crm/site/FaqTab"
 import { ContactsTab } from "@/components/crm/site/ContactsTab"
+import { AnalyticsTab } from "@/components/crm/site/AnalyticsTab"
 
 const emptyForm: SiteSettings = {
   brand_name: "", logo_url: "", favicon_url: "", meta_title: "", meta_description: "",
@@ -24,6 +25,7 @@ const emptyForm: SiteSettings = {
   faq_eyebrow: "", faq_title: "",
   cta_eyebrow: "", cta_title_line1: "", cta_title_highlight: "", cta_description: "",
   footer_description: "", copyright_text: "",
+  analytics_head: "",
 }
 
 type PendingFiles = Partial<Record<
@@ -126,6 +128,7 @@ export default function Site() {
           <TabsTrigger value="expertise">Услуги</TabsTrigger>
           <TabsTrigger value="faq">Вопросы</TabsTrigger>
           <TabsTrigger value="contacts">Контакты</TabsTrigger>
+          <TabsTrigger value="analytics">Аналитика</TabsTrigger>
         </TabsList>
 
         <TabsContent value="brand">
@@ -148,6 +151,9 @@ export default function Site() {
         </TabsContent>
         <TabsContent value="contacts">
           <ContactsTab form={form} update={update} />
+        </TabsContent>
+        <TabsContent value="analytics">
+          <AnalyticsTab form={form} update={update} />
         </TabsContent>
       </Tabs>
     </CrmLayout>

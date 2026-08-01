@@ -886,6 +886,7 @@ export interface SiteSettings {
   cta_description: string
   footer_description: string
   copyright_text: string
+  analytics_head: string
 }
 
 export interface SitePhilosophyItem {

@@ -29,6 +29,38 @@ export default function Index() {
     }
   }, [content])
 
+  // Код аналитики (Яндекс.Метрика, Google Analytics и т.д.) — только на лендинге
+  useEffect(() => {
+    const code = content?.settings?.analytics_head?.trim()
+    if (!code) return
+
+    const container = document.createElement("div")
+    container.setAttribute("data-analytics-landing", "true")
+
+    const template = document.createElement("template")
+    template.innerHTML = code
+
+    const injected: Node[] = []
+    template.content.childNodes.forEach((node) => {
+      if (node.nodeName === "SCRIPT") {
+        const src = node as HTMLScriptElement
+        const script = document.createElement("script")
+        Array.from(src.attributes).forEach((attr) => script.setAttribute(attr.name, attr.value))
+        script.text = src.text
+        document.head.appendChild(script)
+        injected.push(script)
+      } else {
+        const clone = node.cloneNode(true)
+        document.head.appendChild(clone)
+        injected.push(clone)
+      }
+    })
+
+    return () => {
+      injected.forEach((node) => node.parentNode?.removeChild(node))
+    }
+  }, [content])
+
   return (
     <main className="min-h-screen">
       <Header />

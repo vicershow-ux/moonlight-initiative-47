@@ -17,6 +17,7 @@ SETTINGS_FIELDS = [
     'faq_eyebrow', 'faq_title',
     'cta_eyebrow', 'cta_title_line1', 'cta_title_highlight', 'cta_description',
     'footer_description', 'copyright_text',
+    'analytics_head',
 ]
 
 PHILOSOPHY_FIELDS = ['id', 'sort_order', 'title', 'description']
