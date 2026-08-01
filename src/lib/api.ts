@@ -467,6 +467,9 @@ export interface ContractOptions {
   object_address?: string
   hidden_defects?: "include" | "exclude"
   materials?: "contractor" | "customer" | "mixed"
+  materials_return_days?: string
+  materials_return_days_kind?: "working" | "calendar"
+  doc_delivery?: "personal_messengers" | "personal_mail" | "email"
   custom_stages?: { label: string; amount: string; when: string }[]
   payment_days?: string
   payment_days_kind?: "working" | "calendar"
