@@ -69,7 +69,8 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
-        <div className="px-5 py-6 flex items-center border-b border-white/10">
+        <div className="px-5 py-6 flex items-center gap-2 border-b border-white/10">
+          <img src="/favicon.png" alt="FixKey" className="w-14 h-14 object-contain" />
           <span className="text-xl font-semibold tracking-tight">Fix<span className="text-[#D4AF37]">Key</span></span>
         </div>
 
