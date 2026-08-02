@@ -48,14 +48,14 @@ export function Header() {
           {logoUrl && (
             <img src={logoUrl} alt={brandName} className="h-14 w-auto object-contain" />
           )}
-          <span className="text-xl font-semibold tracking-tight text-white">
+          <span className="text-xl font-semibold tracking-tight">
             {brandName.toLowerCase().endsWith("key") ? (
               <>
-                {brandName.slice(0, -3)}
-                <span className="text-black">{brandName.slice(-3)}</span>
+                <span className="text-black">{brandName.slice(0, -3)}</span>
+                <span className="text-[#D4AF37]">{brandName.slice(-3)}</span>
               </>
             ) : (
-              brandName
+              <span className="text-white">{brandName}</span>
             )}
           </span>
         </a>

@@ -28,8 +28,8 @@ export function Footer() {
               <span className="text-xl font-semibold tracking-tight">
                 {brandName.toLowerCase().endsWith("key") ? (
                   <>
-                    {brandName.slice(0, -3)}
-                    <span className="text-black">{brandName.slice(-3)}</span>
+                    <span className="text-black">{brandName.slice(0, -3)}</span>
+                    <span className="text-[#D4AF37]">{brandName.slice(-3)}</span>
                   </>
                 ) : (
                   brandName

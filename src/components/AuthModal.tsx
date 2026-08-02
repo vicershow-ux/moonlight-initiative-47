@@ -95,7 +95,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
           {logoUrl && (
             <img src={logoUrl} alt="Логотип" className="h-14 w-auto object-contain" />
           )}
-          <span className="text-2xl font-semibold tracking-tight text-foreground">Fix<span className="text-black">Key</span></span>
+          <span className="text-2xl font-semibold tracking-tight"><span className="text-black">Fix</span><span className="text-[#D4AF37]">Key</span></span>
         </div>
         {!challengeToken ? (
           <>
