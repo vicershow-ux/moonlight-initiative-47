@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSiteContent } from "@/hooks/useSiteContent"
 
 const defaultProjects = [
@@ -45,6 +45,35 @@ export function Projects() {
     : defaultProjects
 
   const [hoveredId, setHoveredId] = useState<number | null>(null)
+  const [revealedImages, setRevealedImages] = useState<Set<number>>(new Set())
+  const imageRefs = useRef<Map<number, HTMLDivElement>>(new Map())
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const id = Number((entry.target as HTMLElement).dataset.projectId)
+            if (!Number.isNaN(id)) {
+              setRevealedImages((prev) => new Set(prev).add(id))
+            }
+          }
+        })
+      },
+      { threshold: 0.15 },
+    )
+
+    imageRefs.current.forEach((el) => observer.observe(el))
+
+    const fallback = setTimeout(() => {
+      setRevealedImages(new Set(projects.map((p) => p.id)))
+    }, 2500)
+
+    return () => {
+      observer.disconnect()
+      clearTimeout(fallback)
+    }
+  }, [projects.map((p) => p.id).join(",")])
 
   return (
     <section id="projects" className="py-32 md:py-29 bg-secondary/50">
@@ -64,7 +93,14 @@ export function Projects() {
               onMouseEnter={() => setHoveredId(project.id)}
               onMouseLeave={() => setHoveredId(null)}
             >
-              <div className="relative overflow-hidden aspect-[4/3] mb-6">
+              <div
+                ref={(el) => {
+                  if (el) imageRefs.current.set(project.id, el)
+                  else imageRefs.current.delete(project.id)
+                }}
+                data-project-id={project.id}
+                className="relative overflow-hidden aspect-[4/3] mb-6"
+              >
                 <img
                   src={project.image || "/placeholder.svg"}
                   alt={project.title}
@@ -72,6 +108,13 @@ export function Projects() {
                   className={`w-full h-full object-cover transition-transform duration-700 ${
                     hoveredId === project.id ? "scale-105" : "scale-100"
                   }`}
+                />
+                <div
+                  className="absolute inset-0 bg-primary origin-top pointer-events-none"
+                  style={{
+                    transform: revealedImages.has(project.id) ? "scaleY(0)" : "scaleY(1)",
+                    transition: "transform 1.2s cubic-bezier(0.76, 0, 0.24, 1)",
+                  }}
                 />
               </div>
 
