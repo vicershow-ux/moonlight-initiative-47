@@ -19,6 +19,7 @@ const ObjectEdit = lazy(() => import("./pages/crm/ObjectEdit"));
 const EstimateCreate = lazy(() => import("./pages/crm/EstimateCreate"));
 const EstimateView = lazy(() => import("./pages/crm/EstimateView"));
 const ContractEdit = lazy(() => import("./pages/crm/ContractEdit"));
+const ContractView = lazy(() => import("./pages/crm/ContractView"));
 const Services = lazy(() => import("./pages/crm/Services"));
 const ServiceCreate = lazy(() => import("./pages/crm/ServiceCreate"));
 const Documents = lazy(() => import("./pages/crm/Documents"));
@@ -52,6 +53,7 @@ const App = () => (
             <Route path="/cabinet/objects/:id/estimates/:estimateId" element={<ProtectedRoute><EstimateView /></ProtectedRoute>} />
             <Route path="/cabinet/objects/:id/contracts/new" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><ContractEdit /></ProtectedRoute>} />
             <Route path="/cabinet/objects/:id/contracts/:contractId/edit" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><ContractEdit /></ProtectedRoute>} />
+            <Route path="/cabinet/objects/:id/contracts/:contractId" element={<ProtectedRoute><ContractView /></ProtectedRoute>} />
             <Route path="/cabinet/documents" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Documents /></ProtectedRoute>} />
             <Route path="/cabinet/customers" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Customers /></ProtectedRoute>} />
             <Route path="/cabinet/services" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Services /></ProtectedRoute>} />

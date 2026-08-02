@@ -443,6 +443,13 @@ export default function ObjectDetail() {
                     </div>
                     <p className="text-lg font-semibold mb-2">{formatMoney(c.total_amount)}</p>
                     <div className="flex items-center gap-3">
+                      <Link
+                        to={`/cabinet/objects/${object.id}/contracts/${c.id}`}
+                        className="text-white/40 hover:text-[#D4AF37] transition-colors"
+                        title="Просмотр"
+                      >
+                        <Icon name="Eye" size={15} />
+                      </Link>
                       {!isClient && (
                         <Link
                           to={`/cabinet/objects/${object.id}/contracts/${c.id}/edit`}

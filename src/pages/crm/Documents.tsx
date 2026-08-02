@@ -333,6 +333,13 @@ export default function Documents() {
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
                           <Link
+                            to={`/cabinet/objects/${c.object_id}/contracts/${c.id}`}
+                            className="text-white/40 hover:text-[#D4AF37] transition-colors"
+                            title="Просмотр"
+                          >
+                            <Icon name="Eye" size={15} />
+                          </Link>
+                          <Link
                             to={`/cabinet/objects/${c.object_id}/contracts/${c.id}/edit`}
                             className="text-white/40 hover:text-white transition-colors"
                             title="Редактировать"
