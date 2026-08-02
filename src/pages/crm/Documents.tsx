@@ -4,6 +4,7 @@ import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { estimatesApi, objectsApi, objectStatusesApi, contractsApi, Estimate, ObjectItem, ObjectStatus, Contract } from "@/lib/api"
 import { printEstimate, downloadEstimatePdf } from "@/lib/printEstimate"
+import { downloadContractPdf } from "@/lib/downloadContractPdf"
 import { getStatusBadgeClass } from "@/lib/objectStatusColors"
 import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/lib/utils"
@@ -34,6 +35,7 @@ export default function Documents() {
   const [search, setSearch] = useState("")
   const [printingId, setPrintingId] = useState<number | null>(null)
   const [downloadingId, setDownloadingId] = useState<number | null>(null)
+  const [downloadingContractId, setDownloadingContractId] = useState<number | null>(null)
 
   const load = () => {
     setLoading(true)
@@ -94,6 +96,15 @@ export default function Documents() {
     win.document.close()
     win.focus()
     win.print()
+  }
+
+  const handleDownloadContractPdf = async (contract: Contract) => {
+    setDownloadingContractId(contract.id)
+    try {
+      await downloadContractPdf(contract.content_html, contract.contract_number)
+    } finally {
+      setDownloadingContractId(null)
+    }
   }
 
   const handleDownloadPdf = async (est: Estimate) => {
@@ -352,6 +363,17 @@ export default function Documents() {
                             title="Печать"
                           >
                             <Icon name="Printer" size={15} />
+                          </button>
+                          <button
+                            onClick={() => handleDownloadContractPdf(c)}
+                            className="text-white/40 hover:text-white transition-colors"
+                            title="Скачать PDF"
+                          >
+                            {downloadingContractId === c.id ? (
+                              <Icon name="Loader2" size={15} className="animate-spin" />
+                            ) : (
+                              <Icon name="Download" size={15} />
+                            )}
                           </button>
                           <button
                             onClick={() => handleDeleteContract(c.id)}
