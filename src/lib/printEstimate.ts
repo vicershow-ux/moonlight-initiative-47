@@ -99,15 +99,9 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     })
     .join("")
 
-  const html = `
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8" />
-<title>Смета № ${estimate.id} — ${escapeHtml(object.client_name)}</title>
-<style>
+  const styles = `
   * { box-sizing: border-box; }
-  body {
+  .est-root {
     font-family: 'Segoe UI', Arial, sans-serif;
     color: #1a1a1a;
     padding: 40px 48px;
@@ -348,14 +342,14 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     margin-top: 24px;
   }
   @media print {
-    body { padding: 20px; }
+    .est-root { padding: 20px; }
     .no-print { display: none; }
     .cat-block { break-inside: avoid; }
     .room-block { break-inside: avoid; }
   }
-</style>
-</head>
-<body>
+`
+
+  const bodyContent = `
   <div class="header">
     <div class="brand"><div class="brand-logo" style="background-image:url('${window.location.origin}/favicon.png')"></div>Fix<span>Key</span></div>
     <div class="doc-title">
@@ -450,15 +444,26 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
 
   <div class="footer">
     Сформировано ${formatDateTime(new Date().toISOString())}
-  </div>
-</body>
-</html>`
+  </div>`
 
-  return html
+  const title = `Смета № ${estimate.id} — ${escapeHtml(object.client_name)}`
+
+  return { styles, bodyContent, title }
 }
 
 export function printEstimate(estimate: Estimate, object: ObjectItem, companyName: string) {
-  const html = buildEstimateDocument(estimate, object, companyName)
+  const { styles, bodyContent, title } = buildEstimateDocument(estimate, object, companyName)
+  const html = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<title>${title}</title>
+<style>${styles}</style>
+</head>
+<body>
+<div class="est-root">${bodyContent}</div>
+</body>
+</html>`
 
   const printWindow = window.open("", "_blank", "width=900,height=1000")
   if (!printWindow) return
@@ -472,70 +477,49 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
 }
 
 export async function downloadEstimatePdf(estimate: Estimate, object: ObjectItem, companyName: string) {
-  const html = buildEstimateDocument(estimate, object, companyName)
+  const { styles, bodyContent } = buildEstimateDocument(estimate, object, companyName)
 
+  // Рендерим в СКРЫТЫЙ контейнер основного документа (не в iframe),
+  // чтобы html2canvas гарантированно видел стили и вёрстка совпадала с печатью
   const container = document.createElement("div")
   container.style.position = "fixed"
   container.style.left = "-10000px"
   container.style.top = "0"
+  container.style.width = "850px"
+  container.style.background = "#ffffff"
+
+  const styleTag = document.createElement("style")
+  styleTag.textContent = styles
+
+  const root = document.createElement("div")
+  root.className = "est-root"
+  root.style.width = "850px"
+  root.style.margin = "0"
+  root.innerHTML = bodyContent
+
+  container.appendChild(styleTag)
+  container.appendChild(root)
   document.body.appendChild(container)
 
-  const iframe = document.createElement("iframe")
-  iframe.style.width = "850px"
-  iframe.style.height = "1200px"
-  iframe.style.border = "none"
-  container.appendChild(iframe)
-
+  // Ждём загрузку логотипа (фон) перед снимком
   await new Promise<void>((resolve) => {
-    iframe.onload = () => resolve()
-    iframe.srcdoc = html
+    const img = new Image()
+    img.onload = () => resolve()
+    img.onerror = () => resolve()
+    img.src = `${window.location.origin}/favicon.png`
+    setTimeout(resolve, 3000)
   })
-
-  // Подгоняем высоту iframe под фактическую высоту контента,
-  // чтобы html2canvas отрендерил документ целиком
-  const fullHeight = iframe.contentDocument?.body?.scrollHeight
-  if (fullHeight) iframe.style.height = `${fullHeight + 40}px`
-
-  const doc = iframe.contentDocument
-  const target = doc?.body
-  if (!doc || !target) {
-    document.body.removeChild(container)
-    return
-  }
-
-  // Предзагружаем логотип (фон) и ждём остальные изображения (подпись),
-  // иначе html2canvas снимает их некорректно и ломает вёрстку
-  const preload = (src: string) =>
-    new Promise<void>((resolve) => {
-      const img = new Image()
-      img.onload = () => resolve()
-      img.onerror = () => resolve()
-      img.src = src
-      setTimeout(resolve, 3000)
-    })
-
-  const imgWaits = Array.from(doc.images).map((img) =>
-    img.complete && img.naturalWidth > 0
-      ? Promise.resolve()
-      : new Promise<void>((resolve) => {
-          img.onload = () => resolve()
-          img.onerror = () => resolve()
-          setTimeout(resolve, 3000)
-        })
-  )
-
-  await Promise.all([preload(`${window.location.origin}/favicon.png`), ...imgWaits])
 
   const html2pdf = (await import("html2pdf.js")).default
   await html2pdf()
     .set({
-      margin: 0,
+      margin: [10, 10, 10, 10],
       filename: `Смета №${estimate.id}.pdf`,
       image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, windowWidth: 850, width: 850 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
       jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
     })
-    .from(target)
+    .from(root)
     .save()
 
   document.body.removeChild(container)
