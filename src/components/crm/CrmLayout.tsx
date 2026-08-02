@@ -137,7 +137,7 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
       )}
 
       <main className="flex-1 min-h-screen overflow-y-auto md:ml-64">
-        <div className="px-6 md:px-10 py-8 md:py-10 max-w-7xl mx-auto">
+        <div className="px-6 md:px-10 py-8 md:py-10 max-w-[1600px] mx-auto">
           <div className="mb-8 flex items-start justify-between gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">{title}</h1>
