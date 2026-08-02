@@ -113,7 +113,7 @@ export function Projects() {
                   className="absolute inset-0 bg-primary origin-top pointer-events-none"
                   style={{
                     transform: revealedImages.has(project.id) ? "scaleY(0)" : "scaleY(1)",
-                    transition: "transform 1.2s cubic-bezier(0.76, 0, 0.24, 1)",
+                    transition: "transform 2.2s cubic-bezier(0.22, 1, 0.36, 1)",
                   }}
                 />
               </div>
