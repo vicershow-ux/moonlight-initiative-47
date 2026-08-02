@@ -86,7 +86,7 @@ export function Projects() {
         </div>
 
         <div className="grid md:grid-cols-2 gap-6 md:gap-8">
-          {projects.map((project) => (
+          {projects.map((project, index) => (
             <article
               key={project.id}
               className="group cursor-pointer"
@@ -114,6 +114,7 @@ export function Projects() {
                   style={{
                     transform: revealedImages.has(project.id) ? "scaleY(0)" : "scaleY(1)",
                     transition: "transform 2.2s cubic-bezier(0.22, 1, 0.36, 1)",
+                    transitionDelay: revealedImages.has(project.id) ? `${index * 0.18}s` : "0s",
                   }}
                 />
               </div>
