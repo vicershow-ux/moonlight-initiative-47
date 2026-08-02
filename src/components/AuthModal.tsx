@@ -91,11 +91,12 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v) }}>
       <DialogContent className="sm:max-w-md rounded-none border-foreground/10">
-        {logoUrl && (
-          <div className="flex justify-center -mt-2 mb-1">
+        <div className="flex items-center justify-center gap-2.5 -mt-2 mb-1">
+          {logoUrl && (
             <img src={logoUrl} alt="Логотип" className="h-14 w-auto object-contain" />
-          </div>
-        )}
+          )}
+          <span className="text-2xl font-semibold tracking-tight text-foreground">Fix<span className="text-black">Key</span></span>
+        </div>
         {!challengeToken ? (
           <>
             <DialogHeader>
