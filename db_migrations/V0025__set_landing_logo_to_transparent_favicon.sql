@@ -1,0 +1,1 @@
+UPDATE site_settings SET logo_url = '/favicon.png', updated_at = NOW() WHERE company_id = 2;
