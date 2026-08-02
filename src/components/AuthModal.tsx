@@ -21,6 +21,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const [password, setPassword] = useState("")
   const [code, setCode] = useState("")
   const [challengeToken, setChallengeToken] = useState("")
+  const [remember, setRemember] = useState(true)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const { login, verify2fa } = useAuth()
@@ -33,6 +34,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
     setPassword("")
     setCode("")
     setChallengeToken("")
+    setRemember(true)
     setError("")
   }
 
@@ -51,7 +53,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
 
     setLoading(true)
     try {
-      const result = await login(email, password)
+      const result = await login(email, password, remember)
       if (result.requires2fa && result.challengeToken) {
         setChallengeToken(result.challengeToken)
       } else {
@@ -77,7 +79,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
 
     setLoading(true)
     try {
-      await verify2fa(challengeToken, code.trim())
+      await verify2fa(challengeToken, code.trim(), remember)
       reset()
       onOpenChange(false)
       navigate("/cabinet")
@@ -130,6 +132,21 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                   className="border border-foreground/20 px-4 py-3 text-sm outline-none focus:border-foreground transition-colors"
                 />
               </div>
+
+              <label className="flex items-center gap-2.5 cursor-pointer select-none group">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                  className="peer sr-only"
+                />
+                <span className="w-4 h-4 border border-foreground/30 flex items-center justify-center transition-colors peer-checked:bg-foreground peer-checked:border-foreground">
+                  {remember && <Icon name="Check" size={12} className="text-white" />}
+                </span>
+                <span className="text-sm text-foreground/70 group-hover:text-foreground transition-colors">
+                  Запомнить меня
+                </span>
+              </label>
 
               {error && (
                 <p className="text-sm text-red-500 flex items-center gap-1.5">

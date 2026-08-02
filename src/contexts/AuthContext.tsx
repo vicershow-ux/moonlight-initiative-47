@@ -9,8 +9,8 @@ interface LoginOutcome {
 interface AuthContextValue {
   user: UserData | null
   loading: boolean
-  login: (email: string, password: string) => Promise<LoginOutcome>
-  verify2fa: (challengeToken: string, code: string) => Promise<void>
+  login: (email: string, password: string, remember?: boolean) => Promise<LoginOutcome>
+  verify2fa: (challengeToken: string, code: string, remember?: boolean) => Promise<void>
   logout: () => void
   updateCompanyName: (name: string) => void
   updateProfile: (data: { full_name?: string; email?: string }) => void
@@ -36,21 +36,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false))
   }, [])
 
-  const login = async (email: string, password: string): Promise<LoginOutcome> => {
+  const login = async (email: string, password: string, remember = true): Promise<LoginOutcome> => {
     const data = await authApi.login({ email, password })
     if (data.requires_2fa) {
       return { requires2fa: true, challengeToken: data.challenge_token }
     }
     if (data.token && data.user) {
-      setToken(data.token)
+      setToken(data.token, remember)
       setUser(data.user)
     }
     return { requires2fa: false }
   }
 
-  const verify2fa = async (challengeToken: string, code: string) => {
+  const verify2fa = async (challengeToken: string, code: string, remember = true) => {
     const data = await authApi.verify2fa({ challenge_token: challengeToken, code })
-    setToken(data.token)
+    setToken(data.token, remember)
     setUser(data.user)
   }
 
