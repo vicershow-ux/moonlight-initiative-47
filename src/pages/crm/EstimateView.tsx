@@ -9,8 +9,13 @@ import { printEstimate, downloadEstimatePdf } from "@/lib/printEstimate"
 import { estimateStatusOptions, getEstimateStatusColor, getEstimateStatusLabel, EstimateStatus } from "@/lib/estimateStatus"
 import { useAuth } from "@/contexts/AuthContext"
 
-const formatMoney = (n: number) =>
-  new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n) + " ₽"
+const num = (v: unknown, fallback = 0): number => {
+  const n = typeof v === "string" ? parseFloat(v) : Number(v)
+  return Number.isFinite(n) ? n : fallback
+}
+
+const formatMoney = (n: unknown) =>
+  new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(num(n)) + " ₽"
 
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
@@ -129,8 +134,8 @@ export default function EstimateView() {
     groups.get(key)!.push(it)
   })
 
-  const subtotal = estimate.subtotal_amount ?? estimate.total_amount
-  const discountAmount = estimate.discount_amount ?? 0
+  const subtotal = num(estimate.subtotal_amount ?? estimate.total_amount)
+  const discountAmount = num(estimate.discount_amount ?? 0)
   const revisions = estimate.revisions || []
 
   return (
@@ -319,7 +324,7 @@ export default function EstimateView() {
             if (!catGroups.has(key)) catGroups.set(key, [])
             catGroups.get(key)!.push(it)
           })
-          const roomTotal = groupItems.reduce((s, it) => s + it.amount, 0)
+          const roomTotal = groupItems.reduce((s, it) => s + num(it.amount), 0)
 
           return (
             <div key={roomName} className="mb-6">
@@ -328,7 +333,7 @@ export default function EstimateView() {
               </div>
 
               {Array.from(catGroups.entries()).map(([catName, catItems]) => {
-                const catTotal = catItems.reduce((s, it) => s + it.amount, 0)
+                const catTotal = catItems.reduce((s, it) => s + num(it.amount), 0)
                 return (
                   <div key={catName} className="mb-3 border border-gray-200 rounded-lg overflow-hidden">
                     <table className="w-full text-sm">

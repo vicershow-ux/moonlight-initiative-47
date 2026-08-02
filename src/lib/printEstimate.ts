@@ -1,7 +1,12 @@
 import { Estimate, ObjectItem, EstimateItem } from "@/lib/api"
 
-const formatMoney = (n: number) =>
-  new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n) + " ₽"
+const num = (v: unknown, fallback = 0): number => {
+  const n = typeof v === "string" ? parseFloat(v) : Number(v)
+  return Number.isFinite(n) ? n : fallback
+}
+
+const formatMoney = (n: unknown) =>
+  new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(num(n)) + " ₽"
 
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
@@ -19,8 +24,8 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     groups.get(key)!.push(it)
   })
 
-  const subtotal = estimate.subtotal_amount ?? estimate.total_amount
-  const discountAmount = estimate.discount_amount ?? 0
+  const subtotal = num(estimate.subtotal_amount ?? estimate.total_amount)
+  const discountAmount = num(estimate.discount_amount ?? 0)
 
   const roomsHtml = Array.from(groups.entries())
     .map(([roomName, groupItems]) => {
@@ -30,11 +35,11 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
         if (!catGroups.has(key)) catGroups.set(key, [])
         catGroups.get(key)!.push(it)
       })
-      const roomTotal = groupItems.reduce((s, it) => s + it.amount, 0)
+      const roomTotal = groupItems.reduce((s, it) => s + num(it.amount), 0)
 
       const catsHtml = Array.from(catGroups.entries())
         .map(([catName, catItems]) => {
-          const catTotal = catItems.reduce((s, it) => s + it.amount, 0)
+          const catTotal = catItems.reduce((s, it) => s + num(it.amount), 0)
           const itemRows = catItems
             .map(
               (it, idx) => `
@@ -42,8 +47,8 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
               <td class="num">${idx + 1}</td>
               <td>${escapeHtml(it.name)}</td>
               <td class="center">${escapeHtml(it.unit)}</td>
-              <td class="center">${it.quantity}</td>
-              <td class="center">${it.times ?? 1}</td>
+              <td class="center">${num(it.quantity)}</td>
+              <td class="center">${num(it.times, 1)}</td>
               <td class="right">${formatMoney(it.price)}</td>
               <td class="right amount">${formatMoney(it.amount)}</td>
             </tr>`
@@ -125,7 +130,7 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     font-weight: 700;
     letter-spacing: -0.5px;
   }
-  .brand img { width: 34px; height: 34px; }
+  .brand img { height: 40px; width: auto; object-fit: contain; }
   .brand span { color: #C08A2A; }
   .doc-title {
     text-align: right;
@@ -342,7 +347,7 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
 </head>
 <body>
   <div class="header">
-    <div class="brand"><img src="${window.location.origin}/fixkey-logo.svg" alt="FixKey" />Fix<span>Key</span></div>
+    <div class="brand"><img src="${window.location.origin}/favicon.png" alt="FixKey" />Fix<span>Key</span></div>
     <div class="doc-title">
       <h1>Смета № ${estimate.id}</h1>
       <p>от ${formatDate(estimate.created_at)}</p>
