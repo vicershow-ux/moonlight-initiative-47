@@ -3,44 +3,42 @@ import { Link, useNavigate, useParams } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
-import { contractsApi, Contract } from "@/lib/api"
+import { actsApi, Act } from "@/lib/api"
 import { downloadContractPdf } from "@/lib/downloadContractPdf"
 
-export default function ContractView() {
-  const { id, contractId } = useParams()
+export default function ActView() {
+  const { actId } = useParams()
   const navigate = useNavigate()
-  const objectId = Number(id)
 
-  const [contract, setContract] = useState<Contract | null>(null)
+  const [act, setAct] = useState<Act | null>(null)
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState(false)
 
   useEffect(() => {
-    if (!contractId) return
+    if (!actId) return
     setLoading(true)
-    contractsApi
-      .get(Number(contractId))
-      .then(setContract)
+    actsApi
+      .get(Number(actId))
+      .then(setAct)
       .catch(() => navigate("/cabinet/documents"))
       .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contractId])
+  }, [actId])
 
   const handlePrint = () => {
-    if (!contract) return
+    if (!act) return
     const win = window.open("", "_blank")
     if (!win) return
     win.document.write(`
       <html>
         <head>
-          <title>Договор № ${contract.contract_number}</title>
+          <title>Акт № ${act.act_number}</title>
           <style>
             body { font-family: Arial, sans-serif; padding: 32px; line-height: 1.5; color: #161616; }
-            h2, h3 { color: #161616; }
             table { border-collapse: collapse; }
           </style>
         </head>
-        <body>${contract.content_html}</body>
+        <body>${act.content_html}</body>
       </html>
     `)
     win.document.close()
@@ -49,10 +47,10 @@ export default function ContractView() {
   }
 
   const handleDownload = async () => {
-    if (!contract) return
+    if (!act) return
     setDownloading(true)
     try {
-      await downloadContractPdf(contract.content_html, contract.contract_number)
+      await downloadContractPdf(act.content_html, `Акт ${act.act_number}`)
     } finally {
       setDownloading(false)
     }
@@ -60,7 +58,7 @@ export default function ContractView() {
 
   if (loading) {
     return (
-      <CrmLayout title="Договор">
+      <CrmLayout title="Акт">
         <div className="flex items-center justify-center py-24">
           <Icon name="Loader2" size={28} className="animate-spin text-white/40" />
         </div>
@@ -68,10 +66,10 @@ export default function ContractView() {
     )
   }
 
-  if (!contract) return null
+  if (!act) return null
 
   return (
-    <CrmLayout title={`Договор подряда на ремонт квартиры № ${contract.contract_number}`}>
+    <CrmLayout title={`Акт выполненных работ № ${act.act_number}`}>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <Link
           to="/cabinet/documents"
@@ -84,24 +82,10 @@ export default function ContractView() {
         <div className="flex items-center gap-2">
           <span className={cn(
             "px-2.5 py-1 rounded-full text-xs font-medium",
-            contract.status === "signed" ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"
+            act.status === "signed" ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"
           )}>
-            {contract.status === "signed" ? "подписан" : "черновик"}
+            {act.status === "signed" ? "подписан" : "черновик"}
           </span>
-          <Link
-            to={`/cabinet/objects/${objectId}/contracts/${contract.id}/edit`}
-            className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg"
-          >
-            <Icon name="Pencil" size={14} />
-            Редактировать
-          </Link>
-          <Link
-            to={`/cabinet/objects/${objectId}/acts/new?contract_id=${contract.id}`}
-            className="flex items-center gap-1.5 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-3 py-2 rounded-lg"
-          >
-            <Icon name="Plus" size={14} />
-            Составить акт
-          </Link>
           <button
             onClick={handlePrint}
             title="Печать"
@@ -121,10 +105,7 @@ export default function ContractView() {
       </div>
 
       <div className="bg-white text-[#161616] rounded-xl p-8 sm:p-12 max-w-4xl mx-auto shadow-lg">
-        <div
-          className="contract-content leading-relaxed text-sm"
-          dangerouslySetInnerHTML={{ __html: contract.content_html }}
-        />
+        <div dangerouslySetInnerHTML={{ __html: act.content_html }} />
       </div>
     </CrmLayout>
   )

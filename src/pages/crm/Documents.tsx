@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
-import { estimatesApi, objectsApi, objectStatusesApi, contractsApi, Estimate, ObjectItem, ObjectStatus, Contract } from "@/lib/api"
+import { estimatesApi, objectsApi, objectStatusesApi, contractsApi, actsApi, Estimate, ObjectItem, ObjectStatus, Contract, Act } from "@/lib/api"
 import { printEstimate, downloadEstimatePdf } from "@/lib/printEstimate"
 import { downloadContractPdf } from "@/lib/downloadContractPdf"
 import { getStatusBadgeClass } from "@/lib/objectStatusColors"
@@ -28,6 +28,7 @@ export default function Documents() {
   const { user } = useAuth()
   const [estimates, setEstimates] = useState<Estimate[]>([])
   const [contracts, setContracts] = useState<Contract[]>([])
+  const [acts, setActs] = useState<Act[]>([])
   const [objectsMap, setObjectsMap] = useState<Record<number, ObjectItem>>({})
   const [objectStatuses, setObjectStatuses] = useState<ObjectStatus[]>([])
   const [loading, setLoading] = useState(true)
@@ -39,10 +40,11 @@ export default function Documents() {
 
   const load = () => {
     setLoading(true)
-    Promise.all([estimatesApi.listAll(), contractsApi.listAll(), objectsApi.list(), objectStatusesApi.list()])
-      .then(([estData, contractsData, objData, statusData]) => {
+    Promise.all([estimatesApi.listAll(), contractsApi.listAll(), actsApi.listAll(), objectsApi.list(), objectStatusesApi.list()])
+      .then(([estData, contractsData, actsData, objData, statusData]) => {
         setEstimates(estData.estimates)
         setContracts(contractsData.contracts)
+        setActs(actsData.acts)
         const map: Record<number, ObjectItem> = {}
         objData.objects.forEach((o) => { map[o.id] = o })
         setObjectsMap(map)
@@ -63,6 +65,20 @@ export default function Documents() {
   const handleDeleteContract = async (id: number) => {
     await contractsApi.remove(id)
     load()
+  }
+
+  const handleDeleteAct = async (id: number) => {
+    await actsApi.remove(id)
+    load()
+  }
+
+  const handleDownloadActPdf = async (act: Act) => {
+    setDownloadingContractId(-act.id)
+    try {
+      await downloadContractPdf(act.content_html, `Акт ${act.act_number}`)
+    } finally {
+      setDownloadingContractId(null)
+    }
   }
 
   const handlePrint = async (est: Estimate) => {
@@ -143,10 +159,25 @@ export default function Documents() {
     })
   }, [contracts, search])
 
-  const isActsTab = tab === "acts"
+  const filteredActs = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return acts.filter((a) => {
+      if (!q) return true
+      return (
+        a.act_number.toLowerCase().includes(q) ||
+        (a.object_code || "").toLowerCase().includes(q) ||
+        (a.client_name || "").toLowerCase().includes(q)
+      )
+    })
+  }, [acts, search])
+
   const showEstimates = tab === "all" || tab === "estimates"
   const showContracts = tab === "all" || tab === "contracts"
-  const hasAnyRows = (showEstimates && filteredEstimates.length > 0) || (showContracts && filteredContracts.length > 0)
+  const showActs = tab === "all" || tab === "acts"
+  const hasAnyRows =
+    (showEstimates && filteredEstimates.length > 0) ||
+    (showContracts && filteredContracts.length > 0) ||
+    (showActs && filteredActs.length > 0)
 
   return (
     <CrmLayout title="Реестр документов" subtitle="Единый центр управления сметами, договорами подряда и актами выполненных работ вашей компании">
@@ -181,14 +212,6 @@ export default function Documents() {
         {loading ? (
           <div className="flex justify-center py-16">
             <Icon name="Loader2" size={24} className="animate-spin text-white/40" />
-          </div>
-        ) : isActsTab ? (
-          <div className="flex flex-col items-center justify-center text-center py-16">
-            <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-4">
-              <Icon name="FileText" size={22} className="text-white/30" />
-            </div>
-            <p className="text-white/50 text-sm mb-1">Актов пока нет</p>
-            <p className="text-white/30 text-xs">Акты выполненных работ по объектам</p>
           </div>
         ) : !hasAnyRows ? (
           <div className="flex flex-col items-center justify-center text-center py-16">
@@ -377,6 +400,72 @@ export default function Documents() {
                           </button>
                           <button
                             onClick={() => handleDeleteContract(c.id)}
+                            className="text-white/40 hover:text-red-400 transition-colors"
+                            title="Удалить"
+                          >
+                            <Icon name="Trash2" size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+
+                {showActs && filteredActs.map((a) => {
+                  const obj = objectsMap[a.object_id]
+                  return (
+                    <tr key={`act-${a.id}`} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
+                      <td className="py-3 px-4">
+                        <span className="text-[#D4AF37] font-medium text-xs">Акт</span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <p className="font-medium">Акт выполненных работ</p>
+                        <p className="text-xs text-white/30">№ {a.act_number}</p>
+                      </td>
+                      <td className="py-3 px-4 text-white/60">{formatDate(a.act_date || a.created_at)}</td>
+                      <td className="py-3 px-4 text-white/60">{obj?.object_code || a.object_code || "—"}</td>
+                      <td className="py-3 px-4 text-white/60">{a.client_name || obj?.client_name || "—"}</td>
+                      <td className="py-3 px-4 font-medium">{formatMoney(a.total_amount)}</td>
+                      <td className="py-3 px-4">
+                        {obj?.status ? (
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full text-xs",
+                            getStatusBadgeClass(objectStatuses.find((s) => s.name === obj.status)?.color)
+                          )}>
+                            {obj.status}
+                          </span>
+                        ) : "—"}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-full text-xs",
+                          a.status === "signed" ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"
+                        )}>
+                          {a.status === "signed" ? "подписан" : "черновик"}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-3">
+                          <Link
+                            to={`/cabinet/objects/${a.object_id}/acts/${a.id}`}
+                            className="text-white/40 hover:text-[#D4AF37] transition-colors"
+                            title="Просмотр"
+                          >
+                            <Icon name="Eye" size={15} />
+                          </Link>
+                          <button
+                            onClick={() => handleDownloadActPdf(a)}
+                            className="text-white/40 hover:text-white transition-colors"
+                            title="Скачать PDF"
+                          >
+                            {downloadingContractId === -a.id ? (
+                              <Icon name="Loader2" size={15} className="animate-spin" />
+                            ) : (
+                              <Icon name="Download" size={15} />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteAct(a.id)}
                             className="text-white/40 hover:text-red-400 transition-colors"
                             title="Удалить"
                           >

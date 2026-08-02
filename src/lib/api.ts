@@ -11,6 +11,7 @@ const OBJECT_ROOMS_URL = funcUrls.object_rooms
 const OBJECT_STATUSES_URL = funcUrls.object_statuses
 const SITE_URL = funcUrls.site
 const CONTRACTS_URL = funcUrls.contracts
+const ACTS_URL = funcUrls.acts
 
 const TOKEN_KEY = "fixkey_token"
 
@@ -589,6 +590,110 @@ export const contractsApi = {
 
   async remove(id: number) {
     const res = await fetch(`${CONTRACTS_URL}?id=${id}`, {
+      method: "DELETE",
+      headers: { ...authHeaders() },
+    })
+    return parseResponse(res)
+  },
+}
+
+export interface ActItem {
+  name: string
+  unit: string
+  price: number
+  quantity: number
+  amount: number
+  room_name?: string
+  category?: string
+}
+
+export interface ActOptions {
+  period_from?: string
+  period_to?: string
+  scope?: string
+  inspection_result?: string
+  calculation?: string
+  appendix?: string
+}
+
+export interface Act {
+  id: number
+  object_id: number
+  contract_id?: number | null
+  estimate_id?: number | null
+  act_number: string
+  act_date: string
+  act_type: string
+  status: "draft" | "signed"
+  options: ActOptions
+  items: ActItem[]
+  content_html: string
+  total_amount: number
+  created_by?: number | null
+  created_at: string
+  updated_at: string
+  object_code?: string
+  client_name?: string
+  address?: string
+}
+
+export const actsApi = {
+  async listAll() {
+    const res = await fetch(ACTS_URL, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ acts: Act[] }>
+  },
+
+  async listByContract(contractId: number) {
+    const res = await fetch(`${ACTS_URL}?contract_id=${contractId}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ acts: Act[] }>
+  },
+
+  async get(id: number) {
+    const res = await fetch(`${ACTS_URL}?id=${id}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<Act>
+  },
+
+  async generate(payload: {
+    object_id: number
+    contract_id?: number | null
+    estimate_id?: number | null
+    act_type: string
+    act_number?: string
+    act_date: string
+    options: ActOptions
+    items: ActItem[]
+  }) {
+    const res = await fetch(`${ACTS_URL}?action=generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<{ content_html: string; total_amount: number; act_number: string }>
+  },
+
+  async create(payload: {
+    object_id: number
+    contract_id?: number | null
+    estimate_id?: number | null
+    act_type: string
+    act_number?: string
+    act_date: string
+    options: ActOptions
+    items: ActItem[]
+    content_html: string
+    total_amount: number
+    status?: string
+  }) {
+    const res = await fetch(ACTS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<{ id: number; act_number: string; created_at: string }>
+  },
+
+  async remove(id: number) {
+    const res = await fetch(`${ACTS_URL}?id=${id}`, {
       method: "DELETE",
       headers: { ...authHeaders() },
     })
