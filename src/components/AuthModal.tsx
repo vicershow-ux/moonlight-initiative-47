@@ -9,6 +9,7 @@ import {
 } from "./ui/dialog"
 import Icon from "@/components/ui/icon"
 import { useAuth } from "@/contexts/AuthContext"
+import { useSiteContent } from "@/hooks/useSiteContent"
 
 interface AuthModalProps {
   open: boolean
@@ -24,6 +25,8 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const [loading, setLoading] = useState(false)
   const { login, verify2fa } = useAuth()
   const navigate = useNavigate()
+  const { content } = useSiteContent()
+  const logoUrl = content?.settings.logo_url
 
   const reset = () => {
     setEmail("")
@@ -88,6 +91,11 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v) }}>
       <DialogContent className="sm:max-w-md rounded-none border-foreground/10">
+        {logoUrl && (
+          <div className="flex justify-center -mt-2 mb-1">
+            <img src={logoUrl} alt="Логотип" className="h-14 w-auto object-contain" />
+          </div>
+        )}
         {!challengeToken ? (
           <>
             <DialogHeader>
