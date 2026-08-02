@@ -29,7 +29,7 @@ export function Footer() {
                 {brandName.toLowerCase().endsWith("key") ? (
                   <>
                     {brandName.slice(0, -3)}
-                    <span className="text-[#D4AF37]">{brandName.slice(-3)}</span>
+                    <span className="text-black">{brandName.slice(-3)}</span>
                   </>
                 ) : (
                   brandName
