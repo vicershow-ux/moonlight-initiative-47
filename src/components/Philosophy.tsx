@@ -33,7 +33,7 @@ export function Philosophy() {
   const aboutDescription =
     s?.about_description ||
     "FixKey — команда, которая берёт на себя весь ремонт под ключ: от демонтажа до сдачи объекта. Мы отвечаем за результат договором и гарантией."
-  const aboutImage = s?.about_image || "/images/exterior.png"
+  const aboutImage = s?.about_image || "/img/exterior.webp"
   const philosophyItems = content?.philosophy?.length ? content.philosophy : defaultPhilosophyItems
 
   const [visibleItems, setVisibleItems] = useState<number[]>([])

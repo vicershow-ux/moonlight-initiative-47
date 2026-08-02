@@ -1,4 +1,5 @@
 
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,25 +8,26 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import Dashboard from "./pages/crm/Dashboard";
-import Objects from "./pages/crm/Objects";
-import ObjectDetail from "./pages/crm/ObjectDetail";
-import ObjectCreate from "./pages/crm/ObjectCreate";
-import ObjectRooms from "./pages/crm/ObjectRooms";
-import ObjectEdit from "./pages/crm/ObjectEdit";
-import EstimateCreate from "./pages/crm/EstimateCreate";
-import EstimateView from "./pages/crm/EstimateView";
-import ContractEdit from "./pages/crm/ContractEdit";
-import Services from "./pages/crm/Services";
-import ServiceCreate from "./pages/crm/ServiceCreate";
-import Documents from "./pages/crm/Documents";
-import Customers from "./pages/crm/Customers";
-import Company from "./pages/crm/Company";
-import ObjectPipeline from "./pages/crm/ObjectPipeline";
-import Site from "./pages/crm/Site";
-import Team from "./pages/crm/Team";
-import Profile from "./pages/crm/Profile";
+
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Dashboard = lazy(() => import("./pages/crm/Dashboard"));
+const Objects = lazy(() => import("./pages/crm/Objects"));
+const ObjectDetail = lazy(() => import("./pages/crm/ObjectDetail"));
+const ObjectCreate = lazy(() => import("./pages/crm/ObjectCreate"));
+const ObjectRooms = lazy(() => import("./pages/crm/ObjectRooms"));
+const ObjectEdit = lazy(() => import("./pages/crm/ObjectEdit"));
+const EstimateCreate = lazy(() => import("./pages/crm/EstimateCreate"));
+const EstimateView = lazy(() => import("./pages/crm/EstimateView"));
+const ContractEdit = lazy(() => import("./pages/crm/ContractEdit"));
+const Services = lazy(() => import("./pages/crm/Services"));
+const ServiceCreate = lazy(() => import("./pages/crm/ServiceCreate"));
+const Documents = lazy(() => import("./pages/crm/Documents"));
+const Customers = lazy(() => import("./pages/crm/Customers"));
+const Company = lazy(() => import("./pages/crm/Company"));
+const ObjectPipeline = lazy(() => import("./pages/crm/ObjectPipeline"));
+const Site = lazy(() => import("./pages/crm/Site"));
+const Team = lazy(() => import("./pages/crm/Team"));
+const Profile = lazy(() => import("./pages/crm/Profile"));
 
 const queryClient = new QueryClient();
 
@@ -36,6 +38,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <Suspense fallback={null}>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/cabinet" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Dashboard /></ProtectedRoute>} />
@@ -61,6 +64,7 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

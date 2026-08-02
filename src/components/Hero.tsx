@@ -8,8 +8,8 @@ export function Hero() {
   const heroEyebrow = s?.hero_eyebrow || "Ремонт под ключ"
   const heroTitleLine1 = s?.hero_title_line1 || "Ремонт, которому"
   const heroTitleLine2 = s?.hero_title_line2 || "можно доверять"
-  const heroBgImage = s?.hero_bg_image || "/images/hously-background.png"
-  const heroFgImage = s?.hero_fg_image || "/images/hously-foreground.png"
+  const heroBgImage = s?.hero_bg_image || "/img/hously-background.webp"
+  const heroFgImage = s?.hero_fg_image || "/img/hously-foreground.webp"
 
   const contentRef = useRef<HTMLDivElement>(null)
   const heroRef = useRef<HTMLElement>(null)
