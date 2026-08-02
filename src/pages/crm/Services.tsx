@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
+import { EditServiceModal } from "@/components/crm/EditServiceModal"
 import Icon from "@/components/ui/icon"
 import { servicesApi, ServiceItem } from "@/lib/api"
+
+const PAGE_SIZE = 20
 
 export default function Services() {
   const [services, setServices] = useState<ServiceItem[]>([])
@@ -11,6 +14,10 @@ export default function Services() {
   const [search, setSearch] = useState("")
   const [filterCategory, setFilterCategory] = useState("")
   const [filterSubcategory, setFilterSubcategory] = useState("")
+
+  const [page, setPage] = useState(1)
+  const [editing, setEditing] = useState<ServiceItem | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
 
   const [importing, setImporting] = useState(false)
   const [importMsg, setImportMsg] = useState("")
@@ -61,6 +68,39 @@ export default function Services() {
       return true
     })
   }, [services, search, filterCategory, filterSubcategory])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)
+  const paged = useMemo(
+    () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filtered, currentPage]
+  )
+
+  useEffect(() => {
+    setPage(1)
+  }, [search, filterCategory, filterSubcategory])
+
+  const openEdit = (s: ServiceItem) => {
+    setEditing(s)
+    setEditOpen(true)
+  }
+
+  const pageNumbers = useMemo(() => {
+    const nums: (number | "…")[] = []
+    const push = (n: number) => nums.push(n)
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) push(i)
+    } else {
+      push(1)
+      const start = Math.max(2, currentPage - 1)
+      const end = Math.min(totalPages - 1, currentPage + 1)
+      if (start > 2) nums.push("…")
+      for (let i = start; i <= end; i++) push(i)
+      if (end < totalPages - 1) nums.push("…")
+      push(totalPages)
+    }
+    return nums
+  }, [totalPages, currentPage])
 
   const handleImportClick = () => {
     setImportMsg("")
@@ -188,7 +228,7 @@ export default function Services() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((s) => (
+                {paged.map((s) => (
                   <tr key={s.id} className="border-b border-white/5 last:border-0">
                     <td className="py-3 pr-4 font-medium">{s.name}</td>
                     <td className="py-3 pr-4 text-white/60">{s.category || "—"}</td>
@@ -196,20 +236,79 @@ export default function Services() {
                     <td className="py-3 pr-4 text-white/60">{s.unit}</td>
                     <td className="py-3 pr-4 text-white/60">{formatMoney(s.price)}</td>
                     <td className="py-3 pr-4">
-                      <button
-                        onClick={() => handleDelete(s.id)}
-                        className="text-white/40 hover:text-red-400 transition-colors"
-                      >
-                        <Icon name="Trash2" size={16} />
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => openEdit(s)}
+                          title="Редактировать"
+                          className="text-white/40 hover:text-[#D4AF37] transition-colors"
+                        >
+                          <Icon name="Pencil" size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(s.id)}
+                          title="Удалить"
+                          className="text-white/40 hover:text-red-400 transition-colors"
+                        >
+                          <Icon name="Trash2" size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-5 pt-4 border-t border-white/10">
+              <p className="text-xs text-white/40">
+                Показано {(currentPage - 1) * PAGE_SIZE + 1}–
+                {Math.min(currentPage * PAGE_SIZE, filtered.length)} из {filtered.length} услуг
+              </p>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="w-8 h-8 flex items-center justify-center rounded-md bg-white/5 hover:bg-white/10 transition-colors disabled:opacity-30 disabled:hover:bg-white/5"
+                >
+                  <Icon name="ChevronLeft" size={16} />
+                </button>
+                {pageNumbers.map((n, i) =>
+                  n === "…" ? (
+                    <span key={`e${i}`} className="w-8 h-8 flex items-center justify-center text-white/30 text-sm">
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={n}
+                      onClick={() => setPage(n)}
+                      className={`min-w-8 h-8 px-2 flex items-center justify-center rounded-md text-sm transition-colors ${
+                        n === currentPage
+                          ? "bg-[#D4AF37] text-[#161616] font-medium"
+                          : "bg-white/5 hover:bg-white/10 text-white/70"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  )
+                )}
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="w-8 h-8 flex items-center justify-center rounded-md bg-white/5 hover:bg-white/10 transition-colors disabled:opacity-30 disabled:hover:bg-white/5"
+                >
+                  <Icon name="ChevronRight" size={16} />
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
+
+      <EditServiceModal
+        service={editing}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSaved={load}
+      />
     </CrmLayout>
   )
 }
