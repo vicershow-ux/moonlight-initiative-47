@@ -4,7 +4,6 @@ export function Footer() {
   const { content } = useSiteContent()
   const s = content?.settings
   const brandName = s?.brand_name || "FixKey"
-  const logoUrl = s?.logo_url
   const footerDescription =
     s?.footer_description ||
     "Ремонт квартир и домов под ключ с гарантией результата. Прозрачная смета и контроль на каждом этапе."
@@ -21,11 +20,17 @@ export function Footer() {
         <div className="grid md:grid-cols-4 gap-12 mb-16">
           {/* Brand */}
           <div className="md:col-span-2">
-            <a href="/" className="inline-flex items-center gap-2.5 mb-6">
-              {logoUrl && (
-                <img src={logoUrl} alt={brandName} className="h-14 w-auto object-contain" />
-              )}
-              <span className="text-xl font-semibold tracking-tight">{brandName}</span>
+            <a href="/" className="inline-flex items-center mb-6">
+              <span className="text-xl font-semibold tracking-tight">
+                {brandName.toLowerCase().endsWith("key") ? (
+                  <>
+                    {brandName.slice(0, -3)}
+                    <span className="text-[#D4AF37]">{brandName.slice(-3)}</span>
+                  </>
+                ) : (
+                  brandName
+                )}
+              </span>
             </a>
             <p className="text-muted-foreground leading-relaxed max-w-sm">
               {footerDescription}

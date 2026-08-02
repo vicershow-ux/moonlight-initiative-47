@@ -6,7 +6,6 @@ import { useSiteContent } from "@/hooks/useSiteContent"
 export function Header() {
   const { content } = useSiteContent()
   const brandName = content?.settings.brand_name || "FixKey"
-  const logoUrl = content?.settings.logo_url
 
   const [scrolled, setScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -44,11 +43,17 @@ export function Header() {
       )}
     >
       <nav className="container mx-auto px-6 flex items-center justify-between md:px-[24]">
-        <a href="/" className="flex items-center gap-2.5 group" onClick={scrollToTop}>
-          {logoUrl && (
-            <img src={logoUrl} alt={brandName} className="h-14 w-auto object-contain" />
-          )}
-          <span className="text-xl font-semibold tracking-tight text-white">{brandName}</span>
+        <a href="/" className="flex items-center group" onClick={scrollToTop}>
+          <span className="text-xl font-semibold tracking-tight text-white">
+            {brandName.toLowerCase().endsWith("key") ? (
+              <>
+                {brandName.slice(0, -3)}
+                <span className="text-[#D4AF37]">{brandName.slice(-3)}</span>
+              </>
+            ) : (
+              brandName
+            )}
+          </span>
         </a>
 
         <ul className="hidden md:flex items-center gap-10 text-sm tracking-wide">
