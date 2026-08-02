@@ -56,15 +56,22 @@ export function Expertise() {
           }
         })
       },
-      { threshold: 0.2 },
+      { threshold: 0.15 },
     )
 
     itemRefs.current.forEach((ref) => {
       if (ref) observer.observe(ref)
     })
 
-    return () => observer.disconnect()
-  }, [])
+    const fallback = setTimeout(() => {
+      setVisibleItems(expertiseAreas.map((_, i) => i))
+    }, 2500)
+
+    return () => {
+      observer.disconnect()
+      clearTimeout(fallback)
+    }
+  }, [expertiseAreas.length])
 
   return (
     <section id="services" ref={sectionRef} className="py-32 md:py-29">
@@ -89,10 +96,10 @@ export function Expertise() {
                   itemRefs.current[index] = el
                 }}
                 data-index={index}
-                className={`relative pl-8 border-l border-border transition-all duration-700 ${
-                  visibleItems.includes(index) ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+                className={`relative pl-8 border-l border-border transition-all duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                  visibleItems.includes(index) ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
                 }`}
-                style={{ transitionDelay: `${index * 150}ms` }}
+                style={{ transitionDelay: `${index * 180}ms` }}
               >
                 <div
                   className={`transition-all duration-1000 ${
