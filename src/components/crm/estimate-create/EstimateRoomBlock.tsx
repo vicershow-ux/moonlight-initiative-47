@@ -27,7 +27,7 @@ export interface RoomBlockState {
 }
 
 const formatMoney = (n: number) =>
-  new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(n) + " ₽"
+  new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(Number.isFinite(n) ? n : 0) + " ₽"
 
 interface EstimateRoomBlockProps {
   room: RoomBlockState

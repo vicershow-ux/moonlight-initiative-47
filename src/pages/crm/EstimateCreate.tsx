@@ -15,7 +15,12 @@ import {
 import { EstimateRoomBlock, RoomBlockState } from "@/components/crm/estimate-create/EstimateRoomBlock"
 
 const formatMoney = (n: number) =>
-  new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n) + " ₽"
+  new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(Number.isFinite(n) ? n : 0) + " ₽"
+
+const num = (v: unknown, fallback = 0): number => {
+  const n = typeof v === "string" ? parseFloat(v) : Number(v)
+  return Number.isFinite(n) ? n : fallback
+}
 
 const emptyRoom = (): RoomBlockState => ({
   key: `room-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -48,11 +53,11 @@ const buildRoomsFromEstimate = (est: Estimate, objectRoomsList: ObjectRoom[]): R
       category: it.category,
       subcategory: it.subcategory,
       unit: it.unit,
-      price: it.price,
-      quantity: it.quantity,
-      times: it.times ?? 1,
-      discountPercent: it.discount_percent ?? 0,
-      amount: it.amount,
+      price: num(it.price),
+      quantity: num(it.quantity),
+      times: num(it.times, 1),
+      discountPercent: num(it.discount_percent, 0),
+      amount: num(it.amount),
     })
   })
   const arr = Array.from(groups.values())
