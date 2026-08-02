@@ -130,7 +130,15 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     font-weight: 700;
     letter-spacing: -0.5px;
   }
-  .brand img { height: 40px; max-height: 40px; width: 72px; max-width: 72px; object-fit: contain; display: block; }
+  .brand .brand-logo {
+    width: 72px;
+    height: 44px;
+    min-width: 72px;
+    background-repeat: no-repeat;
+    background-position: left center;
+    background-size: contain;
+    flex: 0 0 auto;
+  }
   .brand span { color: #C08A2A; }
   .doc-title {
     text-align: right;
@@ -349,7 +357,7 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
 </head>
 <body>
   <div class="header">
-    <div class="brand"><img src="${window.location.origin}/favicon.png" alt="FixKey" />Fix<span>Key</span></div>
+    <div class="brand"><div class="brand-logo" style="background-image:url('${window.location.origin}/favicon.png')"></div>Fix<span>Key</span></div>
     <div class="doc-title">
       <h1>Смета № ${estimate.id}</h1>
       <p>от ${formatDate(estimate.created_at)}</p>
@@ -474,6 +482,7 @@ export async function downloadEstimatePdf(estimate: Estimate, object: ObjectItem
 
   const iframe = document.createElement("iframe")
   iframe.style.width = "850px"
+  iframe.style.height = "1200px"
   iframe.style.border = "none"
   container.appendChild(iframe)
 
@@ -482,6 +491,11 @@ export async function downloadEstimatePdf(estimate: Estimate, object: ObjectItem
     iframe.srcdoc = html
   })
 
+  // Подгоняем высоту iframe под фактическую высоту контента,
+  // чтобы html2canvas отрендерил документ целиком
+  const fullHeight = iframe.contentDocument?.body?.scrollHeight
+  if (fullHeight) iframe.style.height = `${fullHeight + 40}px`
+
   const doc = iframe.contentDocument
   const target = doc?.body
   if (!doc || !target) {
@@ -489,20 +503,28 @@ export async function downloadEstimatePdf(estimate: Estimate, object: ObjectItem
     return
   }
 
-  // Ждём загрузку всех изображений (логотип, подпись), иначе html2canvas
-  // снимает их с натуральным размером и ломает вёрстку
-  const images = Array.from(doc.images)
-  await Promise.all(
-    images.map((img) =>
-      img.complete && img.naturalWidth > 0
-        ? Promise.resolve()
-        : new Promise<void>((resolve) => {
-            img.onload = () => resolve()
-            img.onerror = () => resolve()
-            setTimeout(resolve, 3000)
-          })
-    )
+  // Предзагружаем логотип (фон) и ждём остальные изображения (подпись),
+  // иначе html2canvas снимает их некорректно и ломает вёрстку
+  const preload = (src: string) =>
+    new Promise<void>((resolve) => {
+      const img = new Image()
+      img.onload = () => resolve()
+      img.onerror = () => resolve()
+      img.src = src
+      setTimeout(resolve, 3000)
+    })
+
+  const imgWaits = Array.from(doc.images).map((img) =>
+    img.complete && img.naturalWidth > 0
+      ? Promise.resolve()
+      : new Promise<void>((resolve) => {
+          img.onload = () => resolve()
+          img.onerror = () => resolve()
+          setTimeout(resolve, 3000)
+        })
   )
+
+  await Promise.all([preload(`${window.location.origin}/favicon.png`), ...imgWaits])
 
   const html2pdf = (await import("html2pdf.js")).default
   await html2pdf()
