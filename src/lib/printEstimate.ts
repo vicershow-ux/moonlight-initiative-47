@@ -130,7 +130,7 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     font-weight: 700;
     letter-spacing: -0.5px;
   }
-  .brand img { height: 40px; width: auto; object-fit: contain; }
+  .brand img { height: 40px; max-height: 40px; width: 72px; max-width: 72px; object-fit: contain; display: block; }
   .brand span { color: #C08A2A; }
   .doc-title {
     text-align: right;
@@ -184,8 +184,10 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     font-weight: 700;
     margin: 0 0 8px;
   }
-  .room-block { margin-bottom: 22px; }
+  .room-block { margin-bottom: 22px; page-break-inside: avoid; break-inside: avoid; }
   .cat-block {
+    page-break-inside: avoid;
+    break-inside: avoid;
     border: 1px solid #e5e5e5;
     border-radius: 10px;
     overflow: hidden;
@@ -480,11 +482,27 @@ export async function downloadEstimatePdf(estimate: Estimate, object: ObjectItem
     iframe.srcdoc = html
   })
 
-  const target = iframe.contentDocument?.body
-  if (!target) {
+  const doc = iframe.contentDocument
+  const target = doc?.body
+  if (!doc || !target) {
     document.body.removeChild(container)
     return
   }
+
+  // Ждём загрузку всех изображений (логотип, подпись), иначе html2canvas
+  // снимает их с натуральным размером и ломает вёрстку
+  const images = Array.from(doc.images)
+  await Promise.all(
+    images.map((img) =>
+      img.complete && img.naturalWidth > 0
+        ? Promise.resolve()
+        : new Promise<void>((resolve) => {
+            img.onload = () => resolve()
+            img.onerror = () => resolve()
+            setTimeout(resolve, 3000)
+          })
+    )
+  )
 
   const html2pdf = (await import("html2pdf.js")).default
   await html2pdf()
@@ -492,7 +510,7 @@ export async function downloadEstimatePdf(estimate: Estimate, object: ObjectItem
       margin: 0,
       filename: `Смета №${estimate.id}.pdf`,
       image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
+      html2canvas: { scale: 2, useCORS: true, windowWidth: 850, width: 850 },
       jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
     })
     .from(target)
