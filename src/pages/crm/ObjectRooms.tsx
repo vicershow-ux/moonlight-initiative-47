@@ -38,14 +38,16 @@ const emptyForm = (): RoomFormState => ({
   notes: "",
 })
 
+const numToStr = (n: number) => (n && Number(n) !== 0 ? String(n) : "")
+
 const toForm = (room: ObjectRoom): RoomFormState => ({
   id: room.id,
   name: room.name,
   room_type: room.room_type,
-  area: String(room.area),
-  perimeter: String(room.perimeter),
-  ceiling_height: String(room.ceiling_height),
-  wall_area: String(room.wall_area),
+  area: numToStr(room.area),
+  perimeter: numToStr(room.perimeter),
+  ceiling_height: numToStr(room.ceiling_height),
+  wall_area: numToStr(room.wall_area),
   notes: room.notes,
 })
 

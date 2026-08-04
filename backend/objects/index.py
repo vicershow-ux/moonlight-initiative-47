@@ -200,6 +200,21 @@ def handler(event: dict, context) -> dict:
                 return response(403, {'error': 'Недостаточно прав'})
             if not object_id:
                 return response(400, {'error': 'Не указан id объекта'})
+
+            cur.execute("SELECT id FROM objects WHERE id = %s AND company_id = %s", (object_id, company_id))
+            if not cur.fetchone():
+                return response(404, {'error': 'Объект не найден'})
+
+            cur.execute("DELETE FROM acts WHERE object_id = %s AND company_id = %s", (object_id, company_id))
+            cur.execute("DELETE FROM contracts WHERE object_id = %s AND company_id = %s", (object_id, company_id))
+            cur.execute(
+                "DELETE FROM estimate_items WHERE estimate_id IN "
+                "(SELECT id FROM estimates WHERE object_id = %s AND company_id = %s)",
+                (object_id, company_id)
+            )
+            cur.execute("DELETE FROM estimates WHERE object_id = %s AND company_id = %s", (object_id, company_id))
+            cur.execute("DELETE FROM object_rooms WHERE object_id = %s", (object_id,))
+            cur.execute("DELETE FROM object_access WHERE object_id = %s", (object_id,))
             cur.execute("DELETE FROM objects WHERE id = %s AND company_id = %s", (object_id, company_id))
             conn.commit()
             return response(200, {'success': True})
