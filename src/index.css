@@ -124,3 +124,19 @@
 .contract-preview strong {
   color: #fff;
 }
+/* Отступы между пунктами договора (редактор и просмотр) */
+.contract-live > p,
+.contract-content p {
+  margin-bottom: 0.85rem;
+}
+
+.contract-live > h3,
+.contract-content h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.contract-content h2 {
+  margin-top: 1.75rem;
+  margin-bottom: 0.75rem;
+}

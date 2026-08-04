@@ -37,6 +37,9 @@ export default function ContractView() {
           <style>
             body { font-family: Arial, sans-serif; padding: 32px; line-height: 1.5; color: #161616; }
             h2, h3 { color: #161616; }
+            h2 { margin: 28px 0 12px; }
+            h3 { margin: 24px 0 10px; }
+            p { margin: 0 0 14px; }
             table { border-collapse: collapse; }
           </style>
         </head>

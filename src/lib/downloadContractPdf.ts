@@ -12,7 +12,11 @@ export async function downloadContractPdf(contentHtml: string, contractNumber: s
   root.style.fontFamily = "Arial, sans-serif"
   root.style.fontSize = "13px"
   root.style.lineHeight = "1.5"
-  root.innerHTML = contentHtml
+  root.innerHTML = `<style>
+    .pdf-doc p { margin: 0 0 12px; }
+    .pdf-doc h3 { margin: 20px 0 8px; }
+    .pdf-doc h2 { margin: 24px 0 10px; }
+  </style><div class="pdf-doc">${contentHtml}</div>`
 
   container.appendChild(root)
   document.body.appendChild(container)
