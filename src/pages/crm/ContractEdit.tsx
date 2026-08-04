@@ -260,7 +260,7 @@ export default function ContractEdit() {
         </button>
 
         <div className="flex-1 max-w-md h-1 bg-white/10 rounded-full overflow-hidden hidden sm:block">
-          <div className="h-full bg-[#D4463C] transition-all duration-300" style={{ width: "100%" }} />
+          <div className="h-full bg-[#D4AF37] transition-all duration-300" style={{ width: "100%" }} />
         </div>
 
         <div className="flex items-center gap-2">
@@ -274,7 +274,7 @@ export default function ContractEdit() {
           <button
             onClick={handleSaveAndClose}
             disabled={saving}
-            className="flex items-center gap-2 bg-[#D4463C] hover:bg-[#B8342B] transition-colors text-white text-sm px-4 py-2 rounded-lg disabled:opacity-60"
+            className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] font-medium text-sm px-4 py-2 rounded-lg disabled:opacity-60"
           >
             {saving && <Icon name="Loader2" size={15} className="animate-spin" />}
             Сохранить и закрыть
@@ -284,23 +284,6 @@ export default function ContractEdit() {
 
       {/* Живой документ */}
       <div className="max-w-3xl mx-auto bg-[#1c1c1c] border border-white/10 rounded-2xl px-6 sm:px-10 py-8 text-[15px] leading-relaxed text-white/80 contract-live">
-        {/* Смета */}
-        <div className="border border-dashed border-white/15 rounded-lg px-4 py-3 mb-6 flex flex-wrap items-center gap-3">
-          <span className="text-xs text-white/40 uppercase tracking-wide">Смета для договора</span>
-          <select
-            value={estimateId}
-            onChange={(e) => setEstimateId(e.target.value)}
-            className="bg-[#2a2320] border border-[#D4463C]/40 rounded px-2 py-1 text-sm outline-none focus:border-[#D4463C]"
-          >
-            <option value="">Без сметы</option>
-            {estimates.map((est) => (
-              <option key={est.id} value={est.id} className="bg-[#1f1f1f]">
-                Смета №{est.id} — {formatMoney(est.total_amount)}
-              </option>
-            ))}
-          </select>
-        </div>
-
         {/* Заголовок */}
         <h2 className="text-center text-lg font-semibold text-white mb-2">
           Договор подряда на ремонт квартиры №{" "}
@@ -315,7 +298,7 @@ export default function ContractEdit() {
             type="date"
             value={contractDate}
             onChange={(e) => setContractDate(e.target.value)}
-            className="bg-[#2a2320] border border-[#D4463C]/40 rounded px-2 py-1 text-sm outline-none focus:border-[#D4463C]"
+            className="bg-[#161616] border border-[#D4AF37]/40 rounded px-2 py-1 text-sm outline-none focus:border-[#D4AF37]"
           />
         </div>
 
@@ -461,9 +444,18 @@ export default function ContractEdit() {
         </p>
         <p>
           1.2. Перечень, объёмы и стоимость Работ, а также график их выполнения определяются в{" "}
-          <span className="text-[#D4463C]">
-            {estimate ? `Смете №${estimate.id} — ${formatMoney(estimate.total_amount)}` : "Смете"}
-          </span>
+          <select
+            value={estimateId}
+            onChange={(e) => setEstimateId(e.target.value)}
+            className="inline-block bg-[#161616] border border-[#D4AF37]/40 rounded px-1.5 py-0.5 text-sm text-white outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]/40 mx-0.5 cursor-pointer align-baseline"
+          >
+            <option value="" className="bg-[#1f1f1f]">Смете (не выбрана)</option>
+            {estimates.map((est) => (
+              <option key={est.id} value={est.id} className="bg-[#1f1f1f]">
+                Смете №{est.id} — {formatMoney(est.total_amount)}
+              </option>
+            ))}
+          </select>
           , являющейся неотъемлемой частью настоящего Договора (Приложение №1 — Смета/Техническое задание).
         </p>
 
@@ -554,7 +546,7 @@ export default function ContractEdit() {
           <InlineInput value={options.duration_months} onChange={(v) => updateOption("duration_months", v)} placeholder="6" minWidth={56} type="number" />
           {" "}
           <InlineSelect value={options.duration_unit || "months"} onChange={(v) => updateOption("duration_unit", v)} options={durationUnitOptions} />
-          {" "}(<span className="text-[#D4463C]">{durationWordsOnlyRu(durationNum, options.duration_unit || "months")}</span>). Течение срока начинается{" "}
+          {" "}(<span className="text-[#D4AF37]">{durationWordsOnlyRu(durationNum, options.duration_unit || "months")}</span>). Течение срока начинается{" "}
           {{
             advance_and_handover:
               "с момента выполнения Заказчиком двух условий: внесения аванса, предусмотренного п. 3.2.1 настоящего Договора, и передачи Подрядчику ключей от Объекта с подписанием Сторонами Акта приёма-передачи Объекта в ремонт",
@@ -590,7 +582,7 @@ export default function ContractEdit() {
               minWidth={90}
               type="number"
             />
-            {" "}рублей (<span className="text-[#D4463C]">{moneyInWords(fixedAmountNum)}</span>) и является твёрдой и окончательной.
+            {" "}рублей (<span className="text-[#D4AF37]">{moneyInWords(fixedAmountNum)}</span>) и является твёрдой и окончательной.
           </p>
         ) : (
           <p>
@@ -839,7 +831,7 @@ export default function ContractEdit() {
           <p>
             6.1. Гарантийный срок на выполненные Работы составляет{" "}
             <InlineInput value={options.guarantee_months} onChange={(v) => updateOption("guarantee_months", v)} placeholder="6" minWidth={56} type="number" />
-            {" "}(<span className="text-[#D4463C]">{durationWordsOnlyRu(guaranteeNum, "months")}</span>) с даты подписания итогового Акта сдачи-приёмки Работ по Договору.
+            {" "}(<span className="text-[#D4AF37]">{durationWordsOnlyRu(guaranteeNum, "months")}</span>) с даты подписания итогового Акта сдачи-приёмки Работ по Договору.
           </p>
         )}
         <p>
@@ -1044,7 +1036,7 @@ function PaymentSchedule({
               minWidth={90}
               type="number"
             />
-            {" "}рублей (<span className="text-[#D4463C]">{moneyInWords(amountNum)}</span>). Оплачивается Заказчиком {when}.
+            {" "}рублей (<span className="text-[#D4AF37]">{moneyInWords(amountNum)}</span>). Оплачивается Заказчиком {when}.
           </p>
         )
       })}
@@ -1070,13 +1062,13 @@ function CustomSchedule({ stages, onChange }: { stages: CustomStage[]; onChange:
             <InlineInput value={s.label} onChange={(v) => update(i, { label: v })} placeholder="Название этапа" minWidth={80} />
             {" "}—{" "}
             <InlineInput value={s.amount} onChange={(v) => update(i, { amount: v })} placeholder="сумма" minWidth={90} type="number" />
-            {" "}рублей (<span className="text-[#D4463C]">{moneyInWords(amountNum)}</span>). Оплачивается Заказчиком{" "}
+            {" "}рублей (<span className="text-[#D4AF37]">{moneyInWords(amountNum)}</span>). Оплачивается Заказчиком{" "}
             <InlineInput value={s.when} onChange={(v) => update(i, { when: v })} placeholder="условие оплаты" minWidth={200} />.
             {stages.length > 1 && (
               <button
                 type="button"
                 onClick={() => remove(i)}
-                className="ml-1 text-white/30 hover:text-[#D4463C] opacity-0 group-hover:opacity-100 transition"
+                className="ml-1 text-white/30 hover:text-[#D4AF37] opacity-0 group-hover:opacity-100 transition"
                 title="Удалить этап"
               >
                 <Icon name="X" size={15} />
@@ -1088,7 +1080,7 @@ function CustomSchedule({ stages, onChange }: { stages: CustomStage[]; onChange:
       <button
         type="button"
         onClick={add}
-        className="inline-flex items-center gap-1 text-sm text-[#D4463C] hover:text-[#e85c52] transition mt-1"
+        className="inline-flex items-center gap-1 text-sm text-[#D4AF37] hover:text-[#E5C158] transition mt-1"
       >
         <Icon name="Plus" size={15} />
         Добавить этап
@@ -1113,13 +1105,13 @@ function WorkStages({ stages, onChange }: { stages: string[]; onChange: (next: s
             onChange={(e) => update(i, e.target.value)}
             placeholder="Опишите работы этапа..."
             rows={2}
-            className="flex-1 bg-[#2a2320] border border-[#D4463C]/40 rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-[#D4463C] focus:ring-1 focus:ring-[#D4463C]/40 placeholder:text-white/30 resize-y"
+            className="flex-1 bg-[#161616] border border-[#D4AF37]/40 rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]/40 placeholder:text-white/30 resize-y"
           />
           {stages.length > 1 && (
             <button
               type="button"
               onClick={() => remove(i)}
-              className="pt-2 text-white/30 hover:text-[#D4463C] opacity-0 group-hover:opacity-100 transition shrink-0"
+              className="pt-2 text-white/30 hover:text-[#D4AF37] opacity-0 group-hover:opacity-100 transition shrink-0"
               title="Удалить этап"
             >
               <Icon name="X" size={16} />
@@ -1130,7 +1122,7 @@ function WorkStages({ stages, onChange }: { stages: string[]; onChange: (next: s
       <button
         type="button"
         onClick={add}
-        className="inline-flex items-center gap-1 text-sm text-[#D4463C] hover:text-[#e85c52] transition"
+        className="inline-flex items-center gap-1 text-sm text-[#D4AF37] hover:text-[#E5C158] transition"
       >
         <Icon name="Plus" size={15} />
         Добавить этап

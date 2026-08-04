@@ -36,7 +36,7 @@ export function InlineInput({ value, onChange, placeholder, minWidth = 60, type 
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="inline-block bg-[#2a2320] border border-[#D4463C]/40 rounded px-1.5 py-0.5 text-sm text-white outline-none focus:border-[#D4463C] focus:ring-1 focus:ring-[#D4463C]/40 placeholder:text-white/30 mx-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        className="inline-block bg-[#161616] border border-[#D4AF37]/40 rounded px-1.5 py-0.5 text-sm text-white outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]/40 placeholder:text-white/30 mx-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
       />
     </span>
   )
@@ -53,7 +53,7 @@ export function InlineSelect<T extends string>({ value, onChange, options }: Inl
     <select
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
-      className="inline-block bg-[#2a2320] border border-[#D4463C]/40 rounded px-1 py-0.5 text-sm text-white outline-none focus:border-[#D4463C] focus:ring-1 focus:ring-[#D4463C]/40 mx-0.5 cursor-pointer"
+      className="inline-block bg-[#161616] border border-[#D4AF37]/40 rounded px-1 py-0.5 text-sm text-white outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]/40 mx-0.5 cursor-pointer"
     >
       {options.map((opt) => (
         <option key={opt.value} value={opt.value} className="bg-[#1f1f1f]">

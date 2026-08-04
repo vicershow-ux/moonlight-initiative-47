@@ -13,10 +13,10 @@ interface ToggleGroupProps<T extends string> {
 
 export function ToggleGroup<T extends string>({ label, options, value, onChange, required }: ToggleGroupProps<T>) {
   return (
-    <div className="border border-[#D4463C]/50 rounded-xl p-4 my-4 bg-[#D4463C]/[0.04]">
+    <div className="border border-[#D4AF37]/40 rounded-xl p-4 my-4 bg-[#D4AF37]/[0.05]">
       <p className="text-sm font-medium mb-3 text-center text-white/90">
         {label}
-        {required && <span className="text-[#D4463C] ml-0.5">*</span>}
+        {required && <span className="text-[#D4AF37] ml-0.5">*</span>}
       </p>
       <div className="flex flex-wrap items-center justify-center gap-2">
         {options.map((opt) => (
@@ -26,7 +26,7 @@ export function ToggleGroup<T extends string>({ label, options, value, onChange,
             onClick={() => onChange(opt.value)}
             className={`px-3.5 py-2 rounded-full text-sm transition-colors ${
               value === opt.value
-                ? "bg-[#D4463C] text-white"
+                ? "bg-[#D4AF37] text-[#161616] font-medium"
                 : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
             }`}
           >
