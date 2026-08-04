@@ -79,7 +79,6 @@ export default function ActCreate() {
   })
 
   const [items, setItems] = useState<ActItem[]>([])
-  const [selected, setSelected] = useState<Set<number>>(new Set())
   const [previewHtml, setPreviewHtml] = useState("")
 
   useEffect(() => {
@@ -104,8 +103,8 @@ export default function ActCreate() {
     setOptions((prev) => ({ ...prev, [key]: value }))
 
   const total = useMemo(
-    () => items.filter((_, i) => selected.has(i)).reduce((sum, it) => sum + num(it.amount), 0),
-    [items, selected]
+    () => items.reduce((sum, it) => sum + num(it.amount), 0),
+    [items]
   )
 
   const goToWorks = async () => {
@@ -127,7 +126,6 @@ export default function ActCreate() {
         category: it.category || "",
       }))
       setItems(estItems)
-      setSelected(new Set(estItems.map((_, i) => i)))
       setStep(2)
     } catch {
       setError("Не удалось загрузить работы из сметы")
@@ -136,24 +134,38 @@ export default function ActCreate() {
     }
   }
 
-  const toggleItem = (i: number) => {
-    setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(i)) next.delete(i)
-      else next.add(i)
-      return next
-    })
+  const updateQuantity = (i: number, value: string) => {
+    const qty = num(value)
+    setItems((prev) =>
+      prev.map((it, idx) => (idx === i ? { ...it, quantity: qty, amount: qty * num(it.price) } : it))
+    )
   }
 
-  const toggleAll = () => {
-    setSelected((prev) => (prev.size === items.length ? new Set() : new Set(items.map((_, i) => i))))
+  const updateField = (i: number, key: "name" | "unit" | "price", value: string) => {
+    setItems((prev) =>
+      prev.map((it, idx) => {
+        if (idx !== i) return it
+        if (key === "price") {
+          const price = num(value)
+          return { ...it, price, amount: num(it.quantity) * price }
+        }
+        return { ...it, [key]: value }
+      })
+    )
+  }
+
+  const removeItem = (i: number) => {
+    setItems((prev) => prev.filter((_, idx) => idx !== i))
+  }
+
+  const addCustomItem = () => {
+    setItems((prev) => [...prev, { name: "Новая услуга", unit: "шт.", price: 0, quantity: 1, amount: 0 }])
   }
 
   const goToPreview = async () => {
     setError("")
-    const chosen = items.filter((_, i) => selected.has(i))
-    if (chosen.length === 0) {
-      setError("Отметьте хотя бы одну работу")
+    if (items.length === 0) {
+      setError("Добавьте хотя бы одну работу")
       return
     }
     setSaving(true)
@@ -165,7 +177,7 @@ export default function ActCreate() {
         act_type: actType,
         act_date: actDate,
         options,
-        items: chosen,
+        items,
       })
       setPreviewHtml(res.content_html)
       setStep(3)
@@ -178,7 +190,6 @@ export default function ActCreate() {
 
   const handleSave = async () => {
     setError("")
-    const chosen = items.filter((_, i) => selected.has(i))
     setSaving(true)
     try {
       const res = await actsApi.create({
@@ -188,7 +199,7 @@ export default function ActCreate() {
         act_type: actType,
         act_date: actDate,
         options,
-        items: chosen,
+        items,
         content_html: previewHtml,
         total_amount: total,
         status: "draft",
@@ -212,7 +223,7 @@ export default function ActCreate() {
 
   return (
     <CrmLayout title="Составление акта">
-      <div className="max-w-2xl mx-auto">
+      <div className={step === 2 ? "max-w-4xl mx-auto" : "max-w-2xl mx-auto"}>
         <div className="flex items-center gap-3 mb-6">
           <button
             onClick={() => (step > 1 ? setStep(step - 1) : navigate(-1))}
@@ -353,62 +364,114 @@ export default function ActCreate() {
 
         {step === 2 && (
           <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium">Подбор работ для акта</p>
-              <button onClick={toggleAll} className="text-xs text-[#D4AF37] hover:underline">
-                {selected.size === items.length ? "Снять все" : "Выбрать все"}
-              </button>
+            <div className="flex items-start justify-between mb-5 gap-4">
+              <div>
+                <p className="text-base font-semibold">Работы по акту</p>
+                <p className="text-xs text-white/40 mt-1">
+                  Отредактируйте количество, удалите лишнее или добавьте новые услуги.
+                </p>
+              </div>
+              <div className="text-right whitespace-nowrap">
+                <p className="text-xs text-white/40">Итого по акту:</p>
+                <p className="text-xl font-bold">{formatMoney(total)}</p>
+              </div>
             </div>
 
             {items.length === 0 ? (
-              <p className="text-sm text-white/40 py-8 text-center">В выбранной смете нет работ</p>
+              <p className="text-sm text-white/40 py-8 text-center">Работ пока нет — добавьте услугу</p>
             ) : (
-              <div className="flex flex-col gap-2 max-h-[420px] overflow-y-auto pr-1">
-                {items.map((it, i) => (
-                  <label
-                    key={i}
-                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                      selected.has(i) ? "border-[#D4AF37]/50 bg-[#D4AF37]/5" : "border-white/10 hover:border-white/20"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selected.has(i)}
-                      onChange={() => toggleItem(i)}
-                      className="mt-0.5 accent-[#D4AF37]"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm">{it.name}</p>
-                      <p className="text-xs text-white/40">
-                        {it.room_name ? `${it.room_name} · ` : ""}{it.quantity} {it.unit} × {formatMoney(it.price)}
-                      </p>
-                    </div>
-                    <span className="text-sm font-medium whitespace-nowrap">{formatMoney(it.amount)}</span>
-                  </label>
-                ))}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-[10px] uppercase tracking-wide text-white/40 border-b border-white/10">
+                      <th className="text-left font-medium py-2 pr-2">Наименование</th>
+                      <th className="text-center font-medium py-2 px-2 w-20">Ед.</th>
+                      <th className="text-center font-medium py-2 px-2 w-24">Кол-во</th>
+                      <th className="text-right font-medium py-2 px-2 w-28">Цена</th>
+                      <th className="text-right font-medium py-2 px-2 w-28">Сумма</th>
+                      <th className="w-8"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((it, i) => (
+                      <tr key={i} className="border-b border-white/5 last:border-0">
+                        <td className="py-2 pr-2">
+                          <input
+                            value={it.name}
+                            onChange={(e) => updateField(i, "name", e.target.value)}
+                            className="w-full bg-transparent outline-none focus:bg-[#161616] rounded px-1 py-1"
+                          />
+                        </td>
+                        <td className="py-2 px-2 text-center">
+                          <input
+                            value={it.unit}
+                            onChange={(e) => updateField(i, "unit", e.target.value)}
+                            className="w-full bg-transparent text-center text-white/60 outline-none focus:bg-[#161616] rounded px-1 py-1"
+                          />
+                        </td>
+                        <td className="py-2 px-2">
+                          <input
+                            type="number"
+                            min={0}
+                            value={it.quantity}
+                            onChange={(e) => updateQuantity(i, e.target.value)}
+                            className="w-full bg-[#161616] border border-white/10 rounded text-center outline-none focus:border-[#D4AF37]/50 px-1 py-1"
+                          />
+                        </td>
+                        <td className="py-2 px-2">
+                          <input
+                            type="number"
+                            min={0}
+                            value={it.price}
+                            onChange={(e) => updateField(i, "price", e.target.value)}
+                            className="w-full bg-transparent text-right text-white/70 outline-none focus:bg-[#161616] rounded px-1 py-1"
+                          />
+                        </td>
+                        <td className="py-2 px-2 text-right font-medium whitespace-nowrap">
+                          {formatMoney(it.amount)}
+                        </td>
+                        <td className="py-2 pl-2 text-center">
+                          <button
+                            onClick={() => removeItem(i)}
+                            className="text-white/30 hover:text-red-400 transition-colors"
+                            title="Удалить"
+                          >
+                            <Icon name="X" size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
 
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
-              <span className="text-sm text-white/60">Выбрано: {selected.size} · Итого</span>
-              <span className="text-lg font-semibold">{formatMoney(total)}</span>
-            </div>
+            <button
+              onClick={addCustomItem}
+              className="mt-4 inline-flex items-center gap-2 border border-white/15 hover:border-white/30 hover:bg-white/5 transition-colors text-sm px-4 py-2.5 rounded-lg"
+            >
+              <Icon name="Plus" size={15} />
+              Добавить произвольную услугу
+            </button>
 
             {error && (
-              <p className="text-sm text-red-400 flex items-center gap-1.5 mt-3">
+              <p className="text-sm text-red-400 flex items-center gap-1.5 mt-4">
                 <Icon name="CircleAlert" size={15} />
                 {error}
               </p>
             )}
 
-            <button
-              onClick={goToPreview}
-              disabled={saving}
-              className="w-full flex items-center justify-center gap-2 bg-white text-[#161616] text-sm font-medium px-5 py-3 rounded-lg hover:bg-white/90 transition-colors disabled:opacity-60 mt-4"
-            >
-              {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : null}
-              Далее: предпросмотр
-            </button>
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={goToPreview}
+                disabled={saving}
+                className="flex items-center justify-center gap-2 bg-white text-[#161616] text-sm font-medium px-5 py-3 rounded-lg hover:bg-white/90 transition-colors disabled:opacity-60"
+              >
+                {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : null}
+                Предпросмотр документа
+                <Icon name="ArrowRight" size={16} />
+              </button>
+            </div>
           </div>
         )}
 
