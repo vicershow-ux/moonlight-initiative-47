@@ -31,7 +31,7 @@ const ACT_TYPES = [
 
 const SCOPE_OPTIONS = [
   { value: "all", label: "Все работы, перечисленные в акте" },
-  { value: "partial", label: "Часть работ по договору" },
+  { value: "stage", label: "Отдельный этап работ" },
 ]
 
 const INSPECTION_OPTIONS = [
@@ -43,7 +43,8 @@ const INSPECTION_OPTIONS = [
 
 const CALCULATION_OPTIONS = [
   { value: "contract", label: "По условиям договора" },
-  { value: "actual", label: "По фактически выполненному объёму" },
+  { value: "paid", label: "Оплачено полностью" },
+  { value: "remainder", label: "Есть остаток к оплате" },
 ]
 
 const fieldClass =
