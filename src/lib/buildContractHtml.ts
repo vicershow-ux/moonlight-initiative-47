@@ -174,6 +174,8 @@ export function buildContractHtml(ctx: ContractContext): string {
   const paymentDaysKind = daysKindLabel(o.payment_days_kind)
   const acceptanceDays = o.acceptance_days || "5"
   const acceptanceDaysKind = daysKindLabel(o.acceptance_days_kind)
+  const unilateralDays = o.unilateral_days || "5"
+  const unilateralDaysKind = daysKindLabel(o.unilateral_days_kind)
   const materialsReturnDays = o.materials_return_days || "3"
   const materialsReturnDaysKind = daysKindLabel(o.materials_return_days_kind)
   const defectFixDays = o.defect_fix_days || "10"
@@ -233,7 +235,8 @@ export function buildContractHtml(ctx: ContractContext): string {
   const acceptanceHtml = `<h3>5. Порядок сдачи и приёмки работ</h3>
 <p>5.1. По завершении каждого этапа Работ (а по завершении всех Работ — по завершении последнего этапа) Подрядчик предоставляет Заказчику Акт сдачи-приёмки выполненных работ и отчётную документацию.</p>
 <p>5.2. Заказчик обязан в течение ${acceptanceDays} ${acceptanceDaysKind} с момента получения Акта либо принять работы и подписать Акт, либо направить Подрядчику мотивированный отказ от приёмки с указанием выявленных замечаний.</p>
-<p>5.3. ${docDelivery53}</p>`
+<p>5.3. ${docDelivery53}</p>
+<p>5.4. В случае если в течение ${unilateralDays} ${unilateralDaysKind} с момента отправки Акта сдачи-приёмки Заказчик не подпишет его или не направит Подрядчику письменный мотивированный отказ, работы по соответствующему этапу считаются принятыми Заказчиком в полном объёме и надлежащего качества. В этом случае односторонний Акт, подписанный Подрядчиком, имеет полную юридическую силу и является основанием для оплаты.</p>`
 
   const companyName = ctx.company?.name || ctx.company?.contact_full_name || o.contractor_name || ""
 

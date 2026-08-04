@@ -74,6 +74,8 @@ const defaultOptions: Required<ContractOptions> = {
   payment_days_kind: "working",
   acceptance_days: "5",
   acceptance_days_kind: "working",
+  unilateral_days: "5",
+  unilateral_days_kind: "working",
   payment_method: "cash_or_bank",
   warranty_mode: "custom",
   defect_fix_days: "10",
@@ -772,6 +774,15 @@ export default function ContractEdit() {
             personal_mail: "Направление документов осуществляется путём личного вручения под расписку либо заказным письмом с уведомлением о вручении по адресам Сторон, указанным в разделе с реквизитами настоящего Договора.",
             email: "Направление документов осуществляется по адресам электронной почты Сторон, указанным в разделе с реквизитами настоящего Договора. Документ считается полученным на следующий рабочий день после его отправки.",
           }[options.doc_delivery]}
+        </p>
+        <p>
+          5.4. В случае если в течение{" "}
+          <InlineInput value={options.unilateral_days} onChange={(v) => updateOption("unilateral_days", v)} placeholder="5" minWidth={56} type="number" />
+          {" "}
+          <InlineSelect value={options.unilateral_days_kind || "working"} onChange={(v) => updateOption("unilateral_days_kind", v)} options={daysKindOptions} />
+          {" "}с момента отправки Акта сдачи-приёмки Заказчик не подпишет его или не направит Подрядчику письменный мотивированный
+          отказ, работы по соответствующему этапу считаются принятыми Заказчиком в полном объёме и надлежащего качества. В этом
+          случае односторонний Акт, подписанный Подрядчиком, имеет полную юридическую силу и является основанием для оплаты.
         </p>
 
         {/* 6. Гарантия на работы */}

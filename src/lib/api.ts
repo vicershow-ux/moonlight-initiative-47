@@ -483,6 +483,8 @@ export interface ContractOptions {
   payment_days_kind?: "working" | "calendar"
   acceptance_days?: string
   acceptance_days_kind?: "working" | "calendar"
+  unilateral_days?: string
+  unilateral_days_kind?: "working" | "calendar"
   payment_method?: "cash_or_bank" | "bank_only" | "cash_only"
   // 6. Гарантия
   warranty_mode?: "custom" | "by_law"
