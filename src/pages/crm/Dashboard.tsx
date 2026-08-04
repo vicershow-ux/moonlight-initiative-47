@@ -2,8 +2,7 @@ import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
-import { dashboardApi, DashboardStats, objectsApi, objectStatusesApi, ObjectStatus, ObjectItem } from "@/lib/api"
-import { EstimatesListModal } from "@/components/crm/EstimatesListModal"
+import { dashboardApi, DashboardStats, objectsApi, objectStatusesApi, ObjectStatus } from "@/lib/api"
 import { getStatusBadgeClass } from "@/lib/objectStatusColors"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -14,8 +13,6 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [statuses, setStatuses] = useState<ObjectStatus[]>([])
-  const [estimatesListOpen, setEstimatesListOpen] = useState(false)
-  const [selectedObject, setSelectedObject] = useState<ObjectItem | null>(null)
 
   const load = () => {
     dashboardApi
@@ -28,11 +25,6 @@ export default function Dashboard() {
     load()
     objectStatusesApi.list().then((data) => setStatuses(data.statuses))
   }, [])
-
-  const openEstimatesList = (obj: ObjectItem) => {
-    setSelectedObject(obj)
-    setEstimatesListOpen(true)
-  }
 
   const handleDelete = async (id: number) => {
     await objectsApi.remove(id)
@@ -172,20 +164,13 @@ export default function Dashboard() {
                           </button>
                           {!isClient && (
                             <Link
-                              to={`/cabinet/objects/${obj.id}/estimates/new`}
+                              to={`/cabinet/objects/${obj.id}/edit`}
                               className="text-white/40 hover:text-white transition-colors"
-                              title="Создать смету"
+                              title="Редактировать объект"
                             >
-                              <Icon name="FilePlus2" size={15} />
+                              <Icon name="Pencil" size={15} />
                             </Link>
                           )}
-                          <button
-                            onClick={() => openEstimatesList(obj)}
-                            className="text-white/40 hover:text-white transition-colors"
-                            title="Сметы объекта"
-                          >
-                            <Icon name="FileText" size={15} />
-                          </button>
                           {!isClient && (
                             <button
                               onClick={() => handleDelete(obj.id)}
@@ -236,12 +221,6 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-
-      <EstimatesListModal
-        open={estimatesListOpen}
-        onOpenChange={setEstimatesListOpen}
-        object={selectedObject}
-      />
     </CrmLayout>
   )
 }

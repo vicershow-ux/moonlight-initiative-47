@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { objectsApi, objectStatusesApi, ObjectItem, ObjectStatus, ObjectStatusTransition } from "@/lib/api"
-import { EstimatesListModal } from "@/components/crm/EstimatesListModal"
 import { getStatusBadgeClass } from "@/lib/objectStatusColors"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -16,8 +15,6 @@ export default function Objects() {
   const [statuses, setStatuses] = useState<ObjectStatus[]>([])
   const [transitions, setTransitions] = useState<ObjectStatusTransition[]>([])
 
-  const [estimatesListOpen, setEstimatesListOpen] = useState(false)
-  const [selectedObject, setSelectedObject] = useState<ObjectItem | null>(null)
 
   const statusByName = useMemo(() => {
     const map = new Map<string, ObjectStatus>()
@@ -57,11 +54,6 @@ export default function Objects() {
   const handleStatusChange = async (id: number, newStatus: string) => {
     await objectsApi.update(id, { status: newStatus })
     load()
-  }
-
-  const openEstimatesList = (obj: ObjectItem) => {
-    setSelectedObject(obj)
-    setEstimatesListOpen(true)
   }
 
   return (
@@ -140,20 +132,13 @@ export default function Objects() {
                         </button>
                         {!isClient && (
                           <Link
-                            to={`/cabinet/objects/${obj.id}/estimates/new`}
+                            to={`/cabinet/objects/${obj.id}/edit`}
                             className="text-white/40 hover:text-white transition-colors"
-                            title="Создать смету"
+                            title="Редактировать объект"
                           >
-                            <Icon name="FilePlus2" size={15} />
+                            <Icon name="Pencil" size={15} />
                           </Link>
                         )}
-                        <button
-                          onClick={() => openEstimatesList(obj)}
-                          className="text-white/40 hover:text-white transition-colors"
-                          title="Сметы объекта"
-                        >
-                          <Icon name="FileText" size={15} />
-                        </button>
                         {!isClient && (
                           <button
                             onClick={() => handleDelete(obj.id)}
@@ -172,12 +157,6 @@ export default function Objects() {
           </div>
         )}
       </div>
-
-      <EstimatesListModal
-        open={estimatesListOpen}
-        onOpenChange={setEstimatesListOpen}
-        object={selectedObject}
-      />
     </CrmLayout>
   )
 }
