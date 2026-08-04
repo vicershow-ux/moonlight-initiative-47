@@ -12,6 +12,12 @@ export interface ContractContext {
 
 const esc = (v: unknown) => (v == null ? "" : String(v))
 
+const req = (v: unknown, label?: string) => {
+  const val = esc(v).trim()
+  if (!val) return ""
+  return label ? `<p>${label}: ${val}</p>` : `<p>${val}</p>`
+}
+
 const formatDate = (d: string) => {
   if (!d) return ""
   const date = new Date(d)
@@ -298,23 +304,35 @@ ${acceptanceHtml}
 <table style="width:100%;margin-top:16px">
 <tr>
 <td style="width:50%;vertical-align:top;padding-right:16px">
-<p><strong>ПОДРЯДЧИК</strong></p>
-<p>${esc(companyName)}</p>
-<p>ИНН: ${esc(ctx.company?.inn)}</p>
-<p>Юр. адрес: ${esc(ctx.company?.legal_address)}</p>
-<p>Банк: ${esc(ctx.company?.bank_name)}</p>
-<p>БИК: ${esc(ctx.company?.bik)}</p>
-<p>Р/с: ${esc(ctx.company?.account_number)}</p>
-<p>К/с: ${esc(ctx.company?.correspondent_account)}</p>
-<p style="margin-top:24px">Подпись: _______________</p>
+<p><strong>ПОДРЯДЧИК (ИСПОЛНИТЕЛЬ)</strong></p>
+${req(companyName)}
+${req(ctx.company?.phone, "Тел.")}
+${req(ctx.company?.email, "Email")}
+${req(ctx.company?.inn, "ИНН")}
+${req(ctx.company?.legal_address, "Юр. адрес")}
+${req(ctx.company?.bank_name, "Банк")}
+${req(ctx.company?.bik, "БИК")}
+${req(ctx.company?.account_number, "Р/с")}
+${req(ctx.company?.correspondent_account, "К/с")}
 </td>
 <td style="width:50%;vertical-align:top;padding-left:16px">
 <p><strong>ЗАКАЗЧИК</strong></p>
-<p>${esc(o.customer_name || object.client_name)}</p>
-<p>Объект: ${esc(address)}</p>
-<p>Телефон: ${esc(object.client_phone)}</p>
-<p>Email: ${esc(object.email)}</p>
-<p style="margin-top:24px">Подпись: _______________</p>
+${req(o.customer_name || object.client_name)}
+${req(object.client_phone, "Тел.")}
+${req(object.email, "Email")}
+${req(address, "Объект")}
+</td>
+</tr>
+<tr>
+<td style="width:50%;vertical-align:bottom;padding:36px 16px 0 0">
+<p style="margin-bottom:28px"><strong>ОТ ИМЕНИ ПОДРЯДЧИКА</strong></p>
+<p style="border-top:1px solid #999;padding-top:4px;max-width:240px;margin:0">${esc(ctx.company?.contact_full_name || o.contractor_name || companyName)}</p>
+<p style="font-size:11px;color:#666;margin:2px 0 0">(подпись, М.П.)</p>
+</td>
+<td style="width:50%;vertical-align:bottom;padding:36px 0 0 16px">
+<p style="margin-bottom:28px"><strong>ОТ ИМЕНИ ЗАКАЗЧИКА</strong></p>
+<p style="border-top:1px solid #999;padding-top:4px;max-width:240px;margin:0">${esc(o.customer_name || object.client_name)}</p>
+<p style="font-size:11px;color:#666;margin:2px 0 0">(подпись)</p>
 </td>
 </tr>
 </table>

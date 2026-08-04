@@ -923,8 +923,8 @@ export default function ContractEdit() {
 
         {/* 10. Реквизиты и подписи сторон */}
         <h3 className="text-white font-semibold mt-6 mb-2">10. Реквизиты и подписи сторон</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-white/10 pt-4">
-          <div className="md:border-r md:border-white/10 md:pr-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-white/10 pt-4 items-stretch">
+          <div className="md:border-r md:border-white/10 md:pr-6 flex flex-col">
             <p className="text-xs uppercase tracking-wide text-white/50 mb-2">Подрядчик (Исполнитель)</p>
             <p className="font-semibold text-white">{company?.name || company?.contact_full_name || options.contractor_name || "—"}</p>
             {company?.phone && <p className="text-sm text-white/70">Тел.: {company.phone}</p>}
@@ -933,7 +933,7 @@ export default function ContractEdit() {
             {company?.legal_address && <p className="text-sm text-white/70">Юр. адрес: {company.legal_address}</p>}
             {company?.bank_name && <p className="text-sm text-white/70">Банк: {company.bank_name}</p>}
             {company?.account_number && <p className="text-sm text-white/70">Р/с: {company.account_number}</p>}
-            <div className="mt-10">
+            <div className="mt-auto pt-10">
               <p className="text-xs uppercase tracking-wide text-white/50 mb-6">От имени Подрядчика</p>
               <div className="border-t border-white/30 pt-1 max-w-[240px]">
                 <p className="font-semibold text-white text-sm">{company?.contact_full_name || options.contractor_name || "—"}</p>
@@ -941,13 +941,13 @@ export default function ContractEdit() {
               </div>
             </div>
           </div>
-          <div>
+          <div className="flex flex-col">
             <p className="text-xs uppercase tracking-wide text-white/50 mb-2">Заказчик</p>
             <p className="font-semibold text-white">{options.customer_name || object?.client_name || "—"}</p>
             {object?.client_phone && <p className="text-sm text-white/70">Тел.: {object.client_phone}</p>}
             {object?.email && <p className="text-sm text-white/70">Email: {object.email}</p>}
             {options.object_address && <p className="text-sm text-white/70">Адрес: {options.object_address}</p>}
-            <div className="mt-10">
+            <div className="mt-auto pt-10">
               <p className="text-xs uppercase tracking-wide text-white/50 mb-6">От имени Заказчика</p>
               <div className="border-t border-white/30 pt-1 max-w-[240px]">
                 <p className="font-semibold text-white text-sm">{options.customer_name || object?.client_name || "—"}</p>
