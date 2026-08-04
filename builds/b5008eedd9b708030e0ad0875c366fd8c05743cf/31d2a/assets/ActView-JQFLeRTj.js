@@ -1,0 +1,12 @@
+import{k as f,a as g,r as a,W as w,j as e,I as n,L as p,O as b}from"./index-CY2MRMKJ.js";import{C as c}from"./CrmLayout-BgPk9Npl.js";import{d as j}from"./downloadContractPdf-8ot_o8Z1.js";function _(){const{actId:i}=f(),d=g(),[t,m]=a.useState(null),[u,l]=a.useState(!0),[r,o]=a.useState(!1);a.useEffect(()=>{i&&(l(!0),w.get(Number(i)).then(m).catch(()=>d("/cabinet/documents")).finally(()=>l(!1)))},[i]);const x=()=>{if(!t)return;const s=window.open("","_blank");s&&(s.document.write(`
+      <html>
+        <head>
+          <title>Акт № ${t.act_number}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 32px; line-height: 1.5; color: #161616; }
+            table { border-collapse: collapse; }
+          </style>
+        </head>
+        <body>${t.content_html}</body>
+      </html>
+    `),s.document.close(),s.focus(),s.print())},h=async()=>{if(t){o(!0);try{await j(t.content_html,`Акт ${t.act_number}`)}finally{o(!1)}}};return u?e.jsx(c,{title:"Акт",children:e.jsx("div",{className:"flex items-center justify-center py-24",children:e.jsx(n,{name:"Loader2",size:28,className:"animate-spin text-white/40"})})}):t?e.jsxs(c,{title:`Акт выполненных работ № ${t.act_number}`,children:[e.jsxs("div",{className:"flex items-center justify-between mb-4 flex-wrap gap-3",children:[e.jsxs(p,{to:"/cabinet/documents",className:"inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors",children:[e.jsx(n,{name:"ChevronLeft",size:16}),"К документам"]}),e.jsxs("div",{className:"flex items-center gap-2",children:[e.jsx("span",{className:b("px-2.5 py-1 rounded-full text-xs font-medium",t.status==="signed"?"bg-green-500/20 text-green-300":"bg-white/10 text-white/50"),children:t.status==="signed"?"подписан":"черновик"}),e.jsx("button",{onClick:x,title:"Печать",className:"flex items-center justify-center w-9 h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg",children:e.jsx(n,{name:"Printer",size:15})}),e.jsx("button",{onClick:h,disabled:r,title:"Скачать PDF",className:"flex items-center justify-center w-9 h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg disabled:opacity-60",children:r?e.jsx(n,{name:"Loader2",size:15,className:"animate-spin"}):e.jsx(n,{name:"Download",size:15})})]})]}),e.jsx("div",{className:"bg-white text-[#161616] rounded-xl p-8 sm:p-12 max-w-4xl mx-auto shadow-lg",children:e.jsx("div",{dangerouslySetInnerHTML:{__html:t.content_html}})})]}):null}export{_ as default};

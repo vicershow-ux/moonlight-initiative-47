@@ -692,6 +692,24 @@ export const actsApi = {
     return parseResponse(res) as Promise<{ id: number; act_number: string; created_at: string }>
   },
 
+  async update(id: number, payload: {
+    act_number?: string
+    act_date?: string
+    act_type?: string
+    status?: string
+    options?: ActOptions
+    items?: ActItem[]
+    content_html?: string
+    total_amount?: number
+  }) {
+    const res = await fetch(`${ACTS_URL}?id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res)
+  },
+
   async remove(id: number) {
     const res = await fetch(`${ACTS_URL}?id=${id}`, {
       method: "DELETE",

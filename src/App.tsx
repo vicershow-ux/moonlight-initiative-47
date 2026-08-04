@@ -57,6 +57,7 @@ const App = () => (
             <Route path="/cabinet/objects/:id/contracts/:contractId/edit" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><ContractEdit /></ProtectedRoute>} />
             <Route path="/cabinet/objects/:id/contracts/:contractId" element={<ProtectedRoute><ContractView /></ProtectedRoute>} />
             <Route path="/cabinet/objects/:id/acts/new" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><ActCreate /></ProtectedRoute>} />
+            <Route path="/cabinet/objects/:id/acts/:actId/edit" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><ActCreate /></ProtectedRoute>} />
             <Route path="/cabinet/objects/:id/acts/:actId" element={<ProtectedRoute><ActView /></ProtectedRoute>} />
             <Route path="/cabinet/documents" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Documents /></ProtectedRoute>} />
             <Route path="/cabinet/customers" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Customers /></ProtectedRoute>} />

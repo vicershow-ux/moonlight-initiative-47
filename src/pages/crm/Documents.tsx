@@ -473,6 +473,13 @@ export default function Documents() {
                           >
                             <Icon name="Eye" size={15} />
                           </Link>
+                          <Link
+                            to={`/cabinet/objects/${a.object_id}/acts/${a.id}/edit`}
+                            className="text-white/40 hover:text-white transition-colors"
+                            title="Редактировать"
+                          >
+                            <Icon name="Pencil" size={15} />
+                          </Link>
                           <button
                             onClick={() => handlePrintAct(a)}
                             className="text-white/40 hover:text-white transition-colors"

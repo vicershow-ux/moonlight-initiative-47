@@ -51,8 +51,9 @@ const fieldClass =
   "bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50 w-full"
 
 export default function ActCreate() {
-  const { id } = useParams()
+  const { id, actId } = useParams()
   const objectId = Number(id)
+  const editingActId = actId ? Number(actId) : null
   const [searchParams] = useSearchParams()
   const contractIdParam = searchParams.get("contract_id")
   const navigate = useNavigate()
@@ -86,18 +87,42 @@ export default function ActCreate() {
     Promise.all([
       objectsApi.get(objectId).catch(() => null),
       estimatesApi.listByObject(objectId).then((d) => d.estimates).catch(() => []),
-      contractIdParam ? contractsApi.get(Number(contractIdParam)).catch(() => null) : Promise.resolve(null),
+      editingActId ? actsApi.get(editingActId).catch(() => null) : Promise.resolve(null),
     ])
-      .then(([obj, ests, contr]) => {
+      .then(async ([obj, ests, existingAct]) => {
         setObject(obj)
         setEstimates(ests)
+
+        if (existingAct) {
+          setActType(existingAct.act_type || "acceptance")
+          setActDate((existingAct.act_date || "").slice(0, 10) || new Date().toISOString().slice(0, 10))
+          setOptions({
+            period_from: existingAct.options?.period_from || "",
+            period_to: existingAct.options?.period_to || "",
+            scope: existingAct.options?.scope || "all",
+            inspection_result: existingAct.options?.inspection_result || "",
+            calculation: existingAct.options?.calculation || "contract",
+            appendix: existingAct.options?.appendix || "",
+          })
+          setItems(existingAct.items || [])
+          setSelectedEstimateId(existingAct.estimate_id || null)
+          setPreviewHtml(existingAct.content_html || "")
+          if (existingAct.contract_id) {
+            const contr = await contractsApi.get(existingAct.contract_id).catch(() => null)
+            setContract(contr)
+          }
+          setStep(2)
+          return
+        }
+
+        const contr = contractIdParam ? await contractsApi.get(Number(contractIdParam)).catch(() => null) : null
         setContract(contr)
         const preferred = contr?.estimate_id || ests[0]?.id || null
         setSelectedEstimateId(preferred)
       })
       .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [objectId, contractIdParam])
+  }, [objectId, contractIdParam, editingActId])
 
   const setOpt = (key: keyof ActOptions, value: string) =>
     setOptions((prev) => ({ ...prev, [key]: value }))
@@ -192,6 +217,18 @@ export default function ActCreate() {
     setError("")
     setSaving(true)
     try {
+      if (editingActId) {
+        await actsApi.update(editingActId, {
+          act_type: actType,
+          act_date: actDate,
+          options,
+          items,
+          content_html: previewHtml,
+          total_amount: total,
+        })
+        navigate(`/cabinet/objects/${objectId}/acts/${editingActId}`)
+        return
+      }
       const res = await actsApi.create({
         object_id: objectId,
         contract_id: contract?.id || null,
@@ -222,7 +259,7 @@ export default function ActCreate() {
   }
 
   return (
-    <CrmLayout title="Составление акта">
+    <CrmLayout title={editingActId ? "Редактирование акта" : "Составление акта"}>
       <div className={step === 2 ? "max-w-4xl mx-auto" : "max-w-2xl mx-auto"}>
         <div className="flex items-center gap-3 mb-6">
           <button
@@ -501,7 +538,7 @@ export default function ActCreate() {
                 className="flex-1 flex items-center justify-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm font-medium px-5 py-3 rounded-lg disabled:opacity-60"
               >
                 {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : <Icon name="Check" size={16} />}
-                Сохранить акт
+                {editingActId ? "Сохранить изменения" : "Сохранить акт"}
               </button>
             </div>
           </div>
