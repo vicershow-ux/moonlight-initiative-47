@@ -212,7 +212,7 @@ export default function ObjectRooms() {
                   <input
                     value={form.name}
                     onChange={(e) => updateForm(idx, { name: e.target.value })}
-                    placeholder="Санузел"
+                    placeholder="Введите название"
                     className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
                   />
                 </div>
@@ -223,7 +223,7 @@ export default function ObjectRooms() {
                     value={form.room_type}
                     onChange={(v) => updateForm(idx, { room_type: v })}
                     suggestions={ROOM_TYPE_SUGGESTIONS}
-                    placeholder="Ванная и туалет"
+                    placeholder="Выберите или введите тип"
                   />
                 </div>
 
@@ -232,7 +232,7 @@ export default function ObjectRooms() {
                   <input
                     value={form.area}
                     onChange={(e) => updateForm(idx, { area: e.target.value })}
-                    placeholder="3.30"
+                    placeholder="м²"
                     type="number"
                     className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
                   />
@@ -243,7 +243,7 @@ export default function ObjectRooms() {
                   <input
                     value={form.perimeter}
                     onChange={(e) => updateForm(idx, { perimeter: e.target.value })}
-                    placeholder="7.56"
+                    placeholder="м"
                     type="number"
                     className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
                   />
@@ -254,7 +254,7 @@ export default function ObjectRooms() {
                   <input
                     value={form.ceiling_height}
                     onChange={(e) => updateForm(idx, { ceiling_height: e.target.value })}
-                    placeholder="2.70"
+                    placeholder="м"
                     type="number"
                     className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
                   />
@@ -265,7 +265,7 @@ export default function ObjectRooms() {
                   <input
                     value={form.wall_area}
                     onChange={(e) => updateForm(idx, { wall_area: e.target.value })}
-                    placeholder="20.41"
+                    placeholder="м²"
                     type="number"
                     className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
                   />
