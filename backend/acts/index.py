@@ -76,6 +76,10 @@ def fmt_money(amount):
     return f"{n:,.0f}".replace(',', ' ') + ' руб.'
 
 
+MONTHS_RU = ['', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+             'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
+
+
 def fmt_date(d):
     if not d:
         return ''
@@ -86,16 +90,131 @@ def fmt_date(d):
     return s
 
 
-def build_act_html(object_row, company_row, contract_row, opts, items, act_number, act_date, act_type, total_amount):
-    obj_client_name, obj_address = object_row
-    company_name, contact_full_name = company_row
-    contract_number, contract_date = (contract_row if contract_row else ('', ''))
+def fmt_date_long(d):
+    if not d:
+        return ''
+    s = str(d)
+    parts = s.split('-')
+    if len(parts) == 3:
+        try:
+            day = int(parts[2][:2])
+            month = int(parts[1])
+            return f"{day:02d} {MONTHS_RU[month]} {parts[0]} г."
+        except (ValueError, IndexError):
+            return s
+    return s
 
-    act_title = ACT_TYPE_LABELS.get(act_type, ACT_TYPE_LABELS['acceptance'])
+
+UNITS_M = ["", "один", "два", "три", "четыре", "пять", "шесть", "семь", "восемь", "девять"]
+UNITS_F = ["", "одна", "две", "три", "четыре", "пять", "шесть", "семь", "восемь", "девять"]
+TEENS = ["десять", "одиннадцать", "двенадцать", "тринадцать", "четырнадцать", "пятнадцать",
+         "шестнадцать", "семнадцать", "восемнадцать", "девятнадцать"]
+TENS = ["", "", "двадцать", "тридцать", "сорок", "пятьдесят", "шестьдесят", "семьдесят", "восемьдесят", "девяносто"]
+HUNDREDS = ["", "сто", "двести", "триста", "четыреста", "пятьсот", "шестьсот", "семьсот", "восемьсот", "девятьсот"]
+SCALES = [
+    (10 ** 9, True, ("миллиард", "миллиарда", "миллиардов")),
+    (10 ** 6, True, ("миллион", "миллиона", "миллионов")),
+    (10 ** 3, True, ("тысяча", "тысячи", "тысяч")),
+]
+
+
+def _three(n, feminine=False):
+    words = []
+    h, rem = n // 100, n % 100
+    if h:
+        words.append(HUNDREDS[h])
+    if 10 <= rem < 20:
+        words.append(TEENS[rem - 10])
+    else:
+        t, u = rem // 10, rem % 10
+        if t:
+            words.append(TENS[t])
+        if u:
+            words.append((UNITS_F if feminine else UNITS_M)[u])
+    return words
+
+
+def _plural(n, forms):
+    n100 = n % 100
+    if 11 <= n100 <= 19:
+        return forms[2]
+    n10 = n % 10
+    if n10 == 1:
+        return forms[0]
+    if 2 <= n10 <= 4:
+        return forms[1]
+    return forms[2]
+
+
+def _num_words(n):
+    if n == 0:
+        return 'ноль'
+    remaining, parts = n, []
+    for scale_val, feminine, forms in SCALES:
+        if remaining >= scale_val:
+            count = remaining // scale_val
+            remaining %= scale_val
+            parts += _three(count, feminine)
+            parts.append(_plural(count, forms))
+    if remaining:
+        parts += _three(remaining, False)
+    return ' '.join(parts)
+
+
+def money_words(amount):
+    try:
+        total = float(amount)
+    except (TypeError, ValueError):
+        total = 0.0
+    rub = int(total)
+    kop = int(round((total - rub) * 100))
+    words = _num_words(rub).capitalize()
+    rub_word = _plural(rub, ('рубль', 'рубля', 'рублей'))
+    return f"{words} {rub_word} {kop:02d} копеек"
+
+
+CALC_LABELS = {
+    'contract': 'Стоимость работ по настоящему Акту подлежит оплате в порядке и сроки, установленные Договором подряда.',
+    'paid': 'Стоимость работ по настоящему Акту оплачена Заказчиком в полном объёме. Финансовых претензий Стороны друг к другу не имеют.',
+    'remainder': 'На момент подписания настоящего Акта у Заказчика имеется остаток задолженности, подлежащий оплате в порядке и сроки, установленные Договором подряда.',
+}
+
+INSPECTION_ACT_TEXT = {
+    'no_defects': 'При осмотре явные недостатки по объёму и качеству принятых работ не выявлены.',
+    'minor_defects': 'При осмотре выявлены незначительные недостатки, не препятствующие приёмке. Подрядчик обязуется устранить их в согласованный срок.',
+    'defects': 'При осмотре выявлены недостатки, препятствующие приёмке работ. К Акту прилагается перечень замечаний.',
+}
+
+
+def dark_block(text):
+    return (
+        '<div style="background:#2b211b;color:#f5efe6;border-radius:8px;'
+        'padding:14px 18px;margin:10px 0;font-size:12.5px">' + text + '</div>'
+    )
+
+
+def build_act_html(object_row, company_row, contract_row, opts, items, act_number, act_date, act_type, total_amount):
+    client_name = esc(object_row.get('client_name'))
+    address = esc(object_row.get('address'))
+    client_phone = esc(object_row.get('client_phone'))
+    client_email = esc(object_row.get('email'))
+
+    company_name = esc(company_row.get('name'))
+    contact = esc(company_row.get('contact_full_name'))
+    company_phone = esc(company_row.get('phone'))
+    company_email = esc(company_row.get('email'))
+    executor_display = company_name or contact
+    executor_short = contact or company_name
+
+    contract_number = esc(contract_row.get('contract_number')) if contract_row else ''
+    contract_date = contract_row.get('contract_date') if contract_row else ''
+
     period_from = opts.get('period_from') or ''
     period_to = opts.get('period_to') or ''
-    inspection = opts.get('inspection_result') or ''
-    inspection_text = INSPECTION_LABELS.get(inspection, '')
+    inspection = opts.get('inspection_result') or 'no_defects'
+    inspection_text = INSPECTION_ACT_TEXT.get(inspection, INSPECTION_ACT_TEXT['no_defects'])
+    calculation = opts.get('calculation') or 'contract'
+    calc_text = CALC_LABELS.get(calculation, CALC_LABELS['contract'])
     appendix = opts.get('appendix') or ''
 
     rows_html = ''
@@ -110,64 +229,149 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
                 amount = float(qty) * float(price)
             except (TypeError, ValueError):
                 amount = 0
+        bg = '#ffffff' if i % 2 else '#f7f5f2'
         rows_html += (
-            f"<tr><td style=\"border:1px solid #333;padding:6px;text-align:center\">{i}</td>"
-            f"<td style=\"border:1px solid #333;padding:6px\">{name}</td>"
-            f"<td style=\"border:1px solid #333;padding:6px;text-align:center\">{unit}</td>"
-            f"<td style=\"border:1px solid #333;padding:6px;text-align:center\">{qty}</td>"
-            f"<td style=\"border:1px solid #333;padding:6px;text-align:right\">{fmt_money(price)}</td>"
-            f"<td style=\"border:1px solid #333;padding:6px;text-align:right\">{fmt_money(amount)}</td></tr>"
+            f'<tr style="background:{bg}">'
+            f'<td style="border:1px solid #d8d3cc;padding:7px;text-align:center">{i}</td>'
+            f'<td style="border:1px solid #d8d3cc;padding:7px">{name}</td>'
+            f'<td style="border:1px solid #d8d3cc;padding:7px;text-align:center">{unit}</td>'
+            f'<td style="border:1px solid #d8d3cc;padding:7px;text-align:center">{qty}</td>'
+            f'<td style="border:1px solid #d8d3cc;padding:7px;text-align:right">{fmt_money(price)}</td>'
+            f'<td style="border:1px solid #d8d3cc;padding:7px;text-align:right">{fmt_money(amount)}</td>'
+            f'</tr>'
         )
 
-    period_html = ''
-    if period_from or period_to:
-        period_html = f"<p>Период выполнения работ: с {fmt_date(period_from) or '—'} по {fmt_date(period_to) or '—'}.</p>"
+    period_line = (
+        f'Отчётный период: с {fmt_date(period_from) or "_______________"} '
+        f'по {fmt_date(period_to) or "_______________"}.'
+    )
 
-    contract_ref = ''
+    basis_parts = []
     if contract_number:
-        contract_ref = f" к Договору подряда № {esc(contract_number)} от {fmt_date(contract_date)}"
+        basis_parts.append(f'Договор подряда № {contract_number} от {fmt_date(contract_date)}')
+    if address:
+        basis_parts.append(f'Объект: {object_row.get("object_type", "")} по адресу: {address}')
+    basis_line = '. '.join(basis_parts) + '.' if basis_parts else ''
 
-    inspection_html = f"<p>{inspection_text}</p>" if inspection_text else ''
-    appendix_html = f"<p>Приложения и переданные документы: {esc(appendix)}.</p>" if appendix else ''
+    appendix_block = dark_block(
+        f'5. Приложения и сопроводительные документы, переданные вместе с результатом работ: {esc(appendix)}.'
+    ) if appendix else dark_block(
+        '5. Приложения и сопроводительные документы вместе с результатом работ не передавались.'
+    )
+
+    executor_contacts = ''
+    if company_phone:
+        executor_contacts += f'<p style="margin:2px 0">Тел.: {company_phone}</p>'
+    if company_email:
+        executor_contacts += f'<p style="margin:2px 0">Email: {company_email}</p>'
+
+    customer_contacts = ''
+    if client_phone:
+        customer_contacts += f'<p style="margin:2px 0">Тел.: {client_phone}</p>'
+    if client_email:
+        customer_contacts += f'<p style="margin:2px 0">Email: {client_email}</p>'
 
     return f"""<div class="act-doc" style="font-family:Arial,sans-serif;color:#161616;line-height:1.5;font-size:13px">
-<h2 style="text-align:center;margin-bottom:4px">{act_title}</h2>
-<p style="text-align:center;margin-top:0">№ {esc(act_number)} от {fmt_date(act_date)}{contract_ref}</p>
-<p>Настоящий Акт составлен о том, что Подрядчик {esc(company_name) or esc(contact_full_name)} сдал, а Заказчик {esc(obj_client_name)} принял выполненные работы по объекту, расположенному по адресу: {esc(obj_address)}.</p>
-{period_html}
-<h3>Перечень выполненных работ</h3>
+<div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+  <div style="border:1px solid #d8d3cc;border-radius:8px;padding:8px 14px;min-width:220px">
+    <p style="margin:0;font-size:10px;color:#8a8378">Фирменная шапка</p>
+    <p style="margin:2px 0 0;font-weight:600">{executor_display}</p>
+  </div>
+</div>
+
+<h2 style="text-align:center;margin:0 0 4px;font-size:18px">АКТ СДАЧИ-ПРИЁМКИ ВЫПОЛНЕННЫХ РАБОТ № {esc(act_number)}</h2>
+
+<table style="width:100%;margin:14px 0 18px;font-size:12.5px"><tr>
+<td style="text-align:left">г. _______________</td>
+<td style="text-align:right">{fmt_date_long(act_date)}</td>
+</tr></table>
+
+<p>{executor_display}, именуемый(ая) в дальнейшем «Исполнитель», с одной стороны, и {client_name}, именуемый(ая) в дальнейшем «Заказчик», с другой стороны, совместно именуемые «Стороны», составили настоящий Акт о сдаче и приёмке результата работ.</p>
+
+<p>Основание: {basis_line}</p>
+
+{dark_block(period_line)}
+{dark_block('1. Работы, перечисленные в настоящем Акте, выполнены Подрядчиком и переданы Заказчику в указанном объёме.')}
+
+<p style="font-weight:600;margin:18px 0 8px">Перечень и стоимость принятых работ</p>
 <table style="border-collapse:collapse;width:100%;font-size:12px">
-<thead><tr>
-<th style="border:1px solid #333;padding:6px">№</th>
-<th style="border:1px solid #333;padding:6px">Наименование работ</th>
-<th style="border:1px solid #333;padding:6px">Ед.</th>
-<th style="border:1px solid #333;padding:6px">Кол-во</th>
-<th style="border:1px solid #333;padding:6px">Цена</th>
-<th style="border:1px solid #333;padding:6px">Сумма</th>
+<thead><tr style="background:#efece7">
+<th style="border:1px solid #d8d3cc;padding:7px">№</th>
+<th style="border:1px solid #d8d3cc;padding:7px">Наименование работ</th>
+<th style="border:1px solid #d8d3cc;padding:7px">Ед.</th>
+<th style="border:1px solid #d8d3cc;padding:7px">Кол-во</th>
+<th style="border:1px solid #d8d3cc;padding:7px">Цена, руб.</th>
+<th style="border:1px solid #d8d3cc;padding:7px">Сумма, руб.</th>
 </tr></thead>
-<tbody>{rows_html}</tbody>
+<tbody>{rows_html}
+<tr><td colspan="5" style="border:1px solid #d8d3cc;padding:7px;text-align:right;font-weight:600">Итого:</td>
+<td style="border:1px solid #d8d3cc;padding:7px;text-align:right;font-weight:700">{fmt_money(total_amount)}</td></tr>
+</tbody>
 </table>
-<p style="text-align:right;font-weight:bold;margin-top:8px">Итого: {fmt_money(total_amount)}</p>
-{inspection_html}
-<p>Стороны взаимных претензий по объёму, качеству и срокам выполнения работ не имеют. Работы подлежат оплате в соответствии с условиями Договора.</p>
-{appendix_html}
-<br/>
-<table style="width:100%;margin-top:24px;font-size:13px"><tr>
-<td style="width:50%;vertical-align:top"><p><b>Подрядчик</b></p><p>{esc(company_name) or esc(contact_full_name)}</p><br/><p>_______________ / _______________</p></td>
-<td style="width:50%;vertical-align:top"><p><b>Заказчик</b></p><p>{esc(obj_client_name)}</p><br/><p>_______________ / _______________</p></td>
+
+{dark_block(f'2. Общая стоимость принятых работ по настоящему Акту составляет <b>{fmt_money(total_amount)}</b> ({money_words(total_amount)}).')}
+{dark_block(f'3. Заказчик осмотрел результат. {inspection_text}')}
+{dark_block(f'4. {calc_text}')}
+{appendix_block}
+{dark_block('6. Гарантийные обязательства в отношении принятых работ определяются Договором подряда и применимым законодательством.')}
+
+<h3 style="text-align:center;margin:26px 0 18px">РЕКВИЗИТЫ СТОРОН</h3>
+
+<table style="width:100%;font-size:12.5px"><tr>
+<td style="width:50%;vertical-align:top;padding-right:16px">
+  <p style="margin:0 0 6px;font-size:10px;letter-spacing:.5px;color:#8a8378">ПОДРЯДЧИК (ИСПОЛНИТЕЛЬ)</p>
+  <p style="margin:0;font-weight:600">{executor_display}</p>
+  {executor_contacts}
+</td>
+<td style="width:50%;vertical-align:top;padding-left:16px">
+  <p style="margin:0 0 6px;font-size:10px;letter-spacing:.5px;color:#8a8378">ЗАКАЗЧИК</p>
+  <p style="margin:0;font-weight:600">{client_name}</p>
+  {customer_contacts}
+</td>
+</tr></table>
+
+<table style="width:100%;margin-top:34px;font-size:12.5px"><tr>
+<td style="width:50%;vertical-align:top;padding-right:16px">
+  <p style="margin:0 0 6px;font-size:10px;letter-spacing:.5px;color:#8a8378">ОТ ИМЕНИ ПОДРЯДЧИКА</p>
+  <p style="margin:0 0 34px">Директор</p>
+  <table style="width:100%"><tr>
+  <td style="border-top:1px solid #161616;padding-top:4px;font-size:10px;color:#8a8378">(подпись, М.П.)</td>
+  <td style="text-align:right;padding-top:4px;font-weight:600">{executor_short}</td>
+  </tr></table>
+</td>
+<td style="width:50%;vertical-align:top;padding-left:16px">
+  <p style="margin:0 0 6px;font-size:10px;letter-spacing:.5px;color:#8a8378">ОТ ИМЕНИ ЗАКАЗЧИКА</p>
+  <p style="margin:0 0 34px">&nbsp;</p>
+  <table style="width:100%"><tr>
+  <td style="border-top:1px solid #161616;padding-top:4px;font-size:10px;color:#8a8378">(подпись)</td>
+  <td style="text-align:right;padding-top:4px;font-weight:600">{client_name}</td>
+  </tr></table>
+</td>
 </tr></table>
 </div>"""
 
 
 def load_context(cur, company_id, object_id, contract_id):
-    cur.execute("SELECT client_name, address FROM objects WHERE id = %s AND company_id = %s", (object_id, company_id))
-    object_row = cur.fetchone() or ('', '')
+    cur.execute(
+        "SELECT client_name, address, client_phone, email, object_type FROM objects "
+        "WHERE id = %s AND company_id = %s",
+        (object_id, company_id)
+    )
+    o = cur.fetchone() or ('', '', '', '', '')
+    object_row = {
+        'client_name': o[0], 'address': o[1], 'client_phone': o[2] or '',
+        'email': o[3] or '', 'object_type': o[4] or 'вторичка',
+    }
 
     cur.execute(
-        "SELECT name, contact_full_name FROM companies WHERE id = %s",
+        "SELECT name, contact_full_name, phone, email FROM companies WHERE id = %s",
         (company_id,)
     )
-    company_row = cur.fetchone() or ('', '')
+    c = cur.fetchone() or ('', '', '', '')
+    company_row = {
+        'name': c[0], 'contact_full_name': c[1] or '',
+        'phone': c[2] or '', 'email': c[3] or '',
+    }
 
     contract_row = None
     if contract_id:
@@ -175,7 +379,9 @@ def load_context(cur, company_id, object_id, contract_id):
             "SELECT contract_number, contract_date FROM contracts WHERE id = %s AND company_id = %s",
             (contract_id, company_id)
         )
-        contract_row = cur.fetchone()
+        cr = cur.fetchone()
+        if cr:
+            contract_row = {'contract_number': cr[0], 'contract_date': cr[1]}
 
     return object_row, company_row, contract_row
 
