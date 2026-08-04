@@ -165,26 +165,26 @@ export default function Dashboard() {
                         <div className="flex items-center gap-3">
                           <button
                             onClick={() => navigate(`/cabinet/objects/${obj.id}`)}
-                            className="text-white/60 hover:text-white transition-colors"
+                            className="text-white/40 hover:text-[#D4AF37] transition-colors"
                             title="Просмотр объекта"
                           >
-                            <Icon name="Eye" size={16} />
+                            <Icon name="Eye" size={15} />
                           </button>
                           {!isClient && (
                             <Link
                               to={`/cabinet/objects/${obj.id}/estimates/new`}
-                              className="text-white/60 hover:text-[#D4AF37] transition-colors"
+                              className="text-white/40 hover:text-white transition-colors"
                               title="Создать смету"
                             >
-                              <Icon name="FilePlus2" size={16} />
+                              <Icon name="FilePlus2" size={15} />
                             </Link>
                           )}
                           <button
                             onClick={() => openEstimatesList(obj)}
-                            className="text-white/60 hover:text-white transition-colors"
+                            className="text-white/40 hover:text-white transition-colors"
                             title="Сметы объекта"
                           >
-                            <Icon name="FileText" size={16} />
+                            <Icon name="FileText" size={15} />
                           </button>
                           {!isClient && (
                             <button
@@ -192,7 +192,7 @@ export default function Dashboard() {
                               className="text-white/40 hover:text-red-400 transition-colors"
                               title="Удалить объект"
                             >
-                              <Icon name="Trash2" size={16} />
+                              <Icon name="Trash2" size={15} />
                             </button>
                           )}
                         </div>
