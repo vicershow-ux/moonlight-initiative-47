@@ -302,7 +302,7 @@ export default function ContractEdit() {
         {/* Заголовок */}
         <h2 className="text-center text-lg font-semibold text-white mb-2">
           Договор подряда на ремонт квартиры №{" "}
-          <InlineInput value={contractNumber} onChange={setContractNumber} placeholder="№" minWidth={40} />
+          <InlineInput value={contractNumber} onChange={setContractNumber} placeholder="№" minWidth={56} />
         </h2>
         <div className="flex items-center justify-between text-sm mb-6">
           <span>
@@ -549,7 +549,7 @@ export default function ContractEdit() {
         />
         <p>
           2.1. Общий срок выполнения Работ составляет{" "}
-          <InlineInput value={options.duration_months} onChange={(v) => updateOption("duration_months", v)} placeholder="6" minWidth={40} type="number" />
+          <InlineInput value={options.duration_months} onChange={(v) => updateOption("duration_months", v)} placeholder="6" minWidth={56} type="number" />
           {" "}
           <InlineSelect value={options.duration_unit || "months"} onChange={(v) => updateOption("duration_unit", v)} options={durationUnitOptions} />
           {" "}(<span className="text-[#D4463C]">{durationWordsOnlyRu(durationNum, options.duration_unit || "months")}</span>). Течение срока начинается{" "}
@@ -646,7 +646,7 @@ export default function ContractEdit() {
 
         <p>
           3.3. Оплата по каждому этапу производится в течение{" "}
-          <InlineInput value={options.payment_days} onChange={(v) => updateOption("payment_days", v)} placeholder="5" minWidth={40} type="number" />
+          <InlineInput value={options.payment_days} onChange={(v) => updateOption("payment_days", v)} placeholder="5" minWidth={56} type="number" />
           {" "}
           <InlineSelect value={options.payment_days_kind || "working"} onChange={(v) => updateOption("payment_days_kind", v)} options={daysKindOptions} />
           {" "}с момента подписания Заказчиком соответствующего Акта сдачи-приёмки Работ.
@@ -723,7 +723,7 @@ export default function ContractEdit() {
         </p>
         <p>
           4.4. Все неиспользованные денежные средства, выделенные Заказчиком на закупку, подлежат возврату Заказчику в течение{" "}
-          <InlineInput value={options.materials_return_days} onChange={(v) => updateOption("materials_return_days", v)} placeholder="3" minWidth={40} type="number" />
+          <InlineInput value={options.materials_return_days} onChange={(v) => updateOption("materials_return_days", v)} placeholder="3" minWidth={56} type="number" />
           {" "}
           <InlineSelect value={options.materials_return_days_kind || "working"} onChange={(v) => updateOption("materials_return_days_kind", v)} options={daysKindOptions} />
           {" "}с момента завершения закупок по соответствующему этапу.
@@ -747,7 +747,7 @@ export default function ContractEdit() {
         </p>
         <p>
           5.2. Заказчик обязан в течение{" "}
-          <InlineInput value={options.acceptance_days} onChange={(v) => updateOption("acceptance_days", v)} placeholder="5" minWidth={40} type="number" />
+          <InlineInput value={options.acceptance_days} onChange={(v) => updateOption("acceptance_days", v)} placeholder="5" minWidth={56} type="number" />
           {" "}
           <InlineSelect value={options.acceptance_days_kind || "working"} onChange={(v) => updateOption("acceptance_days_kind", v)} options={daysKindOptions} />
           {" "}с момента получения Акта либо принять работы и подписать Акт, либо направить Подрядчику мотивированный отказ от
@@ -790,14 +790,14 @@ export default function ContractEdit() {
         ) : (
           <p>
             6.1. Гарантийный срок на выполненные Работы составляет{" "}
-            <InlineInput value={options.guarantee_months} onChange={(v) => updateOption("guarantee_months", v)} placeholder="6" minWidth={40} type="number" />
+            <InlineInput value={options.guarantee_months} onChange={(v) => updateOption("guarantee_months", v)} placeholder="6" minWidth={56} type="number" />
             {" "}(<span className="text-[#D4463C]">{durationWordsOnlyRu(guaranteeNum, "months")}</span>) с даты подписания итогового Акта сдачи-приёмки Работ по Договору.
           </p>
         )}
         <p>
           6.2. Подрядчик несёт ответственность за недостатки Работ, обнаруженные в пределах гарантийного срока, и обязуется устранить
           их за свой счёт в течение{" "}
-          <InlineInput value={options.defect_fix_days} onChange={(v) => updateOption("defect_fix_days", v)} placeholder="10" minWidth={40} type="number" />
+          <InlineInput value={options.defect_fix_days} onChange={(v) => updateOption("defect_fix_days", v)} placeholder="10" minWidth={56} type="number" />
           {" "}
           <InlineSelect value={options.defect_fix_days_kind || "working"} onChange={(v) => updateOption("defect_fix_days_kind", v)} options={daysKindOptions} />
           {" "}с момента получения соответствующего уведомления от Заказчика, если не докажет, что они произошли вследствие
@@ -807,17 +807,17 @@ export default function ContractEdit() {
         <p>
           6.3. Ответственность за нарушение сроков. В случае просрочки выполнения Работ по вине Подрядчика Заказчик вправе
           потребовать уплаты неустойки (пени) в размере{" "}
-          <InlineInput value={options.penalty_work_pct} onChange={(v) => updateOption("penalty_work_pct", v)} placeholder="0,1" minWidth={44} />
+          <InlineInput value={options.penalty_work_pct} onChange={(v) => updateOption("penalty_work_pct", v)} placeholder="0,1" minWidth={56} />
           {" "}% от стоимости невыполненного этапа Работ за каждый день просрочки, но не более{" "}
-          <InlineInput value={options.penalty_work_max_pct} onChange={(v) => updateOption("penalty_work_max_pct", v)} placeholder="10" minWidth={44} />
+          <InlineInput value={options.penalty_work_max_pct} onChange={(v) => updateOption("penalty_work_max_pct", v)} placeholder="10" minWidth={56} />
           {" "}% от общей стоимости Договора.
         </p>
         <p>
           6.4. Ответственность за нарушение оплаты. В случае просрочки оплаты выполненных Работ по вине Заказчика Подрядчик вправе
           потребовать уплаты неустойки (пени) в размере{" "}
-          <InlineInput value={options.penalty_pay_pct} onChange={(v) => updateOption("penalty_pay_pct", v)} placeholder="0,1" minWidth={44} />
+          <InlineInput value={options.penalty_pay_pct} onChange={(v) => updateOption("penalty_pay_pct", v)} placeholder="0,1" minWidth={56} />
           {" "}% от суммы просроченного платежа за каждый день просрочки, но не более{" "}
-          <InlineInput value={options.penalty_pay_max_pct} onChange={(v) => updateOption("penalty_pay_max_pct", v)} placeholder="10" minWidth={44} />
+          <InlineInput value={options.penalty_pay_max_pct} onChange={(v) => updateOption("penalty_pay_max_pct", v)} placeholder="10" minWidth={56} />
           {" "}% от общей стоимости Договора.
         </p>
         <p>
@@ -838,7 +838,7 @@ export default function ContractEdit() {
         <p>
           8.1. Споры и разногласия, возникающие между Сторонами, решаются путём переговоров и предъявления письменной претензии.
           Срок рассмотрения претензии —{" "}
-          <InlineInput value={options.claim_days} onChange={(v) => updateOption("claim_days", v)} placeholder="10" minWidth={40} type="number" />
+          <InlineInput value={options.claim_days} onChange={(v) => updateOption("claim_days", v)} placeholder="10" minWidth={56} type="number" />
           {" "}
           <InlineSelect value={options.claim_days_kind || "working"} onChange={(v) => updateOption("claim_days_kind", v)} options={daysKindOptions} />
           {" "}с момента её получения.

@@ -15,9 +15,10 @@ export function InlineInput({ value, onChange, placeholder, minWidth = 60, type 
   useLayoutEffect(() => {
     if (spanRef.current && inputRef.current) {
       const w = spanRef.current.offsetWidth
-      inputRef.current.style.width = `${Math.max(minWidth, w + 16)}px`
+      const pad = type === "number" ? 24 : 18
+      inputRef.current.style.width = `${Math.max(minWidth, w + pad)}px`
     }
-  }, [value, placeholder, minWidth])
+  }, [value, placeholder, minWidth, type])
 
   return (
     <span className="inline-flex items-baseline align-baseline">
@@ -31,10 +32,11 @@ export function InlineInput({ value, onChange, placeholder, minWidth = 60, type 
       <input
         ref={inputRef}
         type={type}
+        inputMode={type === "number" ? "decimal" : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="inline-block bg-[#2a2320] border border-[#D4463C]/40 rounded px-1.5 py-0.5 text-sm text-white outline-none focus:border-[#D4463C] focus:ring-1 focus:ring-[#D4463C]/40 placeholder:text-white/30 mx-0.5"
+        className="inline-block bg-[#2a2320] border border-[#D4463C]/40 rounded px-1.5 py-0.5 text-sm text-white outline-none focus:border-[#D4463C] focus:ring-1 focus:ring-[#D4463C]/40 placeholder:text-white/30 mx-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
       />
     </span>
   )
