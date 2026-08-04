@@ -1,22 +1,43 @@
 import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
-import { dashboardApi, DashboardStats, objectStatusesApi, ObjectStatus } from "@/lib/api"
+import { dashboardApi, DashboardStats, objectsApi, objectStatusesApi, ObjectStatus, ObjectItem } from "@/lib/api"
+import { EstimatesListModal } from "@/components/crm/EstimatesListModal"
 import { getStatusBadgeClass } from "@/lib/objectStatusColors"
+import { useAuth } from "@/contexts/AuthContext"
 
 export default function Dashboard() {
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const isClient = user?.role === "client"
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [statuses, setStatuses] = useState<ObjectStatus[]>([])
+  const [estimatesListOpen, setEstimatesListOpen] = useState(false)
+  const [selectedObject, setSelectedObject] = useState<ObjectItem | null>(null)
 
-  useEffect(() => {
+  const load = () => {
     dashboardApi
       .stats()
       .then(setStats)
       .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    load()
     objectStatusesApi.list().then((data) => setStatuses(data.statuses))
   }, [])
+
+  const openEstimatesList = (obj: ObjectItem) => {
+    setSelectedObject(obj)
+    setEstimatesListOpen(true)
+  }
+
+  const handleDelete = async (id: number) => {
+    await objectsApi.remove(id)
+    load()
+  }
 
   const colorFor = (name: string) => statuses.find((s) => s.name === name)?.color
 
@@ -142,13 +163,38 @@ export default function Dashboard() {
                       </td>
                       <td className="py-3 pr-4">
                         <div className="flex items-center gap-3">
-                          <Link
-                            to={`/cabinet/objects/${obj.id}`}
+                          <button
+                            onClick={() => navigate(`/cabinet/objects/${obj.id}`)}
                             className="text-white/60 hover:text-white transition-colors"
-                            title="Просмотр"
+                            title="Просмотр объекта"
                           >
-                            <Icon name="Eye" size={15} />
-                          </Link>
+                            <Icon name="Eye" size={16} />
+                          </button>
+                          {!isClient && (
+                            <Link
+                              to={`/cabinet/objects/${obj.id}/estimates/new`}
+                              className="text-white/60 hover:text-[#D4AF37] transition-colors"
+                              title="Создать смету"
+                            >
+                              <Icon name="FilePlus2" size={16} />
+                            </Link>
+                          )}
+                          <button
+                            onClick={() => openEstimatesList(obj)}
+                            className="text-white/60 hover:text-white transition-colors"
+                            title="Сметы объекта"
+                          >
+                            <Icon name="FileText" size={16} />
+                          </button>
+                          {!isClient && (
+                            <button
+                              onClick={() => handleDelete(obj.id)}
+                              className="text-white/40 hover:text-red-400 transition-colors"
+                              title="Удалить объект"
+                            >
+                              <Icon name="Trash2" size={16} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -190,6 +236,12 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      <EstimatesListModal
+        open={estimatesListOpen}
+        onOpenChange={setEstimatesListOpen}
+        object={selectedObject}
+      />
     </CrmLayout>
   )
 }

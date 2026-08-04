@@ -81,6 +81,26 @@ export default function Documents() {
     }
   }
 
+  const handlePrintAct = (act: Act) => {
+    const win = window.open("", "_blank")
+    if (!win) return
+    win.document.write(`
+      <html>
+        <head>
+          <title>Акт № ${act.act_number}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 32px; line-height: 1.5; color: #161616; }
+            table { border-collapse: collapse; }
+          </style>
+        </head>
+        <body>${act.content_html}</body>
+      </html>
+    `)
+    win.document.close()
+    win.focus()
+    win.print()
+  }
+
   const handlePrint = async (est: Estimate) => {
     const obj = objectsMap[est.object_id]
     if (!obj) return
@@ -416,7 +436,7 @@ export default function Documents() {
                   return (
                     <tr key={`act-${a.id}`} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
                       <td className="py-3 px-4">
-                        <span className="text-[#D4AF37] font-medium text-xs">Акт</span>
+                        <span className="text-purple-400 font-medium text-xs">Акт</span>
                       </td>
                       <td className="py-3 px-4">
                         <p className="font-medium">Акт выполненных работ</p>
@@ -453,6 +473,13 @@ export default function Documents() {
                           >
                             <Icon name="Eye" size={15} />
                           </Link>
+                          <button
+                            onClick={() => handlePrintAct(a)}
+                            className="text-white/40 hover:text-white transition-colors"
+                            title="Печать"
+                          >
+                            <Icon name="Printer" size={15} />
+                          </button>
                           <button
                             onClick={() => handleDownloadActPdf(a)}
                             className="text-white/40 hover:text-white transition-colors"
