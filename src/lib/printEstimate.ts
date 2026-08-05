@@ -199,7 +199,16 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     width: 100%;
     border-collapse: collapse;
     font-size: 12.5px;
+    table-layout: fixed;
   }
+  thead th:nth-child(1) { width: 30px; }
+  thead th:nth-child(2) { width: auto; }
+  thead th:nth-child(3) { width: 44px; }
+  thead th:nth-child(4) { width: 64px; white-space: nowrap; }
+  thead th:nth-child(5) { width: 44px; }
+  thead th:nth-child(6) { width: 82px; }
+  thead th:nth-child(7) { width: 92px; }
+  tbody td { overflow-wrap: break-word; word-break: break-word; }
   thead th {
     background: #f3f3f3;
     color: #888;
@@ -341,11 +350,20 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     color: #bbb;
     margin-top: 24px;
   }
+  @page { size: A4 portrait; margin: 12mm 10mm; }
   @media print {
-    .est-root { padding: 20px; }
+    html, body { width: 100%; margin: 0; padding: 0; background: #fff; }
+    .est-root {
+      padding: 0;
+      max-width: 100%;
+      width: 100%;
+      margin: 0;
+    }
     .no-print { display: none; }
     .cat-block { break-inside: avoid; }
     .room-block { break-inside: avoid; }
+    table { width: 100%; table-layout: fixed; }
+    td, th { overflow-wrap: break-word; word-break: break-word; }
   }
 `
 
