@@ -273,19 +273,9 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
         customer_contacts += f'<p style="margin:2px 0">Email: {client_email}</p>'
 
     return f"""<div class="act-doc" style="font-family:Arial,sans-serif;color:#1a1a1a;line-height:1.55;font-size:13px">
-<div style="display:flex;justify-content:flex-end;margin-bottom:16px">
-  <div style="border:1.5px solid #7A4E10;border-radius:8px;padding:8px 14px;min-width:220px">
-    <p style="margin:0;font-size:11px;font-weight:700;color:#6B4508">Фирменная шапка</p>
-    <p style="margin:2px 0 0;font-weight:600">{executor_display}</p>
-  </div>
-</div>
-
 <h2 style="text-align:center;margin:0 0 4px;font-size:18px">АКТ СДАЧИ-ПРИЁМКИ ВЫПОЛНЕННЫХ РАБОТ № {esc(act_number)}</h2>
 
-<table style="width:100%;margin:14px 0 18px;font-size:12.5px"><tr>
-<td style="text-align:left">г. _______________</td>
-<td style="text-align:right">{fmt_date_long(act_date)}</td>
-</tr></table>
+<p style="text-align:center;margin:6px 0 18px;font-size:12.5px;color:#6B4508;font-weight:600">{fmt_date_long(act_date)}</p>
 
 <p>{executor_display}, именуемый(ая) в дальнейшем «Исполнитель», с одной стороны, и {client_name}, именуемый(ая) в дальнейшем «Заказчик», с другой стороны, совместно именуемые «Стороны», составили настоящий Акт о сдаче и приёмке результата работ.</p>
 
@@ -316,37 +306,29 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
 {appendix_block}
 {dark_block('6. Гарантийные обязательства в отношении принятых работ определяются Договором подряда и применимым законодательством.')}
 
-<h3 style="text-align:center;margin:26px 0 18px">РЕКВИЗИТЫ СТОРОН</h3>
+<hr style="border:none;border-top:1.5px solid #7A4E10;margin:26px 0 14px" />
 
-<table style="width:100%;font-size:12.5px"><tr>
-<td style="width:50%;vertical-align:top;padding-right:16px">
-  <p style="margin:0 0 6px;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:#6B4508">ПОДРЯДЧИК (ИСПОЛНИТЕЛЬ)</p>
+<table style="width:100%;font-size:13px;margin-bottom:12px"><tr>
+<td style="width:50%;vertical-align:top;padding-right:24px">
+  <p style="margin:0 0 4px;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:#6B4508">ИСПОЛНИТЕЛЬ</p>
   <p style="margin:0;font-weight:600">{executor_display}</p>
   {executor_contacts}
 </td>
-<td style="width:50%;vertical-align:top;padding-left:16px">
-  <p style="margin:0 0 6px;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:#6B4508">ЗАКАЗЧИК</p>
+<td style="width:50%;vertical-align:top;padding-left:24px">
+  <p style="margin:0 0 4px;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:#6B4508">ЗАКАЗЧИК</p>
   <p style="margin:0;font-weight:600">{client_name}</p>
   {customer_contacts}
 </td>
 </tr></table>
 
-<table style="width:100%;margin-top:34px;font-size:12.5px"><tr>
-<td style="width:50%;vertical-align:top;padding-right:16px">
-  <p style="margin:0 0 6px;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:#6B4508">ОТ ИМЕНИ ПОДРЯДЧИКА</p>
-  <p style="margin:0 0 34px">Директор</p>
-  <table style="width:100%"><tr>
-  <td style="border-top:1.5px solid #5C3A11;padding-top:4px;font-size:11px;color:#6B4508">(подпись, М.П.)</td>
-  <td style="text-align:right;padding-top:4px;font-weight:600">{executor_short}</td>
-  </tr></table>
+<table style="width:100%;margin-top:32px;font-size:13px"><tr>
+<td style="width:50%;vertical-align:top;padding-right:24px">
+  <p style="margin:0 0 28px;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:#6B4508">ИСПОЛНИТЕЛЬ</p>
+  <div style="border-top:1.5px solid #5C3A11;padding-top:6px;font-size:13px;text-align:center;color:#1a1a1a">{executor_short}</div>
 </td>
-<td style="width:50%;vertical-align:top;padding-left:16px">
-  <p style="margin:0 0 6px;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:#6B4508">ОТ ИМЕНИ ЗАКАЗЧИКА</p>
-  <p style="margin:0 0 34px">&nbsp;</p>
-  <table style="width:100%"><tr>
-  <td style="border-top:1.5px solid #5C3A11;padding-top:4px;font-size:11px;color:#6B4508">(подпись)</td>
-  <td style="text-align:right;padding-top:4px;font-weight:600">{client_name}</td>
-  </tr></table>
+<td style="width:50%;vertical-align:top;padding-left:24px">
+  <p style="margin:0 0 28px;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:#6B4508">ЗАКАЗЧИК</p>
+  <div style="border-top:1.5px solid #5C3A11;padding-top:6px;font-size:13px;text-align:center;color:#1a1a1a">{client_name}</div>
 </td>
 </tr></table>
 </div>"""
