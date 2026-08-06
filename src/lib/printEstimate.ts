@@ -112,7 +112,7 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    border-bottom: 3px solid #C08A2A;
+    border-bottom: 3px solid #5C3A11;
     padding-bottom: 16px;
     margin-bottom: 24px;
   }
@@ -133,7 +133,7 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     background-size: contain;
     flex: 0 0 auto;
   }
-  .brand span { color: #C08A2A; }
+  .brand span { color: #7A4E10; }
   .doc-title {
     text-align: right;
   }
@@ -158,21 +158,22 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
   }
   hr.thin {
     border: none;
-    border-top: 1px solid #bbb;
+    border-top: 1px solid #A98A5C;
     margin: 20px 0;
   }
   .info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px 32px;
-    background: #f0f0f0;
+    background: #ffffff;
+    border: 1.5px solid #7A4E10;
     border-radius: 10px;
     padding: 16px;
     margin-bottom: 24px;
     font-size: 13px;
   }
   .info-grid .label {
-    color: #1a1a1a;
+    color: #6B4508;
     font-size: 11.5px;
     font-weight: 700;
     text-transform: uppercase;
@@ -191,7 +192,7 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
   .cat-block {
     page-break-inside: avoid;
     break-inside: avoid;
-    border: 1px solid #bbb;
+    border: 1.5px solid #7A4E10;
     border-radius: 10px;
     overflow: hidden;
     margin-bottom: 12px;
@@ -211,7 +212,7 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
   thead th:nth-child(7) { width: 92px; }
   tbody td { overflow-wrap: break-word; word-break: break-word; }
   thead th {
-    background: #C08A2A;
+    background: #5C3A11;
     color: #ffffff;
     text-align: left;
     padding: 8px 10px;
@@ -222,15 +223,15 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
   }
   tbody td {
     padding: 8px 10px;
-    border-top: 1px solid #ccc;
+    border-top: 1px solid #C9AE85;
   }
   .num { color: #1a1a1a; width: 28px; }
   .center { text-align: center; }
   .right { text-align: right; }
   .amount { font-weight: 600; }
   .cat-row td {
-    background: #F0E2C6;
-    color: #6B4508;
+    background: #EADCC0;
+    color: #4A2E06;
     font-weight: 700;
     font-size: 12px;
     border-top: none;
@@ -238,15 +239,16 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
   tfoot td {
     padding: 8px 10px;
     font-size: 13px;
-    background: #ededed;
-    border-top: 1px solid #bbb;
+    background: #ffffff;
+    border-top: 1px solid #A98A5C;
   }
   .room-total {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: #F0E2C6;
-    border-left: 4px solid #C08A2A;
+    background: #EADCC0;
+    border: 1.5px solid #7A4E10;
+    border-left: 5px solid #5C3A11;
     border-radius: 6px;
     padding: 12px 16px;
     margin-top: 10px;
@@ -255,7 +257,7 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     font-size: 11.5px;
     text-transform: uppercase;
     letter-spacing: 0.4px;
-    color: #6B4508;
+    color: #4A2E06;
     font-weight: 700;
   }
   .room-total-name {
@@ -266,7 +268,7 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
   .room-total-amount {
     font-size: 18px;
     font-weight: 700;
-    color: #6B4508;
+    color: #4A2E06;
   }
   .summary {
     display: flex;
@@ -276,7 +278,8 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
   .summary-box {
     width: 100%;
     max-width: 290px;
-    background: #f0f0f0;
+    background: #ffffff;
+    border: 1.5px solid #7A4E10;
     border-radius: 10px;
     padding: 16px;
     font-size: 13px;
@@ -294,7 +297,7 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     font-size: 16px;
     font-weight: 700;
     padding-top: 8px;
-    border-top: 1px solid #bbb;
+    border-top: 1px solid #A98A5C;
   }
   .notes {
     margin-bottom: 24px;
@@ -316,7 +319,7 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     margin-bottom: 12px;
   }
   .parties .label {
-    color: #1a1a1a;
+    color: #6B4508;
     font-size: 11.5px;
     font-weight: 700;
     text-transform: uppercase;
@@ -334,7 +337,7 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     margin-bottom: 12px;
   }
   .signature-block .label {
-    color: #1a1a1a;
+    color: #6B4508;
     font-size: 11.5px;
     font-weight: 700;
     text-transform: uppercase;
@@ -342,7 +345,7 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     margin-bottom: 28px;
   }
   .signature-block .signature-line {
-    border-top: 1px solid #999;
+    border-top: 1.5px solid #5C3A11;
     padding-top: 6px;
     font-size: 13px;
     text-align: center;
@@ -373,12 +376,13 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     .room-block { break-inside: avoid; }
     table { width: 100%; table-layout: fixed; }
     td, th { overflow-wrap: break-word; word-break: break-word; }
-    thead th { background: #C08A2A !important; color: #ffffff !important; }
-    .cat-row td { background: #F0E2C6 !important; color: #6B4508 !important; }
-    .room-total { background: #F0E2C6 !important; border-left: 4px solid #C08A2A !important; }
-    tfoot td { background: #ededed !important; }
-    .info-grid, .summary { background: #ededed !important; }
-    .info-label, .room-total-label, .parties h4 { color: #1a1a1a !important; }
+    thead th { background: #5C3A11 !important; color: #ffffff !important; }
+    .cat-row td { background: #EADCC0 !important; color: #4A2E06 !important; }
+    .room-total { background: #EADCC0 !important; border: 1.5px solid #7A4E10 !important; border-left: 5px solid #5C3A11 !important; }
+    tfoot td { background: #ffffff !important; border-top: 1px solid #A98A5C !important; }
+    .info-grid, .summary-box { background: #ffffff !important; border: 1.5px solid #7A4E10 !important; }
+    .cat-block { border: 1.5px solid #7A4E10 !important; }
+    .info-grid .label, .parties .label, .signature-block .label, .room-total-label { color: #6B4508 !important; }
   }
 `
 
