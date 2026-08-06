@@ -12,6 +12,7 @@ const OBJECT_STATUSES_URL = funcUrls.object_statuses
 const SITE_URL = funcUrls.site
 const CONTRACTS_URL = funcUrls.contracts
 const ACTS_URL = funcUrls.acts
+const WAREHOUSE_URL = funcUrls.warehouse
 
 const TOKEN_KEY = "fixkey_token"
 
@@ -1231,5 +1232,102 @@ export const siteApi = {
       })
       return parseResponse(res)
     },
+  },
+}
+
+export interface WarehouseRow {
+  id: number
+  name: string
+  address: string
+  responsible: string
+  positions: number
+  created_at: string
+}
+
+export interface WarehouseItem {
+  id: number
+  warehouse_id: number | null
+  warehouse_name: string | null
+  name: string
+  kind: string
+  unit: string
+  qty: number
+  price: number
+  object_id: number | null
+  object_code: string | null
+  object_client: string | null
+  object_address: string | null
+  issued_qty: number
+  issued_at: string | null
+  created_at: string
+}
+
+export interface WarehouseObject {
+  id: number
+  object_code: string
+  client_name: string
+  address: string
+}
+
+export const warehouseApi = {
+  async list() {
+    const res = await fetch(WAREHOUSE_URL, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{
+      warehouses: WarehouseRow[]
+      items: WarehouseItem[]
+      objects: WarehouseObject[]
+    }>
+  },
+
+  async createWarehouse(payload: Partial<WarehouseRow>) {
+    const res = await fetch(`${WAREHOUSE_URL}?entity=warehouse`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res)
+  },
+
+  async removeWarehouse(id: number) {
+    const res = await fetch(`${WAREHOUSE_URL}?entity=warehouse&id=${id}`, {
+      method: "DELETE",
+      headers: { ...authHeaders() },
+    })
+    return parseResponse(res)
+  },
+
+  async createItem(payload: Partial<WarehouseItem>) {
+    const res = await fetch(`${WAREHOUSE_URL}?entity=item`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res)
+  },
+
+  async removeItem(id: number) {
+    const res = await fetch(`${WAREHOUSE_URL}?entity=item&id=${id}`, {
+      method: "DELETE",
+      headers: { ...authHeaders() },
+    })
+    return parseResponse(res)
+  },
+
+  async issue(id: number, objectId: number, qty: number) {
+    const res = await fetch(`${WAREHOUSE_URL}?action=issue&id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ object_id: objectId, qty }),
+    })
+    return parseResponse(res)
+  },
+
+  async returnToStock(id: number, qty?: number) {
+    const res = await fetch(`${WAREHOUSE_URL}?action=return&id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(qty ? { qty } : {}),
+    })
+    return parseResponse(res)
   },
 }

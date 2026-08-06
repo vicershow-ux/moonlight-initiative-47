@@ -1,113 +1,472 @@
+import { useEffect, useMemo, useState } from "react"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import Icon from "@/components/ui/icon"
+import {
+  warehouseApi,
+  WarehouseRow,
+  WarehouseItem,
+  WarehouseObject,
+} from "@/lib/api"
 
-type Column = { key: string; label: string }
+const money = (n: number) =>
+  new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n || 0) + " ₽"
 
-const STOCK_COLUMNS: Column[] = [
-  { key: "name", label: "Название" },
-  { key: "address", label: "Адрес" },
-  { key: "responsible", label: "Ответственный" },
-  { key: "positions", label: "Позиций" },
-  { key: "actions", label: "Действия" },
-]
+const num = (n: unknown) => Number(n || 0)
 
-const LEDGER_COLUMNS: Column[] = [
-  { key: "date", label: "Дата" },
-  { key: "material", label: "Материал" },
-  { key: "operation", label: "Операция" },
-  { key: "qty", label: "Кол-во" },
-  { key: "unit", label: "Ед. изм." },
-  { key: "price", label: "Цена" },
-  { key: "sum", label: "Сумма" },
-  { key: "actions", label: "Действия" },
-]
+const fmtDate = (d: string | null) =>
+  d ? new Date(d).toLocaleDateString("ru-RU") : "—"
 
-const OBJECTS_COLUMNS: Column[] = [
-  { key: "object", label: "Объект" },
-  { key: "address", label: "Адрес" },
-  { key: "material", label: "Материал" },
-  { key: "qty", label: "Кол-во" },
-  { key: "date", label: "Дата выдачи" },
-  { key: "sum", label: "Сумма" },
-  { key: "actions", label: "Действия" },
-]
+const inputCls =
+  "w-full bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
 
-function EmptyTable({
-  columns,
-  emptyText,
-  addLabel,
-}: {
-  columns: Column[]
-  emptyText: string
-  addLabel: string
-}) {
-  return (
-    <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
-      <div className="flex justify-end mb-4">
-        <button
-          type="button"
-          disabled
-          className="flex items-center gap-2 bg-[#D4AF37] text-[#161616] text-sm px-4 py-2.5 rounded-lg opacity-40 cursor-not-allowed"
-        >
-          <Icon name="Plus" size={16} />
-          {addLabel}
-        </button>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-white/40 text-xs uppercase border-b border-white/10">
-              {columns.map((c) => (
-                <th key={c.key} className="text-left font-medium py-2 pr-4 whitespace-nowrap">
-                  {c.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-        </table>
-      </div>
-
-      <div className="text-center py-16 text-white/30 text-sm">{emptyText}</div>
-    </div>
-  )
-}
+const goldBtn =
+  "flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg disabled:opacity-40"
 
 export default function Warehouse() {
+  const [warehouses, setWarehouses] = useState<WarehouseRow[]>([])
+  const [items, setItems] = useState<WarehouseItem[]>([])
+  const [objects, setObjects] = useState<WarehouseObject[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+
+  const [whForm, setWhForm] = useState({ name: "", address: "", responsible: "" })
+  const [showWhForm, setShowWhForm] = useState(false)
+
+  const [itemForm, setItemForm] = useState({
+    name: "",
+    kind: "материал",
+    unit: "шт",
+    qty: "",
+    price: "",
+    warehouse_id: "",
+  })
+  const [showItemForm, setShowItemForm] = useState(false)
+
+  const [issueFor, setIssueFor] = useState<WarehouseItem | null>(null)
+  const [issueObject, setIssueObject] = useState("")
+  const [issueQty, setIssueQty] = useState("")
+
+  const [objectFilter, setObjectFilter] = useState("")
+
+  const load = () => {
+    setLoading(true)
+    warehouseApi
+      .list()
+      .then((d) => {
+        setWarehouses(d.warehouses || [])
+        setItems(d.items || [])
+        setObjects(d.objects || [])
+      })
+      .catch((e) => setError(e?.message || "Не удалось загрузить данные"))
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(load, [])
+
+  const stockItems = useMemo(() => items.filter((i) => !i.object_id), [items])
+  const issuedItems = useMemo(() => items.filter((i) => i.object_id), [items])
+
+  const filteredIssued = useMemo(
+    () =>
+      objectFilter
+        ? issuedItems.filter((i) => String(i.object_id) === objectFilter)
+        : issuedItems,
+    [issuedItems, objectFilter]
+  )
+
+  const usedObjects = useMemo(() => {
+    const ids = new Set(issuedItems.map((i) => i.object_id))
+    return objects.filter((o) => ids.has(o.id))
+  }, [issuedItems, objects])
+
+  const run = async (fn: () => Promise<unknown>) => {
+    setError("")
+    try {
+      await fn()
+      load()
+    } catch (e) {
+      setError((e as Error)?.message || "Операция не выполнена")
+    }
+  }
+
+  const addWarehouse = () =>
+    run(async () => {
+      await warehouseApi.createWarehouse(whForm)
+      setWhForm({ name: "", address: "", responsible: "" })
+      setShowWhForm(false)
+    })
+
+  const addItem = () =>
+    run(async () => {
+      await warehouseApi.createItem({
+        name: itemForm.name,
+        kind: itemForm.kind,
+        unit: itemForm.unit,
+        qty: Number(itemForm.qty || 0),
+        price: Number(itemForm.price || 0),
+        warehouse_id: itemForm.warehouse_id ? Number(itemForm.warehouse_id) : null,
+      })
+      setItemForm({ name: "", kind: "материал", unit: "шт", qty: "", price: "", warehouse_id: "" })
+      setShowItemForm(false)
+    })
+
+  const submitIssue = () =>
+    run(async () => {
+      if (!issueFor) return
+      await warehouseApi.issue(issueFor.id, Number(issueObject), Number(issueQty || 0))
+      setIssueFor(null)
+      setIssueObject("")
+      setIssueQty("")
+    })
+
+  const kindBadge = (kind: string) => (
+    <span
+      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs ${
+        kind === "инструмент"
+          ? "bg-[#4A90D9]/15 text-[#7FB5E8]"
+          : "bg-[#D4AF37]/15 text-[#D4AF37]"
+      }`}
+    >
+      <Icon name={kind === "инструмент" ? "Hammer" : "Package"} size={12} />
+      {kind}
+    </span>
+  )
+
   return (
     <CrmLayout title="Склад учет" subtitle="Склады, движение материалов и выдача на объекты">
-      <Tabs defaultValue="stock">
-        <TabsList className="bg-[#1f1f1f] border border-white/10 mb-6 flex-wrap h-auto">
-          <TabsTrigger value="stock">Склад</TabsTrigger>
-          <TabsTrigger value="ledger">Учет</TabsTrigger>
-          <TabsTrigger value="objects">Объекты</TabsTrigger>
-        </TabsList>
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          {error}
+        </div>
+      )}
 
-        <TabsContent value="stock">
-          <EmptyTable
-            columns={STOCK_COLUMNS}
-            addLabel="Добавить склад"
-            emptyText="Складов пока нет — структура готова, наполнение подключим следующим шагом"
-          />
-        </TabsContent>
+      {loading ? (
+        <div className="flex justify-center py-16">
+          <Icon name="Loader2" size={24} className="animate-spin text-white/40" />
+        </div>
+      ) : (
+        <Tabs defaultValue="stock">
+          <TabsList className="bg-[#1f1f1f] border border-white/10 mb-6 flex-wrap h-auto">
+            <TabsTrigger value="stock">Склад</TabsTrigger>
+            <TabsTrigger value="ledger">Учет</TabsTrigger>
+            <TabsTrigger value="objects">Объекты</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="ledger">
-          <EmptyTable
-            columns={LEDGER_COLUMNS}
-            addLabel="Добавить операцию"
-            emptyText="Операций пока нет — структура готова, наполнение подключим следующим шагом"
-          />
-        </TabsContent>
+          <TabsContent value="stock">
+            <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+              <div className="mb-4 flex justify-end">
+                <button className={goldBtn} onClick={() => setShowWhForm((v) => !v)}>
+                  <Icon name={showWhForm ? "X" : "Plus"} size={16} />
+                  {showWhForm ? "Отмена" : "Добавить склад"}
+                </button>
+              </div>
 
-        <TabsContent value="objects">
-          <EmptyTable
-            columns={OBJECTS_COLUMNS}
-            addLabel="Выдать на объект"
-            emptyText="Выдач на объекты пока нет — структура готова, наполнение подключим следующим шагом"
-          />
-        </TabsContent>
-      </Tabs>
+              {showWhForm && (
+                <div className="mb-5 grid gap-3 rounded-lg border border-white/10 bg-[#161616] p-4 md:grid-cols-4">
+                  <input
+                    className={inputCls}
+                    placeholder="Название склада"
+                    value={whForm.name}
+                    onChange={(e) => setWhForm({ ...whForm, name: e.target.value })}
+                  />
+                  <input
+                    className={inputCls}
+                    placeholder="Адрес"
+                    value={whForm.address}
+                    onChange={(e) => setWhForm({ ...whForm, address: e.target.value })}
+                  />
+                  <input
+                    className={inputCls}
+                    placeholder="Ответственный"
+                    value={whForm.responsible}
+                    onChange={(e) => setWhForm({ ...whForm, responsible: e.target.value })}
+                  />
+                  <button className={goldBtn} onClick={addWarehouse} disabled={whForm.name.length < 2}>
+                    <Icon name="Check" size={16} />
+                    Сохранить
+                  </button>
+                </div>
+              )}
+
+              {warehouses.length === 0 ? (
+                <div className="py-16 text-center text-sm text-white/30">
+                  Складов пока нет — добавьте первый склад
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-white/10 text-xs uppercase text-white/40">
+                        <th className="py-2 pr-4 text-left font-medium">Название</th>
+                        <th className="py-2 pr-4 text-left font-medium">Адрес</th>
+                        <th className="py-2 pr-4 text-left font-medium">Ответственный</th>
+                        <th className="py-2 pr-4 text-left font-medium">Позиций</th>
+                        <th className="py-2 pr-4 text-left font-medium">Действия</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {warehouses.map((w) => (
+                        <tr key={w.id} className="border-b border-white/5 last:border-0">
+                          <td className="py-3 pr-4">{w.name}</td>
+                          <td className="py-3 pr-4 text-white/60">{w.address || "—"}</td>
+                          <td className="py-3 pr-4 text-white/60">{w.responsible || "—"}</td>
+                          <td className="py-3 pr-4">{w.positions}</td>
+                          <td className="py-3 pr-4">
+                            <button
+                              className="text-white/40 transition-colors hover:text-red-400"
+                              onClick={() => run(() => warehouseApi.removeWarehouse(w.id))}
+                            >
+                              <Icon name="Trash2" size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="ledger">
+            <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+              <div className="mb-4 flex justify-end">
+                <button className={goldBtn} onClick={() => setShowItemForm((v) => !v)}>
+                  <Icon name={showItemForm ? "X" : "Plus"} size={16} />
+                  {showItemForm ? "Отмена" : "Добавить позицию"}
+                </button>
+              </div>
+
+              {showItemForm && (
+                <div className="mb-5 grid gap-3 rounded-lg border border-white/10 bg-[#161616] p-4 md:grid-cols-4">
+                  <input
+                    className={inputCls}
+                    placeholder="Название"
+                    value={itemForm.name}
+                    onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
+                  />
+                  <select
+                    className={inputCls}
+                    value={itemForm.kind}
+                    onChange={(e) => setItemForm({ ...itemForm, kind: e.target.value })}
+                  >
+                    <option value="материал">материал</option>
+                    <option value="инструмент">инструмент</option>
+                  </select>
+                  <select
+                    className={inputCls}
+                    value={itemForm.warehouse_id}
+                    onChange={(e) => setItemForm({ ...itemForm, warehouse_id: e.target.value })}
+                  >
+                    <option value="">Склад не выбран</option>
+                    {warehouses.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className={inputCls}
+                    placeholder="Ед. изм."
+                    value={itemForm.unit}
+                    onChange={(e) => setItemForm({ ...itemForm, unit: e.target.value })}
+                  />
+                  <input
+                    className={inputCls}
+                    placeholder="Количество"
+                    type="number"
+                    value={itemForm.qty}
+                    onChange={(e) => setItemForm({ ...itemForm, qty: e.target.value })}
+                  />
+                  <input
+                    className={inputCls}
+                    placeholder="Цена"
+                    type="number"
+                    value={itemForm.price}
+                    onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })}
+                  />
+                  <button className={goldBtn} onClick={addItem} disabled={itemForm.name.length < 2}>
+                    <Icon name="Check" size={16} />
+                    Сохранить
+                  </button>
+                </div>
+              )}
+
+              {issueFor && (
+                <div className="mb-5 grid gap-3 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4 md:grid-cols-4">
+                  <div className="flex items-center text-sm text-white/70 md:col-span-4">
+                    Выдать «{issueFor.name}» — на складе {num(issueFor.qty)} {issueFor.unit}
+                  </div>
+                  <select
+                    className={inputCls}
+                    value={issueObject}
+                    onChange={(e) => setIssueObject(e.target.value)}
+                  >
+                    <option value="">Выберите объект</option>
+                    {objects.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.object_code} — {o.client_name}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className={inputCls}
+                    placeholder="Количество"
+                    type="number"
+                    value={issueQty}
+                    onChange={(e) => setIssueQty(e.target.value)}
+                  />
+                  <button
+                    className={goldBtn}
+                    onClick={submitIssue}
+                    disabled={!issueObject || Number(issueQty) <= 0}
+                  >
+                    <Icon name="Send" size={16} />
+                    Выдать
+                  </button>
+                  <button
+                    className="rounded-lg border border-white/10 px-4 py-2.5 text-sm text-white/60 transition-colors hover:text-white"
+                    onClick={() => setIssueFor(null)}
+                  >
+                    Отмена
+                  </button>
+                </div>
+              )}
+
+              {stockItems.length === 0 ? (
+                <div className="py-16 text-center text-sm text-white/30">
+                  Позиций пока нет — добавьте материал или инструмент
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-white/10 text-xs uppercase text-white/40">
+                        <th className="py-2 pr-4 text-left font-medium">Название</th>
+                        <th className="py-2 pr-4 text-left font-medium">Тип</th>
+                        <th className="py-2 pr-4 text-left font-medium">Склад</th>
+                        <th className="py-2 pr-4 text-left font-medium">Кол-во</th>
+                        <th className="py-2 pr-4 text-left font-medium">Ед. изм.</th>
+                        <th className="py-2 pr-4 text-left font-medium">Цена</th>
+                        <th className="py-2 pr-4 text-left font-medium">Сумма</th>
+                        <th className="py-2 pr-4 text-left font-medium">Действия</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stockItems.map((i) => (
+                        <tr key={i.id} className="border-b border-white/5 last:border-0">
+                          <td className="py-3 pr-4">{i.name}</td>
+                          <td className="py-3 pr-4">{kindBadge(i.kind)}</td>
+                          <td className="py-3 pr-4 text-white/60">{i.warehouse_name || "—"}</td>
+                          <td className="py-3 pr-4">{num(i.qty)}</td>
+                          <td className="py-3 pr-4 text-white/60">{i.unit}</td>
+                          <td className="py-3 pr-4">{money(num(i.price))}</td>
+                          <td className="py-3 pr-4">{money(num(i.qty) * num(i.price))}</td>
+                          <td className="py-3 pr-4">
+                            <div className="flex items-center gap-3">
+                              <button
+                                className="text-[#D4AF37] transition-colors hover:text-[#B8860B] disabled:opacity-30"
+                                title="Выдать на объект"
+                                disabled={num(i.qty) <= 0}
+                                onClick={() => {
+                                  setIssueFor(i)
+                                  setIssueQty(String(num(i.qty)))
+                                }}
+                              >
+                                <Icon name="Send" size={16} />
+                              </button>
+                              <button
+                                className="text-white/40 transition-colors hover:text-red-400"
+                                title="Удалить"
+                                onClick={() => run(() => warehouseApi.removeItem(i.id))}
+                              >
+                                <Icon name="Trash2" size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="objects">
+            <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+              <div className="mb-4 flex flex-wrap items-center gap-3">
+                <select
+                  className={`${inputCls} max-w-xs`}
+                  value={objectFilter}
+                  onChange={(e) => setObjectFilter(e.target.value)}
+                >
+                  <option value="">Все объекты</option>
+                  {usedObjects.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.object_code} — {o.client_name}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-white/40">
+                  Показаны только позиции, выданные со склада
+                </span>
+              </div>
+
+              {filteredIssued.length === 0 ? (
+                <div className="py-16 text-center text-sm text-white/30">
+                  На объекты пока ничего не выдано — выдайте позицию на вкладке «Учет»
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-white/10 text-xs uppercase text-white/40">
+                        <th className="py-2 pr-4 text-left font-medium">Объект</th>
+                        <th className="py-2 pr-4 text-left font-medium">Адрес</th>
+                        <th className="py-2 pr-4 text-left font-medium">Позиция</th>
+                        <th className="py-2 pr-4 text-left font-medium">Тип</th>
+                        <th className="py-2 pr-4 text-left font-medium">Кол-во</th>
+                        <th className="py-2 pr-4 text-left font-medium">Дата выдачи</th>
+                        <th className="py-2 pr-4 text-left font-medium">Сумма</th>
+                        <th className="py-2 pr-4 text-left font-medium">Действия</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredIssued.map((i) => (
+                        <tr key={i.id} className="border-b border-white/5 last:border-0">
+                          <td className="py-3 pr-4">
+                            <div>{i.object_code}</div>
+                            <div className="text-xs text-white/40">{i.object_client}</div>
+                          </td>
+                          <td className="py-3 pr-4 text-white/60">{i.object_address || "—"}</td>
+                          <td className="py-3 pr-4">{i.name}</td>
+                          <td className="py-3 pr-4">{kindBadge(i.kind)}</td>
+                          <td className="py-3 pr-4">
+                            {num(i.issued_qty)} {i.unit}
+                          </td>
+                          <td className="py-3 pr-4 text-white/60">{fmtDate(i.issued_at)}</td>
+                          <td className="py-3 pr-4">{money(num(i.issued_qty) * num(i.price))}</td>
+                          <td className="py-3 pr-4">
+                            <button
+                              className="flex items-center gap-1.5 rounded-lg border border-[#D4AF37]/40 px-3 py-1.5 text-xs text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10"
+                              onClick={() => run(() => warehouseApi.returnToStock(i.id))}
+                            >
+                              <Icon name="Undo2" size={14} />
+                              Вернуть на склад
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+      )}
     </CrmLayout>
   )
 }
