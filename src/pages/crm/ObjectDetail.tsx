@@ -2,9 +2,8 @@ import { useEffect, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
-import { objectsApi, objectStatusesApi, estimatesApi, objectRoomsApi, contractsApi, Estimate, ObjectItem, ObjectRoom, ObjectStatus, Contract } from "@/lib/api"
+import { objectsApi, objectStatusesApi, estimatesApi, objectRoomsApi, contractsApi, materialsApi, Estimate, ObjectItem, ObjectRoom, ObjectStatus, Contract } from "@/lib/api"
 import { EstimatesListModal } from "@/components/crm/EstimatesListModal"
-import { ObjectMaterialsCard } from "@/components/crm/ObjectMaterialsCard"
 import { ObjectMaterialEstimates } from "@/components/crm/ObjectMaterialEstimates"
 import { CreateContractModal } from "@/components/crm/CreateContractModal"
 import { printEstimate } from "@/lib/printEstimate"
@@ -38,9 +37,20 @@ export default function ObjectDetail() {
   const [statuses, setStatuses] = useState<ObjectStatus[]>([])
   const [contracts, setContracts] = useState<Contract[]>([])
   const [contractsLoading, setContractsLoading] = useState(true)
+  const [materialsTotal, setMaterialsTotal] = useState(0)
 
   const [estimatesListOpen, setEstimatesListOpen] = useState(false)
   const [createContractOpen, setCreateContractOpen] = useState(false)
+
+  const loadMaterialsTotal = () => {
+    if (!id) return
+    materialsApi.list().then((d) => {
+      const sum = (d.object_materials || [])
+        .filter((m) => m.object_id === Number(id))
+        .reduce((acc, m) => acc + Number(m.qty || 0) * Number(m.price || 0), 0)
+      setMaterialsTotal(sum)
+    })
+  }
 
   const load = () => {
     if (!id) return
@@ -85,8 +95,11 @@ export default function ObjectDetail() {
     loadEstimates()
     loadRooms()
     loadContracts()
+    loadMaterialsTotal()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
+
+  const worksTotal = estimates.reduce((s, e) => s + Number(e.total_amount || 0), 0)
 
   const handlePrint = async (estimateId: number) => {
     if (!object) return
@@ -329,8 +342,6 @@ export default function ObjectDetail() {
             )}
           </div>
 
-          <ObjectMaterialsCard objectId={object.id} />
-
           <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="font-medium">Документы объекта</p>
@@ -491,6 +502,26 @@ export default function ObjectDetail() {
         </div>
 
         <div className="flex flex-col gap-4">
+          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+            <p className="font-medium mb-4">Стоимость проекта</p>
+            <div className="flex flex-col gap-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-white/50">Работы</span>
+                <span className="font-medium">{formatMoney(worksTotal)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-white/50">Материалы</span>
+                <span className="font-medium">{formatMoney(materialsTotal)}</span>
+              </div>
+              <div className="flex items-center justify-between border-t border-white/10 pt-3">
+                <span className="text-white/70">Итого</span>
+                <span className="text-lg font-semibold text-[#D4AF37]">
+                  {formatMoney(worksTotal + materialsTotal)}
+                </span>
+              </div>
+            </div>
+          </div>
+
           <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
             <p className="font-medium mb-4">Информация</p>
             <div className="flex flex-col gap-3 text-sm">
