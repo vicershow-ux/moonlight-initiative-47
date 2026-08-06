@@ -94,12 +94,14 @@ def handler(event: dict, context) -> dict:
 
             cur.execute(
                 "SELECT om.id, om.object_id, om.material_id, om.name, om.unit, om.qty, "
-                "om.price, om.shop_name, om.note, om.created_at, om.room_id, om.room_name "
+                "om.price, om.shop_name, om.note, om.created_at, om.room_id, om.room_name, "
+                "om.work_type "
                 "FROM object_materials om WHERE om.company_id = %s ORDER BY om.created_at DESC",
                 (company_id,)
             )
             mkeys = ['id', 'object_id', 'material_id', 'name', 'unit', 'qty',
-                     'price', 'shop_name', 'note', 'created_at', 'room_id', 'room_name']
+                     'price', 'shop_name', 'note', 'created_at', 'room_id', 'room_name',
+                     'work_type']
             object_materials = [dict(zip(mkeys, r)) for r in cur.fetchall()]
 
             cur.execute(
@@ -162,12 +164,13 @@ def handler(event: dict, context) -> dict:
             room_id = body.get('room_id') or None
             room_name = (body.get('room_name') or '').strip()
             note = (body.get('note') or '').strip()
+            work_type = (body.get('work_type') or '').strip()
 
             if body.get('merge') and material_id and room_id:
                 cur.execute(
                     "SELECT id, qty FROM object_materials WHERE company_id = %s AND object_id = %s "
-                    "AND material_id = %s AND room_id = %s LIMIT 1",
-                    (company_id, object_id, material_id, room_id)
+                    "AND material_id = %s AND room_id = %s AND work_type = %s LIMIT 1",
+                    (company_id, object_id, material_id, room_id, work_type)
                 )
                 existing = cur.fetchone()
                 if existing:
@@ -186,10 +189,10 @@ def handler(event: dict, context) -> dict:
 
             cur.execute(
                 "INSERT INTO object_materials (company_id, object_id, material_id, name, unit, "
-                "qty, price, shop_name, note, room_id, room_name) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                "qty, price, shop_name, note, room_id, room_name, work_type) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
                 (company_id, object_id, material_id, name, unit, qty, price, shop_name,
-                 note, room_id, room_name)
+                 note, room_id, room_name, work_type)
             )
             new_id = cur.fetchone()[0]
             conn.commit()
