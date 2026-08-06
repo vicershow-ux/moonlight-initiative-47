@@ -34,8 +34,21 @@ export default function ActView() {
         <head>
           <title>Акт № ${act.act_number}</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 32px; line-height: 1.5; color: #161616; }
-            table { border-collapse: collapse; }
+            @page { size: A4 portrait; margin: 10mm; }
+            body { font-family: Arial, sans-serif; padding: 0 2mm; line-height: 1.5; color: #1a1a1a; font-size: 13px; }
+            table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+            td, th { overflow-wrap: break-word; word-break: break-word; }
+            @media print {
+              * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
+              body { padding: 0 2mm; }
+              table, tr, td, th { page-break-inside: avoid; }
+              thead th { background: #5C3A11 !important; color: #ffffff !important; font-weight: 700 !important; }
+              td, th { border: 1px solid #7A4E10 !important; }
+            }
           </style>
         </head>
         <body>${act.content_html}</body>

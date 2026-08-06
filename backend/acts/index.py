@@ -188,7 +188,7 @@ INSPECTION_ACT_TEXT = {
 
 def dark_block(text):
     return (
-        '<div style="background:#2b211b;color:#f5efe6;border-radius:8px;'
+        '<div style="background:#5C3A11;color:#ffffff;border-radius:8px;'
         'padding:14px 18px;margin:10px 0;font-size:12.5px">' + text + '</div>'
     )
 
@@ -229,15 +229,15 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
                 amount = float(qty) * float(price)
             except (TypeError, ValueError):
                 amount = 0
-        bg = '#ffffff' if i % 2 else '#f7f5f2'
+        bg = '#ffffff' if i % 2 else '#F5EBD9'
         rows_html += (
             f'<tr style="background:{bg}">'
-            f'<td style="border:1px solid #d8d3cc;padding:7px;text-align:center">{i}</td>'
-            f'<td style="border:1px solid #d8d3cc;padding:7px">{name}</td>'
-            f'<td style="border:1px solid #d8d3cc;padding:7px;text-align:center">{unit}</td>'
-            f'<td style="border:1px solid #d8d3cc;padding:7px;text-align:center">{qty}</td>'
-            f'<td style="border:1px solid #d8d3cc;padding:7px;text-align:right">{fmt_money(price)}</td>'
-            f'<td style="border:1px solid #d8d3cc;padding:7px;text-align:right">{fmt_money(amount)}</td>'
+            f'<td style="border:1px solid #7A4E10;padding:7px;text-align:center">{i}</td>'
+            f'<td style="border:1px solid #7A4E10;padding:7px">{name}</td>'
+            f'<td style="border:1px solid #7A4E10;padding:7px;text-align:center">{unit}</td>'
+            f'<td style="border:1px solid #7A4E10;padding:7px;text-align:center">{qty}</td>'
+            f'<td style="border:1px solid #7A4E10;padding:7px;text-align:right">{fmt_money(price)}</td>'
+            f'<td style="border:1px solid #7A4E10;padding:7px;text-align:right">{fmt_money(amount)}</td>'
             f'</tr>'
         )
 
@@ -273,8 +273,8 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
 
     return f"""<div class="act-doc" style="font-family:Arial,sans-serif;color:#161616;line-height:1.5;font-size:13px">
 <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
-  <div style="border:1px solid #d8d3cc;border-radius:8px;padding:8px 14px;min-width:220px">
-    <p style="margin:0;font-size:10px;color:#8a8378">Фирменная шапка</p>
+  <div style="border:1.5px solid #7A4E10;border-radius:8px;padding:8px 14px;min-width:220px">
+    <p style="margin:0;font-size:11px;font-weight:700;color:#6B4508">Фирменная шапка</p>
     <p style="margin:2px 0 0;font-weight:600">{executor_display}</p>
   </div>
 </div>
@@ -295,17 +295,17 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
 
 <p style="font-weight:600;margin:18px 0 8px">Перечень и стоимость принятых работ</p>
 <table style="border-collapse:collapse;width:100%;font-size:12px">
-<thead><tr style="background:#efece7">
-<th style="border:1px solid #d8d3cc;padding:7px">№</th>
-<th style="border:1px solid #d8d3cc;padding:7px">Наименование работ</th>
-<th style="border:1px solid #d8d3cc;padding:7px">Ед.</th>
-<th style="border:1px solid #d8d3cc;padding:7px">Кол-во</th>
-<th style="border:1px solid #d8d3cc;padding:7px">Цена, руб.</th>
-<th style="border:1px solid #d8d3cc;padding:7px">Сумма, руб.</th>
+<thead><tr style="background:#5C3A11;color:#ffffff">
+<th style="border:1px solid #7A4E10;padding:7px;color:#ffffff;font-weight:700">№</th>
+<th style="border:1px solid #7A4E10;padding:7px;color:#ffffff;font-weight:700">Наименование работ</th>
+<th style="border:1px solid #7A4E10;padding:7px;color:#ffffff;font-weight:700">Ед.</th>
+<th style="border:1px solid #7A4E10;padding:7px;color:#ffffff;font-weight:700">Кол-во</th>
+<th style="border:1px solid #7A4E10;padding:7px;color:#ffffff;font-weight:700">Цена, руб.</th>
+<th style="border:1px solid #7A4E10;padding:7px;color:#ffffff;font-weight:700">Сумма, руб.</th>
 </tr></thead>
 <tbody>{rows_html}
-<tr><td colspan="5" style="border:1px solid #d8d3cc;padding:7px;text-align:right;font-weight:600">Итого:</td>
-<td style="border:1px solid #d8d3cc;padding:7px;text-align:right;font-weight:700">{fmt_money(total_amount)}</td></tr>
+<tr style="background:#EADCC0"><td colspan="5" style="border:1px solid #7A4E10;padding:7px;text-align:right;font-weight:700;color:#4A2E06">Итого:</td>
+<td style="border:1px solid #7A4E10;padding:7px;text-align:right;font-weight:700;color:#4A2E06">{fmt_money(total_amount)}</td></tr>
 </tbody>
 </table>
 
@@ -319,12 +319,12 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
 
 <table style="width:100%;font-size:12.5px"><tr>
 <td style="width:50%;vertical-align:top;padding-right:16px">
-  <p style="margin:0 0 6px;font-size:10px;letter-spacing:.5px;color:#8a8378">ПОДРЯДЧИК (ИСПОЛНИТЕЛЬ)</p>
+  <p style="margin:0 0 6px;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:#6B4508">ПОДРЯДЧИК (ИСПОЛНИТЕЛЬ)</p>
   <p style="margin:0;font-weight:600">{executor_display}</p>
   {executor_contacts}
 </td>
 <td style="width:50%;vertical-align:top;padding-left:16px">
-  <p style="margin:0 0 6px;font-size:10px;letter-spacing:.5px;color:#8a8378">ЗАКАЗЧИК</p>
+  <p style="margin:0 0 6px;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:#6B4508">ЗАКАЗЧИК</p>
   <p style="margin:0;font-weight:600">{client_name}</p>
   {customer_contacts}
 </td>
@@ -332,18 +332,18 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
 
 <table style="width:100%;margin-top:34px;font-size:12.5px"><tr>
 <td style="width:50%;vertical-align:top;padding-right:16px">
-  <p style="margin:0 0 6px;font-size:10px;letter-spacing:.5px;color:#8a8378">ОТ ИМЕНИ ПОДРЯДЧИКА</p>
+  <p style="margin:0 0 6px;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:#6B4508">ОТ ИМЕНИ ПОДРЯДЧИКА</p>
   <p style="margin:0 0 34px">Директор</p>
   <table style="width:100%"><tr>
-  <td style="border-top:1px solid #161616;padding-top:4px;font-size:10px;color:#8a8378">(подпись, М.П.)</td>
+  <td style="border-top:1.5px solid #5C3A11;padding-top:4px;font-size:11px;color:#6B4508">(подпись, М.П.)</td>
   <td style="text-align:right;padding-top:4px;font-weight:600">{executor_short}</td>
   </tr></table>
 </td>
 <td style="width:50%;vertical-align:top;padding-left:16px">
-  <p style="margin:0 0 6px;font-size:10px;letter-spacing:.5px;color:#8a8378">ОТ ИМЕНИ ЗАКАЗЧИКА</p>
+  <p style="margin:0 0 6px;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:#6B4508">ОТ ИМЕНИ ЗАКАЗЧИКА</p>
   <p style="margin:0 0 34px">&nbsp;</p>
   <table style="width:100%"><tr>
-  <td style="border-top:1px solid #161616;padding-top:4px;font-size:10px;color:#8a8378">(подпись)</td>
+  <td style="border-top:1.5px solid #5C3A11;padding-top:4px;font-size:11px;color:#6B4508">(подпись)</td>
   <td style="text-align:right;padding-top:4px;font-weight:600">{client_name}</td>
   </tr></table>
 </td>
