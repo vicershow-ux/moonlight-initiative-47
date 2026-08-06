@@ -143,7 +143,7 @@ def handler(event: dict, context) -> dict:
             if len(name) < 2:
                 return response(400, {'error': 'Введите название позиции'})
             kind = (body.get('kind') or 'материал').strip()
-            if kind not in ('материал', 'инструмент'):
+            if kind not in ('материал', 'инструмент', 'оборудование', 'расходник'):
                 kind = 'материал'
             cur.execute(
                 "INSERT INTO warehouse_items (company_id, warehouse_id, name, kind, unit, qty, price) "

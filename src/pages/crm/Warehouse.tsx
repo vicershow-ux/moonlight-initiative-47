@@ -47,6 +47,15 @@ export default function Warehouse() {
   const [issueObject, setIssueObject] = useState("")
   const [issueQty, setIssueQty] = useState("")
 
+  const [addToWh, setAddToWh] = useState<WarehouseRow | null>(null)
+  const [whItemForm, setWhItemForm] = useState({
+    name: "",
+    kind: "материал",
+    unit: "шт",
+    qty: "1",
+    price: "",
+  })
+
   const [restockFor, setRestockFor] = useState<WarehouseItem | null>(null)
   const [restockQty, setRestockQty] = useState("")
   const [restockPrice, setRestockPrice] = useState("")
@@ -124,6 +133,21 @@ export default function Warehouse() {
       setIssueQty("")
     })
 
+  const submitWhItem = () =>
+    run(async () => {
+      if (!addToWh) return
+      await warehouseApi.createItem({
+        name: whItemForm.name,
+        kind: whItemForm.kind,
+        unit: whItemForm.unit,
+        qty: Number(whItemForm.qty || 0),
+        price: Number(whItemForm.price || 0),
+        warehouse_id: addToWh.id,
+      })
+      setAddToWh(null)
+      setWhItemForm({ name: "", kind: "материал", unit: "шт", qty: "1", price: "" })
+    })
+
   const submitRestock = () =>
     run(async () => {
       if (!restockFor) return
@@ -137,18 +161,21 @@ export default function Warehouse() {
       setRestockPrice("")
     })
 
-  const kindBadge = (kind: string) => (
-    <span
-      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs ${
-        kind === "инструмент"
-          ? "bg-[#4A90D9]/15 text-[#7FB5E8]"
-          : "bg-[#D4AF37]/15 text-[#D4AF37]"
-      }`}
-    >
-      <Icon name={kind === "инструмент" ? "Hammer" : "Package"} size={12} />
-      {kind}
-    </span>
-  )
+  const kindStyle: Record<string, { cls: string; icon: string }> = {
+    инструмент: { cls: "bg-[#4A90D9]/15 text-[#7FB5E8]", icon: "Hammer" },
+    оборудование: { cls: "bg-[#9B7BD4]/15 text-[#B49AE5]", icon: "Cog" },
+    расходник: { cls: "bg-emerald-500/15 text-emerald-400", icon: "Layers" },
+  }
+
+  const kindBadge = (kind: string) => {
+    const st = kindStyle[kind] || { cls: "bg-[#D4AF37]/15 text-[#D4AF37]", icon: "Package" }
+    return (
+      <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs ${st.cls}`}>
+        <Icon name={st.icon} size={12} />
+        {kind}
+      </span>
+    )
+  }
 
   return (
     <CrmLayout title="Склад учет" subtitle="Склады, движение материалов и выдача на объекты">
@@ -230,15 +257,105 @@ export default function Warehouse() {
                           <td className="py-3 pr-4 text-white/60">{w.responsible || "—"}</td>
                           <td className="py-3 pr-4">{w.positions}</td>
                           <td className="py-3 pr-4">
-                            <button
-                              className="text-white/40 transition-colors hover:text-red-400"
-                              onClick={() => run(() => warehouseApi.removeWarehouse(w.id))}
-                            >
-                              <Icon name="Trash2" size={16} />
-                            </button>
+                            <div className="flex items-center gap-3">
+                              <button
+                                className="text-[#D4AF37] transition-colors hover:text-[#B8860B]"
+                                title="Добавить позицию на этот склад"
+                                onClick={() =>
+                                  setAddToWh((prev) => (prev?.id === w.id ? null : w))
+                                }
+                              >
+                                <Icon name={addToWh?.id === w.id ? "X" : "Plus"} size={18} />
+                              </button>
+                              <button
+                                className="text-white/40 transition-colors hover:text-red-400"
+                                title="Удалить склад"
+                                onClick={() => run(() => warehouseApi.removeWarehouse(w.id))}
+                              >
+                                <Icon name="Trash2" size={16} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
-                      ))}
+                      )).flatMap((row, idx) => {
+                        const w = warehouses[idx]
+                        if (addToWh?.id !== w.id) return [row]
+                        return [
+                          row,
+                          <tr key={`form-${w.id}`} className="border-b border-white/5">
+                            <td colSpan={5} className="py-3">
+                              <div className="grid gap-3 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4 md:grid-cols-3">
+                                <div className="text-sm text-white/70 md:col-span-3">
+                                  Добавить позицию на склад «{w.name}»
+                                </div>
+                                <input
+                                  className={inputCls}
+                                  placeholder="Название"
+                                  value={whItemForm.name}
+                                  onChange={(e) =>
+                                    setWhItemForm({ ...whItemForm, name: e.target.value })
+                                  }
+                                />
+                                <select
+                                  className={inputCls}
+                                  value={whItemForm.kind}
+                                  onChange={(e) =>
+                                    setWhItemForm({ ...whItemForm, kind: e.target.value })
+                                  }
+                                >
+                                  <option value="материал">Материал</option>
+                                  <option value="инструмент">Инструмент</option>
+                                  <option value="оборудование">Оборудование</option>
+                                  <option value="расходник">Расходник</option>
+                                </select>
+                                <select
+                                  className={inputCls}
+                                  value={whItemForm.unit}
+                                  onChange={(e) =>
+                                    setWhItemForm({ ...whItemForm, unit: e.target.value })
+                                  }
+                                >
+                                  {["шт", "м²", "м", "м³", "кг", "т", "л", "уп", "рул", "меш", "компл"].map(
+                                    (u) => (
+                                      <option key={u} value={u}>
+                                        {u}
+                                      </option>
+                                    )
+                                  )}
+                                </select>
+                                <input
+                                  className={inputCls}
+                                  type="number"
+                                  min="0"
+                                  placeholder="Количество"
+                                  value={whItemForm.qty}
+                                  onChange={(e) =>
+                                    setWhItemForm({ ...whItemForm, qty: e.target.value })
+                                  }
+                                />
+                                <input
+                                  className={inputCls}
+                                  type="number"
+                                  min="0"
+                                  placeholder="Цена за единицу"
+                                  value={whItemForm.price}
+                                  onChange={(e) =>
+                                    setWhItemForm({ ...whItemForm, price: e.target.value })
+                                  }
+                                />
+                                <button
+                                  className={goldBtn}
+                                  onClick={submitWhItem}
+                                  disabled={whItemForm.name.trim().length < 2}
+                                >
+                                  <Icon name="Check" size={16} />
+                                  Добавить
+                                </button>
+                              </div>
+                            </td>
+                          </tr>,
+                        ]
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -268,8 +385,10 @@ export default function Warehouse() {
                     value={itemForm.kind}
                     onChange={(e) => setItemForm({ ...itemForm, kind: e.target.value })}
                   >
-                    <option value="материал">материал</option>
-                    <option value="инструмент">инструмент</option>
+                    <option value="материал">Материал</option>
+                    <option value="инструмент">Инструмент</option>
+                    <option value="оборудование">Оборудование</option>
+                    <option value="расходник">Расходник</option>
                   </select>
                   <select
                     className={inputCls}
