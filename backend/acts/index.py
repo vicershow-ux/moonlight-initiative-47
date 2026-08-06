@@ -275,7 +275,10 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
     return f"""<div class="act-doc" style="font-family:Arial,sans-serif;color:#1a1a1a;line-height:1.55;font-size:13px">
 <h2 style="text-align:center;margin:0 0 4px;font-size:18px">АКТ СДАЧИ-ПРИЁМКИ ВЫПОЛНЕННЫХ РАБОТ № {esc(act_number)}</h2>
 
-<p style="text-align:center;margin:6px 0 18px;font-size:12.5px;color:#6B4508;font-weight:600">{fmt_date_long(act_date)}</p>
+<table style="width:100%;margin:10px 0 18px;font-size:12.5px;color:#6B4508;font-weight:600"><tr>
+<td style="text-align:left">г. _______________</td>
+<td style="text-align:right">{fmt_date_long(act_date)}</td>
+</tr></table>
 
 <p>{executor_display}, именуемый(ая) в дальнейшем «Исполнитель», с одной стороны, и {client_name}, именуемый(ая) в дальнейшем «Заказчик», с другой стороны, совместно именуемые «Стороны», составили настоящий Акт о сдаче и приёмке результата работ.</p>
 
@@ -287,12 +290,12 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
 <p style="font-weight:600;margin:18px 0 8px">Перечень и стоимость принятых работ</p>
 <table style="border-collapse:collapse;width:100%;font-size:12.5px;color:#1a1a1a">
 <thead><tr style="background:#5C3A11;color:#ffffff">
-<th style="border:1.2px solid #6B4508;padding:7px;color:#ffffff;font-weight:700">№</th>
-<th style="border:1.2px solid #6B4508;padding:7px;color:#ffffff;font-weight:700">Наименование работ</th>
-<th style="border:1.2px solid #6B4508;padding:7px;color:#ffffff;font-weight:700">Ед.</th>
-<th style="border:1.2px solid #6B4508;padding:7px;color:#ffffff;font-weight:700">Кол-во</th>
-<th style="border:1.2px solid #6B4508;padding:7px;color:#ffffff;font-weight:700">Цена, руб.</th>
-<th style="border:1.2px solid #6B4508;padding:7px;color:#ffffff;font-weight:700">Сумма, руб.</th>
+<th style="border:1.2px solid #6B4508;padding:7px;color:#ffffff;font-weight:700;width:4%">№</th>
+<th style="border:1.2px solid #6B4508;padding:7px;color:#ffffff;font-weight:700;width:46%">Наименование работ</th>
+<th style="border:1.2px solid #6B4508;padding:7px;color:#ffffff;font-weight:700;width:7%">Ед.</th>
+<th style="border:1.2px solid #6B4508;padding:7px;color:#ffffff;font-weight:700;width:9%">Кол-во</th>
+<th style="border:1.2px solid #6B4508;padding:7px;color:#ffffff;font-weight:700;width:16%">Цена, руб.</th>
+<th style="border:1.2px solid #6B4508;padding:7px;color:#ffffff;font-weight:700;width:18%">Сумма, руб.</th>
 </tr></thead>
 <tbody>{rows_html}
 <tr style="background:#EADCC0"><td colspan="5" style="border:1.2px solid #6B4508;padding:7px;text-align:right;font-weight:700;color:#4A2E06">Итого:</td>

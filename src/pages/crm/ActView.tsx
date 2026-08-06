@@ -36,8 +36,8 @@ export default function ActView() {
           <style>
             @page { size: A4 portrait; margin: 10mm; }
             body { font-family: Arial, sans-serif; padding: 0 2mm; line-height: 1.5; color: #1a1a1a; font-size: 13px; }
-            table { border-collapse: collapse; width: 100%; table-layout: fixed; }
-            td, th { overflow-wrap: break-word; word-break: break-word; }
+            table { border-collapse: collapse; width: 100%; }
+            td, th { overflow-wrap: break-word; }
             @media print {
               * {
                 -webkit-print-color-adjust: exact !important;
