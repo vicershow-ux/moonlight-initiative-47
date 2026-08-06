@@ -4,6 +4,7 @@ import { CrmLayout } from "@/components/crm/CrmLayout"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import Icon from "@/components/ui/icon"
 import { RoomCalculator } from "@/components/crm/RoomCalculator"
+import { exportMaterialsToExcel } from "@/lib/exportMaterials"
 import {
   materialsApi,
   MaterialItem,
@@ -171,10 +172,26 @@ export default function Materials() {
                     </div>
 
                     {activeObject && (
-                      <button className={goldBtn} onClick={() => setShowCalc(!showCalc)}>
-                        <Icon name={showCalc ? "X" : "Calculator"} size={16} />
-                        {showCalc ? "Свернуть" : "Рассчитать помещение"}
-                      </button>
+                      <>
+                        <button className={goldBtn} onClick={() => setShowCalc(!showCalc)}>
+                          <Icon name={showCalc ? "X" : "Calculator"} size={16} />
+                          {showCalc ? "Свернуть" : "Рассчитать помещение"}
+                        </button>
+                        <button
+                          className="flex items-center gap-2 rounded-lg border border-[#D4AF37]/40 px-4 py-2.5 text-sm text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10 disabled:opacity-40"
+                          disabled={materialsOf(activeObject.id).length === 0}
+                          onClick={() =>
+                            exportMaterialsToExcel(
+                              activeObject,
+                              materialsOf(activeObject.id),
+                              materials
+                            )
+                          }
+                        >
+                          <Icon name="FileSpreadsheet" size={16} />
+                          Выгрузить в Excel
+                        </button>
+                      </>
                     )}
                   </div>
 
