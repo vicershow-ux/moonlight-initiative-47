@@ -357,25 +357,33 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     color: #444;
     margin-top: 24px;
   }
-  @page { size: A4 portrait; margin: 12mm 10mm; }
+  @page { size: A4 portrait; margin: 10mm; }
   @media print {
-    html, body { width: 100%; margin: 0; padding: 0; background: #fff; }
+    html, body { width: 190mm; margin: 0; padding: 0; background: #fff; overflow: visible; }
     * {
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
       color-adjust: exact !important;
     }
     .est-root {
-      padding: 0 3px;
-      max-width: 100%;
-      width: 100%;
-      margin: 0;
+      padding: 0;
+      width: 186mm;
+      max-width: 186mm;
+      margin: 0 auto;
+      overflow: visible;
     }
     .no-print { display: none; }
     .cat-block { break-inside: avoid; }
     .room-block { break-inside: avoid; }
     table { width: 100%; table-layout: fixed; }
     td, th { overflow-wrap: break-word; word-break: break-word; }
+    thead th:nth-child(1) { width: 5%; }
+    thead th:nth-child(2) { width: auto; }
+    thead th:nth-child(3) { width: 7%; }
+    thead th:nth-child(4) { width: 10%; }
+    thead th:nth-child(5) { width: 7%; }
+    thead th:nth-child(6) { width: 13%; }
+    thead th:nth-child(7) { width: 15%; }
     thead th { background: #5C3A11 !important; color: #ffffff !important; }
     .cat-row td { background: #EADCC0 !important; color: #4A2E06 !important; }
     .room-total { background: #EADCC0 !important; border: 1.5px solid #7A4E10 !important; border-left: 5px solid #5C3A11 !important; }
@@ -383,9 +391,9 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     .info-grid, .summary-box { background: #ffffff !important; border: 1.5px solid #7A4E10 !important; }
     .cat-block { border: 1.5px solid #7A4E10 !important; }
     .info-grid .label, .parties .label, .signature-block .label, .room-total-label { color: #6B4508 !important; }
-    .cat-block, .info-grid, .room-total, .summary-box {
-      margin-right: 2px;
-      margin-left: 2px;
+    .cat-block, .info-grid, .room-total, .summary-box, .summary {
+      max-width: 100%;
+      box-sizing: border-box;
     }
   }
 `
