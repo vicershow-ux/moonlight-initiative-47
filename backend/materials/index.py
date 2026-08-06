@@ -75,17 +75,116 @@ def handler(event: dict, context) -> dict:
 
         params = event.get('queryStringParameters') or {}
         row_id = params.get('id')
+        entity = params.get('entity') or 'material'
 
         if method == 'GET':
             cur.execute(
                 f"SELECT {COLS} FROM materials WHERE company_id = %s ORDER BY created_at DESC",
                 (company_id,)
             )
+            materials = [dict(zip(KEYS, r)) for r in cur.fetchall()]
+
+            cur.execute(
+                "SELECT id, object_code, client_name, address FROM objects "
+                "WHERE company_id = %s ORDER BY created_at DESC",
+                (company_id,)
+            )
+            okeys = ['id', 'object_code', 'client_name', 'address']
+            objects = [dict(zip(okeys, r)) for r in cur.fetchall()]
+
+            cur.execute(
+                "SELECT om.id, om.object_id, om.material_id, om.name, om.unit, om.qty, "
+                "om.price, om.shop_name, om.note, om.created_at "
+                "FROM object_materials om WHERE om.company_id = %s ORDER BY om.created_at DESC",
+                (company_id,)
+            )
+            mkeys = ['id', 'object_id', 'material_id', 'name', 'unit', 'qty',
+                     'price', 'shop_name', 'note', 'created_at']
+            object_materials = [dict(zip(mkeys, r)) for r in cur.fetchall()]
+
             return response(200, {
-                'materials': [dict(zip(KEYS, r)) for r in cur.fetchall()]
+                'materials': materials,
+                'objects': objects,
+                'object_materials': object_materials,
             })
 
         body = json.loads(event.get('body') or '{}')
+
+        if method == 'POST' and entity == 'object_material':
+            object_id = body.get('object_id')
+            if not object_id:
+                return response(400, {'error': 'Выберите объект'})
+            cur.execute("SELECT id FROM objects WHERE id = %s AND company_id = %s",
+                        (object_id, company_id))
+            if not cur.fetchone():
+                return response(404, {'error': 'Объект не найден'})
+
+            material_id = body.get('material_id') or None
+            name = (body.get('name') or '').strip()
+            unit = (body.get('unit') or 'шт').strip()
+            price = to_num(body.get('price'))
+            shop_name = (body.get('shop_name') or '').strip()
+
+            if material_id:
+                cur.execute(
+                    "SELECT name, unit, price, shop_name FROM materials "
+                    "WHERE id = %s AND company_id = %s",
+                    (material_id, company_id)
+                )
+                m = cur.fetchone()
+                if not m:
+                    return response(404, {'error': 'Материал не найден в справочнике'})
+                name = name or m[0]
+                unit = m[1]
+                if not body.get('price'):
+                    price = float(m[2])
+                shop_name = shop_name or m[3]
+
+            if len(name) < 2:
+                return response(400, {'error': 'Выберите материал из справочника'})
+
+            qty = to_num(body.get('qty'))
+            if qty <= 0:
+                return response(400, {'error': 'Укажите количество больше нуля'})
+
+            cur.execute(
+                "INSERT INTO object_materials (company_id, object_id, material_id, name, unit, "
+                "qty, price, shop_name, note) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                (company_id, object_id, material_id, name, unit, qty, price, shop_name,
+                 (body.get('note') or '').strip())
+            )
+            new_id = cur.fetchone()[0]
+            conn.commit()
+            return response(200, {'success': True, 'id': new_id})
+
+        if method == 'PUT' and entity == 'object_material':
+            if not row_id:
+                return response(400, {'error': 'Не указана запись'})
+            fields = []
+            values = []
+            for key in ['name', 'unit', 'qty', 'price', 'shop_name', 'note', 'object_id']:
+                if key in body:
+                    fields.append(f"{key} = %s")
+                    values.append(to_num(body[key]) if key in ('qty', 'price') else body[key])
+            if fields:
+                values.extend([row_id, company_id])
+                cur.execute(
+                    f"UPDATE object_materials SET {', '.join(fields)} "
+                    "WHERE id = %s AND company_id = %s",
+                    values
+                )
+                conn.commit()
+            return response(200, {'success': True})
+
+        if method == 'DELETE' and entity == 'object_material':
+            if not row_id:
+                return response(400, {'error': 'Не указана запись'})
+            cur.execute(
+                "DELETE FROM object_materials WHERE id = %s AND company_id = %s",
+                (row_id, company_id)
+            )
+            conn.commit()
+            return response(200, {'success': True})
 
         if method == 'POST':
             name = (body.get('name') or '').strip()
@@ -128,6 +227,11 @@ def handler(event: dict, context) -> dict:
             if not row_id:
                 return response(400, {'error': 'Не указан материал'})
             cur.execute(
+                "UPDATE object_materials SET material_id = NULL "
+                "WHERE material_id = %s AND company_id = %s",
+                (row_id, company_id)
+            )
+            cur.execute(
                 "DELETE FROM materials WHERE id = %s AND company_id = %s",
                 (row_id, company_id)
             )
@@ -139,3 +243,4 @@ def handler(event: dict, context) -> dict:
     finally:
         cur.close()
         conn.close()
+

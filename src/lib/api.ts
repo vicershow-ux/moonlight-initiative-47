@@ -1401,10 +1401,60 @@ export interface MaterialItem {
   created_at: string
 }
 
+export interface MaterialObject {
+  id: number
+  object_code: string
+  client_name: string
+  address: string
+}
+
+export interface ObjectMaterial {
+  id: number
+  object_id: number
+  material_id: number | null
+  name: string
+  unit: string
+  qty: number
+  price: number
+  shop_name: string
+  note: string
+  created_at: string
+}
+
 export const materialsApi = {
   async list() {
     const res = await fetch(MATERIALS_URL, { headers: { ...authHeaders() } })
-    return parseResponse(res) as Promise<{ materials: MaterialItem[] }>
+    return parseResponse(res) as Promise<{
+      materials: MaterialItem[]
+      objects: MaterialObject[]
+      object_materials: ObjectMaterial[]
+    }>
+  },
+
+  async addToObject(payload: Partial<ObjectMaterial> & { object_id: number }) {
+    const res = await fetch(`${MATERIALS_URL}?entity=object_material`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res)
+  },
+
+  async updateObjectMaterial(id: number, payload: Partial<ObjectMaterial>) {
+    const res = await fetch(`${MATERIALS_URL}?entity=object_material&id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res)
+  },
+
+  async removeFromObject(id: number) {
+    const res = await fetch(`${MATERIALS_URL}?entity=object_material&id=${id}`, {
+      method: "DELETE",
+      headers: { ...authHeaders() },
+    })
+    return parseResponse(res)
   },
 
   async create(payload: Partial<MaterialItem>) {
