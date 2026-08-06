@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { CrmLayout } from "@/components/crm/CrmLayout"
+import { WarehouseViewModal } from "@/components/crm/WarehouseViewModal"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import Icon from "@/components/ui/icon"
 import {
@@ -46,6 +47,8 @@ export default function Warehouse() {
   const [issueFor, setIssueFor] = useState<WarehouseItem | null>(null)
   const [issueObject, setIssueObject] = useState("")
   const [issueQty, setIssueQty] = useState("")
+
+  const [viewWh, setViewWh] = useState<WarehouseRow | null>(null)
 
   const [addToWh, setAddToWh] = useState<WarehouseRow | null>(null)
   const [whItemForm, setWhItemForm] = useState({
@@ -266,6 +269,13 @@ export default function Warehouse() {
                                 }
                               >
                                 <Icon name={addToWh?.id === w.id ? "X" : "Plus"} size={18} />
+                              </button>
+                              <button
+                                className="text-white/60 transition-colors hover:text-white"
+                                title="Просмотр содержимого склада"
+                                onClick={() => setViewWh(w)}
+                              >
+                                <Icon name="Eye" size={17} />
                               </button>
                               <button
                                 className="text-white/40 transition-colors hover:text-red-400"
@@ -686,6 +696,13 @@ export default function Warehouse() {
           </TabsContent>
         </Tabs>
       )}
+
+      <WarehouseViewModal
+        warehouse={viewWh}
+        items={items}
+        open={!!viewWh}
+        onOpenChange={(o) => !o && setViewWh(null)}
+      />
     </CrmLayout>
   )
 }
