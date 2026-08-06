@@ -5,6 +5,7 @@ import Icon from "@/components/ui/icon"
 import { objectsApi, objectStatusesApi, estimatesApi, objectRoomsApi, contractsApi, Estimate, ObjectItem, ObjectRoom, ObjectStatus, Contract } from "@/lib/api"
 import { EstimatesListModal } from "@/components/crm/EstimatesListModal"
 import { ObjectMaterialsCard } from "@/components/crm/ObjectMaterialsCard"
+import { ObjectMaterialEstimates } from "@/components/crm/ObjectMaterialEstimates"
 import { CreateContractModal } from "@/components/crm/CreateContractModal"
 import { printEstimate } from "@/lib/printEstimate"
 import { getEstimateStatusColor, getEstimateStatusLabel } from "@/lib/estimateStatus"
@@ -353,7 +354,7 @@ export default function ObjectDetail() {
               )}
             </div>
 
-            <p className="text-xs text-white/40 uppercase tracking-wide mb-2">Сметы</p>
+            <p className="text-xs text-white/40 uppercase tracking-wide mb-2">Сметы на работу</p>
             {estimatesLoading ? (
               <div className="flex justify-center py-8">
                 <Icon name="Loader2" size={20} className="animate-spin text-white/40" />
@@ -420,6 +421,9 @@ export default function ObjectDetail() {
                 ))}
               </div>
             )}
+
+            <p className="text-xs text-white/40 uppercase tracking-wide mb-2 mt-6">Сметы на материал</p>
+            <ObjectMaterialEstimates objectId={object.id} isClient={isClient} />
 
             <p className="text-xs text-white/40 uppercase tracking-wide mb-2 mt-6">Договоры</p>
             {contractsLoading ? (
