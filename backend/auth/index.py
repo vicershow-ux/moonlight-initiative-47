@@ -277,7 +277,7 @@ def handle_team(method, event, conn, cur):
         members = []
         for r in rows:
             m = dict(zip(keys, r))
-            if m['role'] == 'client':
+            if m['role'] == 'client' or m['position'] == 'designer':
                 cur.execute(
                     "SELECT o.id, o.object_code, o.client_name FROM object_access oa JOIN objects o ON o.id = oa.object_id WHERE oa.user_id = %s",
                     (m['id'],)
@@ -325,7 +325,7 @@ def handle_team(method, event, conn, cur):
         )
         new_id, created_at = cur.fetchone()
 
-        if role == 'client':
+        if role == 'client' or (role == 'employee' and position == 'designer'):
             for obj_id in object_ids:
                 cur.execute("SELECT id FROM objects WHERE id = %s AND company_id = %s", (obj_id, company_id))
                 if cur.fetchone():
@@ -349,12 +349,13 @@ def handle_team(method, event, conn, cur):
             return response(403, {'error': 'Недостаточно прав'})
 
         body = json.loads(event.get('body') or '{}')
-        cur.execute("SELECT id, role FROM users WHERE id = %s AND company_id = %s", (member_id, company_id))
+        cur.execute("SELECT id, role, position FROM users WHERE id = %s AND company_id = %s", (member_id, company_id))
         row = cur.fetchone()
         if not row:
             return response(404, {'error': 'Пользователь не найден'})
 
-        if 'object_ids' in body and row[1] == 'client':
+        needs_access = row[1] == 'client' or row[2] == 'designer'
+        if 'object_ids' in body and needs_access:
             cur.execute("DELETE FROM object_access WHERE user_id = %s", (member_id,))
             for obj_id in body['object_ids']:
                 cur.execute("SELECT id FROM objects WHERE id = %s AND company_id = %s", (obj_id, company_id))
@@ -727,3 +728,4 @@ def handler(event: dict, context) -> dict:
     finally:
         cur.close()
         conn.close()
+

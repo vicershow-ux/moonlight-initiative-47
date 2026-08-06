@@ -38,6 +38,7 @@ export default function Team() {
   const [password, setPassword] = useState("")
   const [phone, setPhone] = useState("")
   const [position, setPosition] = useState<PositionKey>("manager")
+  const [objectIds, setObjectIds] = useState<number[]>([])
 
   const [search, setSearch] = useState("")
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all")
@@ -67,6 +68,7 @@ export default function Team() {
     setPassword("")
     setPhone("")
     setPosition("manager")
+    setObjectIds([])
     setError("")
   }
 
@@ -94,6 +96,7 @@ export default function Team() {
         role: "employee",
         phone,
         position,
+        object_ids: position === "designer" ? objectIds : undefined,
       })
       setOpen(false)
       resetForm()
@@ -238,6 +241,8 @@ export default function Team() {
         setPhone={setPhone}
         position={position}
         setPosition={setPosition}
+        objectIds={objectIds}
+        setObjectIds={setObjectIds}
         error={error}
         saving={saving}
         onCreate={handleCreate}

@@ -14,6 +14,7 @@ const CONTRACTS_URL = funcUrls.contracts
 const ACTS_URL = funcUrls.acts
 const WAREHOUSE_URL = funcUrls.warehouse
 const MATERIALS_URL = funcUrls.materials
+const OBJECT_FILES_URL = funcUrls.object_files
 
 const TOKEN_KEY = "fixkey_token"
 
@@ -1536,6 +1537,44 @@ export const materialsApi = {
 
   async remove(id: number) {
     const res = await fetch(`${MATERIALS_URL}?id=${id}`, {
+      method: "DELETE",
+      headers: { ...authHeaders() },
+    })
+    return parseResponse(res)
+  },
+}
+
+export interface ObjectFile {
+  id: number
+  object_id: number
+  user_id: number
+  file_name: string
+  file_url: string
+  file_type: "photo" | "pdf" | "excel" | "other"
+  file_size: number
+  created_at: string
+  uploader_name: string
+}
+
+export const objectFilesApi = {
+  async list(objectId: number) {
+    const res = await fetch(`${OBJECT_FILES_URL}?object_id=${objectId}`, {
+      headers: { ...authHeaders() },
+    })
+    return parseResponse(res) as Promise<{ files: ObjectFile[] }>
+  },
+
+  async upload(objectId: number, fileName: string, data: string) {
+    const res = await fetch(OBJECT_FILES_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ object_id: objectId, file_name: fileName, data }),
+    })
+    return parseResponse(res) as Promise<{ success: boolean; id: number; url: string }>
+  },
+
+  async remove(id: number) {
+    const res = await fetch(`${OBJECT_FILES_URL}?id=${id}`, {
       method: "DELETE",
       headers: { ...authHeaders() },
     })

@@ -5,6 +5,7 @@ export type PositionKey =
   | "surveyor"
   | "foreman"
   | "manager"
+  | "designer"
 
 export const positionOptions: { value: PositionKey; label: string }[] = [
   { value: "super_admin", label: "Супер-администратор" },
@@ -13,6 +14,7 @@ export const positionOptions: { value: PositionKey; label: string }[] = [
   { value: "surveyor", label: "Замерщик" },
   { value: "foreman", label: "Прораб" },
   { value: "manager", label: "Менеджер" },
+  { value: "designer", label: "Дизайнер" },
 ]
 
 export const positionLabels: Record<string, string> = Object.fromEntries(
@@ -26,6 +28,7 @@ export const positionColors: Record<string, string> = {
   surveyor: "bg-cyan-500/20 text-cyan-300",
   foreman: "bg-yellow-500/20 text-yellow-300",
   manager: "bg-blue-500/20 text-blue-300",
+  designer: "bg-pink-500/20 text-pink-300",
 }
 
 export const getPositionLabel = (position?: string) =>
@@ -52,6 +55,7 @@ export const positionPrefixes: Record<PositionKey, string[]> = {
   surveyor: ["/cabinet/objects"],
   foreman: ["/cabinet/objects", "/cabinet/documents"],
   manager: ["/cabinet", "/cabinet/objects", "/cabinet/documents", "/cabinet/customers"],
+  designer: ["/cabinet/objects"],
 }
 
 const matchesPrefix = (path: string, prefix: string) =>

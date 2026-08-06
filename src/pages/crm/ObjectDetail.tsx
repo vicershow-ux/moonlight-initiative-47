@@ -5,6 +5,7 @@ import Icon from "@/components/ui/icon"
 import { objectsApi, objectStatusesApi, estimatesApi, objectRoomsApi, contractsApi, materialsApi, Estimate, ObjectItem, ObjectRoom, ObjectStatus, Contract } from "@/lib/api"
 import { EstimatesListModal } from "@/components/crm/EstimatesListModal"
 import { ObjectMaterialEstimates } from "@/components/crm/ObjectMaterialEstimates"
+import { ObjectFilesCard } from "@/components/crm/ObjectFilesCard"
 import { CreateContractModal } from "@/components/crm/CreateContractModal"
 import { printEstimate } from "@/lib/printEstimate"
 import { getEstimateStatusColor, getEstimateStatusLabel } from "@/lib/estimateStatus"
@@ -540,18 +541,7 @@ export default function ObjectDetail() {
             </div>
           </div>
 
-          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <p className="font-medium">Файлы</p>
-              <button className="text-sm text-[#D4AF37] hover:text-[#B8860B] transition-colors">
-                + Загрузить
-              </button>
-            </div>
-            <div className="flex flex-col items-center justify-center py-8 text-white/30 text-sm gap-2">
-              <Icon name="FileX" size={24} className="text-white/20" />
-              Файлов пока нет
-            </div>
-          </div>
+          <ObjectFilesCard objectId={object.id} />
         </div>
       </div>
 

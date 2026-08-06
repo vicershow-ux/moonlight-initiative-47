@@ -13,6 +13,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { positionOptions, PositionKey } from "@/lib/positions"
+import { useEffect, useState } from "react"
+import { objectsApi, ObjectItem } from "@/lib/api"
 
 interface CreateMemberDialogProps {
   open: boolean
@@ -28,6 +30,8 @@ interface CreateMemberDialogProps {
   setPhone: (v: string) => void
   position: PositionKey
   setPosition: (v: PositionKey) => void
+  objectIds: number[]
+  setObjectIds: (v: number[]) => void
 
   error: string
   saving: boolean
@@ -47,10 +51,25 @@ export function CreateMemberDialog({
   setPhone,
   position,
   setPosition,
+  objectIds,
+  setObjectIds,
   error,
   saving,
   onCreate,
 }: CreateMemberDialogProps) {
+  const [objects, setObjects] = useState<ObjectItem[]>([])
+  const isDesigner = position === "designer"
+
+  useEffect(() => {
+    if (!open || !isDesigner || objects.length > 0) return
+    objectsApi.list().then((d) => setObjects(d.objects || []))
+  }, [open, isDesigner, objects.length])
+
+  const toggle = (id: number) =>
+    setObjectIds(
+      objectIds.includes(id) ? objectIds.filter((x) => x !== id) : [...objectIds, id]
+    )
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-[#1f1f1f] border-white/10 text-white sm:max-w-md">
@@ -114,6 +133,39 @@ export function CreateMemberDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {isDesigner && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-white/50">
+                Объекты дизайнера ({objectIds.length})
+              </label>
+              <p className="text-xs text-white/30">
+                Дизайнер видит только отмеченные объекты и может добавлять в них файлы
+              </p>
+              <div className="max-h-44 overflow-y-auto rounded-lg border border-white/10 bg-[#161616] p-2 flex flex-col gap-1">
+                {objects.length === 0 ? (
+                  <p className="py-3 text-center text-xs text-white/30">Объектов пока нет</p>
+                ) : (
+                  objects.map((o) => (
+                    <label
+                      key={o.id}
+                      className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-white/5"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={objectIds.includes(o.id)}
+                        onChange={() => toggle(o.id)}
+                        className="accent-[#D4AF37]"
+                      />
+                      <span className="truncate">
+                        {o.object_code} — {o.client_name}
+                      </span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
 
           {error && (
             <p className="text-sm text-red-400 flex items-center gap-1.5">
