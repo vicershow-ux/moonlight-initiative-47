@@ -10,40 +10,10 @@ import {
   WarehouseObject,
   WarehouseLogRow,
 } from "@/lib/api"
-import { DeleteButton } from "@/components/ui/delete-button"
-
-const money = (n: number) =>
-  new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n || 0) + " ₽"
-
-const num = (n: unknown) => Number(n || 0)
-
-const fmtDateTime = (d: string | null) =>
-  d
-    ? new Date(d).toLocaleString("ru-RU", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "—"
-
-const actionCls = (a: string) => {
-  if (a.includes("Выдано")) return "bg-[#D4AF37]/15 text-[#D4AF37]"
-  if (a.includes("Возврат") || a.includes("Приход")) return "bg-emerald-500/15 text-emerald-400"
-  if (a.includes("Списано")) return "bg-[#9B7BD4]/15 text-[#B49AE5]"
-  if (a.includes("Удал")) return "bg-red-500/15 text-red-400"
-  return "bg-white/10 text-white/60"
-}
-
-const fmtDate = (d: string | null) =>
-  d ? new Date(d).toLocaleDateString("ru-RU") : "—"
-
-const inputCls =
-  "w-full bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
-
-const goldBtn =
-  "flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg disabled:opacity-40"
+import { WarehouseStockTab } from "@/components/crm/warehouse/WarehouseStockTab"
+import { WarehouseLedgerTab } from "@/components/crm/warehouse/WarehouseLedgerTab"
+import { WarehouseObjectsTab, WarehouseHistoryTab } from "@/components/crm/warehouse/WarehouseObjectsTab"
+import { num } from "@/components/crm/warehouse/constants"
 
 export default function Warehouse() {
   const [warehouses, setWarehouses] = useState<WarehouseRow[]>([])
@@ -281,22 +251,6 @@ export default function Warehouse() {
       setRestockPrice("")
     })
 
-  const kindStyle: Record<string, { cls: string; icon: string }> = {
-    инструмент: { cls: "bg-[#4A90D9]/15 text-[#7FB5E8]", icon: "Hammer" },
-    оборудование: { cls: "bg-[#9B7BD4]/15 text-[#B49AE5]", icon: "Cog" },
-    расходник: { cls: "bg-emerald-500/15 text-emerald-400", icon: "Layers" },
-  }
-
-  const kindBadge = (kind: string) => {
-    const st = kindStyle[kind] || { cls: "bg-[#D4AF37]/15 text-[#D4AF37]", icon: "Package" }
-    return (
-      <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs ${st.cls}`}>
-        <Icon name={st.icon} size={12} />
-        {kind}
-      </span>
-    )
-  }
-
   return (
     <CrmLayout title="Склад учет" subtitle="Склады, движение материалов и выдача на объекты">
       {error && (
@@ -319,825 +273,85 @@ export default function Warehouse() {
           </TabsList>
 
           <TabsContent value="stock">
-            <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
-              <div className="mb-4 flex justify-end">
-                <button className={goldBtn} onClick={() => setShowWhForm((v) => !v)}>
-                  <Icon name={showWhForm ? "X" : "Plus"} size={16} />
-                  {showWhForm ? "Отмена" : "Добавить склад"}
-                </button>
-              </div>
-
-              {showWhForm && (
-                <div className="mb-5 grid gap-3 rounded-lg border border-white/10 bg-[#161616] p-4 md:grid-cols-4">
-                  <input
-                    className={inputCls}
-                    placeholder="Название склада"
-                    value={whForm.name}
-                    onChange={(e) => setWhForm({ ...whForm, name: e.target.value })}
-                  />
-                  <input
-                    className={inputCls}
-                    placeholder="Адрес"
-                    value={whForm.address}
-                    onChange={(e) => setWhForm({ ...whForm, address: e.target.value })}
-                  />
-                  <input
-                    className={inputCls}
-                    placeholder="Ответственный"
-                    value={whForm.responsible}
-                    onChange={(e) => setWhForm({ ...whForm, responsible: e.target.value })}
-                  />
-                  <input
-                    className={inputCls}
-                    placeholder="Номер телефона"
-                    type="tel"
-                    value={whForm.phone}
-                    onChange={(e) => setWhForm({ ...whForm, phone: e.target.value })}
-                  />
-                  <button className={goldBtn} onClick={addWarehouse} disabled={whForm.name.length < 2}>
-                    <Icon name="Check" size={16} />
-                    Сохранить
-                  </button>
-                </div>
-              )}
-
-              {warehouses.length === 0 ? (
-                <div className="py-16 text-center text-sm text-white/30">
-                  Складов пока нет — добавьте первый склад
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-white/10 text-xs uppercase text-white/40">
-                        <th className="py-2 pr-4 text-left font-medium">Название</th>
-                        <th className="py-2 pr-4 text-left font-medium">Адрес</th>
-                        <th className="py-2 pr-4 text-left font-medium">Ответственный</th>
-                        <th className="py-2 pr-4 text-left font-medium">Телефон</th>
-                        <th className="py-2 pr-4 text-left font-medium">Позиций</th>
-                        <th className="py-2 pr-4 text-left font-medium">Действия</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {warehouses.map((w) => (
-                        <tr key={w.id} className="border-b border-white/5 last:border-0">
-                          <td className="py-3 pr-4">{w.name}</td>
-                          <td className="py-3 pr-4 text-white/60">{w.address || "—"}</td>
-                          <td className="py-3 pr-4 text-white/60">{w.responsible || "—"}</td>
-                          <td className="py-3 pr-4 text-white/60">{w.phone || "—"}</td>
-                          <td className="py-3 pr-4">{w.positions}</td>
-                          <td className="py-3 pr-4">
-                            <div className="flex items-center gap-3">
-                              <button
-                                className="text-[#D4AF37] transition-colors hover:text-[#B8860B]"
-                                title="Добавить позицию на этот склад"
-                                onClick={() => {
-                                  setEditWh(null)
-                                  setAddToWh((prev) => (prev?.id === w.id ? null : w))
-                                }}
-                              >
-                                <Icon name={addToWh?.id === w.id ? "X" : "Plus"} size={18} />
-                              </button>
-                              <button
-                                className="text-white/60 transition-colors hover:text-white"
-                                title="Просмотр содержимого склада"
-                                onClick={() => setViewWh(w)}
-                              >
-                                <Icon name="Eye" size={17} />
-                              </button>
-                              <button
-                                className="text-white/60 transition-colors hover:text-[#D4AF37]"
-                                title="Редактировать склад"
-                                onClick={() =>
-                                  editWh?.id === w.id ? setEditWh(null) : startEdit(w)
-                                }
-                              >
-                                <Icon name={editWh?.id === w.id ? "X" : "Pencil"} size={16} />
-                              </button>
-                              <DeleteButton onConfirm={() => run(() => warehouseApi.removeWarehouse(w.id))} />
-                            </div>
-                          </td>
-                        </tr>
-                      )).flatMap((row, idx) => {
-                        const w = warehouses[idx]
-
-                        if (editWh?.id === w.id) {
-                          return [
-                            row,
-                            <tr key={`edit-${w.id}`} className="border-b border-white/5">
-                              <td colSpan={6} className="py-3">
-                                <div className="grid gap-3 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4 md:grid-cols-3">
-                                  <div className="text-sm text-white/70 md:col-span-3">
-                                    Редактирование склада
-                                  </div>
-                                  <input
-                                    className={inputCls}
-                                    placeholder="Название склада"
-                                    value={editForm.name}
-                                    onChange={(e) =>
-                                      setEditForm({ ...editForm, name: e.target.value })
-                                    }
-                                  />
-                                  <input
-                                    className={inputCls}
-                                    placeholder="Адрес"
-                                    value={editForm.address}
-                                    onChange={(e) =>
-                                      setEditForm({ ...editForm, address: e.target.value })
-                                    }
-                                  />
-                                  <input
-                                    className={inputCls}
-                                    placeholder="Ответственный"
-                                    value={editForm.responsible}
-                                    onChange={(e) =>
-                                      setEditForm({ ...editForm, responsible: e.target.value })
-                                    }
-                                  />
-                                  <input
-                                    className={inputCls}
-                                    placeholder="Номер телефона"
-                                    type="tel"
-                                    value={editForm.phone}
-                                    onChange={(e) =>
-                                      setEditForm({ ...editForm, phone: e.target.value })
-                                    }
-                                  />
-                                  <button
-                                    className={goldBtn}
-                                    onClick={submitEdit}
-                                    disabled={editForm.name.trim().length < 2}
-                                  >
-                                    <Icon name="Check" size={16} />
-                                    Сохранить
-                                  </button>
-                                  <button
-                                    className="rounded-lg border border-white/10 px-4 py-2.5 text-sm text-white/60 transition-colors hover:text-white"
-                                    onClick={() => setEditWh(null)}
-                                  >
-                                    Отмена
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>,
-                          ]
-                        }
-
-                        if (addToWh?.id !== w.id) return [row]
-                        return [
-                          row,
-                          <tr key={`form-${w.id}`} className="border-b border-white/5">
-                            <td colSpan={6} className="py-3">
-                              <div className="grid gap-3 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4 md:grid-cols-3">
-                                <div className="text-sm text-white/70 md:col-span-3">
-                                  Добавить позицию на склад «{w.name}»
-                                </div>
-                                <input
-                                  className={inputCls}
-                                  placeholder="Название"
-                                  value={whItemForm.name}
-                                  onChange={(e) =>
-                                    setWhItemForm({ ...whItemForm, name: e.target.value })
-                                  }
-                                />
-                                <select
-                                  className={inputCls}
-                                  value={whItemForm.kind}
-                                  onChange={(e) =>
-                                    setWhItemForm({ ...whItemForm, kind: e.target.value })
-                                  }
-                                >
-                                  <option value="материал">Материал</option>
-                                  <option value="инструмент">Инструмент</option>
-                                  <option value="оборудование">Оборудование</option>
-                                  <option value="расходник">Расходник</option>
-                                </select>
-                                <select
-                                  className={inputCls}
-                                  value={whItemForm.unit}
-                                  onChange={(e) =>
-                                    setWhItemForm({ ...whItemForm, unit: e.target.value })
-                                  }
-                                >
-                                  {["шт", "м²", "м", "м³", "кг", "т", "л", "уп", "рул", "меш", "компл"].map(
-                                    (u) => (
-                                      <option key={u} value={u}>
-                                        {u}
-                                      </option>
-                                    )
-                                  )}
-                                </select>
-                                <input
-                                  className={inputCls}
-                                  type="number"
-                                  min="0"
-                                  placeholder="Количество"
-                                  value={whItemForm.qty}
-                                  onChange={(e) =>
-                                    setWhItemForm({ ...whItemForm, qty: e.target.value })
-                                  }
-                                />
-                                <input
-                                  className={inputCls}
-                                  type="number"
-                                  min="0"
-                                  placeholder="Цена за единицу"
-                                  value={whItemForm.price}
-                                  onChange={(e) =>
-                                    setWhItemForm({ ...whItemForm, price: e.target.value })
-                                  }
-                                />
-                                <button
-                                  className={goldBtn}
-                                  onClick={submitWhItem}
-                                  disabled={whItemForm.name.trim().length < 2}
-                                >
-                                  <Icon name="Check" size={16} />
-                                  Добавить
-                                </button>
-                              </div>
-                            </td>
-                          </tr>,
-                        ]
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+            <WarehouseStockTab
+              warehouses={warehouses}
+              whForm={whForm}
+              setWhForm={setWhForm}
+              showWhForm={showWhForm}
+              setShowWhForm={setShowWhForm}
+              addWarehouse={addWarehouse}
+              addToWh={addToWh}
+              setAddToWh={setAddToWh}
+              whItemForm={whItemForm}
+              setWhItemForm={setWhItemForm}
+              submitWhItem={submitWhItem}
+              editWh={editWh}
+              setEditWh={setEditWh}
+              editForm={editForm}
+              setEditForm={setEditForm}
+              startEdit={startEdit}
+              submitEdit={submitEdit}
+              setViewWh={setViewWh}
+              run={run}
+            />
           </TabsContent>
 
           <TabsContent value="ledger">
-            <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
-              <div className="mb-4 flex flex-wrap items-center gap-3">
-                <div className="relative min-w-[240px] flex-1">
-                  <Icon
-                    name="Search"
-                    size={16}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30"
-                  />
-                  <input
-                    className={`${inputCls} pl-9`}
-                    placeholder="Поиск по всем складам: материал, инструмент, ответственный, телефон"
-                    value={globalSearch}
-                    onChange={(e) => setGlobalSearch(e.target.value)}
-                  />
-                  {globalSearch && (
-                    <button
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white"
-                      onClick={() => setGlobalSearch("")}
-                    >
-                      <Icon name="X" size={15} />
-                    </button>
-                  )}
-                </div>
-                <button className={goldBtn} onClick={() => setShowItemForm((v) => !v)}>
-                  <Icon name={showItemForm ? "X" : "Plus"} size={16} />
-                  {showItemForm ? "Отмена" : "Добавить позицию"}
-                </button>
-              </div>
-
-              {globalSearch.trim().length > 0 && (
-                <div className="mb-5 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4">
-                  <div className="mb-3 flex items-center gap-2 text-sm text-white/70">
-                    <Icon name="Search" size={15} className="text-[#D4AF37]" />
-                    Найдено: {searchResults.length}
-                  </div>
-
-                  {searchResults.length === 0 ? (
-                    <div className="py-6 text-center text-sm text-white/30">
-                      Ничего не найдено по запросу «{globalSearch}»
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {searchResults.map((r) => (
-                        <div
-                          key={r.item.id}
-                          className="rounded-lg border border-white/10 bg-[#1f1f1f] p-3"
-                        >
-                          <div className="mb-2 flex flex-wrap items-center gap-2">
-                            <span className="text-sm">{r.item.name}</span>
-                            {kindBadge(r.item.kind)}
-                            <span className="text-sm text-white/50">
-                              {num(r.item.qty)} {r.item.unit}
-                            </span>
-                            {r.item.object_id && (
-                              <span className="rounded-md bg-white/10 px-2 py-0.5 text-xs text-white/60">
-                                выдано на {r.item.object_code}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-white/50">
-                            <span className="flex items-center gap-1.5">
-                              <Icon name="Warehouse" size={13} className="text-[#D4AF37]" />
-                              {r.wh?.name || "Склад не указан"}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <Icon name="User" size={13} />
-                              {r.wh?.responsible || "Ответственный не указан"}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <Icon name="Phone" size={13} />
-                              {r.wh?.phone ? (
-                                <a href={`tel:${r.wh.phone}`} className="hover:text-[#D4AF37]">
-                                  {r.wh.phone}
-                                </a>
-                              ) : (
-                                "Телефон не указан"
-                              )}
-                            </span>
-                            {r.wh?.address && (
-                              <span className="flex items-center gap-1.5">
-                                <Icon name="MapPin" size={13} />
-                                {r.wh.address}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-
-              {showItemForm && (
-                <div className="mb-5 grid gap-3 rounded-lg border border-white/10 bg-[#161616] p-4 md:grid-cols-4">
-                  <input
-                    className={inputCls}
-                    placeholder="Название"
-                    value={itemForm.name}
-                    onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
-                  />
-                  <select
-                    className={inputCls}
-                    value={itemForm.kind}
-                    onChange={(e) => setItemForm({ ...itemForm, kind: e.target.value })}
-                  >
-                    <option value="материал">Материал</option>
-                    <option value="инструмент">Инструмент</option>
-                    <option value="оборудование">Оборудование</option>
-                    <option value="расходник">Расходник</option>
-                  </select>
-                  <select
-                    className={inputCls}
-                    value={itemForm.warehouse_id}
-                    onChange={(e) => setItemForm({ ...itemForm, warehouse_id: e.target.value })}
-                  >
-                    <option value="">Склад не выбран</option>
-                    {warehouses.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {w.name}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    className={inputCls}
-                    placeholder="Ед. изм."
-                    value={itemForm.unit}
-                    onChange={(e) => setItemForm({ ...itemForm, unit: e.target.value })}
-                  />
-                  <input
-                    className={inputCls}
-                    placeholder="Количество"
-                    type="number"
-                    value={itemForm.qty}
-                    onChange={(e) => setItemForm({ ...itemForm, qty: e.target.value })}
-                  />
-                  <input
-                    className={inputCls}
-                    placeholder="Цена"
-                    type="number"
-                    value={itemForm.price}
-                    onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })}
-                  />
-                  <button className={goldBtn} onClick={addItem} disabled={itemForm.name.length < 2}>
-                    <Icon name="Check" size={16} />
-                    Сохранить
-                  </button>
-                </div>
-              )}
-
-              {editItem && (
-                <div className="mb-5 grid gap-3 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4 md:grid-cols-3">
-                  <div className="text-sm text-white/70 md:col-span-3">
-                    Редактирование позиции «{editItem.name}»
-                  </div>
-                  <input
-                    className={inputCls}
-                    placeholder="Название"
-                    value={editItemForm.name}
-                    onChange={(e) => setEditItemForm({ ...editItemForm, name: e.target.value })}
-                  />
-                  <select
-                    className={inputCls}
-                    value={editItemForm.kind}
-                    onChange={(e) => setEditItemForm({ ...editItemForm, kind: e.target.value })}
-                  >
-                    <option value="материал">Материал</option>
-                    <option value="инструмент">Инструмент</option>
-                    <option value="оборудование">Оборудование</option>
-                    <option value="расходник">Расходник</option>
-                  </select>
-                  <select
-                    className={inputCls}
-                    value={editItemForm.warehouse_id}
-                    onChange={(e) =>
-                      setEditItemForm({ ...editItemForm, warehouse_id: e.target.value })
-                    }
-                  >
-                    <option value="">Склад не выбран</option>
-                    {warehouses.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {w.name}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    className={inputCls}
-                    value={editItemForm.unit}
-                    onChange={(e) => setEditItemForm({ ...editItemForm, unit: e.target.value })}
-                  >
-                    {["шт", "м²", "м", "м³", "кг", "т", "л", "уп", "рул", "меш", "компл"].map((u) => (
-                      <option key={u} value={u}>
-                        {u}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    className={inputCls}
-                    type="number"
-                    min="0"
-                    placeholder="Количество"
-                    value={editItemForm.qty}
-                    onChange={(e) => setEditItemForm({ ...editItemForm, qty: e.target.value })}
-                  />
-                  <input
-                    className={inputCls}
-                    type="number"
-                    min="0"
-                    placeholder="Цена за единицу"
-                    value={editItemForm.price}
-                    onChange={(e) => setEditItemForm({ ...editItemForm, price: e.target.value })}
-                  />
-                  <button
-                    className={goldBtn}
-                    onClick={submitEditItem}
-                    disabled={editItemForm.name.trim().length < 2}
-                  >
-                    <Icon name="Check" size={16} />
-                    Сохранить
-                  </button>
-                  <button
-                    className="rounded-lg border border-white/10 px-4 py-2.5 text-sm text-white/60 transition-colors hover:text-white"
-                    onClick={() => setEditItem(null)}
-                  >
-                    Отмена
-                  </button>
-                </div>
-              )}
-
-              {restockFor && (
-                <div className="mb-5 grid gap-3 rounded-lg border border-emerald-500/30 bg-[#161616] p-4 md:grid-cols-4">
-                  <div className="flex items-center text-sm text-white/70 md:col-span-4">
-                    Приход «{restockFor.name}» — сейчас на складе {num(restockFor.qty)} {restockFor.unit}
-                  </div>
-                  <input
-                    className={inputCls}
-                    placeholder="Сколько поступило"
-                    type="number"
-                    value={restockQty}
-                    onChange={(e) => setRestockQty(e.target.value)}
-                  />
-                  <input
-                    className={inputCls}
-                    placeholder="Новая цена (необязательно)"
-                    type="number"
-                    value={restockPrice}
-                    onChange={(e) => setRestockPrice(e.target.value)}
-                  />
-                  <button
-                    className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm text-white transition-colors hover:bg-emerald-700 disabled:opacity-40"
-                    onClick={submitRestock}
-                    disabled={Number(restockQty) <= 0}
-                  >
-                    <Icon name="PackagePlus" size={16} />
-                    Оприходовать
-                  </button>
-                  <button
-                    className="rounded-lg border border-white/10 px-4 py-2.5 text-sm text-white/60 transition-colors hover:text-white"
-                    onClick={() => setRestockFor(null)}
-                  >
-                    Отмена
-                  </button>
-                </div>
-              )}
-
-              {issueFor && (
-                <div className="mb-5 grid gap-3 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4 md:grid-cols-4">
-                  <div className="flex items-center text-sm text-white/70 md:col-span-4">
-                    Выдать «{issueFor.name}» — на складе {num(issueFor.qty)} {issueFor.unit}
-                  </div>
-                  <select
-                    className={inputCls}
-                    value={issueObject}
-                    onChange={(e) => setIssueObject(e.target.value)}
-                  >
-                    <option value="">Выберите объект</option>
-                    {objects.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.object_code} — {o.client_name}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    className={inputCls}
-                    placeholder="Количество"
-                    type="number"
-                    value={issueQty}
-                    onChange={(e) => setIssueQty(e.target.value)}
-                  />
-                  <button
-                    className={goldBtn}
-                    onClick={submitIssue}
-                    disabled={!issueObject || Number(issueQty) <= 0}
-                  >
-                    <Icon name="Send" size={16} />
-                    Выдать
-                  </button>
-                  <button
-                    className="rounded-lg border border-white/10 px-4 py-2.5 text-sm text-white/60 transition-colors hover:text-white"
-                    onClick={() => setIssueFor(null)}
-                  >
-                    Отмена
-                  </button>
-                </div>
-              )}
-
-              {stockItems.length === 0 ? (
-                <div className="py-16 text-center text-sm text-white/30">
-                  Позиций пока нет — добавьте материал или инструмент
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-white/10 text-xs uppercase text-white/40">
-                        <th className="py-2 pr-4 text-left font-medium">Название</th>
-                        <th className="py-2 pr-4 text-left font-medium">Тип</th>
-                        <th className="py-2 pr-4 text-left font-medium">Склад</th>
-                        <th className="py-2 pr-4 text-left font-medium">Кол-во</th>
-                        <th className="py-2 pr-4 text-left font-medium">Ед. изм.</th>
-                        <th className="py-2 pr-4 text-left font-medium">Цена</th>
-                        <th className="py-2 pr-4 text-left font-medium">Сумма</th>
-                        <th className="py-2 pr-4 text-left font-medium">Действия</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {stockItems.map((i) => (
-                        <tr key={i.id} className="border-b border-white/5 last:border-0">
-                          <td className="py-3 pr-4">{i.name}</td>
-                          <td className="py-3 pr-4">{kindBadge(i.kind)}</td>
-                          <td className="py-3 pr-4 text-white/60">{i.warehouse_name || "—"}</td>
-                          <td className="py-3 pr-4">{num(i.qty)}</td>
-                          <td className="py-3 pr-4 text-white/60">{i.unit}</td>
-                          <td className="py-3 pr-4">{money(num(i.price))}</td>
-                          <td className="py-3 pr-4">{money(num(i.qty) * num(i.price))}</td>
-                          <td className="py-3 pr-4">
-                            <div className="flex items-center gap-3">
-                              <button
-                                className="text-emerald-400 transition-colors hover:text-emerald-300"
-                                title="Приход на склад"
-                                onClick={() => {
-                                  setEditItem(null)
-                                  setRestockFor(i)
-                                  setRestockQty("")
-                                  setRestockPrice("")
-                                }}
-                              >
-                                <Icon name="PackagePlus" size={16} />
-                              </button>
-                              <button
-                                className="text-[#D4AF37] transition-colors hover:text-[#B8860B] disabled:opacity-30"
-                                title="Выдать на объект"
-                                disabled={num(i.qty) <= 0}
-                                onClick={() => {
-                                  setEditItem(null)
-                                  setIssueFor(i)
-                                  setIssueQty(String(num(i.qty)))
-                                }}
-                              >
-                                <Icon name="Send" size={16} />
-                              </button>
-                              <button
-                                className="text-white/60 transition-colors hover:text-[#D4AF37]"
-                                title="Редактировать позицию"
-                                onClick={() =>
-                                  editItem?.id === i.id ? setEditItem(null) : startEditItem(i)
-                                }
-                              >
-                                <Icon name={editItem?.id === i.id ? "X" : "Pencil"} size={16} />
-                              </button>
-                              <DeleteButton onConfirm={() => run(() => warehouseApi.removeItem(i.id))} />
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+            <WarehouseLedgerTab
+              warehouses={warehouses}
+              objects={objects}
+              stockItems={stockItems}
+              searchResults={searchResults}
+              globalSearch={globalSearch}
+              setGlobalSearch={setGlobalSearch}
+              itemForm={itemForm}
+              setItemForm={setItemForm}
+              showItemForm={showItemForm}
+              setShowItemForm={setShowItemForm}
+              addItem={addItem}
+              editItem={editItem}
+              setEditItem={setEditItem}
+              editItemForm={editItemForm}
+              setEditItemForm={setEditItemForm}
+              startEditItem={startEditItem}
+              submitEditItem={submitEditItem}
+              restockFor={restockFor}
+              setRestockFor={setRestockFor}
+              restockQty={restockQty}
+              setRestockQty={setRestockQty}
+              restockPrice={restockPrice}
+              setRestockPrice={setRestockPrice}
+              submitRestock={submitRestock}
+              issueFor={issueFor}
+              setIssueFor={setIssueFor}
+              issueObject={issueObject}
+              setIssueObject={setIssueObject}
+              issueQty={issueQty}
+              setIssueQty={setIssueQty}
+              submitIssue={submitIssue}
+              run={run}
+            />
           </TabsContent>
 
           <TabsContent value="objects">
-            <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
-              <div className="mb-4 flex flex-wrap items-center gap-3">
-                <select
-                  className={`${inputCls} max-w-xs`}
-                  value={objectFilter}
-                  onChange={(e) => setObjectFilter(e.target.value)}
-                >
-                  <option value="">Все объекты</option>
-                  {usedObjects.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.object_code} — {o.client_name}
-                    </option>
-                  ))}
-                </select>
-                <span className="text-xs text-white/40">
-                  Показаны только позиции, выданные со склада
-                </span>
-                <span className="ml-auto rounded-lg border border-white/10 px-3 py-2 text-sm">
-                  <span className="text-white/40">Израсходовано на сумму:</span>{" "}
-                  <span className="text-[#D4AF37]">
-                    {money(
-                      filteredIssued.reduce((s, i) => s + num(i.used_qty) * num(i.price), 0)
-                    )}
-                  </span>
-                </span>
-              </div>
-
-              {filteredIssued.length === 0 ? (
-                <div className="py-16 text-center text-sm text-white/30">
-                  На объекты пока ничего не выдано — выдайте позицию на вкладке «Учет»
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-white/10 text-xs uppercase text-white/40">
-                        <th className="py-2 pr-4 text-left font-medium">Объект</th>
-                        <th className="py-2 pr-4 text-left font-medium">Адрес</th>
-                        <th className="py-2 pr-4 text-left font-medium">Позиция</th>
-                        <th className="py-2 pr-4 text-left font-medium">Тип</th>
-                        <th className="py-2 pr-4 text-left font-medium">Выдано</th>
-                        <th className="py-2 pr-4 text-left font-medium">Израсходовано</th>
-                        <th className="py-2 pr-4 text-left font-medium">Остаток</th>
-                        <th className="py-2 pr-4 text-left font-medium">Дата выдачи</th>
-                        <th className="py-2 pr-4 text-left font-medium">Затраты</th>
-                        <th className="py-2 pr-4 text-left font-medium">Действия</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredIssued.map((i) => (
-                        <tr key={i.id} className="border-b border-white/5 last:border-0">
-                          <td className="py-3 pr-4">
-                            <div>{i.object_code}</div>
-                            <div className="text-xs text-white/40">{i.object_client}</div>
-                          </td>
-                          <td className="py-3 pr-4 text-white/60">{i.object_address || "—"}</td>
-                          <td className="py-3 pr-4">{i.name}</td>
-                          <td className="py-3 pr-4">{kindBadge(i.kind)}</td>
-                          <td className="py-3 pr-4">
-                            {num(i.issued_qty)} {i.unit}
-                          </td>
-                          <td className="py-3 pr-4 text-emerald-400">
-                            {num(i.used_qty)} {i.unit}
-                          </td>
-                          <td className="py-3 pr-4">
-                            {num(i.issued_qty) - num(i.used_qty)} {i.unit}
-                          </td>
-                          <td className="py-3 pr-4 text-white/60">{fmtDate(i.issued_at)}</td>
-                          <td className="py-3 pr-4">{money(num(i.used_qty) * num(i.price))}</td>
-                          <td className="py-3 pr-4">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <button
-                                className="flex items-center gap-1.5 rounded-lg border border-emerald-500/40 px-3 py-1.5 text-xs text-emerald-400 transition-colors hover:bg-emerald-500/10 disabled:opacity-30"
-                                disabled={num(i.issued_qty) - num(i.used_qty) <= 0}
-                                onClick={() => {
-                                  const rest = num(i.issued_qty) - num(i.used_qty)
-                                  const val = window.prompt(
-                                    `Сколько израсходовано? Доступно ${rest} ${i.unit}`,
-                                    String(rest)
-                                  )
-                                  if (val === null) return
-                                  const q = Number(val)
-                                  if (q > 0) run(() => warehouseApi.consume(i.id, q))
-                                }}
-                              >
-                                <Icon name="CheckCheck" size={14} />
-                                Списать
-                              </button>
-                              <button
-                                className="flex items-center gap-1.5 rounded-lg border border-[#D4AF37]/40 px-3 py-1.5 text-xs text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10 disabled:opacity-30"
-                                disabled={num(i.issued_qty) - num(i.used_qty) <= 0}
-                                onClick={() => run(() => warehouseApi.returnToStock(i.id))}
-                              >
-                                <Icon name="Undo2" size={14} />
-                                Вернуть на склад
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+            <WarehouseObjectsTab
+              usedObjects={usedObjects}
+              filteredIssued={filteredIssued}
+              objectFilter={objectFilter}
+              setObjectFilter={setObjectFilter}
+              run={run}
+            />
           </TabsContent>
           <TabsContent value="history">
-            <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
-              <div className="mb-4 flex flex-wrap items-center gap-3">
-                <div className="relative min-w-[220px] flex-1">
-                  <Icon
-                    name="Search"
-                    size={16}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30"
-                  />
-                  <input
-                    className={`${inputCls} pl-9`}
-                    placeholder="Поиск: позиция, склад, объект, сотрудник"
-                    value={logSearch}
-                    onChange={(e) => setLogSearch(e.target.value)}
-                  />
-                </div>
-                <select
-                  className={`${inputCls} max-w-[220px]`}
-                  value={logAction}
-                  onChange={(e) => setLogAction(e.target.value)}
-                >
-                  <option value="">Все операции</option>
-                  {logActions.map((a) => (
-                    <option key={a} value={a}>
-                      {a}
-                    </option>
-                  ))}
-                </select>
-                <span className="text-xs text-white/40">Записей: {filteredLog.length}</span>
-              </div>
-
-              {filteredLog.length === 0 ? (
-                <div className="py-16 text-center text-sm text-white/30">
-                  {logRows.length === 0
-                    ? "История пуста — здесь появятся все операции со складом"
-                    : "Ничего не найдено по заданным условиям"}
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-white/10 text-xs uppercase text-white/40">
-                        <th className="py-2 pr-4 text-left font-medium">Дата и время</th>
-                        <th className="py-2 pr-4 text-left font-medium">Сотрудник</th>
-                        <th className="py-2 pr-4 text-left font-medium">Операция</th>
-                        <th className="py-2 pr-4 text-left font-medium">Позиция</th>
-                        <th className="py-2 pr-4 text-left font-medium">Кол-во</th>
-                        <th className="py-2 pr-4 text-left font-medium">Склад</th>
-                        <th className="py-2 pr-4 text-left font-medium">Объект</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredLog.map((l) => (
-                        <tr key={l.id} className="border-b border-white/5 last:border-0">
-                          <td className="whitespace-nowrap py-3 pr-4 text-white/60">
-                            {fmtDateTime(l.created_at)}
-                          </td>
-                          <td className="py-3 pr-4">{l.user_name || "—"}</td>
-                          <td className="py-3 pr-4">
-                            <span className={`rounded-md px-2 py-0.5 text-xs ${actionCls(l.action)}`}>
-                              {l.action}
-                            </span>
-                          </td>
-                          <td className="py-3 pr-4">
-                            {l.item_name || "—"}
-                            {l.kind && (
-                              <span className="ml-2 text-xs text-white/30">{l.kind}</span>
-                            )}
-                          </td>
-                          <td className="py-3 pr-4">
-                            {num(l.qty) ? `${num(l.qty)} ${l.unit}` : "—"}
-                          </td>
-                          <td className="py-3 pr-4 text-white/60">{l.warehouse_name || "—"}</td>
-                          <td className="py-3 pr-4 text-white/60">{l.object_code || "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+            <WarehouseHistoryTab
+              logRows={logRows}
+              filteredLog={filteredLog}
+              logActions={logActions}
+              logSearch={logSearch}
+              setLogSearch={setLogSearch}
+              logAction={logAction}
+              setLogAction={setLogAction}
+            />
           </TabsContent>
         </Tabs>
       )}
