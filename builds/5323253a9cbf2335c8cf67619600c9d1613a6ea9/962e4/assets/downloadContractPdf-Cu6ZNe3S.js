@@ -1,0 +1,6 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/html2pdf-CWcG3g70.js","assets/index-DH1fzlIY.js","assets/index-erbgwsuG.css"])))=>i.map(i=>d[i]);
+import{_ as l}from"./index-DH1fzlIY.js";async function s(a,o){const e=document.createElement("div");e.style.position="fixed",e.style.left="-10000px",e.style.top="0",e.style.width="794px";const t=document.createElement("div");t.style.background="#ffffff",t.style.color="#161616",t.style.padding="40px",t.style.fontFamily="Arial, sans-serif",t.style.fontSize="13px",t.style.lineHeight="1.5",t.innerHTML=`<style>
+    .pdf-doc p { margin: 0 0 12px; }
+    .pdf-doc h3 { margin: 20px 0 8px; }
+    .pdf-doc h2 { margin: 24px 0 10px; }
+  </style><div class="pdf-doc">${a}</div>`,e.appendChild(t),document.body.appendChild(e);const d=(await l(async()=>{const{default:n}=await import("./html2pdf-CWcG3g70.js").then(i=>i.h);return{default:n}},__vite__mapDeps([0,1,2]))).default;await d().set({margin:[10,10,10,10],filename:`Договор №${o}.pdf`,image:{type:"jpeg",quality:.98},html2canvas:{scale:2,useCORS:!0,backgroundColor:"#ffffff"},jsPDF:{unit:"mm",format:"a4",orientation:"portrait"}}).from(t).save(),document.body.removeChild(e)}export{s as d};

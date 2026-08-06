@@ -201,7 +201,7 @@ def handler(event: dict, context) -> dict:
             fields = []
             values = []
             for key in ['name', 'unit', 'qty', 'price', 'shop_name', 'note',
-                        'object_id', 'work_type']:
+                        'object_id', 'work_type', 'room_id', 'room_name', 'material_id']:
                 if key in body:
                     fields.append(f"{key} = %s")
                     values.append(to_num(body[key]) if key in ('qty', 'price') else body[key])

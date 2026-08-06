@@ -22,6 +22,23 @@ const num = (n: unknown) => Number(n || 0)
 const inputCls =
   "w-full bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
 
+const UNITS = ["шт", "м²", "м", "м.п.", "м³", "кг", "т", "л", "уп", "рул", "меш", "компл"]
+
+const WORK_TYPES = [
+  "Демонтажные работы",
+  "Подготовительные работы",
+  "Черновые работы",
+  "Чистовые работы",
+  "Плиточные работы",
+  "Устройство полов",
+  "Потолочные работы",
+  "Гипсокартонные работы",
+  "Малярные работы",
+  "Электромонтажные работы",
+  "Сантехнические работы",
+  "Столярные работы",
+]
+
 const goldBtn =
   "flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg disabled:opacity-40"
 
@@ -41,7 +58,17 @@ export default function Materials() {
   const [selectedObject, setSelectedObject] = useState<number | null>(null)
   const [showCalc, setShowCalc] = useState(false)
   const [editRow, setEditRow] = useState<ObjectMaterial | null>(null)
-  const [editForm, setEditForm] = useState({ qty: "", price: "", note: "" })
+  const [editForm, setEditForm] = useState({
+    material_id: "",
+    name: "",
+    unit: "",
+    qty: "",
+    price: "",
+    shop_name: "",
+    room_id: "",
+    work_type: "",
+    note: "",
+  })
 
   const load = () => {
     setLoading(true)
@@ -114,21 +141,58 @@ export default function Materials() {
 
   const openEdit = (m: ObjectMaterial) => {
     setEditRow(m)
-    setEditForm({ qty: String(num(m.qty)), price: String(num(m.price)), note: m.note || "" })
+    setEditForm({
+      material_id: m.material_id ? String(m.material_id) : "",
+      name: m.name || "",
+      unit: m.unit || "шт",
+      qty: String(num(m.qty)),
+      price: String(num(m.price)),
+      shop_name: m.shop_name || "",
+      room_id: m.room_id ? String(m.room_id) : "",
+      work_type: m.work_type || "",
+      note: m.note || "",
+    })
+  }
+
+  const pickMaterial = (id: string) => {
+    const ref = materials.find((x) => String(x.id) === id)
+    setEditForm((f) => ({
+      ...f,
+      material_id: id,
+      name: ref ? ref.name : f.name,
+      unit: ref ? ref.unit : f.unit,
+      price: ref ? String(num(ref.price)) : f.price,
+      shop_name: ref ? ref.shop_name : f.shop_name,
+    }))
   }
 
   const saveEdit = (thenPrint = false) =>
     run(async () => {
       if (!editRow || !activeObject) return
+      const room = rooms.find((r) => String(r.id) === editForm.room_id)
       const updated: ObjectMaterial = {
         ...editRow,
+        material_id: editForm.material_id ? Number(editForm.material_id) : null,
+        name: editForm.name,
+        unit: editForm.unit,
         qty: Number(editForm.qty || 0),
         price: Number(editForm.price || 0),
+        shop_name: editForm.shop_name,
+        room_id: room ? room.id : null,
+        room_name: room ? room.name : "",
+        work_type: editForm.work_type,
         note: editForm.note,
       }
       await materialsApi.updateObjectMaterial(editRow.id, {
+        material_id: updated.material_id,
+        name: updated.name,
+        unit: updated.unit,
         qty: updated.qty,
         price: updated.price,
+        shop_name: updated.shop_name,
+        room_id: updated.room_id,
+        room_name: updated.room_name,
+        work_type: updated.work_type,
         note: updated.note,
       })
       setEditRow(null)
@@ -511,20 +575,76 @@ export default function Materials() {
           onClick={() => setEditRow(null)}
         >
           <div
-            className="w-full max-w-md rounded-xl border border-white/10 bg-[#1f1f1f] p-6"
+            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-white/10 bg-[#1f1f1f] p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-1 text-base">{editRow.name}</div>
+            <div className="mb-1 text-base">Редактирование позиции</div>
             <div className="mb-5 text-xs text-white/40">
-              {editRow.room_name || "Без помещения"}
-              {editRow.work_type ? ` · ${editRow.work_type}` : ""}
+              {activeObject?.object_code} — {activeObject?.client_name}
             </div>
 
-            <div className="grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs text-white/50">Материал из справочника</label>
+                <select
+                  className={inputCls}
+                  value={editForm.material_id}
+                  onChange={(e) => pickMaterial(e.target.value)}
+                >
+                  <option value="">Произвольная позиция</option>
+                  {materials.map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.name} — {money(num(x.price))}/{x.unit}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs text-white/50">Наименование</label>
+                <input
+                  className={inputCls}
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                />
+              </div>
+
               <div>
-                <label className="mb-1.5 block text-xs text-white/50">
-                  Количество, {editRow.unit}
-                </label>
+                <label className="mb-1.5 block text-xs text-white/50">Помещение</label>
+                <select
+                  className={inputCls}
+                  value={editForm.room_id}
+                  onChange={(e) => setEditForm({ ...editForm, room_id: e.target.value })}
+                >
+                  <option value="">Без помещения</option>
+                  {rooms
+                    .filter((r) => r.object_id === editRow.object_id)
+                    .map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs text-white/50">Вид работ</label>
+                <select
+                  className={inputCls}
+                  value={editForm.work_type}
+                  onChange={(e) => setEditForm({ ...editForm, work_type: e.target.value })}
+                >
+                  <option value="">Не указан</option>
+                  {WORK_TYPES.map((w) => (
+                    <option key={w} value={w}>
+                      {w}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs text-white/50">Количество</label>
                 <input
                   className={inputCls}
                   type="number"
@@ -534,6 +654,22 @@ export default function Materials() {
                   onChange={(e) => setEditForm({ ...editForm, qty: e.target.value })}
                 />
               </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs text-white/50">Единица измерения</label>
+                <select
+                  className={inputCls}
+                  value={editForm.unit}
+                  onChange={(e) => setEditForm({ ...editForm, unit: e.target.value })}
+                >
+                  {UNITS.map((u) => (
+                    <option key={u} value={u}>
+                      {u}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label className="mb-1.5 block text-xs text-white/50">Цена за единицу, ₽</label>
                 <input
@@ -545,7 +681,17 @@ export default function Materials() {
                   onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
                 />
               </div>
+
               <div>
+                <label className="mb-1.5 block text-xs text-white/50">Магазин</label>
+                <input
+                  className={inputCls}
+                  value={editForm.shop_name}
+                  onChange={(e) => setEditForm({ ...editForm, shop_name: e.target.value })}
+                />
+              </div>
+
+              <div className="sm:col-span-2">
                 <label className="mb-1.5 block text-xs text-white/50">Примечание</label>
                 <input
                   className={inputCls}
@@ -553,7 +699,8 @@ export default function Materials() {
                   onChange={(e) => setEditForm({ ...editForm, note: e.target.value })}
                 />
               </div>
-              <div className="rounded-lg border border-[#D4AF37]/30 bg-[#161616] px-4 py-2.5 text-sm">
+
+              <div className="rounded-lg border border-[#D4AF37]/30 bg-[#161616] px-4 py-2.5 text-sm sm:col-span-2">
                 Сумма:{" "}
                 <span className="text-[#D4AF37]">
                   {money(Number(editForm.qty || 0) * Number(editForm.price || 0))}
