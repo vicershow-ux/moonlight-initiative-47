@@ -288,7 +288,7 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
 {dark_block('1. Работы, перечисленные в настоящем Акте, выполнены Подрядчиком и переданы Заказчику в указанном объёме.')}
 
 <p style="font-weight:600;margin:18px 0 8px">Перечень и стоимость принятых работ</p>
-<table style="border-collapse:collapse;width:100%;font-size:12.5px;color:#1a1a1a">
+<table class="works-table" style="border-collapse:collapse;width:100%;font-size:12.5px;color:#1a1a1a">
 <thead><tr style="background:#5C3A11;color:#ffffff">
 <th style="border:1.2px solid #6B4508;padding:7px;color:#ffffff;font-weight:700;width:4%">№</th>
 <th style="border:1.2px solid #6B4508;padding:7px;color:#ffffff;font-weight:700;width:46%">Наименование работ</th>

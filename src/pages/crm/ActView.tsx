@@ -46,9 +46,12 @@ export default function ActView() {
               }
               body { padding: 0 2mm; color: #1a1a1a !important; }
               table, tr, td, th { page-break-inside: avoid; }
-              thead th { background: #5C3A11 !important; color: #ffffff !important; font-weight: 700 !important; }
-              tbody td { border: 1.2px solid #6B4508 !important; color: #1a1a1a !important; }
-              thead th { border: 1.2px solid #6B4508 !important; }
+              table:not(.works-table) td,
+              table:not(.works-table) th { border: none !important; }
+              .works-table thead th { background: #5C3A11 !important; color: #ffffff !important; font-weight: 700 !important; }
+              .works-table tbody td,
+              .works-table thead th { border: 1.2px solid #6B4508 !important; }
+              .works-table tbody td { color: #1a1a1a !important; }
             }
           </style>
         </head>
