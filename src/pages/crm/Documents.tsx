@@ -1,31 +1,15 @@
 import { useEffect, useMemo, useState } from "react"
-import { Link } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { estimatesApi, objectsApi, objectStatusesApi, contractsApi, actsApi, materialsApi, Estimate, ObjectItem, ObjectStatus, Contract, Act, MaterialEstimate } from "@/lib/api"
 import { printMaterials, downloadMaterialsPdf } from "@/lib/printMaterials"
 import { printEstimate, downloadEstimatePdf } from "@/lib/printEstimate"
 import { downloadContractPdf } from "@/lib/downloadContractPdf"
-import { getStatusBadgeClass } from "@/lib/objectStatusColors"
 import { useAuth } from "@/contexts/AuthContext"
-import { cn } from "@/lib/utils"
-import { DeleteButton } from "@/components/ui/delete-button"
-
-type TabKey = "all" | "estimates" | "material_estimates" | "contracts" | "acts"
-
-const tabs: { key: TabKey; label: string }[] = [
-  { key: "all", label: "Все документы" },
-  { key: "estimates", label: "Сметы на работу" },
-  { key: "material_estimates", label: "Сметы на материалы" },
-  { key: "contracts", label: "Договоры" },
-  { key: "acts", label: "Акты" },
-]
-
-const formatMoney = (n: number) =>
-  new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n) + " ₽"
-
-const formatDate = (d: string) =>
-  new Date(d).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" })
+import { DocumentsToolbar } from "@/components/crm/documents/DocumentsToolbar"
+import { DocumentEstimateRow, DocumentMatEstimateRow } from "@/components/crm/documents/DocumentEstimateRows"
+import { DocumentContractRow, DocumentActRow } from "@/components/crm/documents/DocumentContractRows"
+import { TabKey } from "@/components/crm/documents/constants"
 
 export default function Documents() {
   const { user } = useAuth()
@@ -245,32 +229,12 @@ export default function Documents() {
   return (
     <CrmLayout title="Реестр документов" subtitle="Единый центр управления сметами, договорами подряда и актами выполненных работ вашей компании">
       <div className="bg-[#1f1f1f] border border-white/10 rounded-xl overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border-b border-white/10">
-          <div className="flex items-center gap-1 bg-[#161616] rounded-lg p-1 overflow-x-auto">
-            {tabs.map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors",
-                  tab === t.key ? "bg-[#D4AF37] text-[#161616]" : "text-white/50 hover:text-white"
-                )}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="relative w-full sm:w-72">
-            <Icon name="Search" size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Поиск по номеру, адресу, заказчику..."
-              className="w-full bg-[#161616] border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50"
-            />
-          </div>
-        </div>
+        <DocumentsToolbar
+          tab={tab}
+          setTab={setTab}
+          search={search}
+          setSearch={setSearch}
+        />
 
         {loading ? (
           <div className="flex justify-center py-16">
@@ -303,306 +267,57 @@ export default function Documents() {
                 </tr>
               </thead>
               <tbody>
-                {showEstimates && filteredEstimates.map((e) => {
-                  const obj = objectsMap[e.object_id]
-                  return (
-                    <tr key={`est-${e.id}`} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
-                      <td className="py-3 px-4">
-                        <span className="text-[#D4AF37] font-medium text-xs">Смета на работу</span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <p className="font-medium">Смета на ремонтные работы</p>
-                        <p className="text-xs text-white/30">№{e.id}</p>
-                      </td>
-                      <td className="py-3 px-4 text-white/60">{formatDate(e.created_at)}</td>
-                      <td className="py-3 px-4 text-white/60">
-                        {obj?.object_code || e.object_code || "—"}
-                      </td>
-                      <td className="py-3 px-4 text-white/60">{e.client_name || obj?.client_name || "—"}</td>
-                      <td className="py-3 px-4 font-medium">{formatMoney(e.total_amount)}</td>
-                      <td className="py-3 px-4">
-                        {obj?.status ? (
-                          <span className={cn(
-                            "px-2 py-0.5 rounded-full text-xs",
-                            getStatusBadgeClass(objectStatuses.find((s) => s.name === obj.status)?.color)
-                          )}>
-                            {obj.status}
-                          </span>
-                        ) : "—"}
-                      </td>
-                      <td className="py-3 px-4">
-                        {e.has_pending ? (
-                          <span className="px-2 py-0.5 rounded-full text-xs bg-orange-500/20 text-orange-300">
-                            ожидает согласования
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full text-xs bg-green-500/20 text-green-300">
-                            утверждена
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <Link
-                            to={`/cabinet/objects/${e.object_id}/estimates/${e.id}`}
-                            className="text-white/40 hover:text-white transition-colors"
-                            title="Просмотр"
-                          >
-                            <Icon name="Eye" size={15} />
-                          </Link>
-                          <Link
-                            to={`/cabinet/objects/${e.object_id}/estimates/${e.id}/edit`}
-                            className="text-white/40 hover:text-white transition-colors"
-                            title="Редактировать"
-                          >
-                            <Icon name="Pencil" size={15} />
-                          </Link>
-                          <button
-                            onClick={() => handlePrint(e)}
-                            className="text-white/40 hover:text-white transition-colors"
-                            title="Печать"
-                          >
-                            {printingId === e.id ? (
-                              <Icon name="Loader2" size={15} className="animate-spin" />
-                            ) : (
-                              <Icon name="Printer" size={15} />
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleDownloadPdf(e)}
-                            className="text-white/40 hover:text-white transition-colors"
-                            title="Скачать PDF"
-                          >
-                            {downloadingId === e.id ? (
-                              <Icon name="Loader2" size={15} className="animate-spin" />
-                            ) : (
-                              <Icon name="Download" size={15} />
-                            )}
-                          </button>
-                          <DeleteButton onConfirm={() => handleDelete(e.id)} />
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
+                {showEstimates && filteredEstimates.map((e) => (
+                  <DocumentEstimateRow
+                    key={`est-${e.id}`}
+                    e={e}
+                    obj={objectsMap[e.object_id]}
+                    objectStatuses={objectStatuses}
+                    printingId={printingId}
+                    downloadingId={downloadingId}
+                    handlePrint={handlePrint}
+                    handleDownloadPdf={handleDownloadPdf}
+                    handleDelete={handleDelete}
+                  />
+                ))}
 
-                {showMatEstimates && filteredMatEstimates.map((m) => {
-                  const obj = objectsMap[m.object_id]
-                  return (
-                    <tr key={`matest-${m.id}`} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
-                      <td className="py-3 px-4">
-                        <span className="text-[#B49AE5] font-medium text-xs">Смета на материал</span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <p className="font-medium">{m.title}</p>
-                        <p className="text-xs text-white/30">
-                          №{m.id}{m.room_names ? ` · ${m.room_names}` : ""}
-                        </p>
-                      </td>
-                      <td className="py-3 px-4 text-white/60">{formatDate(m.created_at)}</td>
-                      <td className="py-3 px-4 text-white/60">
-                        {obj?.object_code || m.object_code || "—"}
-                      </td>
-                      <td className="py-3 px-4 text-white/60">{m.client_name || obj?.client_name || "—"}</td>
-                      <td className="py-3 px-4 font-medium">{formatMoney(Number(m.total_amount))}</td>
-                      <td className="py-3 px-4">
-                        {obj?.status ? (
-                          <span className={cn(
-                            "px-2 py-0.5 rounded-full text-xs",
-                            getStatusBadgeClass(objectStatuses.find((s) => s.name === obj.status)?.color)
-                          )}>
-                            {obj.status}
-                          </span>
-                        ) : "—"}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-green-500/20 text-green-300">
-                          сохранена
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <Link
-                            to="/cabinet/materials"
-                            className="text-white/40 hover:text-[#D4AF37] transition-colors"
-                            title="Открыть в материалах"
-                          >
-                            <Icon name="Eye" size={15} />
-                          </Link>
-                          <button
-                            onClick={() => openMatEstimate(m, "print")}
-                            className="text-white/40 hover:text-white transition-colors"
-                            title="Печать"
-                          >
-                            {matBusyId === m.id ? (
-                              <Icon name="Loader2" size={15} className="animate-spin" />
-                            ) : (
-                              <Icon name="Printer" size={15} />
-                            )}
-                          </button>
-                          <button
-                            onClick={() => openMatEstimate(m, "pdf")}
-                            className="text-white/40 hover:text-white transition-colors"
-                            title="Скачать PDF"
-                          >
-                            <Icon name="Download" size={15} />
-                          </button>
-                          <DeleteButton onConfirm={() => handleDeleteMatEstimate(m.id)} />
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
+                {showMatEstimates && filteredMatEstimates.map((m) => (
+                  <DocumentMatEstimateRow
+                    key={`matest-${m.id}`}
+                    m={m}
+                    obj={objectsMap[m.object_id]}
+                    objectStatuses={objectStatuses}
+                    matBusyId={matBusyId}
+                    openMatEstimate={openMatEstimate}
+                    handleDeleteMatEstimate={handleDeleteMatEstimate}
+                  />
+                ))}
 
-                {showContracts && filteredContracts.map((c) => {
-                  const obj = objectsMap[c.object_id]
-                  return (
-                    <tr key={`contract-${c.id}`} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
-                      <td className="py-3 px-4">
-                        <span className="text-blue-400 font-medium text-xs">Договор</span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <p className="font-medium">Договор подряда на ремонт квартиры</p>
-                        <p className="text-xs text-white/30">№ {c.contract_number}</p>
-                      </td>
-                      <td className="py-3 px-4 text-white/60">{formatDate(c.contract_date || c.created_at)}</td>
-                      <td className="py-3 px-4 text-white/60">
-                        {obj?.object_code || c.object_code || "—"}
-                      </td>
-                      <td className="py-3 px-4 text-white/60">{c.client_name || obj?.client_name || "—"}</td>
-                      <td className="py-3 px-4 font-medium">{formatMoney(c.total_amount)}</td>
-                      <td className="py-3 px-4">
-                        {obj?.status ? (
-                          <span className={cn(
-                            "px-2 py-0.5 rounded-full text-xs",
-                            getStatusBadgeClass(objectStatuses.find((s) => s.name === obj.status)?.color)
-                          )}>
-                            {obj.status}
-                          </span>
-                        ) : "—"}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={cn(
-                          "px-2 py-0.5 rounded-full text-xs",
-                          c.status === "signed" ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"
-                        )}>
-                          {c.status === "signed" ? "подписан" : "черновик"}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <Link
-                            to={`/cabinet/objects/${c.object_id}/contracts/${c.id}`}
-                            className="text-white/40 hover:text-[#D4AF37] transition-colors"
-                            title="Просмотр"
-                          >
-                            <Icon name="Eye" size={15} />
-                          </Link>
-                          <Link
-                            to={`/cabinet/objects/${c.object_id}/contracts/${c.id}/edit`}
-                            className="text-white/40 hover:text-white transition-colors"
-                            title="Редактировать"
-                          >
-                            <Icon name="Pencil" size={15} />
-                          </Link>
-                          <button
-                            onClick={() => handlePrintContract(c)}
-                            className="text-white/40 hover:text-white transition-colors"
-                            title="Печать"
-                          >
-                            <Icon name="Printer" size={15} />
-                          </button>
-                          <button
-                            onClick={() => handleDownloadContractPdf(c)}
-                            className="text-white/40 hover:text-white transition-colors"
-                            title="Скачать PDF"
-                          >
-                            {downloadingContractId === c.id ? (
-                              <Icon name="Loader2" size={15} className="animate-spin" />
-                            ) : (
-                              <Icon name="Download" size={15} />
-                            )}
-                          </button>
-                          <DeleteButton onConfirm={() => handleDeleteContract(c.id)} />
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
+                {showContracts && filteredContracts.map((c) => (
+                  <DocumentContractRow
+                    key={`contract-${c.id}`}
+                    c={c}
+                    obj={objectsMap[c.object_id]}
+                    objectStatuses={objectStatuses}
+                    downloadingContractId={downloadingContractId}
+                    handlePrintContract={handlePrintContract}
+                    handleDownloadContractPdf={handleDownloadContractPdf}
+                    handleDeleteContract={handleDeleteContract}
+                  />
+                ))}
 
-                {showActs && filteredActs.map((a) => {
-                  const obj = objectsMap[a.object_id]
-                  return (
-                    <tr key={`act-${a.id}`} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
-                      <td className="py-3 px-4">
-                        <span className="text-purple-400 font-medium text-xs">Акт</span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <p className="font-medium">Акт выполненных работ</p>
-                        <p className="text-xs text-white/30">№ {a.act_number}</p>
-                      </td>
-                      <td className="py-3 px-4 text-white/60">{formatDate(a.act_date || a.created_at)}</td>
-                      <td className="py-3 px-4 text-white/60">{obj?.object_code || a.object_code || "—"}</td>
-                      <td className="py-3 px-4 text-white/60">{a.client_name || obj?.client_name || "—"}</td>
-                      <td className="py-3 px-4 font-medium">{formatMoney(a.total_amount)}</td>
-                      <td className="py-3 px-4">
-                        {obj?.status ? (
-                          <span className={cn(
-                            "px-2 py-0.5 rounded-full text-xs",
-                            getStatusBadgeClass(objectStatuses.find((s) => s.name === obj.status)?.color)
-                          )}>
-                            {obj.status}
-                          </span>
-                        ) : "—"}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={cn(
-                          "px-2 py-0.5 rounded-full text-xs",
-                          a.status === "signed" ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"
-                        )}>
-                          {a.status === "signed" ? "подписан" : "черновик"}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <Link
-                            to={`/cabinet/objects/${a.object_id}/acts/${a.id}`}
-                            className="text-white/40 hover:text-[#D4AF37] transition-colors"
-                            title="Просмотр"
-                          >
-                            <Icon name="Eye" size={15} />
-                          </Link>
-                          <Link
-                            to={`/cabinet/objects/${a.object_id}/acts/${a.id}/edit`}
-                            className="text-white/40 hover:text-white transition-colors"
-                            title="Редактировать"
-                          >
-                            <Icon name="Pencil" size={15} />
-                          </Link>
-                          <button
-                            onClick={() => handlePrintAct(a)}
-                            className="text-white/40 hover:text-white transition-colors"
-                            title="Печать"
-                          >
-                            <Icon name="Printer" size={15} />
-                          </button>
-                          <button
-                            onClick={() => handleDownloadActPdf(a)}
-                            className="text-white/40 hover:text-white transition-colors"
-                            title="Скачать PDF"
-                          >
-                            {downloadingContractId === -a.id ? (
-                              <Icon name="Loader2" size={15} className="animate-spin" />
-                            ) : (
-                              <Icon name="Download" size={15} />
-                            )}
-                          </button>
-                          <DeleteButton onConfirm={() => handleDeleteAct(a.id)} />
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
+                {showActs && filteredActs.map((a) => (
+                  <DocumentActRow
+                    key={`act-${a.id}`}
+                    a={a}
+                    obj={objectsMap[a.object_id]}
+                    objectStatuses={objectStatuses}
+                    downloadingContractId={downloadingContractId}
+                    handlePrintAct={handlePrintAct}
+                    handleDownloadActPdf={handleDownloadActPdf}
+                    handleDeleteAct={handleDeleteAct}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
