@@ -117,15 +117,22 @@ export default function Materials() {
     setEditForm({ qty: String(num(m.qty)), price: String(num(m.price)), note: m.note || "" })
   }
 
-  const saveEdit = () =>
+  const saveEdit = (thenPrint = false) =>
     run(async () => {
-      if (!editRow) return
-      await materialsApi.updateObjectMaterial(editRow.id, {
+      if (!editRow || !activeObject) return
+      const updated: ObjectMaterial = {
+        ...editRow,
         qty: Number(editForm.qty || 0),
         price: Number(editForm.price || 0),
         note: editForm.note,
+      }
+      await materialsApi.updateObjectMaterial(editRow.id, {
+        qty: updated.qty,
+        price: updated.price,
+        note: updated.note,
       })
       setEditRow(null)
+      if (thenPrint) printMaterials(activeObject, [updated], materials, companyName, true)
     })
 
   const addFromCalc = async (payload: {
@@ -314,6 +321,21 @@ export default function Materials() {
                                               onClick={() => openEdit(m)}
                                             >
                                               <Icon name="Pencil" size={16} />
+                                            </button>
+                                            <button
+                                              className="text-white/50 transition-colors hover:text-[#D4AF37]"
+                                              title="Печать"
+                                              onClick={() =>
+                                                printMaterials(
+                                                  activeObject,
+                                                  [m],
+                                                  materials,
+                                                  companyName,
+                                                  true
+                                                )
+                                              }
+                                            >
+                                              <Icon name="Printer" size={16} />
                                             </button>
                                             <button
                                               className="text-white/50 transition-colors hover:text-[#D4AF37]"
@@ -539,10 +561,17 @@ export default function Materials() {
               </div>
             </div>
 
-            <div className="mt-6 flex items-center gap-3">
-              <button className={goldBtn} onClick={saveEdit}>
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <button className={goldBtn} onClick={() => saveEdit(false)}>
                 <Icon name="Check" size={16} />
                 Сохранить
+              </button>
+              <button
+                className="flex items-center gap-2 rounded-lg border border-[#D4AF37]/40 px-4 py-2.5 text-sm text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10"
+                onClick={() => saveEdit(true)}
+              >
+                <Icon name="Printer" size={16} />
+                Сохранить и печать
               </button>
               <button
                 className="rounded-lg border border-white/10 px-4 py-2.5 text-sm text-white/60 transition-colors hover:text-white"

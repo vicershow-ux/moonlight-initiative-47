@@ -372,7 +372,8 @@ export function printMaterials(
   object: MaterialObject,
   items: ObjectMaterial[],
   catalog: MaterialItem[],
-  companyName: string
+  companyName: string,
+  autoPrint = false
 ) {
   const { styles, bodyContent, title } = buildMaterialsDocument(object, items, catalog, companyName)
   const html = `<!DOCTYPE html>
@@ -392,6 +393,13 @@ export function printMaterials(
   win.document.open()
   win.document.write(html)
   win.document.close()
+
+  if (autoPrint) {
+    win.onload = () => {
+      win.focus()
+      win.print()
+    }
+  }
 }
 
 function scopeStyles(css: string, scope: string) {
