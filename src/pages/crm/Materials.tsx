@@ -113,6 +113,7 @@ export default function Materials() {
     note: string
     room_id: number | null
     room_name: string
+    work_type: string
     merge: boolean
   }) => {
     if (!selectedObject) return
@@ -249,6 +250,7 @@ export default function Materials() {
                                   <thead>
                                     <tr className="border-b border-white/10 text-xs uppercase text-white/40">
                                       <th className="py-2 pr-4 text-left font-medium">Материал</th>
+                                      <th className="py-2 pr-4 text-left font-medium">Вид работ</th>
                                       <th className="py-2 pr-4 text-left font-medium">Кол-во</th>
                                       <th className="py-2 pr-4 text-left font-medium">Цена</th>
                                       <th className="py-2 pr-4 text-left font-medium">Сумма</th>
@@ -267,6 +269,9 @@ export default function Materials() {
                                           {m.note && (
                                             <div className="text-xs text-white/30">{m.note}</div>
                                           )}
+                                        </td>
+                                        <td className="py-2.5 pr-4 text-white/60">
+                                          {m.work_type || "—"}
                                         </td>
                                         <td className="whitespace-nowrap py-2.5 pr-4">
                                           {num(m.qty)} {m.unit}

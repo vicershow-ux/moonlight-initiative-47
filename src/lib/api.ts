@@ -1422,6 +1422,7 @@ export interface ObjectMaterial {
   note: string
   room_id: number | null
   room_name: string
+  work_type: string
   created_at: string
 }
 

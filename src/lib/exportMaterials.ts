@@ -59,12 +59,21 @@ export function exportMaterialsToExcel(
     rows.push([`МАГАЗИН: ${group.name}`])
     if (group.address) rows.push([`Адрес: ${group.address}`])
     if (group.phone) rows.push([`Телефон: ${group.phone}`])
-    rows.push(["Материал", "Помещение", "Кол-во", "Ед. изм.", "Цена, ₽", "Сумма, ₽"])
+    rows.push([
+      "Материал",
+      "Помещение",
+      "Вид работ",
+      "Кол-во",
+      "Ед. изм.",
+      "Цена, ₽",
+      "Сумма, ₽",
+    ])
 
     group.items.forEach((item) => {
       rows.push([
         item.name,
         item.room_name || "—",
+        item.work_type || "—",
         num(item.qty),
         item.unit,
         num(item.price),
@@ -72,15 +81,23 @@ export function exportMaterialsToExcel(
       ])
     })
 
-    rows.push(["", "", "", "", "Итого по магазину:", group.sum])
+    rows.push(["", "", "", "", "", "Итого по магазину:", group.sum])
     rows.push([])
     total += group.sum
   })
 
-  rows.push(["", "", "", "", "ИТОГО ПО ОБЪЕКТУ:", total])
+  rows.push(["", "", "", "", "", "ИТОГО ПО ОБЪЕКТУ:", total])
 
   const sheet = XLSX.utils.aoa_to_sheet(rows)
-  sheet["!cols"] = [{ wch: 42 }, { wch: 22 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 16 }]
+  sheet["!cols"] = [
+    { wch: 42 },
+    { wch: 20 },
+    { wch: 24 },
+    { wch: 10 },
+    { wch: 10 },
+    { wch: 14 },
+    { wch: 16 },
+  ]
 
   const book = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(book, sheet, "Закупка")

@@ -200,7 +200,8 @@ def handler(event: dict, context) -> dict:
                 return response(400, {'error': 'Не указана запись'})
             fields = []
             values = []
-            for key in ['name', 'unit', 'qty', 'price', 'shop_name', 'note', 'object_id']:
+            for key in ['name', 'unit', 'qty', 'price', 'shop_name', 'note',
+                        'object_id', 'work_type']:
                 if key in body:
                     fields.append(f"{key} = %s")
                     values.append(to_num(body[key]) if key in ('qty', 'price') else body[key])
@@ -284,4 +285,3 @@ def handler(event: dict, context) -> dict:
     finally:
         cur.close()
         conn.close()
-
