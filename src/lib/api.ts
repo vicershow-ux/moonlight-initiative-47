@@ -1272,6 +1272,20 @@ export interface WarehouseObject {
   address: string
 }
 
+export interface WarehouseLogRow {
+  id: number
+  user_name: string
+  action: string
+  item_name: string
+  kind: string
+  unit: string
+  qty: number
+  warehouse_name: string
+  object_code: string
+  details: string
+  created_at: string
+}
+
 export const warehouseApi = {
   async list() {
     const res = await fetch(WAREHOUSE_URL, { headers: { ...authHeaders() } })
@@ -1279,6 +1293,7 @@ export const warehouseApi = {
       warehouses: WarehouseRow[]
       items: WarehouseItem[]
       objects: WarehouseObject[]
+      log: WarehouseLogRow[]
     }>
   },
 

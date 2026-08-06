@@ -8,12 +8,32 @@ import {
   WarehouseRow,
   WarehouseItem,
   WarehouseObject,
+  WarehouseLogRow,
 } from "@/lib/api"
 
 const money = (n: number) =>
   new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n || 0) + " ₽"
 
 const num = (n: unknown) => Number(n || 0)
+
+const fmtDateTime = (d: string | null) =>
+  d
+    ? new Date(d).toLocaleString("ru-RU", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "—"
+
+const actionCls = (a: string) => {
+  if (a.includes("Выдано")) return "bg-[#D4AF37]/15 text-[#D4AF37]"
+  if (a.includes("Возврат") || a.includes("Приход")) return "bg-emerald-500/15 text-emerald-400"
+  if (a.includes("Списано")) return "bg-[#9B7BD4]/15 text-[#B49AE5]"
+  if (a.includes("Удал")) return "bg-red-500/15 text-red-400"
+  return "bg-white/10 text-white/60"
+}
 
 const fmtDate = (d: string | null) =>
   d ? new Date(d).toLocaleDateString("ru-RU") : "—"
@@ -28,6 +48,7 @@ export default function Warehouse() {
   const [warehouses, setWarehouses] = useState<WarehouseRow[]>([])
   const [items, setItems] = useState<WarehouseItem[]>([])
   const [objects, setObjects] = useState<WarehouseObject[]>([])
+  const [logRows, setLogRows] = useState<WarehouseLogRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
@@ -50,6 +71,9 @@ export default function Warehouse() {
 
   const [editWh, setEditWh] = useState<WarehouseRow | null>(null)
   const [editForm, setEditForm] = useState({ name: "", address: "", responsible: "", phone: "" })
+
+  const [logSearch, setLogSearch] = useState("")
+  const [logAction, setLogAction] = useState("")
 
   const [globalSearch, setGlobalSearch] = useState("")
 
@@ -88,6 +112,7 @@ export default function Warehouse() {
         setWarehouses(d.warehouses || [])
         setItems(d.items || [])
         setObjects(d.objects || [])
+        setLogRows(d.log || [])
       })
       .catch((e) => setError(e?.message || "Не удалось загрузить данные"))
       .finally(() => setLoading(false))
@@ -105,6 +130,23 @@ export default function Warehouse() {
         : issuedItems,
     [issuedItems, objectFilter]
   )
+
+  const logActions = useMemo(
+    () => Array.from(new Set(logRows.map((l) => l.action))).sort(),
+    [logRows]
+  )
+
+  const filteredLog = useMemo(() => {
+    const q = logSearch.trim().toLowerCase()
+    return logRows.filter(
+      (l) =>
+        (!logAction || l.action === logAction) &&
+        (!q ||
+          [l.item_name, l.warehouse_name, l.object_code, l.user_name, l.action]
+            .filter(Boolean)
+            .some((v) => String(v).toLowerCase().includes(q)))
+    )
+  }, [logRows, logSearch, logAction])
 
   const searchResults = useMemo(() => {
     const q = globalSearch.trim().toLowerCase()
@@ -272,6 +314,7 @@ export default function Warehouse() {
             <TabsTrigger value="stock">Склад</TabsTrigger>
             <TabsTrigger value="ledger">Учет</TabsTrigger>
             <TabsTrigger value="objects">Объекты</TabsTrigger>
+            <TabsTrigger value="history">История</TabsTrigger>
           </TabsList>
 
           <TabsContent value="stock">
@@ -1016,6 +1059,88 @@ export default function Warehouse() {
                               </button>
                             </div>
                           </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+          <TabsContent value="history">
+            <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+              <div className="mb-4 flex flex-wrap items-center gap-3">
+                <div className="relative min-w-[220px] flex-1">
+                  <Icon
+                    name="Search"
+                    size={16}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30"
+                  />
+                  <input
+                    className={`${inputCls} pl-9`}
+                    placeholder="Поиск: позиция, склад, объект, сотрудник"
+                    value={logSearch}
+                    onChange={(e) => setLogSearch(e.target.value)}
+                  />
+                </div>
+                <select
+                  className={`${inputCls} max-w-[220px]`}
+                  value={logAction}
+                  onChange={(e) => setLogAction(e.target.value)}
+                >
+                  <option value="">Все операции</option>
+                  {logActions.map((a) => (
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-white/40">Записей: {filteredLog.length}</span>
+              </div>
+
+              {filteredLog.length === 0 ? (
+                <div className="py-16 text-center text-sm text-white/30">
+                  {logRows.length === 0
+                    ? "История пуста — здесь появятся все операции со складом"
+                    : "Ничего не найдено по заданным условиям"}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-white/10 text-xs uppercase text-white/40">
+                        <th className="py-2 pr-4 text-left font-medium">Дата и время</th>
+                        <th className="py-2 pr-4 text-left font-medium">Сотрудник</th>
+                        <th className="py-2 pr-4 text-left font-medium">Операция</th>
+                        <th className="py-2 pr-4 text-left font-medium">Позиция</th>
+                        <th className="py-2 pr-4 text-left font-medium">Кол-во</th>
+                        <th className="py-2 pr-4 text-left font-medium">Склад</th>
+                        <th className="py-2 pr-4 text-left font-medium">Объект</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredLog.map((l) => (
+                        <tr key={l.id} className="border-b border-white/5 last:border-0">
+                          <td className="whitespace-nowrap py-3 pr-4 text-white/60">
+                            {fmtDateTime(l.created_at)}
+                          </td>
+                          <td className="py-3 pr-4">{l.user_name || "—"}</td>
+                          <td className="py-3 pr-4">
+                            <span className={`rounded-md px-2 py-0.5 text-xs ${actionCls(l.action)}`}>
+                              {l.action}
+                            </span>
+                          </td>
+                          <td className="py-3 pr-4">
+                            {l.item_name || "—"}
+                            {l.kind && (
+                              <span className="ml-2 text-xs text-white/30">{l.kind}</span>
+                            )}
+                          </td>
+                          <td className="py-3 pr-4">
+                            {num(l.qty) ? `${num(l.qty)} ${l.unit}` : "—"}
+                          </td>
+                          <td className="py-3 pr-4 text-white/60">{l.warehouse_name || "—"}</td>
+                          <td className="py-3 pr-4 text-white/60">{l.object_code || "—"}</td>
                         </tr>
                       ))}
                     </tbody>

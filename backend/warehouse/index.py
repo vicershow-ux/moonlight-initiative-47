@@ -32,14 +32,14 @@ def get_current_user(cur, event):
     if not token:
         return None
     cur.execute(
-        "SELECT u.id, u.company_id FROM sessions s JOIN users u ON u.id = s.user_id "
+        "SELECT u.id, u.company_id, u.full_name FROM sessions s JOIN users u ON u.id = s.user_id "
         "WHERE s.token = %s AND s.expires_at > NOW()",
         (token,)
     )
     row = cur.fetchone()
     if not row:
         return None
-    return {'user_id': row[0], 'company_id': row[1]}
+    return {'user_id': row[0], 'company_id': row[1], 'user_name': row[2] or ''}
 
 
 ITEM_KEYS = [
@@ -58,6 +58,46 @@ def to_num(v, default=0):
         return float(v)
     except (TypeError, ValueError):
         return default
+
+
+
+def wh_name(cur, warehouse_id):
+    if not warehouse_id:
+        return ''
+    cur.execute("SELECT name FROM warehouses WHERE id = %s", (warehouse_id,))
+    r = cur.fetchone()
+    return r[0] if r else ''
+
+
+def obj_code(cur, object_id):
+    if not object_id:
+        return ''
+    cur.execute("SELECT object_code FROM objects WHERE id = %s", (object_id,))
+    r = cur.fetchone()
+    return r[0] if r else ''
+
+
+def log(cur, user, action, item_name='', kind='', unit='', qty=0,
+        warehouse_name='', object_code='', details=''):
+    cur.execute(
+        "INSERT INTO warehouse_log (company_id, user_id, user_name, action, item_name, kind, "
+        "unit, qty, warehouse_name, object_code, details) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+        (user['company_id'], user['user_id'], user.get('user_name', ''), action,
+         item_name, kind, unit, qty, warehouse_name, object_code, details)
+    )
+
+
+def load_log(cur, company_id, limit=200):
+    cur.execute(
+        "SELECT id, user_name, action, item_name, kind, unit, qty, warehouse_name, "
+        "object_code, details, created_at FROM warehouse_log "
+        "WHERE company_id = %s ORDER BY created_at DESC LIMIT %s",
+        (company_id, limit)
+    )
+    keys = ['id', 'user_name', 'action', 'item_name', 'kind', 'unit', 'qty',
+            'warehouse_name', 'object_code', 'details', 'created_at']
+    return [dict(zip(keys, r)) for r in cur.fetchall()]
 
 
 def load_warehouses(cur, company_id):
@@ -120,6 +160,7 @@ def handler(event: dict, context) -> dict:
                 'warehouses': load_warehouses(cur, company_id),
                 'items': load_items(cur, company_id),
                 'objects': load_objects(cur, company_id),
+                'log': load_log(cur, company_id),
             })
 
         body = json.loads(event.get('body') or '{}')
@@ -135,6 +176,7 @@ def handler(event: dict, context) -> dict:
                  (body.get('responsible') or '').strip(), (body.get('phone') or '').strip())
             )
             new_id = cur.fetchone()[0]
+            log(cur, user, 'Создан склад', warehouse_name=name)
             conn.commit()
             return response(200, {'success': True, 'id': new_id})
 
@@ -152,6 +194,9 @@ def handler(event: dict, context) -> dict:
                  (body.get('unit') or 'шт').strip(), to_num(body.get('qty')), to_num(body.get('price')))
             )
             new_id = cur.fetchone()[0]
+            log(cur, user, 'Добавлена позиция', item_name=name, kind=kind,
+                unit=(body.get('unit') or 'шт').strip(), qty=to_num(body.get('qty')),
+                warehouse_name=wh_name(cur, body.get('warehouse_id')))
             conn.commit()
             return response(200, {'success': True, 'id': new_id})
 
@@ -194,6 +239,8 @@ def handler(event: dict, context) -> dict:
                 (company_id, wh_id, name, kind, unit, price, object_id, qty)
             )
             issued_id = cur.fetchone()[0]
+            log(cur, user, 'Выдано на объект', item_name=name, kind=kind, unit=unit, qty=qty,
+                warehouse_name=wh_name(cur, wh_id), object_code=obj_code(cur, object_id))
             conn.commit()
             return response(200, {'success': True, 'id': issued_id})
 
@@ -204,10 +251,12 @@ def handler(event: dict, context) -> dict:
             if qty <= 0:
                 return response(400, {'error': 'Укажите количество больше нуля'})
             cur.execute(
-                "SELECT id FROM warehouse_items WHERE id = %s AND company_id = %s AND object_id IS NULL",
+                "SELECT name, kind, unit, warehouse_id FROM warehouse_items "
+                "WHERE id = %s AND company_id = %s AND object_id IS NULL",
                 (row_id, company_id)
             )
-            if not cur.fetchone():
+            rs = cur.fetchone()
+            if not rs:
                 return response(404, {'error': 'Позиция не найдена на складе'})
             price = body.get('price')
             if price is not None and str(price) != '':
@@ -222,6 +271,8 @@ def handler(event: dict, context) -> dict:
                     "WHERE id = %s AND company_id = %s",
                     (qty, row_id, company_id)
                 )
+            log(cur, user, 'Приход на склад', item_name=rs[0], kind=rs[1], unit=rs[2],
+                qty=qty, warehouse_name=wh_name(cur, rs[3]))
             conn.commit()
             return response(200, {'success': True})
 
@@ -229,7 +280,7 @@ def handler(event: dict, context) -> dict:
             if not row_id:
                 return response(400, {'error': 'Не указана позиция'})
             cur.execute(
-                "SELECT issued_qty, used_qty, kind FROM warehouse_items "
+                "SELECT issued_qty, used_qty, kind, name, unit, object_id FROM warehouse_items "
                 "WHERE id = %s AND company_id = %s AND object_id IS NOT NULL",
                 (row_id, company_id)
             )
@@ -238,6 +289,7 @@ def handler(event: dict, context) -> dict:
                 return response(404, {'error': 'Выданная позиция не найдена'})
 
             issued_qty, used_qty, kind = float(src[0]), float(src[1]), src[2]
+            c_name, c_unit, c_obj = src[3], src[4], src[5]
             available = issued_qty - used_qty
             qty = to_num(body.get('qty'), available)
             if qty <= 0:
@@ -250,6 +302,8 @@ def handler(event: dict, context) -> dict:
                 "WHERE id = %s AND company_id = %s",
                 (qty, row_id, company_id)
             )
+            log(cur, user, 'Списано на объекте', item_name=c_name, kind=kind, unit=c_unit,
+                qty=qty, object_code=obj_code(cur, c_obj))
             conn.commit()
             return response(200, {'success': True})
 
@@ -258,7 +312,7 @@ def handler(event: dict, context) -> dict:
                 return response(400, {'error': 'Не указана позиция'})
 
             cur.execute(
-                "SELECT warehouse_id, name, kind, unit, price, issued_qty, used_qty FROM warehouse_items "
+                "SELECT warehouse_id, name, kind, unit, price, issued_qty, used_qty, object_id FROM warehouse_items "
                 "WHERE id = %s AND company_id = %s AND object_id IS NOT NULL",
                 (row_id, company_id)
             )
@@ -266,7 +320,7 @@ def handler(event: dict, context) -> dict:
             if not src:
                 return response(404, {'error': 'Выданная позиция не найдена'})
 
-            wh_id, name, kind, unit, price, issued_qty, used_qty = src
+            wh_id, name, kind, unit, price, issued_qty, used_qty, ret_obj = src
             issued_qty = float(issued_qty)
             used_qty = float(used_qty)
             available = issued_qty - used_qty
@@ -315,6 +369,8 @@ def handler(event: dict, context) -> dict:
                     (row_id, company_id)
                 )
 
+            log(cur, user, 'Возврат на склад', item_name=name, kind=kind, unit=unit,
+                qty=back_qty, warehouse_name=wh_name(cur, wh_id), object_code=obj_code(cur, ret_obj))
             conn.commit()
             return response(200, {'success': True})
 
@@ -334,6 +390,14 @@ def handler(event: dict, context) -> dict:
                     "WHERE id = %s AND company_id = %s",
                     values
                 )
+                cur.execute(
+                    "SELECT name, kind, unit, qty, warehouse_id FROM warehouse_items WHERE id = %s",
+                    (row_id,)
+                )
+                up = cur.fetchone()
+                if up:
+                    log(cur, user, 'Изменена позиция', item_name=up[0], kind=up[1], unit=up[2],
+                        qty=up[3], warehouse_name=wh_name(cur, up[4]))
                 conn.commit()
             return response(200, {'success': True})
 
@@ -352,24 +416,36 @@ def handler(event: dict, context) -> dict:
                     f"UPDATE warehouses SET {', '.join(fields)} WHERE id = %s AND company_id = %s",
                     values
                 )
+                log(cur, user, 'Изменён склад', warehouse_name=wh_name(cur, row_id))
                 conn.commit()
             return response(200, {'success': True})
 
         if method == 'DELETE' and entity == 'warehouse':
             if not row_id:
                 return response(400, {'error': 'Не указан склад'})
+            deleted_wh = wh_name(cur, row_id)
             cur.execute(
                 "UPDATE warehouse_items SET warehouse_id = NULL WHERE warehouse_id = %s AND company_id = %s",
                 (row_id, company_id)
             )
             cur.execute("DELETE FROM warehouses WHERE id = %s AND company_id = %s", (row_id, company_id))
+            log(cur, user, 'Удалён склад', warehouse_name=deleted_wh)
             conn.commit()
             return response(200, {'success': True})
 
         if method == 'DELETE' and entity == 'item':
             if not row_id:
                 return response(400, {'error': 'Не указана позиция'})
+            cur.execute(
+                "SELECT name, kind, unit, qty, warehouse_id FROM warehouse_items "
+                "WHERE id = %s AND company_id = %s",
+                (row_id, company_id)
+            )
+            dl = cur.fetchone()
             cur.execute("DELETE FROM warehouse_items WHERE id = %s AND company_id = %s", (row_id, company_id))
+            if dl:
+                log(cur, user, 'Удалена позиция', item_name=dl[0], kind=dl[1], unit=dl[2],
+                    qty=dl[3], warehouse_name=wh_name(cur, dl[4]))
             conn.commit()
             return response(200, {'success': True})
 
