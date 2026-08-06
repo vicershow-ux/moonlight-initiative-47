@@ -102,10 +102,22 @@ def handler(event: dict, context) -> dict:
                      'price', 'shop_name', 'note', 'created_at']
             object_materials = [dict(zip(mkeys, r)) for r in cur.fetchall()]
 
+            cur.execute(
+                "SELECT r.id, r.object_id, r.name, r.room_type, r.area, r.perimeter, "
+                "r.ceiling_height, r.wall_area FROM object_rooms r "
+                "JOIN objects o ON o.id = r.object_id "
+                "WHERE o.company_id = %s ORDER BY r.id",
+                (company_id,)
+            )
+            rkeys = ['id', 'object_id', 'name', 'room_type', 'area', 'perimeter',
+                     'ceiling_height', 'wall_area']
+            rooms = [dict(zip(rkeys, r)) for r in cur.fetchall()]
+
             return response(200, {
                 'materials': materials,
                 'objects': objects,
                 'object_materials': object_materials,
+                'rooms': rooms,
             })
 
         body = json.loads(event.get('body') or '{}')
@@ -246,4 +258,5 @@ def handler(event: dict, context) -> dict:
     finally:
         cur.close()
         conn.close()
+
 

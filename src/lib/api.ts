@@ -1423,6 +1423,17 @@ export interface ObjectMaterial {
   created_at: string
 }
 
+export interface MaterialRoom {
+  id: number
+  object_id: number
+  name: string
+  room_type: string
+  area: number
+  perimeter: number
+  ceiling_height: number
+  wall_area: number
+}
+
 export const materialsApi = {
   async list() {
     const res = await fetch(MATERIALS_URL, { headers: { ...authHeaders() } })
@@ -1430,6 +1441,7 @@ export const materialsApi = {
       materials: MaterialItem[]
       objects: MaterialObject[]
       object_materials: ObjectMaterial[]
+      rooms: MaterialRoom[]
     }>
   },
 

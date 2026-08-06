@@ -3,10 +3,12 @@ import { Link } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import Icon from "@/components/ui/icon"
+import { RoomCalculator } from "@/components/crm/RoomCalculator"
 import {
   materialsApi,
   MaterialItem,
   MaterialObject,
+  MaterialRoom,
   ObjectMaterial,
 } from "@/lib/api"
 
@@ -25,6 +27,7 @@ export default function Materials() {
   const [materials, setMaterials] = useState<MaterialItem[]>([])
   const [objects, setObjects] = useState<MaterialObject[]>([])
   const [objMaterials, setObjMaterials] = useState<ObjectMaterial[]>([])
+  const [rooms, setRooms] = useState<MaterialRoom[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
@@ -33,7 +36,6 @@ export default function Materials() {
 
   const [openObject, setOpenObject] = useState<number | null>(null)
   const [addForObject, setAddForObject] = useState<number | null>(null)
-  const [addForm, setAddForm] = useState({ material_id: "", qty: "1", price: "", note: "" })
 
   const load = () => {
     setLoading(true)
@@ -43,6 +45,7 @@ export default function Materials() {
         setMaterials(d.materials || [])
         setObjects(d.objects || [])
         setObjMaterials(d.object_materials || [])
+        setRooms(d.rooms || [])
       })
       .catch((e) => setError(e?.message || "Не удалось загрузить данные"))
       .finally(() => setLoading(false))
@@ -86,24 +89,14 @@ export default function Materials() {
   const startAdd = (objectId: number) => {
     setAddForObject(objectId)
     setOpenObject(objectId)
-    setAddForm({ material_id: "", qty: "1", price: "", note: "" })
   }
 
-  const submitAdd = () =>
-    run(async () => {
-      if (!addForObject) return
-      await materialsApi.addToObject({
-        object_id: addForObject,
-        material_id: Number(addForm.material_id),
-        qty: Number(addForm.qty || 0),
-        price: addForm.price ? Number(addForm.price) : undefined,
-        note: addForm.note,
-      })
-      setAddForObject(null)
-      setAddForm({ material_id: "", qty: "1", price: "", note: "" })
-    })
-
-  const selectedMaterial = materials.find((m) => String(m.id) === addForm.material_id)
+  const addFromCalc = async (payload: { material_id: number; qty: number; note: string }) => {
+    if (!addForObject) return
+    await materialsApi.addToObject({ object_id: addForObject, ...payload })
+    setAddForObject(null)
+    load()
+  }
 
   return (
     <CrmLayout title="Материалы" subtitle="Справочник материалов и закупки по объектам">
@@ -167,93 +160,20 @@ export default function Materials() {
                             className={goldBtn}
                             onClick={() => (addForObject === o.id ? setAddForObject(null) : startAdd(o.id))}
                           >
-                            <Icon name={addForObject === o.id ? "X" : "Plus"} size={16} />
-                            {addForObject === o.id ? "Отмена" : "Добавить материал"}
+                            <Icon name={addForObject === o.id ? "X" : "Calculator"} size={16} />
+                            {addForObject === o.id ? "Отмена" : "Рассчитать помещение"}
                           </button>
                         </div>
 
                         {addForObject === o.id && (
                           <div className="border-t border-white/10 p-4">
-                            {materials.length === 0 ? (
-                              <div className="text-sm text-white/40">
-                                Справочник пуст —{" "}
-                                <Link to="/cabinet/materials/new" className="text-[#D4AF37] hover:underline">
-                                  добавьте материал
-                                </Link>
-                              </div>
-                            ) : (
-                              <div className="grid gap-3 md:grid-cols-4">
-                                <select
-                                  className={`${inputCls} md:col-span-2`}
-                                  value={addForm.material_id}
-                                  onChange={(e) =>
-                                    setAddForm({ ...addForm, material_id: e.target.value })
-                                  }
-                                >
-                                  <option value="">Выберите материал из справочника</option>
-                                  {materials.map((m) => (
-                                    <option key={m.id} value={m.id}>
-                                      {m.name} — {money(num(m.price))}/{m.unit}
-                                      {m.shop_name ? ` · ${m.shop_name}` : ""}
-                                    </option>
-                                  ))}
-                                </select>
-                                <input
-                                  className={inputCls}
-                                  type="number"
-                                  min="0"
-                                  step="0.01"
-                                  placeholder={`Количество${selectedMaterial ? `, ${selectedMaterial.unit}` : ""}`}
-                                  value={addForm.qty}
-                                  onChange={(e) => setAddForm({ ...addForm, qty: e.target.value })}
-                                />
-                                <input
-                                  className={inputCls}
-                                  type="number"
-                                  min="0"
-                                  step="0.01"
-                                  placeholder={
-                                    selectedMaterial
-                                      ? `Цена (по умолчанию ${num(selectedMaterial.price)})`
-                                      : "Цена"
-                                  }
-                                  value={addForm.price}
-                                  onChange={(e) => setAddForm({ ...addForm, price: e.target.value })}
-                                />
-                                <input
-                                  className={`${inputCls} md:col-span-3`}
-                                  placeholder="Примечание"
-                                  value={addForm.note}
-                                  onChange={(e) => setAddForm({ ...addForm, note: e.target.value })}
-                                />
-                                <button
-                                  className={goldBtn}
-                                  onClick={submitAdd}
-                                  disabled={!addForm.material_id || Number(addForm.qty) <= 0}
-                                >
-                                  <Icon name="Check" size={16} />
-                                  Добавить
-                                </button>
-                                {selectedMaterial &&
-                                  num(selectedMaterial.consumption) > 0 &&
-                                  Number(addForm.qty) > 0 && (
-                                    <div className="rounded-lg border border-[#D4AF37]/30 bg-[#1f1f1f] px-4 py-2.5 text-sm text-white/70 md:col-span-4">
-                                      <Icon
-                                        name="Info"
-                                        size={14}
-                                        className="mr-2 inline text-[#D4AF37]"
-                                      />
-                                      {Number(addForm.qty)} {selectedMaterial.unit} хватит на{" "}
-                                      <span className="text-[#D4AF37]">
-                                        {(
-                                          Number(addForm.qty) * num(selectedMaterial.consumption)
-                                        ).toFixed(2)}{" "}
-                                        {selectedMaterial.consumption_unit}
-                                      </span>
-                                    </div>
-                                  )}
-                              </div>
-                            )}
+                            <RoomCalculator
+                              objectId={o.id}
+                              materials={materials}
+                              rooms={rooms}
+                              onAdd={addFromCalc}
+                              onCancel={() => setAddForObject(null)}
+                            />
                           </div>
                         )}
 
