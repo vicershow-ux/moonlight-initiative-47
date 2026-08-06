@@ -44,10 +44,11 @@ export default function ActView() {
                 print-color-adjust: exact !important;
                 color-adjust: exact !important;
               }
-              body { padding: 0 2mm; }
+              body { padding: 0 2mm; color: #1a1a1a !important; }
               table, tr, td, th { page-break-inside: avoid; }
               thead th { background: #5C3A11 !important; color: #ffffff !important; font-weight: 700 !important; }
-              td, th { border: 1px solid #7A4E10 !important; }
+              tbody td { border: 1.2px solid #6B4508 !important; color: #1a1a1a !important; }
+              thead th { border: 1.2px solid #6B4508 !important; }
             }
           </style>
         </head>
