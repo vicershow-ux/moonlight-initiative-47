@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import psycopg2
 
 
@@ -48,6 +49,19 @@ ACT_KEYS = [
 ]
 
 BASE_COLS = ", ".join([f"a.{k}" for k in ACT_KEYS])
+
+
+
+def extract_city(address):
+    if not address:
+        return ''
+    m = re.search(r'\bг\.?\s*([А-ЯЁ][а-яё\-]+(?:\s+[А-ЯЁ][а-яё\-]+)?)', address)
+    if m:
+        return m.group(1).strip()
+    first = address.split(',')[0].strip()
+    if first and not re.search(r'\d|ул|д\.|кв', first, re.I):
+        return first
+    return ''
 
 
 def esc(v):
@@ -197,6 +211,8 @@ def dark_block(text):
 def build_act_html(object_row, company_row, contract_row, opts, items, act_number, act_date, act_type, total_amount):
     client_name = esc(object_row.get('client_name'))
     address = esc(object_row.get('address'))
+    city = esc(extract_city(object_row.get('address')))
+    city_line = f'г. {city}' if city else 'г. _______________'
     client_phone = esc(object_row.get('client_phone'))
     client_email = esc(object_row.get('email'))
 
@@ -276,7 +292,7 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
 <h2 style="text-align:center;margin:0 0 4px;font-size:18px">АКТ СДАЧИ-ПРИЁМКИ ВЫПОЛНЕННЫХ РАБОТ № {esc(act_number)}</h2>
 
 <table style="width:100%;margin:10px 0 18px;font-size:12.5px;color:#6B4508;font-weight:600"><tr>
-<td style="text-align:left">г. _______________</td>
+<td style="text-align:left">{city_line}</td>
 <td style="text-align:right">{fmt_date_long(act_date)}</td>
 </tr></table>
 
