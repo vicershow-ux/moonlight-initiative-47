@@ -46,7 +46,18 @@ export function Header() {
       <nav className="container mx-auto px-6 flex items-center justify-between md:px-[24]">
         <a href="/" className="flex items-center gap-2.5 group" onClick={scrollToTop}>
           {logoUrl && (
-            <img src={logoUrl} alt={brandName} className="h-14 w-auto object-contain" />
+            <img
+              src={logoUrl === "/favicon.png" ? "/logo-112.png" : logoUrl}
+              srcSet={
+                logoUrl === "/favicon.png"
+                  ? "/logo-112.png 1x, /logo-168.png 1.5x, /logo-224.png 2x"
+                  : undefined
+              }
+              alt={brandName}
+              width={56}
+              height={56}
+              className="h-14 w-auto object-contain"
+            />
           )}
           <span className="text-xl font-semibold tracking-tight">
             {brandName.toLowerCase().endsWith("key") ? (

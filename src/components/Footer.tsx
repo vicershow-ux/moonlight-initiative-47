@@ -23,7 +23,18 @@ export function Footer() {
           <div className="md:col-span-2">
             <a href="/" className="inline-flex items-center gap-2.5 mb-6">
               {logoUrl && (
-                <img src={logoUrl} alt={brandName} className="h-14 w-auto object-contain" />
+                <img
+                  src={logoUrl === "/favicon.png" ? "/logo-112.png" : logoUrl}
+                  srcSet={
+                    logoUrl === "/favicon.png"
+                      ? "/logo-112.png 1x, /logo-168.png 1.5x, /logo-224.png 2x"
+                      : undefined
+                  }
+                  alt={brandName}
+                  width={56}
+                  height={56}
+                  className="h-14 w-auto object-contain"
+                />
               )}
               <span className="text-xl font-semibold tracking-tight">
                 {brandName.toLowerCase().endsWith("key") ? (
