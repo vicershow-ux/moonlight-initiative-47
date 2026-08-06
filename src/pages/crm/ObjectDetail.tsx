@@ -4,6 +4,7 @@ import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { objectsApi, objectStatusesApi, estimatesApi, objectRoomsApi, contractsApi, Estimate, ObjectItem, ObjectRoom, ObjectStatus, Contract } from "@/lib/api"
 import { EstimatesListModal } from "@/components/crm/EstimatesListModal"
+import { ObjectMaterialsCard } from "@/components/crm/ObjectMaterialsCard"
 import { CreateContractModal } from "@/components/crm/CreateContractModal"
 import { printEstimate } from "@/lib/printEstimate"
 import { getEstimateStatusColor, getEstimateStatusLabel } from "@/lib/estimateStatus"
@@ -326,6 +327,8 @@ export default function ObjectDetail() {
               </div>
             )}
           </div>
+
+          <ObjectMaterialsCard objectId={object.id} />
 
           <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
