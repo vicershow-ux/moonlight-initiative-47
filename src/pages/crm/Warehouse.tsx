@@ -319,96 +319,12 @@ export default function Warehouse() {
 
           <TabsContent value="stock">
             <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
-              <div className="mb-4 flex flex-wrap items-center gap-3">
-                <div className="relative min-w-[240px] flex-1">
-                  <Icon
-                    name="Search"
-                    size={16}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30"
-                  />
-                  <input
-                    className={`${inputCls} pl-9`}
-                    placeholder="Поиск по всем складам: материал, инструмент, ответственный, телефон"
-                    value={globalSearch}
-                    onChange={(e) => setGlobalSearch(e.target.value)}
-                  />
-                  {globalSearch && (
-                    <button
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white"
-                      onClick={() => setGlobalSearch("")}
-                    >
-                      <Icon name="X" size={15} />
-                    </button>
-                  )}
-                </div>
+              <div className="mb-4 flex justify-end">
                 <button className={goldBtn} onClick={() => setShowWhForm((v) => !v)}>
                   <Icon name={showWhForm ? "X" : "Plus"} size={16} />
                   {showWhForm ? "Отмена" : "Добавить склад"}
                 </button>
               </div>
-
-              {globalSearch.trim().length > 0 && (
-                <div className="mb-5 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4">
-                  <div className="mb-3 flex items-center gap-2 text-sm text-white/70">
-                    <Icon name="Search" size={15} className="text-[#D4AF37]" />
-                    Найдено: {searchResults.length}
-                  </div>
-
-                  {searchResults.length === 0 ? (
-                    <div className="py-6 text-center text-sm text-white/30">
-                      Ничего не найдено по запросу «{globalSearch}»
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {searchResults.map((r) => (
-                        <div
-                          key={r.item.id}
-                          className="rounded-lg border border-white/10 bg-[#1f1f1f] p-3"
-                        >
-                          <div className="mb-2 flex flex-wrap items-center gap-2">
-                            <span className="text-sm">{r.item.name}</span>
-                            {kindBadge(r.item.kind)}
-                            <span className="text-sm text-white/50">
-                              {num(r.item.qty)} {r.item.unit}
-                            </span>
-                            {r.item.object_id && (
-                              <span className="rounded-md bg-white/10 px-2 py-0.5 text-xs text-white/60">
-                                выдано на {r.item.object_code}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-white/50">
-                            <span className="flex items-center gap-1.5">
-                              <Icon name="Warehouse" size={13} className="text-[#D4AF37]" />
-                              {r.wh?.name || "Склад не указан"}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <Icon name="User" size={13} />
-                              {r.wh?.responsible || "Ответственный не указан"}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <Icon name="Phone" size={13} />
-                              {r.wh?.phone ? (
-                                <a href={`tel:${r.wh.phone}`} className="hover:text-[#D4AF37]">
-                                  {r.wh.phone}
-                                </a>
-                              ) : (
-                                "Телефон не указан"
-                              )}
-                            </span>
-                            {r.wh?.address && (
-                              <span className="flex items-center gap-1.5">
-                                <Icon name="MapPin" size={13} />
-                                {r.wh.address}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
 
               {showWhForm && (
                 <div className="mb-5 grid gap-3 rounded-lg border border-white/10 bg-[#161616] p-4 md:grid-cols-4">
@@ -658,12 +574,97 @@ export default function Warehouse() {
 
           <TabsContent value="ledger">
             <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
-              <div className="mb-4 flex justify-end">
+              <div className="mb-4 flex flex-wrap items-center gap-3">
+                <div className="relative min-w-[240px] flex-1">
+                  <Icon
+                    name="Search"
+                    size={16}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30"
+                  />
+                  <input
+                    className={`${inputCls} pl-9`}
+                    placeholder="Поиск по всем складам: материал, инструмент, ответственный, телефон"
+                    value={globalSearch}
+                    onChange={(e) => setGlobalSearch(e.target.value)}
+                  />
+                  {globalSearch && (
+                    <button
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white"
+                      onClick={() => setGlobalSearch("")}
+                    >
+                      <Icon name="X" size={15} />
+                    </button>
+                  )}
+                </div>
                 <button className={goldBtn} onClick={() => setShowItemForm((v) => !v)}>
                   <Icon name={showItemForm ? "X" : "Plus"} size={16} />
                   {showItemForm ? "Отмена" : "Добавить позицию"}
                 </button>
               </div>
+
+              {globalSearch.trim().length > 0 && (
+                <div className="mb-5 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4">
+                  <div className="mb-3 flex items-center gap-2 text-sm text-white/70">
+                    <Icon name="Search" size={15} className="text-[#D4AF37]" />
+                    Найдено: {searchResults.length}
+                  </div>
+
+                  {searchResults.length === 0 ? (
+                    <div className="py-6 text-center text-sm text-white/30">
+                      Ничего не найдено по запросу «{globalSearch}»
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {searchResults.map((r) => (
+                        <div
+                          key={r.item.id}
+                          className="rounded-lg border border-white/10 bg-[#1f1f1f] p-3"
+                        >
+                          <div className="mb-2 flex flex-wrap items-center gap-2">
+                            <span className="text-sm">{r.item.name}</span>
+                            {kindBadge(r.item.kind)}
+                            <span className="text-sm text-white/50">
+                              {num(r.item.qty)} {r.item.unit}
+                            </span>
+                            {r.item.object_id && (
+                              <span className="rounded-md bg-white/10 px-2 py-0.5 text-xs text-white/60">
+                                выдано на {r.item.object_code}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-white/50">
+                            <span className="flex items-center gap-1.5">
+                              <Icon name="Warehouse" size={13} className="text-[#D4AF37]" />
+                              {r.wh?.name || "Склад не указан"}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <Icon name="User" size={13} />
+                              {r.wh?.responsible || "Ответственный не указан"}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <Icon name="Phone" size={13} />
+                              {r.wh?.phone ? (
+                                <a href={`tel:${r.wh.phone}`} className="hover:text-[#D4AF37]">
+                                  {r.wh.phone}
+                                </a>
+                              ) : (
+                                "Телефон не указан"
+                              )}
+                            </span>
+                            {r.wh?.address && (
+                              <span className="flex items-center gap-1.5">
+                                <Icon name="MapPin" size={13} />
+                                {r.wh.address}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
 
               {showItemForm && (
                 <div className="mb-5 grid gap-3 rounded-lg border border-white/10 bg-[#161616] p-4 md:grid-cols-4">
