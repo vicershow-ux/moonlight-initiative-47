@@ -48,6 +48,9 @@ export default function Warehouse() {
   const [issueObject, setIssueObject] = useState("")
   const [issueQty, setIssueQty] = useState("")
 
+  const [editWh, setEditWh] = useState<WarehouseRow | null>(null)
+  const [editForm, setEditForm] = useState({ name: "", address: "", responsible: "", phone: "" })
+
   const [globalSearch, setGlobalSearch] = useState("")
 
   const [viewWh, setViewWh] = useState<WarehouseRow | null>(null)
@@ -149,6 +152,24 @@ export default function Warehouse() {
       setIssueFor(null)
       setIssueObject("")
       setIssueQty("")
+    })
+
+  const startEdit = (w: WarehouseRow) => {
+    setAddToWh(null)
+    setEditWh(w)
+    setEditForm({
+      name: w.name || "",
+      address: w.address || "",
+      responsible: w.responsible || "",
+      phone: w.phone || "",
+    })
+  }
+
+  const submitEdit = () =>
+    run(async () => {
+      if (!editWh) return
+      await warehouseApi.updateWarehouse(editWh.id, editForm)
+      setEditWh(null)
     })
 
   const submitWhItem = () =>
@@ -372,9 +393,10 @@ export default function Warehouse() {
                               <button
                                 className="text-[#D4AF37] transition-colors hover:text-[#B8860B]"
                                 title="Добавить позицию на этот склад"
-                                onClick={() =>
+                                onClick={() => {
+                                  setEditWh(null)
                                   setAddToWh((prev) => (prev?.id === w.id ? null : w))
-                                }
+                                }}
                               >
                                 <Icon name={addToWh?.id === w.id ? "X" : "Plus"} size={18} />
                               </button>
@@ -384,6 +406,15 @@ export default function Warehouse() {
                                 onClick={() => setViewWh(w)}
                               >
                                 <Icon name="Eye" size={17} />
+                              </button>
+                              <button
+                                className="text-white/60 transition-colors hover:text-[#D4AF37]"
+                                title="Редактировать склад"
+                                onClick={() =>
+                                  editWh?.id === w.id ? setEditWh(null) : startEdit(w)
+                                }
+                              >
+                                <Icon name={editWh?.id === w.id ? "X" : "Pencil"} size={16} />
                               </button>
                               <button
                                 className="text-white/40 transition-colors hover:text-red-400"
@@ -397,6 +428,69 @@ export default function Warehouse() {
                         </tr>
                       )).flatMap((row, idx) => {
                         const w = warehouses[idx]
+
+                        if (editWh?.id === w.id) {
+                          return [
+                            row,
+                            <tr key={`edit-${w.id}`} className="border-b border-white/5">
+                              <td colSpan={6} className="py-3">
+                                <div className="grid gap-3 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4 md:grid-cols-3">
+                                  <div className="text-sm text-white/70 md:col-span-3">
+                                    Редактирование склада
+                                  </div>
+                                  <input
+                                    className={inputCls}
+                                    placeholder="Название склада"
+                                    value={editForm.name}
+                                    onChange={(e) =>
+                                      setEditForm({ ...editForm, name: e.target.value })
+                                    }
+                                  />
+                                  <input
+                                    className={inputCls}
+                                    placeholder="Адрес"
+                                    value={editForm.address}
+                                    onChange={(e) =>
+                                      setEditForm({ ...editForm, address: e.target.value })
+                                    }
+                                  />
+                                  <input
+                                    className={inputCls}
+                                    placeholder="Ответственный"
+                                    value={editForm.responsible}
+                                    onChange={(e) =>
+                                      setEditForm({ ...editForm, responsible: e.target.value })
+                                    }
+                                  />
+                                  <input
+                                    className={inputCls}
+                                    placeholder="Номер телефона"
+                                    type="tel"
+                                    value={editForm.phone}
+                                    onChange={(e) =>
+                                      setEditForm({ ...editForm, phone: e.target.value })
+                                    }
+                                  />
+                                  <button
+                                    className={goldBtn}
+                                    onClick={submitEdit}
+                                    disabled={editForm.name.trim().length < 2}
+                                  >
+                                    <Icon name="Check" size={16} />
+                                    Сохранить
+                                  </button>
+                                  <button
+                                    className="rounded-lg border border-white/10 px-4 py-2.5 text-sm text-white/60 transition-colors hover:text-white"
+                                    onClick={() => setEditWh(null)}
+                                  >
+                                    Отмена
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>,
+                          ]
+                        }
+
                         if (addToWh?.id !== w.id) return [row]
                         return [
                           row,
