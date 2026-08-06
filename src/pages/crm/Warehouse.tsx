@@ -31,7 +31,7 @@ export default function Warehouse() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
-  const [whForm, setWhForm] = useState({ name: "", address: "", responsible: "" })
+  const [whForm, setWhForm] = useState({ name: "", address: "", responsible: "", phone: "" })
   const [showWhForm, setShowWhForm] = useState(false)
 
   const [itemForm, setItemForm] = useState({
@@ -47,6 +47,8 @@ export default function Warehouse() {
   const [issueFor, setIssueFor] = useState<WarehouseItem | null>(null)
   const [issueObject, setIssueObject] = useState("")
   const [issueQty, setIssueQty] = useState("")
+
+  const [globalSearch, setGlobalSearch] = useState("")
 
   const [viewWh, setViewWh] = useState<WarehouseRow | null>(null)
 
@@ -91,6 +93,19 @@ export default function Warehouse() {
     [issuedItems, objectFilter]
   )
 
+  const searchResults = useMemo(() => {
+    const q = globalSearch.trim().toLowerCase()
+    if (!q) return []
+    const whById = new Map(warehouses.map((w) => [w.id, w]))
+    return items
+      .map((item) => ({ item, wh: item.warehouse_id ? whById.get(item.warehouse_id) : undefined }))
+      .filter(({ item, wh }) =>
+        [item.name, item.kind, item.unit, wh?.name, wh?.responsible, wh?.phone, wh?.address]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(q))
+      )
+  }, [globalSearch, items, warehouses])
+
   const usedObjects = useMemo(() => {
     const ids = new Set(issuedItems.map((i) => i.object_id))
     return objects.filter((o) => ids.has(o.id))
@@ -109,7 +124,7 @@ export default function Warehouse() {
   const addWarehouse = () =>
     run(async () => {
       await warehouseApi.createWarehouse(whForm)
-      setWhForm({ name: "", address: "", responsible: "" })
+      setWhForm({ name: "", address: "", responsible: "", phone: "" })
       setShowWhForm(false)
     })
 
@@ -202,12 +217,96 @@ export default function Warehouse() {
 
           <TabsContent value="stock">
             <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
-              <div className="mb-4 flex justify-end">
+              <div className="mb-4 flex flex-wrap items-center gap-3">
+                <div className="relative min-w-[240px] flex-1">
+                  <Icon
+                    name="Search"
+                    size={16}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30"
+                  />
+                  <input
+                    className={`${inputCls} pl-9`}
+                    placeholder="Поиск по всем складам: материал, инструмент, ответственный, телефон"
+                    value={globalSearch}
+                    onChange={(e) => setGlobalSearch(e.target.value)}
+                  />
+                  {globalSearch && (
+                    <button
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white"
+                      onClick={() => setGlobalSearch("")}
+                    >
+                      <Icon name="X" size={15} />
+                    </button>
+                  )}
+                </div>
                 <button className={goldBtn} onClick={() => setShowWhForm((v) => !v)}>
                   <Icon name={showWhForm ? "X" : "Plus"} size={16} />
                   {showWhForm ? "Отмена" : "Добавить склад"}
                 </button>
               </div>
+
+              {globalSearch.trim().length > 0 && (
+                <div className="mb-5 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4">
+                  <div className="mb-3 flex items-center gap-2 text-sm text-white/70">
+                    <Icon name="Search" size={15} className="text-[#D4AF37]" />
+                    Найдено: {searchResults.length}
+                  </div>
+
+                  {searchResults.length === 0 ? (
+                    <div className="py-6 text-center text-sm text-white/30">
+                      Ничего не найдено по запросу «{globalSearch}»
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {searchResults.map((r) => (
+                        <div
+                          key={r.item.id}
+                          className="rounded-lg border border-white/10 bg-[#1f1f1f] p-3"
+                        >
+                          <div className="mb-2 flex flex-wrap items-center gap-2">
+                            <span className="text-sm">{r.item.name}</span>
+                            {kindBadge(r.item.kind)}
+                            <span className="text-sm text-white/50">
+                              {num(r.item.qty)} {r.item.unit}
+                            </span>
+                            {r.item.object_id && (
+                              <span className="rounded-md bg-white/10 px-2 py-0.5 text-xs text-white/60">
+                                выдано на {r.item.object_code}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-white/50">
+                            <span className="flex items-center gap-1.5">
+                              <Icon name="Warehouse" size={13} className="text-[#D4AF37]" />
+                              {r.wh?.name || "Склад не указан"}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <Icon name="User" size={13} />
+                              {r.wh?.responsible || "Ответственный не указан"}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <Icon name="Phone" size={13} />
+                              {r.wh?.phone ? (
+                                <a href={`tel:${r.wh.phone}`} className="hover:text-[#D4AF37]">
+                                  {r.wh.phone}
+                                </a>
+                              ) : (
+                                "Телефон не указан"
+                              )}
+                            </span>
+                            {r.wh?.address && (
+                              <span className="flex items-center gap-1.5">
+                                <Icon name="MapPin" size={13} />
+                                {r.wh.address}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {showWhForm && (
                 <div className="mb-5 grid gap-3 rounded-lg border border-white/10 bg-[#161616] p-4 md:grid-cols-4">
@@ -229,6 +328,13 @@ export default function Warehouse() {
                     value={whForm.responsible}
                     onChange={(e) => setWhForm({ ...whForm, responsible: e.target.value })}
                   />
+                  <input
+                    className={inputCls}
+                    placeholder="Номер телефона"
+                    type="tel"
+                    value={whForm.phone}
+                    onChange={(e) => setWhForm({ ...whForm, phone: e.target.value })}
+                  />
                   <button className={goldBtn} onClick={addWarehouse} disabled={whForm.name.length < 2}>
                     <Icon name="Check" size={16} />
                     Сохранить
@@ -248,6 +354,7 @@ export default function Warehouse() {
                         <th className="py-2 pr-4 text-left font-medium">Название</th>
                         <th className="py-2 pr-4 text-left font-medium">Адрес</th>
                         <th className="py-2 pr-4 text-left font-medium">Ответственный</th>
+                        <th className="py-2 pr-4 text-left font-medium">Телефон</th>
                         <th className="py-2 pr-4 text-left font-medium">Позиций</th>
                         <th className="py-2 pr-4 text-left font-medium">Действия</th>
                       </tr>
@@ -258,6 +365,7 @@ export default function Warehouse() {
                           <td className="py-3 pr-4">{w.name}</td>
                           <td className="py-3 pr-4 text-white/60">{w.address || "—"}</td>
                           <td className="py-3 pr-4 text-white/60">{w.responsible || "—"}</td>
+                          <td className="py-3 pr-4 text-white/60">{w.phone || "—"}</td>
                           <td className="py-3 pr-4">{w.positions}</td>
                           <td className="py-3 pr-4">
                             <div className="flex items-center gap-3">
@@ -293,7 +401,7 @@ export default function Warehouse() {
                         return [
                           row,
                           <tr key={`form-${w.id}`} className="border-b border-white/5">
-                            <td colSpan={5} className="py-3">
+                            <td colSpan={6} className="py-3">
                               <div className="grid gap-3 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4 md:grid-cols-3">
                                 <div className="text-sm text-white/70 md:col-span-3">
                                   Добавить позицию на склад «{w.name}»

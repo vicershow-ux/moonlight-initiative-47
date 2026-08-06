@@ -62,12 +62,12 @@ def to_num(v, default=0):
 
 def load_warehouses(cur, company_id):
     cur.execute(
-        "SELECT w.id, w.name, w.address, w.responsible, w.created_at, "
+        "SELECT w.id, w.name, w.address, w.responsible, w.phone, w.created_at, "
         "(SELECT COUNT(*) FROM warehouse_items i WHERE i.warehouse_id = w.id AND i.object_id IS NULL) "
         "FROM warehouses w WHERE w.company_id = %s ORDER BY w.created_at DESC",
         (company_id,)
     )
-    keys = ['id', 'name', 'address', 'responsible', 'created_at', 'positions']
+    keys = ['id', 'name', 'address', 'responsible', 'phone', 'created_at', 'positions']
     return [dict(zip(keys, r)) for r in cur.fetchall()]
 
 
@@ -129,10 +129,10 @@ def handler(event: dict, context) -> dict:
             if len(name) < 2:
                 return response(400, {'error': 'Введите название склада'})
             cur.execute(
-                "INSERT INTO warehouses (company_id, name, address, responsible) "
-                "VALUES (%s, %s, %s, %s) RETURNING id",
+                "INSERT INTO warehouses (company_id, name, address, responsible, phone) "
+                "VALUES (%s, %s, %s, %s, %s) RETURNING id",
                 (company_id, name, (body.get('address') or '').strip(),
-                 (body.get('responsible') or '').strip())
+                 (body.get('responsible') or '').strip(), (body.get('phone') or '').strip())
             )
             new_id = cur.fetchone()[0]
             conn.commit()
@@ -342,7 +342,7 @@ def handler(event: dict, context) -> dict:
                 return response(400, {'error': 'Не указан склад'})
             fields = []
             values = []
-            for key in ['name', 'address', 'responsible']:
+            for key in ['name', 'address', 'responsible', 'phone']:
                 if key in body:
                     fields.append(f"{key} = %s")
                     values.append(body[key])

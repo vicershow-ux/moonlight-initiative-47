@@ -102,6 +102,15 @@ export function WarehouseViewModal({ warehouse, items, open, onOpenChange }: Pro
               {warehouse.responsible}
             </span>
           )}
+          {warehouse?.phone && (
+            <a
+              href={`tel:${warehouse.phone}`}
+              className="flex items-center gap-1.5 hover:text-[#D4AF37]"
+            >
+              <Icon name="Phone" size={13} />
+              {warehouse.phone}
+            </a>
+          )}
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">

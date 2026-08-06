@@ -1240,6 +1240,7 @@ export interface WarehouseRow {
   name: string
   address: string
   responsible: string
+  phone: string
   positions: number
   created_at: string
 }
