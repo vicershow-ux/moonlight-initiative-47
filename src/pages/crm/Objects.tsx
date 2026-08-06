@@ -5,6 +5,7 @@ import Icon from "@/components/ui/icon"
 import { objectsApi, objectStatusesApi, ObjectItem, ObjectStatus, ObjectStatusTransition } from "@/lib/api"
 import { getStatusBadgeClass } from "@/lib/objectStatusColors"
 import { useAuth } from "@/contexts/AuthContext"
+import { DeleteButton } from "@/components/ui/delete-button"
 
 export default function Objects() {
   const navigate = useNavigate()
@@ -140,13 +141,7 @@ export default function Objects() {
                           </Link>
                         )}
                         {!isClient && (
-                          <button
-                            onClick={() => handleDelete(obj.id)}
-                            className="text-white/40 hover:text-red-400 transition-colors"
-                            title="Удалить объект"
-                          >
-                            <Icon name="Trash2" size={15} />
-                          </button>
+                          <DeleteButton onConfirm={() => handleDelete(obj.id)} />
                         )}
                       </div>
                     </td>

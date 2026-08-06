@@ -8,6 +8,7 @@ import { StatusListPanel } from "@/components/crm/pipeline/StatusListPanel"
 import { TransitionsFunnel } from "@/components/crm/pipeline/TransitionsFunnel"
 import { TransitionsEditor } from "@/components/crm/pipeline/TransitionsEditor"
 import { StatusFormDialog, StatusForm } from "@/components/crm/pipeline/StatusFormDialog"
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog"
 
 const emptyForm: StatusForm = { name: "", color: "gray", is_active_stage: false, is_final: false }
 
@@ -120,8 +121,9 @@ export default function ObjectPipeline() {
     load()
   }
 
+  const [confirmStatus, setConfirmStatus] = useState<ObjectStatus | null>(null)
+
   const handleDelete = async (s: ObjectStatus) => {
-    if (!window.confirm(`Удалить статус «${s.name}»?`)) return
     try {
       await objectStatusesApi.remove(s.id)
       load()
@@ -194,7 +196,7 @@ export default function ObjectPipeline() {
             onDrop={handleDrop}
             onEdit={openEdit}
             onToggleArchive={handleToggleArchive}
-            onDelete={handleDelete}
+            onDelete={setConfirmStatus}
           />
 
           <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
@@ -252,6 +254,14 @@ export default function ObjectPipeline() {
         onSubmit={handleEditSave}
         submitLabel="Сохранить"
       />
+      <ConfirmDeleteDialog
+        open={!!confirmStatus}
+        onOpenChange={(v) => { if (!v) setConfirmStatus(null) }}
+        onConfirm={async () => { if (confirmStatus) await handleDelete(confirmStatus) }}
+        title={confirmStatus ? `Удалить статус «${confirmStatus.name}»?` : "Удалить статус?"}
+        description="Статус будет удалён из воронки безвозвратно."
+      />
+
     </CrmLayout>
   )
 }

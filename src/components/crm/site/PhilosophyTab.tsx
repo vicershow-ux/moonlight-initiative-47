@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import Icon from "@/components/ui/icon"
 import { siteApi, SitePhilosophyItem } from "@/lib/api"
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog"
 
 export function PhilosophyTab() {
   const [items, setItems] = useState<SitePhilosophyItem[]>([])
@@ -44,8 +45,9 @@ export function PhilosophyTab() {
     }
   }
 
+  const [confirmId, setConfirmId] = useState<number | null>(null)
+
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Удалить этот пункт?")) return
     await siteApi.philosophy.remove(id)
     load()
   }
@@ -120,7 +122,7 @@ export function PhilosophyTab() {
                   {savingId === item.id && <Icon name="Loader2" size={12} className="animate-spin" />}
                   Сохранить
                 </button>
-                <button onClick={() => handleDelete(item.id)} className="text-red-400 hover:underline text-xs">
+                <button onClick={() => setConfirmId(item.id)} className="text-red-400 hover:underline text-xs">
                   Удалить
                 </button>
               </div>
@@ -128,6 +130,14 @@ export function PhilosophyTab() {
           </div>
         </div>
       ))}
+
+      <ConfirmDeleteDialog
+        open={confirmId !== null}
+        onOpenChange={(v) => { if (!v) setConfirmId(null) }}
+        onConfirm={async () => { if (confirmId !== null) await handleDelete(confirmId) }}
+        title="Удалить пункт?"
+        description="Пункт будет удалён с сайта безвозвратно."
+      />
     </div>
   )
 }

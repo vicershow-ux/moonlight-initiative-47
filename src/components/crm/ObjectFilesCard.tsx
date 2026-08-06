@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import Icon from "@/components/ui/icon"
 import { objectFilesApi, ObjectFile } from "@/lib/api"
 import { useAuth } from "@/contexts/AuthContext"
+import { DeleteButton } from "@/components/ui/delete-button"
 
 const ACCEPT = ".jpg,.jpeg,.png,.webp,.heic,.pdf,.xls,.xlsx,.csv"
 
@@ -166,13 +167,7 @@ export function ObjectFilesCard({ objectId }: Props) {
                 <Icon name="Download" size={15} />
               </a>
               {canUpload && (
-                <button
-                  onClick={() => remove(f.id)}
-                  className="text-white/40 hover:text-red-400 transition-colors"
-                  title="Удалить"
-                >
-                  <Icon name="Trash2" size={15} />
-                </button>
+                <DeleteButton onConfirm={() => remove(f.id)} />
               )}
             </div>
           ))}

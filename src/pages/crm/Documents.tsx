@@ -9,6 +9,7 @@ import { downloadContractPdf } from "@/lib/downloadContractPdf"
 import { getStatusBadgeClass } from "@/lib/objectStatusColors"
 import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/lib/utils"
+import { DeleteButton } from "@/components/ui/delete-button"
 
 type TabKey = "all" | "estimates" | "material_estimates" | "contracts" | "acts"
 
@@ -378,13 +379,7 @@ export default function Documents() {
                               <Icon name="Download" size={15} />
                             )}
                           </button>
-                          <button
-                            onClick={() => handleDelete(e.id)}
-                            className="text-white/40 hover:text-red-400 transition-colors"
-                            title="Удалить"
-                          >
-                            <Icon name="Trash2" size={15} />
-                          </button>
+                          <DeleteButton onConfirm={() => handleDelete(e.id)} />
                         </div>
                       </td>
                     </tr>
@@ -452,13 +447,7 @@ export default function Documents() {
                           >
                             <Icon name="Download" size={15} />
                           </button>
-                          <button
-                            onClick={() => handleDeleteMatEstimate(m.id)}
-                            className="text-white/40 hover:text-red-400 transition-colors"
-                            title="Удалить"
-                          >
-                            <Icon name="Trash2" size={15} />
-                          </button>
+                          <DeleteButton onConfirm={() => handleDeleteMatEstimate(m.id)} />
                         </div>
                       </td>
                     </tr>
@@ -534,13 +523,7 @@ export default function Documents() {
                               <Icon name="Download" size={15} />
                             )}
                           </button>
-                          <button
-                            onClick={() => handleDeleteContract(c.id)}
-                            className="text-white/40 hover:text-red-400 transition-colors"
-                            title="Удалить"
-                          >
-                            <Icon name="Trash2" size={15} />
-                          </button>
+                          <DeleteButton onConfirm={() => handleDeleteContract(c.id)} />
                         </div>
                       </td>
                     </tr>
@@ -614,13 +597,7 @@ export default function Documents() {
                               <Icon name="Download" size={15} />
                             )}
                           </button>
-                          <button
-                            onClick={() => handleDeleteAct(a.id)}
-                            className="text-white/40 hover:text-red-400 transition-colors"
-                            title="Удалить"
-                          >
-                            <Icon name="Trash2" size={15} />
-                          </button>
+                          <DeleteButton onConfirm={() => handleDeleteAct(a.id)} />
                         </div>
                       </td>
                     </tr>

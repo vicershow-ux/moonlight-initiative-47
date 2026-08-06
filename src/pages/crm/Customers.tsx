@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { DeleteButton } from "@/components/ui/delete-button"
 
 export default function Customers() {
   const { user } = useAuth()
@@ -206,13 +207,7 @@ export default function Customers() {
                           >
                             <Icon name="KeyRound" size={16} />
                           </button>
-                          <button
-                            onClick={() => handleDelete(c.id)}
-                            className="text-white/40 hover:text-red-400 transition-colors"
-                            title="Удалить"
-                          >
-                            <Icon name="Trash2" size={16} />
-                          </button>
+                          <DeleteButton onConfirm={() => handleDelete(c.id)} />
                         </div>
                       </td>
                     )}

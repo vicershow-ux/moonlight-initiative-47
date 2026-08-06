@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import Icon from "@/components/ui/icon"
 import { ServiceItem, ObjectRoom } from "@/lib/api"
 import { ServicePickerModal } from "@/components/crm/estimate-create/ServicePickerModal"
+import { DeleteButton } from "@/components/ui/delete-button"
 
 export interface RoomWorkItem {
   key: string
@@ -162,13 +163,14 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
             Своя работа
           </button>
 
-          <button
-            onClick={onRemove}
-            className="text-white/30 hover:text-red-400 transition-colors ml-1"
-            title="Удалить помещение"
-          >
-            <Icon name="Trash2" size={16} />
-          </button>
+          <DeleteButton
+            size={16}
+            className="text-white/30 ml-1"
+            label=""
+            title="Удалить помещение?"
+            description="Помещение и все добавленные в него работы будут удалены из сметы."
+            onConfirm={onRemove}
+          />
         </div>
       </div>
 
@@ -310,12 +312,13 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
                       {w.quantity > 0 && w.times > 0 && w.price > 0 ? formatMoney(w.amount) : "—"}
                     </td>
                     <td className="px-2 py-2 pt-3.5">
-                      <button
-                        onClick={() => removeWork(w.key)}
-                        className="text-white/30 hover:text-red-400 transition-colors"
-                      >
-                        <Icon name="Trash2" size={14} />
-                      </button>
+                      <DeleteButton
+                        size={14}
+                        className="text-white/30"
+                        title="Удалить работу?"
+                        description="Позиция будет убрана из сметы."
+                        onConfirm={() => removeWork(w.key)}
+                      />
                     </td>
                   </tr>
                   )

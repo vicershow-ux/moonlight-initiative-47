@@ -11,6 +11,7 @@ import { printEstimate } from "@/lib/printEstimate"
 import { getEstimateStatusColor, getEstimateStatusLabel } from "@/lib/estimateStatus"
 import { getStatusBadgeClass } from "@/lib/objectStatusColors"
 import { useAuth } from "@/contexts/AuthContext"
+import { DeleteButton } from "@/components/ui/delete-button"
 
 const formatMoney = (n: number) =>
   new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n) + " ₽"
@@ -114,13 +115,11 @@ export default function ObjectDetail() {
   }
 
   const handleDeleteEstimate = async (estimateId: number) => {
-    if (!window.confirm("Удалить смету безвозвратно?")) return
     await estimatesApi.remove(estimateId)
     setEstimates((prev) => prev.filter((e) => e.id !== estimateId))
   }
 
   const handleDeleteContract = async (contractId: number) => {
-    if (!window.confirm("Удалить договор безвозвратно?")) return
     await contractsApi.remove(contractId)
     setContracts((prev) => prev.filter((c) => c.id !== contractId))
   }
@@ -420,13 +419,7 @@ export default function ObjectDetail() {
                         )}
                       </button>
                       {!isClient && (
-                        <button
-                          onClick={() => handleDeleteEstimate(est.id)}
-                          className="text-white/40 hover:text-red-400 transition-colors"
-                          title="Удалить"
-                        >
-                          <Icon name="Trash2" size={15} />
-                        </button>
+                        <DeleteButton onConfirm={() => handleDeleteEstimate(est.id)} />
                       )}
                     </div>
                   </div>
@@ -486,13 +479,7 @@ export default function ObjectDetail() {
                         <Icon name="Printer" size={15} />
                       </button>
                       {!isClient && (
-                        <button
-                          onClick={() => handleDeleteContract(c.id)}
-                          className="text-white/40 hover:text-red-400 transition-colors"
-                          title="Удалить"
-                        >
-                          <Icon name="Trash2" size={15} />
-                        </button>
+                        <DeleteButton onConfirm={() => handleDeleteContract(c.id)} />
                       )}
                     </div>
                   </div>

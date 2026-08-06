@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon"
 import { materialsApi, MaterialEstimate } from "@/lib/api"
 import { printMaterials, downloadMaterialsPdf } from "@/lib/printMaterials"
 import { useAuth } from "@/contexts/AuthContext"
+import { DeleteButton } from "@/components/ui/delete-button"
 
 const formatMoney = (n: number) =>
   new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(Number(n) || 0) + " ₽"
@@ -107,13 +108,7 @@ export function ObjectMaterialEstimates({ objectId, isClient }: Props) {
               <Icon name="Download" size={15} />
             </button>
             {!isClient && (
-              <button
-                onClick={() => remove(m.id)}
-                className="text-white/40 hover:text-red-400 transition-colors"
-                title="Удалить"
-              >
-                <Icon name="Trash2" size={15} />
-              </button>
+              <DeleteButton onConfirm={() => remove(m.id)} />
             )}
           </div>
         </div>

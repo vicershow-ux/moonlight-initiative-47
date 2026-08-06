@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/select"
 import { TeamMember } from "@/lib/api"
 import { positionOptions, getPositionLabel, getPositionColor, PositionKey } from "@/lib/positions"
+import { DeleteButton } from "@/components/ui/delete-button"
 
 export type RoleFilter = "all" | PositionKey
 export type StatusFilter = "all" | "active" | "inactive" | "never"
@@ -257,13 +258,7 @@ export function TeamMembersPanel({
                           >
                             <Icon name="KeyRound" size={16} />
                           </button>
-                          <button
-                            onClick={() => handleDelete(m.id)}
-                            className="text-white/40 hover:text-red-400 transition-colors"
-                            title="Удалить"
-                          >
-                            <Icon name="Trash2" size={16} />
-                          </button>
+                          <DeleteButton onConfirm={() => handleDelete(m.id)} />
                         </div>
                       </td>
                     )}

@@ -4,6 +4,7 @@ import { CrmLayout } from "@/components/crm/CrmLayout"
 import { EditServiceModal } from "@/components/crm/EditServiceModal"
 import Icon from "@/components/ui/icon"
 import { servicesApi, ServiceItem } from "@/lib/api"
+import { DeleteButton } from "@/components/ui/delete-button"
 
 const PAGE_SIZE = 20
 
@@ -244,13 +245,7 @@ export default function Services() {
                         >
                           <Icon name="Pencil" size={16} />
                         </button>
-                        <button
-                          onClick={() => handleDelete(s.id)}
-                          title="Удалить"
-                          className="text-white/40 hover:text-red-400 transition-colors"
-                        >
-                          <Icon name="Trash2" size={16} />
-                        </button>
+                        <DeleteButton onConfirm={() => handleDelete(s.id)} />
                       </div>
                     </td>
                   </tr>

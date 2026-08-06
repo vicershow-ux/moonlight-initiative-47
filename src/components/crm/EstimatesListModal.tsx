@@ -9,6 +9,7 @@ import Icon from "@/components/ui/icon"
 import { estimatesApi, Estimate, ObjectItem } from "@/lib/api"
 import { printEstimate } from "@/lib/printEstimate"
 import { useAuth } from "@/contexts/AuthContext"
+import { DeleteButton } from "@/components/ui/delete-button"
 
 interface EstimatesListModalProps {
   open: boolean
@@ -199,14 +200,12 @@ export function EstimatesListModal({ open, onOpenChange, object }: EstimatesList
                       />
                     )}
                     {!isClient && (
-                      <Icon
-                        name="Trash2"
+                      <DeleteButton
                         size={15}
-                        className="text-white/30 hover:text-red-400 transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDelete(est.id)
-                        }}
+                        className="text-white/30"
+                        title="Удалить смету?"
+                        description="Смета и все её позиции будут удалены безвозвратно."
+                        onConfirm={() => handleDelete(est.id)}
                       />
                     )}
                     <Icon name={expandedId === est.id ? "ChevronUp" : "ChevronDown"} size={16} className="text-white/40" />

@@ -8,6 +8,7 @@ import { estimatesApi, Estimate, EstimateItem } from "@/lib/api"
 import { printEstimate, downloadEstimatePdf } from "@/lib/printEstimate"
 import { estimateStatusOptions, getEstimateStatusColor, getEstimateStatusLabel, EstimateStatus } from "@/lib/estimateStatus"
 import { useAuth } from "@/contexts/AuthContext"
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog"
 
 const num = (v: unknown, fallback = 0): number => {
   const n = typeof v === "string" ? parseFloat(v) : Number(v)
@@ -37,6 +38,7 @@ export default function EstimateView() {
   const [savingStatus, setSavingStatus] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const load = () => {
     if (!estimateId) return
@@ -106,7 +108,6 @@ export default function EstimateView() {
 
   const handleDelete = async () => {
     if (!estimate) return
-    if (!window.confirm("Удалить смету безвозвратно?")) return
     setDeleting(true)
     try {
       await estimatesApi.remove(estimate.id)
@@ -190,7 +191,10 @@ export default function EstimateView() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onClick={handleDelete}
+                  onSelect={(e) => {
+                    e.preventDefault()
+                    setConfirmDelete(true)
+                  }}
                   disabled={deleting}
                   className="text-red-500 focus:text-red-500"
                 >
@@ -449,6 +453,14 @@ export default function EstimateView() {
           Сформировано {formatDateTime(new Date().toISOString())}
         </div>
       </div>
+      <ConfirmDeleteDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        onConfirm={handleDelete}
+        title="Удалить смету?"
+        description="Смета и все её позиции будут удалены безвозвратно."
+      />
+
     </CrmLayout>
   )
 }

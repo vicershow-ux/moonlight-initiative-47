@@ -13,6 +13,7 @@ import {
   MaterialRoom,
   ObjectMaterial,
 } from "@/lib/api"
+import { DeleteButton } from "@/components/ui/delete-button"
 
 const money = (n: number) =>
   new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(n || 0) + " ₽"
@@ -453,15 +454,8 @@ export default function Materials() {
                                             >
                                               <Icon name="FileDown" size={16} />
                                             </button>
-                                            <button
-                                              className="text-white/40 transition-colors hover:text-red-400"
-                                              title="Убрать с объекта"
-                                              onClick={() =>
-                                                run(() => materialsApi.removeFromObject(m.id))
-                                              }
-                                            >
-                                              <Icon name="Trash2" size={16} />
-                                            </button>
+                                            <DeleteButton onConfirm={() =>
+                                                run(() => materialsApi.removeFromObject(m.id))} />
                                           </div>
                                         </td>
                                       </tr>
@@ -588,13 +582,7 @@ export default function Materials() {
                             )}
                           </td>
                           <td className="py-3 pr-4">
-                            <button
-                              className="text-white/40 transition-colors hover:text-red-400"
-                              title="Удалить"
-                              onClick={() => run(() => materialsApi.remove(m.id))}
-                            >
-                              <Icon name="Trash2" size={16} />
-                            </button>
+                            <DeleteButton onConfirm={() => run(() => materialsApi.remove(m.id))} />
                           </td>
                         </tr>
                       ))}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import Icon from "@/components/ui/icon"
 import { siteApi, SiteFaqItem, SiteSettings } from "@/lib/api"
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog"
 
 interface FaqTabProps {
   form: SiteSettings
@@ -49,8 +50,9 @@ export function FaqTab({ form, update }: FaqTabProps) {
     }
   }
 
+  const [confirmId, setConfirmId] = useState<number | null>(null)
+
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Удалить этот вопрос?")) return
     await siteApi.faq.remove(id)
     load()
   }
@@ -140,7 +142,7 @@ export function FaqTab({ form, update }: FaqTabProps) {
                   {savingId === item.id && <Icon name="Loader2" size={12} className="animate-spin" />}
                   Сохранить
                 </button>
-                <button onClick={() => handleDelete(item.id)} className="text-red-400 hover:underline text-xs">
+                <button onClick={() => setConfirmId(item.id)} className="text-red-400 hover:underline text-xs">
                   Удалить
                 </button>
               </div>
@@ -148,6 +150,14 @@ export function FaqTab({ form, update }: FaqTabProps) {
           </div>
         </div>
       ))}
+
+      <ConfirmDeleteDialog
+        open={confirmId !== null}
+        onOpenChange={(v) => { if (!v) setConfirmId(null) }}
+        onConfirm={async () => { if (confirmId !== null) await handleDelete(confirmId) }}
+        title="Удалить вопрос?"
+        description="Вопрос будет удалён с сайта безвозвратно."
+      />
     </div>
   )
 }

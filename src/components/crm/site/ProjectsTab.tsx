@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon"
 import { siteApi, SiteProject, SiteSettings } from "@/lib/api"
 import { resizeImageToDataUrl } from "@/lib/imageUpload"
 import { useToast } from "@/hooks/use-toast"
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog"
 
 interface ProjectsTabProps {
   form: SiteSettings
@@ -86,8 +87,9 @@ export function ProjectsTab({ form, update }: ProjectsTabProps) {
     }
   }
 
+  const [confirmId, setConfirmId] = useState<number | null>(null)
+
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Удалить этот объект из портфолио?")) return
     await siteApi.projects.remove(id)
     load()
   }
@@ -201,7 +203,7 @@ export function ProjectsTab({ form, update }: ProjectsTabProps) {
                   {savingId === item.id && <Icon name="Loader2" size={12} className="animate-spin" />}
                   Сохранить
                 </button>
-                <button onClick={() => handleDelete(item.id)} className="text-red-400 hover:underline text-xs">
+                <button onClick={() => setConfirmId(item.id)} className="text-red-400 hover:underline text-xs">
                   Удалить
                 </button>
               </div>
@@ -209,6 +211,14 @@ export function ProjectsTab({ form, update }: ProjectsTabProps) {
           </div>
         </div>
       ))}
+
+      <ConfirmDeleteDialog
+        open={confirmId !== null}
+        onOpenChange={(v) => { if (!v) setConfirmId(null) }}
+        onConfirm={async () => { if (confirmId !== null) await handleDelete(confirmId) }}
+        title="Удалить объект из портфолио?"
+        description="Объект будет удалён с сайта безвозвратно."
+      />
     </div>
   )
 }

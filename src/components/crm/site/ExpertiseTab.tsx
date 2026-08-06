@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { siteApi, SiteExpertiseItem, SiteSettings } from "@/lib/api"
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog"
 
 const iconOptions = ["Home", "Building", "Armchair", "Trees"]
 
@@ -58,8 +59,9 @@ export function ExpertiseTab({ form, update }: ExpertiseTabProps) {
     }
   }
 
+  const [confirmId, setConfirmId] = useState<number | null>(null)
+
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Удалить эту услугу?")) return
     await siteApi.expertise.remove(id)
     load()
   }
@@ -181,7 +183,7 @@ export function ExpertiseTab({ form, update }: ExpertiseTabProps) {
                   {savingId === item.id && <Icon name="Loader2" size={12} className="animate-spin" />}
                   Сохранить
                 </button>
-                <button onClick={() => handleDelete(item.id)} className="text-red-400 hover:underline text-xs">
+                <button onClick={() => setConfirmId(item.id)} className="text-red-400 hover:underline text-xs">
                   Удалить
                 </button>
               </div>
@@ -189,6 +191,14 @@ export function ExpertiseTab({ form, update }: ExpertiseTabProps) {
           </div>
         </div>
       ))}
+
+      <ConfirmDeleteDialog
+        open={confirmId !== null}
+        onOpenChange={(v) => { if (!v) setConfirmId(null) }}
+        onConfirm={async () => { if (confirmId !== null) await handleDelete(confirmId) }}
+        title="Удалить услугу?"
+        description="Услуга будет удалена с сайта безвозвратно."
+      />
     </div>
   )
 }

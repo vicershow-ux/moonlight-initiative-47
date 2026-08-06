@@ -10,6 +10,7 @@ import {
   WarehouseObject,
   WarehouseLogRow,
 } from "@/lib/api"
+import { DeleteButton } from "@/components/ui/delete-button"
 
 const money = (n: number) =>
   new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n || 0) + " ₽"
@@ -413,13 +414,7 @@ export default function Warehouse() {
                               >
                                 <Icon name={editWh?.id === w.id ? "X" : "Pencil"} size={16} />
                               </button>
-                              <button
-                                className="text-white/40 transition-colors hover:text-red-400"
-                                title="Удалить склад"
-                                onClick={() => run(() => warehouseApi.removeWarehouse(w.id))}
-                              >
-                                <Icon name="Trash2" size={16} />
-                              </button>
+                              <DeleteButton onConfirm={() => run(() => warehouseApi.removeWarehouse(w.id))} />
                             </div>
                           </td>
                         </tr>
@@ -943,13 +938,7 @@ export default function Warehouse() {
                               >
                                 <Icon name={editItem?.id === i.id ? "X" : "Pencil"} size={16} />
                               </button>
-                              <button
-                                className="text-white/40 transition-colors hover:text-red-400"
-                                title="Удалить"
-                                onClick={() => run(() => warehouseApi.removeItem(i.id))}
-                              >
-                                <Icon name="Trash2" size={16} />
-                              </button>
+                              <DeleteButton onConfirm={() => run(() => warehouseApi.removeItem(i.id))} />
                             </div>
                           </td>
                         </tr>

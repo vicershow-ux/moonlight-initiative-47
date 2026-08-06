@@ -109,7 +109,6 @@ export default function Team() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Удалить сотрудника безвозвратно?")) return
     await teamApi.remove(id)
     load()
   }
