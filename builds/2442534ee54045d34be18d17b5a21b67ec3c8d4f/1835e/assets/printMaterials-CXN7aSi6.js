@@ -1,88 +1,15 @@
-import { MaterialItem, MaterialObject, ObjectMaterial } from "@/lib/api"
-
-const num = (v: unknown, fallback = 0): number => {
-  const n = typeof v === "string" ? parseFloat(v) : Number(v)
-  return Number.isFinite(n) ? n : fallback
-}
-
-const formatMoney = (n: unknown) =>
-  new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(num(n)) + " ₽"
-
-const formatDateTime = (d: string) =>
-  new Date(d).toLocaleString("ru-RU", {
-    day: "numeric",
-    month: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-
-function escapeHtml(str: string) {
-  const div = document.createElement("div")
-  div.textContent = str ?? ""
-  return div.innerHTML
-}
-
-interface ShopGroup {
-  name: string
-  address: string
-  phone: string
-  items: ObjectMaterial[]
-  sum: number
-}
-
-export function groupByShop(items: ObjectMaterial[], catalog: MaterialItem[]): ShopGroup[] {
-  const map = new Map<string, ShopGroup>()
-  items.forEach((item) => {
-    const ref = catalog.find((c) => c.id === item.material_id)
-    const name = item.shop_name || ref?.shop_name || "Магазин не указан"
-    if (!map.has(name)) {
-      map.set(name, { name, address: "", phone: "", items: [], sum: 0 })
-    }
-    const group = map.get(name)!
-    if (!group.address && ref?.shop_address) group.address = ref.shop_address
-    if (!group.phone && ref?.shop_phone) group.phone = ref.shop_phone
-    group.items.push(item)
-    group.sum += num(item.qty) * num(item.price)
-  })
-  return Array.from(map.values()).sort((a, b) => b.sum - a.sum)
-}
-
-function buildMaterialsDocument(
-  object: MaterialObject,
-  items: ObjectMaterial[],
-  catalog: MaterialItem[],
-  companyName: string
-) {
-  const groups = groupByShop(items, catalog)
-  const total = groups.reduce((s, g) => s + g.sum, 0)
-
-  const roomNames = Array.from(
-    new Set(items.map((it) => it.room_name).filter(Boolean))
-  ) as string[]
-  const roomTitle = roomNames.length ? roomNames.join(", ") : "Без помещения"
-
-  const shopsHtml = groups
-    .map((group) => {
-      const rows = group.items
-        .map(
-          (it, idx) => `
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/html2pdf-cseFn17i.js","assets/index-BiAX9Fch.js","assets/index-DnFlmTP5.css"])))=>i.map(i=>d[i]);
+import{_ as y}from"./index-BiAX9Fch.js";const u=(t,a=0)=>{const r=typeof t=="string"?parseFloat(t):Number(t);return Number.isFinite(r)?r:a},g=t=>new Intl.NumberFormat("ru-RU",{maximumFractionDigits:0}).format(u(t))+" ₽",k=t=>new Date(t).toLocaleString("ru-RU",{day:"numeric",month:"numeric",year:"numeric",hour:"2-digit",minute:"2-digit"});function n(t){const a=document.createElement("div");return a.textContent=t??"",a.innerHTML}function $(t,a){const r=new Map;return t.forEach(d=>{const e=a.find(i=>i.id===d.material_id),l=d.shop_name||(e==null?void 0:e.shop_name)||"Магазин не указан";r.has(l)||r.set(l,{name:l,address:"",phone:"",items:[],sum:0});const o=r.get(l);!o.address&&(e!=null&&e.shop_address)&&(o.address=e.shop_address),!o.phone&&(e!=null&&e.shop_phone)&&(o.phone=e.shop_phone),o.items.push(d),o.sum+=u(d.qty)*u(d.price)}),Array.from(r.values()).sort((d,e)=>e.sum-d.sum)}function v(t,a,r,d){const e=$(a,r),l=e.reduce((c,b)=>c+b.sum,0),o=Array.from(new Set(a.map(c=>c.room_name).filter(Boolean))),i=o.length?o.join(", "):"Без помещения",s=e.map(c=>{const b=c.items.map((m,w)=>`
             <tr>
-              <td class="num">${idx + 1}</td>
-              <td>${escapeHtml(it.name)}</td>
-              <td>${escapeHtml(it.room_name || "—")}</td>
-              <td>${escapeHtml(it.work_type || "—")}</td>
-              <td class="center">${num(it.qty)}</td>
-              <td class="center">${escapeHtml(it.unit)}</td>
-              <td class="right">${formatMoney(it.price)}</td>
-              <td class="right amount">${formatMoney(num(it.qty) * num(it.price))}</td>
-            </tr>`
-        )
-        .join("")
-
-      const contacts = group.address ? `Адрес: ${escapeHtml(group.address)}` : ""
-
-      return `
+              <td class="num">${w+1}</td>
+              <td>${n(m.name)}</td>
+              <td>${n(m.room_name||"—")}</td>
+              <td>${n(m.work_type||"—")}</td>
+              <td class="center">${u(m.qty)}</td>
+              <td class="center">${n(m.unit)}</td>
+              <td class="right">${g(m.price)}</td>
+              <td class="right amount">${g(u(m.qty)*u(m.price))}</td>
+            </tr>`).join(""),x=c.address?`Адрес: ${n(c.address)}`:"";return`
       <div class="room-block">
         <div class="cat-block">
           <table>
@@ -99,22 +26,18 @@ function buildMaterialsDocument(
               </tr>
             </thead>
             <tbody>
-              <tr class="cat-row"><td colspan="8">${escapeHtml(group.name)}${contacts ? ` — ${contacts}` : ""}</td></tr>
-              ${rows}
+              <tr class="cat-row"><td colspan="8">${n(c.name)}${x?` — ${x}`:""}</td></tr>
+              ${b}
             </tbody>
             <tfoot>
               <tr>
                 <td colspan="7" class="right">Итого по магазину</td>
-                <td class="right amount">${formatMoney(group.sum)}</td>
+                <td class="right amount">${g(c.sum)}</td>
               </tr>
             </tfoot>
           </table>
         </div>
-      </div>`
-    })
-    .join("")
-
-  const styles = `
+      </div>`}).join(""),p=`
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: 'Segoe UI', Arial, sans-serif;
@@ -294,14 +217,12 @@ function buildMaterialsDocument(
     tbody tr:first-child td { border-top: none !important; }
     hr.thin { border-top: 1.5px solid #7A4E10 !important; }
   }
-`
-
-  const bodyContent = `
+`,f=`
   <div class="header">
-    <div class="brand"><div class="brand-logo" style="background-image:url('${window.location.origin}/logo-224.png')"></div>Fix<span>Key</span></div>
+    <div class="brand"><div class="brand-logo" style="background-image:url('${window.location.origin}/favicon.png')"></div>Fix<span>Key</span></div>
     <div class="doc-title">
       <h1>Смета на материал</h1>
-      <p>Объект № ${escapeHtml(object.object_code)}</p>
+      <p>Объект № ${n(t.object_code)}</p>
     </div>
   </div>
 
@@ -315,33 +236,33 @@ function buildMaterialsDocument(
   <div class="info-grid">
     <div>
       <div class="label">ID объекта</div>
-      <div class="value">${escapeHtml(object.object_code)}</div>
+      <div class="value">${n(t.object_code)}</div>
     </div>
     <div>
       <div class="label">Заказчик</div>
-      <div class="value">${escapeHtml(object.client_name)}</div>
+      <div class="value">${n(t.client_name)}</div>
     </div>
     <div>
       <div class="label">Адрес объекта</div>
-      <div class="value">${escapeHtml(object.address || "—")}</div>
+      <div class="value">${n(t.address||"—")}</div>
     </div>
     <div>
       <div class="label">Помещение</div>
-      <div class="value">${escapeHtml(roomTitle)}</div>
+      <div class="value">${n(i)}</div>
     </div>
   </div>
 
-  ${shopsHtml}
+  ${s}
 
   <div class="summary">
     <div class="summary-box">
       <div class="summary-row">
         <span>Помещение:</span>
-        <span>${escapeHtml(roomTitle)}</span>
+        <span>${n(i)}</span>
       </div>
       <div class="summary-total">
         <span>ИТОГО:</span>
-        <span>${formatMoney(total)}</span>
+        <span>${g(l)}</span>
       </div>
     </div>
   </div>
@@ -351,144 +272,24 @@ function buildMaterialsDocument(
   <div class="parties">
     <div>
       <div class="label">Исполнитель</div>
-      <div class="name">${escapeHtml(companyName)}</div>
+      <div class="name">${n(d)}</div>
     </div>
     <div>
       <div class="label">Заказчик</div>
-      <div class="name">${escapeHtml(object.client_name)}</div>
+      <div class="name">${n(t.client_name)}</div>
     </div>
   </div>
 
   <div class="footer">
-    Сформировано ${formatDateTime(new Date().toISOString())}
-  </div>`
-
-  const title = `Смета на материал № ${object.object_code} — ${escapeHtml(object.client_name)}`
-
-  return { styles, bodyContent, title }
-}
-
-export function printMaterials(
-  object: MaterialObject,
-  items: ObjectMaterial[],
-  catalog: MaterialItem[],
-  companyName: string,
-  autoPrint = false
-) {
-  const { styles, bodyContent, title } = buildMaterialsDocument(object, items, catalog, companyName)
-  const html = `<!DOCTYPE html>
+    Сформировано ${k(new Date().toISOString())}
+  </div>`,h=`Смета на материал № ${t.object_code} — ${n(t.client_name)}`;return{styles:p,bodyContent:f,title:h}}function C(t,a,r,d,e=!1){const{styles:l,bodyContent:o,title:i}=v(t,a,r,d),s=`<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8" />
-<title>${title}</title>
-<style>${styles}</style>
+<title>${i}</title>
+<style>${l}</style>
 </head>
 <body>
-<div class="est-root">${bodyContent}</div>
+<div class="est-root">${o}</div>
 </body>
-</html>`
-
-  const win = window.open("", "_blank", "width=900,height=1000")
-  if (!win) return
-  win.document.open()
-  win.document.write(html)
-  win.document.close()
-
-  if (autoPrint) {
-    win.onload = () => {
-      win.focus()
-      win.print()
-    }
-  }
-}
-
-function scopeStyles(css: string, scope: string) {
-  const withoutAtRules = css
-    .replace(/@page[^{]*\{[^}]*\}/g, "")
-    .replace(/@media\s+print\s*\{(?:[^{}]*\{[^}]*\})*[^{}]*\}/g, "")
-  return withoutAtRules.replace(/(^|\})\s*([^{}@]+)\s*\{/g, (_m, brace, selectors) => {
-    const scoped = selectors
-      .split(",")
-      .map((s: string) => {
-        const sel = s.trim()
-        if (!sel) return ""
-        if (sel === "*") return `${scope}, ${scope} *`
-        if (/^(html|body)$/i.test(sel)) return scope
-        if (sel === ".est-root") return scope
-        if (sel.startsWith(".est-root ")) return `${scope} ${sel.slice(".est-root ".length)}`
-        return `${scope} ${sel}`
-      })
-      .filter(Boolean)
-      .join(", ")
-    return `${brace} ${scoped} {`
-  })
-}
-
-export async function downloadMaterialsPdf(
-  object: MaterialObject,
-  items: ObjectMaterial[],
-  catalog: MaterialItem[],
-  companyName: string
-) {
-  const { styles, bodyContent } = buildMaterialsDocument(object, items, catalog, companyName)
-
-  const container = document.createElement("div")
-  container.style.position = "fixed"
-  container.style.left = "-10000px"
-  container.style.top = "0"
-  container.style.width = "760px"
-  container.style.background = "#ffffff"
-
-  const root = document.createElement("div")
-  root.id = "pdf-scope-materials"
-  root.className = "est-root"
-  root.style.width = "760px"
-  root.style.maxWidth = "760px"
-  root.style.padding = "0"
-  root.style.margin = "0"
-  root.style.background = "#ffffff"
-
-  const styleTag = document.createElement("style")
-  styleTag.textContent = scopeStyles(styles, "#pdf-scope-materials")
-
-  root.appendChild(styleTag)
-  const content = document.createElement("div")
-  content.innerHTML = bodyContent
-  root.appendChild(content)
-
-  container.appendChild(root)
-  document.body.appendChild(container)
-
-  await new Promise<void>((resolve) => {
-    const img = new Image()
-    img.onload = () => resolve()
-    img.onerror = () => resolve()
-    img.src = `${window.location.origin}/logo-224.png`
-    setTimeout(resolve, 3000)
-  })
-
-  try {
-    const html2pdf = (await import("html2pdf.js")).default
-    await html2pdf()
-      .set({
-        margin: [12, 12, 12, 12],
-        filename: `Смета на материал ${object.object_code}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: "#ffffff",
-          width: 760,
-          windowWidth: 760,
-          scrollX: 0,
-          scrollY: 0,
-        },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        pagebreak: { mode: ["css", "legacy"], avoid: [".cat-block", ".room-block"] },
-      })
-      .from(root)
-      .save()
-  } finally {
-    if (container.parentNode) document.body.removeChild(container)
-  }
-}
+</html>`,p=window.open("","_blank","width=900,height=1000");p&&(p.document.open(),p.document.write(s),p.document.close(),e&&(p.onload=()=>{p.focus(),p.print()}))}function A(t,a){return t.replace(/@page[^{]*\{[^}]*\}/g,"").replace(/@media\s+print\s*\{(?:[^{}]*\{[^}]*\})*[^{}]*\}/g,"").replace(/(^|\})\s*([^{}@]+)\s*\{/g,(d,e,l)=>{const o=l.split(",").map(i=>{const s=i.trim();return s?s==="*"?`${a}, ${a} *`:/^(html|body)$/i.test(s)||s===".est-root"?a:s.startsWith(".est-root ")?`${a} ${s.slice(10)}`:`${a} ${s}`:""}).filter(Boolean).join(", ");return`${e} ${o} {`})}async function z(t,a,r,d){const{styles:e,bodyContent:l}=v(t,a,r,d),o=document.createElement("div");o.style.position="fixed",o.style.left="-10000px",o.style.top="0",o.style.width="760px",o.style.background="#ffffff";const i=document.createElement("div");i.id="pdf-scope-materials",i.className="est-root",i.style.width="760px",i.style.maxWidth="760px",i.style.padding="0",i.style.margin="0",i.style.background="#ffffff";const s=document.createElement("style");s.textContent=A(e,"#pdf-scope-materials"),i.appendChild(s);const p=document.createElement("div");p.innerHTML=l,i.appendChild(p),o.appendChild(i),document.body.appendChild(o),await new Promise(f=>{const h=new Image;h.onload=()=>f(),h.onerror=()=>f(),h.src=`${window.location.origin}/favicon.png`,setTimeout(f,3e3)});try{const f=(await y(async()=>{const{default:h}=await import("./html2pdf-cseFn17i.js").then(c=>c.h);return{default:h}},__vite__mapDeps([0,1,2]))).default;await f().set({margin:[12,12,12,12],filename:`Смета на материал ${t.object_code}.pdf`,image:{type:"jpeg",quality:.98},html2canvas:{scale:2,useCORS:!0,backgroundColor:"#ffffff",width:760,windowWidth:760,scrollX:0,scrollY:0},jsPDF:{unit:"mm",format:"a4",orientation:"portrait"},pagebreak:{mode:["css","legacy"],avoid:[".cat-block",".room-block"]}}).from(i).save()}finally{o.parentNode&&document.body.removeChild(o)}}export{z as d,C as p};

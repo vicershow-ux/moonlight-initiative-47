@@ -1,61 +1,14 @@
-import { Estimate, ObjectItem, EstimateItem } from "@/lib/api"
-
-const num = (v: unknown, fallback = 0): number => {
-  const n = typeof v === "string" ? parseFloat(v) : Number(v)
-  return Number.isFinite(n) ? n : fallback
-}
-
-const formatMoney = (n: unknown) =>
-  new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(num(n)) + " ₽"
-
-const formatDate = (d: string) =>
-  new Date(d).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
-
-const formatDateTime = (d: string) =>
-  new Date(d).toLocaleString("ru-RU", { day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
-
-function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyName: string) {
-  const items = estimate.items || []
-
-  const groups = new Map<string, EstimateItem[]>()
-  items.forEach((it) => {
-    const key = it.room_name || "Без помещения"
-    if (!groups.has(key)) groups.set(key, [])
-    groups.get(key)!.push(it)
-  })
-
-  const subtotal = num(estimate.subtotal_amount ?? estimate.total_amount)
-  const discountAmount = num(estimate.discount_amount ?? 0)
-
-  const roomsHtml = Array.from(groups.entries())
-    .map(([roomName, groupItems]) => {
-      const catGroups = new Map<string, EstimateItem[]>()
-      groupItems.forEach((it) => {
-        const key = it.category || "Прочие работы"
-        if (!catGroups.has(key)) catGroups.set(key, [])
-        catGroups.get(key)!.push(it)
-      })
-      const roomTotal = groupItems.reduce((s, it) => s + num(it.amount), 0)
-
-      const catsHtml = Array.from(catGroups.entries())
-        .map(([catName, catItems]) => {
-          const catTotal = catItems.reduce((s, it) => s + num(it.amount), 0)
-          const itemRows = catItems
-            .map(
-              (it, idx) => `
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/html2pdf-cseFn17i.js","assets/index-BiAX9Fch.js","assets/index-DnFlmTP5.css"])))=>i.map(i=>d[i]);
+import{_ as E}from"./index-BiAX9Fch.js";const g=(t,o=0)=>{const d=typeof t=="string"?parseFloat(t):Number(t);return Number.isFinite(d)?d:o},f=t=>new Intl.NumberFormat("ru-RU",{maximumFractionDigits:0}).format(g(t))+" ₽",y=t=>new Date(t).toLocaleDateString("ru-RU",{day:"numeric",month:"long",year:"numeric"}),z=t=>new Date(t).toLocaleString("ru-RU",{day:"numeric",month:"numeric",year:"numeric",hour:"2-digit",minute:"2-digit"});function $(t,o,d){const u=t.items||[],s=new Map;u.forEach(h=>{const b=h.room_name||"Без помещения";s.has(b)||s.set(b,[]),s.get(b).push(h)});const n=g(t.subtotal_amount??t.total_amount),i=g(t.discount_amount??0),e=Array.from(s.entries()).map(([h,b])=>{const v=new Map;b.forEach(x=>{const l=x.category||"Прочие работы";v.has(l)||v.set(l,[]),v.get(l).push(x)});const k=b.reduce((x,l)=>x+g(l.amount),0),_=Array.from(v.entries()).map(([x,l])=>{const A=l.reduce((c,w)=>c+g(w.amount),0),C=l.map((c,w)=>`
             <tr>
-              <td class="num">${idx + 1}</td>
-              <td>${escapeHtml(it.name)}</td>
-              <td class="center">${escapeHtml(it.unit)}</td>
-              <td class="center">${num(it.quantity)}</td>
-              <td class="center">${num(it.times, 1)}</td>
-              <td class="right">${formatMoney(it.price)}</td>
-              <td class="right amount">${formatMoney(it.amount)}</td>
-            </tr>`
-            )
-            .join("")
-
-          return `
+              <td class="num">${w+1}</td>
+              <td>${a(c.name)}</td>
+              <td class="center">${a(c.unit)}</td>
+              <td class="center">${g(c.quantity)}</td>
+              <td class="center">${g(c.times,1)}</td>
+              <td class="right">${f(c.price)}</td>
+              <td class="right amount">${f(c.amount)}</td>
+            </tr>`).join("");return`
         <div class="cat-block">
           <table>
             <thead>
@@ -70,36 +23,28 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
               </tr>
             </thead>
             <tbody>
-              <tr class="cat-row"><td colspan="7">${escapeHtml(catName)}</td></tr>
-              ${itemRows}
+              <tr class="cat-row"><td colspan="7">${a(x)}</td></tr>
+              ${C}
             </tbody>
             <tfoot>
               <tr>
                 <td colspan="6" class="right">Итого по категории</td>
-                <td class="right amount">${formatMoney(catTotal)}</td>
+                <td class="right amount">${f(A)}</td>
               </tr>
             </tfoot>
           </table>
-        </div>`
-        })
-        .join("")
-
-      return `
+        </div>`}).join("");return`
       <div class="room-block">
-        <h3 class="room-title">${escapeHtml(roomName)}</h3>
-        ${catsHtml}
+        <h3 class="room-title">${a(h)}</h3>
+        ${_}
         <div class="room-total">
           <div>
             <div class="room-total-label">Итоговая сумма по помещению</div>
-            <div class="room-total-name">${escapeHtml(roomName)}</div>
+            <div class="room-total-name">${a(h)}</div>
           </div>
-          <div class="room-total-amount">${formatMoney(roomTotal)}</div>
+          <div class="room-total-amount">${f(k)}</div>
         </div>
-      </div>`
-    })
-    .join("")
-
-  const styles = `
+      </div>`}).join(""),r=`
   * { box-sizing: border-box; }
   .est-root {
     font-family: 'Segoe UI', Arial, sans-serif;
@@ -411,21 +356,19 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     .cat-block tbody td:last-child,
     .cat-block tfoot td:last-child { padding-right: 12px; }
   }
-`
-
-  const bodyContent = `
+`,p=`
   <div class="header">
-    <div class="brand"><div class="brand-logo" style="background-image:url('${window.location.origin}/logo-224.png')"></div>Fix<span>Key</span></div>
+    <div class="brand"><div class="brand-logo" style="background-image:url('${window.location.origin}/favicon.png')"></div>Fix<span>Key</span></div>
     <div class="doc-title">
-      <h1>Смета № ${estimate.id}</h1>
-      <p>от ${formatDate(estimate.created_at)}</p>
+      <h1>Смета № ${t.id}</h1>
+      <p>от ${y(t.created_at)}</p>
     </div>
   </div>
 
   <div class="doc-subtitle">
     <h2>СМЕТА НА РАБОТЫ</h2>
     <p>Расчёт ремонтно-отделочных работ</p>
-    ${estimate.contract_number ? `<p>Приложение к договору № ${escapeHtml(estimate.contract_number)}${estimate.contract_date ? ` от ${formatDate(estimate.contract_date)}` : ""}</p>` : ""}
+    ${t.contract_number?`<p>Приложение к договору № ${a(t.contract_number)}${t.contract_date?` от ${y(t.contract_date)}`:""}</p>`:""}
   </div>
 
   <hr class="thin" />
@@ -433,202 +376,89 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
   <div class="info-grid">
     <div>
       <div class="label">ID объекта</div>
-      <div class="value">${escapeHtml(object.object_code)}</div>
+      <div class="value">${a(o.object_code)}</div>
     </div>
     <div>
       <div class="label">Заказчик</div>
-      <div class="value">${escapeHtml(object.client_name)}</div>
+      <div class="value">${a(o.client_name)}</div>
     </div>
     <div>
       <div class="label">Контактный телефон</div>
-      <div class="value">${escapeHtml(object.client_phone || "—")}</div>
+      <div class="value">${a(o.client_phone||"—")}</div>
     </div>
     <div>
       <div class="label">Характеристики объекта</div>
-      <div class="value">${escapeHtml(object.object_type)} · ${object.area} м²</div>
+      <div class="value">${a(o.object_type)} · ${o.area} м²</div>
     </div>
   </div>
 
-  ${roomsHtml}
+  ${e}
 
   <div class="summary">
     <div class="summary-box">
-      ${discountAmount > 0 ? `
+      ${i>0?`
       <div class="summary-row">
         <span>Сумма до скидки:</span>
-        <span>${formatMoney(subtotal)}</span>
+        <span>${f(n)}</span>
       </div>
       <div class="summary-row discount">
         <span>Скидка:</span>
-        <span>-${formatMoney(discountAmount)}</span>
-      </div>` : ""}
+        <span>-${f(i)}</span>
+      </div>`:""}
       <div class="summary-total">
         <span>ИТОГО К ОПЛАТЕ:</span>
-        <span>${formatMoney(estimate.total_amount)}</span>
+        <span>${f(t.total_amount)}</span>
       </div>
     </div>
   </div>
 
-  ${estimate.notes ? `
+  ${t.notes?`
   <div class="notes">
     <div class="label">Примечания</div>
-    <div>${escapeHtml(estimate.notes)}</div>
-  </div>` : ""}
+    <div>${a(t.notes)}</div>
+  </div>`:""}
 
   <hr class="thin" />
 
   <div class="parties">
     <div>
       <div class="label">Исполнитель</div>
-      <div class="name">${escapeHtml(estimate.company_name || companyName)}</div>
-      ${estimate.company_phone ? `<div class="contact">Тел: ${escapeHtml(estimate.company_phone)}</div>` : ""}
-      ${estimate.company_email ? `<div class="contact">Email: ${escapeHtml(estimate.company_email)}</div>` : ""}
-      ${estimate.company_website ? `<div class="contact">${escapeHtml(estimate.company_website)}</div>` : ""}
-      ${estimate.company_inn ? `<div class="contact">ИНН: ${escapeHtml(estimate.company_inn)}</div>` : ""}
-      ${estimate.company_legal_address ? `<div class="contact">${escapeHtml(estimate.company_legal_address)}</div>` : ""}
-      ${estimate.company_signature_url ? `<img class="signature" src="${estimate.company_signature_url}" alt="Подпись" />` : ""}
+      <div class="name">${a(t.company_name||d)}</div>
+      ${t.company_phone?`<div class="contact">Тел: ${a(t.company_phone)}</div>`:""}
+      ${t.company_email?`<div class="contact">Email: ${a(t.company_email)}</div>`:""}
+      ${t.company_website?`<div class="contact">${a(t.company_website)}</div>`:""}
+      ${t.company_inn?`<div class="contact">ИНН: ${a(t.company_inn)}</div>`:""}
+      ${t.company_legal_address?`<div class="contact">${a(t.company_legal_address)}</div>`:""}
+      ${t.company_signature_url?`<img class="signature" src="${t.company_signature_url}" alt="Подпись" />`:""}
     </div>
     <div>
       <div class="label">Заказчик</div>
-      <div class="name">${escapeHtml(object.client_name)}</div>
-      ${object.client_phone ? `<div class="contact">Тел: ${escapeHtml(object.client_phone)}</div>` : ""}
+      <div class="name">${a(o.client_name)}</div>
+      ${o.client_phone?`<div class="contact">Тел: ${a(o.client_phone)}</div>`:""}
     </div>
   </div>
 
   <div class="signatures">
     <div class="signature-block">
       <div class="label">Исполнитель</div>
-      <div class="signature-line">${escapeHtml(estimate.company_name || companyName)}</div>
+      <div class="signature-line">${a(t.company_name||d)}</div>
     </div>
     <div class="signature-block">
       <div class="label">Заказчик</div>
-      <div class="signature-line">${escapeHtml(object.client_name)}</div>
+      <div class="signature-line">${a(o.client_name)}</div>
     </div>
   </div>
 
   <div class="footer">
-    Сформировано ${formatDateTime(new Date().toISOString())}
-  </div>`
-
-  const title = `Смета № ${estimate.id} — ${escapeHtml(object.client_name)}`
-
-  return { styles, bodyContent, title }
-}
-
-export function printEstimate(estimate: Estimate, object: ObjectItem, companyName: string) {
-  const { styles, bodyContent, title } = buildEstimateDocument(estimate, object, companyName)
-  const html = `<!DOCTYPE html>
+    Сформировано ${z(new Date().toISOString())}
+  </div>`,m=`Смета № ${t.id} — ${a(o.client_name)}`;return{styles:r,bodyContent:p,title:m}}function j(t,o,d){const{styles:u,bodyContent:s,title:n}=$(t,o,d),i=`<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8" />
-<title>${title}</title>
-<style>${styles}</style>
+<title>${n}</title>
+<style>${u}</style>
 </head>
 <body>
-<div class="est-root">${bodyContent}</div>
+<div class="est-root">${s}</div>
 </body>
-</html>`
-
-  const printWindow = window.open("", "_blank", "width=900,height=1000")
-  if (!printWindow) return
-  printWindow.document.open()
-  printWindow.document.write(html)
-  printWindow.document.close()
-  printWindow.onload = () => {
-    printWindow.focus()
-    printWindow.print()
-  }
-}
-
-function scopeStyles(css: string, scope: string) {
-  const withoutAtRules = css.replace(/@page[^{]*\{[^}]*\}/g, "").replace(/@media\s+print\s*\{(?:[^{}]*\{[^}]*\})*[^{}]*\}/g, "")
-  return withoutAtRules.replace(/(^|\})\s*([^{}@]+)\s*\{/g, (_m, brace, selectors) => {
-    const scoped = selectors
-      .split(",")
-      .map((s: string) => {
-        const sel = s.trim()
-        if (!sel) return ""
-        if (sel === "*") return `${scope}, ${scope} *`
-        if (/^(html|body)$/i.test(sel)) return scope
-        if (sel === ".est-root") return scope
-        if (sel.startsWith(".est-root ")) return `${scope} ${sel.slice(".est-root ".length)}`
-        return `${scope} ${sel}`
-      })
-      .filter(Boolean)
-      .join(", ")
-    return `${brace} ${scoped} {`
-  })
-}
-
-export async function downloadEstimatePdf(estimate: Estimate, object: ObjectItem, companyName: string) {
-  const { styles, bodyContent } = buildEstimateDocument(estimate, object, companyName)
-
-  // Рендерим в СКРЫТЫЙ контейнер основного документа (не в iframe),
-  // чтобы html2canvas гарантированно видел стили и вёрстка совпадала с печатью
-  const container = document.createElement("div")
-  container.style.position = "fixed"
-  container.style.left = "-10000px"
-  container.style.top = "0"
-  container.style.width = "760px"
-  container.style.background = "#ffffff"
-
-  const root = document.createElement("div")
-  root.id = "pdf-scope-estimate"
-  root.className = "est-root"
-  root.style.width = "760px"
-  root.style.maxWidth = "760px"
-  root.style.padding = "0"
-  root.style.margin = "0"
-  root.style.background = "#ffffff"
-
-  const styleTag = document.createElement("style")
-  styleTag.textContent = scopeStyles(styles, "#pdf-scope-estimate")
-
-  root.appendChild(styleTag)
-  const content = document.createElement("div")
-  content.innerHTML = bodyContent
-  root.appendChild(content)
-
-  container.appendChild(root)
-  document.body.appendChild(container)
-
-  // Ждём загрузку логотипа (фон) перед снимком
-  await new Promise<void>((resolve) => {
-    const img = new Image()
-    img.onload = () => resolve()
-    img.onerror = () => resolve()
-    img.src = `${window.location.origin}/logo-224.png`
-    setTimeout(resolve, 3000)
-  })
-
-  try {
-    const html2pdf = (await import("html2pdf.js")).default
-    await html2pdf()
-      .set({
-        margin: [12, 12, 12, 12],
-        filename: `Смета №${estimate.id}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: "#ffffff",
-          width: 760,
-          windowWidth: 760,
-          scrollX: 0,
-          scrollY: 0,
-        },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        pagebreak: { mode: ["css", "legacy"], avoid: [".cat-block", ".room-block"] },
-      })
-      .from(root)
-      .save()
-  } finally {
-    if (container.parentNode) document.body.removeChild(container)
-  }
-}
-
-function escapeHtml(str: string) {
-  const div = document.createElement("div")
-  div.textContent = str ?? ""
-  return div.innerHTML
-}
+</html>`,e=window.open("","_blank","width=900,height=1000");e&&(e.document.open(),e.document.write(i),e.document.close(),e.onload=()=>{e.focus(),e.print()})}function D(t,o){return t.replace(/@page[^{]*\{[^}]*\}/g,"").replace(/@media\s+print\s*\{(?:[^{}]*\{[^}]*\})*[^{}]*\}/g,"").replace(/(^|\})\s*([^{}@]+)\s*\{/g,(u,s,n)=>{const i=n.split(",").map(e=>{const r=e.trim();return r?r==="*"?`${o}, ${o} *`:/^(html|body)$/i.test(r)||r===".est-root"?o:r.startsWith(".est-root ")?`${o} ${r.slice(10)}`:`${o} ${r}`:""}).filter(Boolean).join(", ");return`${s} ${i} {`})}async function R(t,o,d){const{styles:u,bodyContent:s}=$(t,o,d),n=document.createElement("div");n.style.position="fixed",n.style.left="-10000px",n.style.top="0",n.style.width="760px",n.style.background="#ffffff";const i=document.createElement("div");i.id="pdf-scope-estimate",i.className="est-root",i.style.width="760px",i.style.maxWidth="760px",i.style.padding="0",i.style.margin="0",i.style.background="#ffffff";const e=document.createElement("style");e.textContent=D(u,"#pdf-scope-estimate"),i.appendChild(e);const r=document.createElement("div");r.innerHTML=s,i.appendChild(r),n.appendChild(i),document.body.appendChild(n),await new Promise(p=>{const m=new Image;m.onload=()=>p(),m.onerror=()=>p(),m.src=`${window.location.origin}/favicon.png`,setTimeout(p,3e3)});try{const p=(await E(async()=>{const{default:m}=await import("./html2pdf-cseFn17i.js").then(h=>h.h);return{default:m}},__vite__mapDeps([0,1,2]))).default;await p().set({margin:[12,12,12,12],filename:`Смета №${t.id}.pdf`,image:{type:"jpeg",quality:.98},html2canvas:{scale:2,useCORS:!0,backgroundColor:"#ffffff",width:760,windowWidth:760,scrollX:0,scrollY:0},jsPDF:{unit:"mm",format:"a4",orientation:"portrait"},pagebreak:{mode:["css","legacy"],avoid:[".cat-block",".room-block"]}}).from(i).save()}finally{n.parentNode&&document.body.removeChild(n)}}function a(t){const o=document.createElement("div");return o.textContent=t??"",o.innerHTML}export{R as d,j as p};

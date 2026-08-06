@@ -73,7 +73,14 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
         )}
       >
         <div className="px-5 py-6 flex items-center gap-2 border-b border-white/10">
-          <img src="/favicon.png" alt="FixKey" className="w-14 h-14 object-contain" />
+          <img
+            src="/logo-112.png"
+            srcSet="/logo-112.png 1x, /logo-168.png 1.5x, /logo-224.png 2x"
+            alt="FixKey"
+            width={56}
+            height={56}
+            className="w-14 h-14 object-contain"
+          />
           <span className="text-xl font-semibold tracking-tight"><span className="text-white">Fix</span><span className="text-[#D4AF37]">Key</span></span>
         </div>
 

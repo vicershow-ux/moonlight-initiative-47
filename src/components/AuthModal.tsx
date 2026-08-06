@@ -95,7 +95,18 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
       <DialogContent className="sm:max-w-md rounded-none border-foreground/10">
         <div className="flex items-center justify-center gap-2.5 -mt-2 mb-1">
           {logoUrl && (
-            <img src={logoUrl} alt="Логотип" className="h-14 w-auto object-contain" />
+            <img
+              src={logoUrl === "/favicon.png" ? "/logo-112.png" : logoUrl}
+              srcSet={
+                logoUrl === "/favicon.png"
+                  ? "/logo-112.png 1x, /logo-168.png 1.5x, /logo-224.png 2x"
+                  : undefined
+              }
+              alt="Логотип"
+              width={56}
+              height={56}
+              className="h-14 w-auto object-contain"
+            />
           )}
           <span className="text-2xl font-semibold tracking-tight"><span className="text-black">Fix</span><span className="text-[#D4AF37]">Key</span></span>
         </div>
