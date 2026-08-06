@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import Icon from "@/components/ui/icon"
-import { MaterialItem, MaterialRoom } from "@/lib/api"
+import { MaterialItem, MaterialRoom, ObjectMaterial } from "@/lib/api"
 
 const money = (n: number) =>
   new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(n || 0) + " ₽"
@@ -24,11 +24,26 @@ interface Props {
   objectId: number
   materials: MaterialItem[]
   rooms: MaterialRoom[]
-  onAdd: (payload: { material_id: number; qty: number; note: string }) => Promise<void>
+  existing: ObjectMaterial[]
+  onAdd: (payload: {
+    material_id: number
+    qty: number
+    note: string
+    room_id: number | null
+    room_name: string
+    merge: boolean
+  }) => Promise<void>
   onCancel: () => void
 }
 
-export function RoomCalculator({ objectId, materials, rooms, onAdd, onCancel }: Props) {
+export function RoomCalculator({
+  objectId,
+  materials,
+  rooms,
+  existing,
+  onAdd,
+  onCancel,
+}: Props) {
   const objectRooms = useMemo(
     () => rooms.filter((r) => r.object_id === objectId),
     [rooms, objectId]
@@ -41,6 +56,7 @@ export function RoomCalculator({ objectId, materials, rooms, onAdd, onCancel }: 
   const [layers, setLayers] = useState("1")
   const [reserve, setReserve] = useState("10")
   const [saving, setSaving] = useState(false)
+  const [mode, setMode] = useState<"merge" | "new">("merge")
 
   const material = materials.find((m) => String(m.id) === materialId)
   const room = objectRooms.find((r) => String(r.id) === roomId)
@@ -62,6 +78,16 @@ export function RoomCalculator({ objectId, materials, rooms, onAdd, onCancel }: 
 
   const ready = !!material && consumption > 0 && totalArea > 0
 
+  const prev = useMemo(() => {
+    if (!material || !room) return null
+    return existing.find((e) => e.material_id === material.id && e.room_id === room.id) || null
+  }, [existing, material, room])
+
+  const roomRecords = useMemo(
+    () => (room ? existing.filter((e) => e.room_id === room.id) : []),
+    [existing, room]
+  )
+
   const noteText = room
     ? `${room.name}: ${totalArea.toFixed(2)} ${material?.consumption_unit || ""}, запас ${num(reserve)}%`
     : `Расчёт: ${totalArea.toFixed(2)} ${material?.consumption_unit || ""}, запас ${num(reserve)}%`
@@ -70,7 +96,15 @@ export function RoomCalculator({ objectId, materials, rooms, onAdd, onCancel }: 
     if (!material) return
     setSaving(true)
     try {
-      await onAdd({ material_id: material.id, qty: packs, note: noteText })
+      await onAdd({
+        material_id: material.id,
+        qty: packs,
+        note: noteText,
+        room_id: room ? room.id : null,
+        room_name: room ? room.name : "",
+        merge: mode === "merge",
+      })
+      setMaterialId("")
     } finally {
       setSaving(false)
     }
@@ -195,10 +229,61 @@ export function RoomCalculator({ objectId, materials, rooms, onAdd, onCancel }: 
               size={16}
               className={saving ? "animate-spin" : ""}
             />
-            Добавить на объект
+            {prev && mode === "merge" ? "Добавить к расчёту" : "Сохранить в объект"}
           </button>
         </div>
       </div>
+
+      {roomRecords.length > 0 && room && (
+        <div className="rounded-lg border border-white/10 bg-[#1f1f1f] p-4">
+          <div className="mb-2 text-xs uppercase text-white/40">
+            Уже рассчитано по помещению «{room.name}»
+          </div>
+          <div className="space-y-1.5 text-sm text-white/60">
+            {roomRecords.map((r) => (
+              <div key={r.id} className="flex flex-wrap justify-between gap-2">
+                <span>{r.name}</span>
+                <span>
+                  {num(r.qty)} {r.unit} · {money(num(r.qty) * num(r.price))}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {prev && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+          <div className="mb-3 flex items-start gap-2 text-sm text-amber-200">
+            <Icon name="TriangleAlert" size={15} className="mt-0.5 shrink-0" />
+            <span>
+              По этому помещению уже есть расчёт «{prev.name}» — {num(prev.qty)} {prev.unit}. Что
+              сделать с новым расчётом?
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-4 text-sm">
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="radio"
+                className="accent-[#D4AF37]"
+                checked={mode === "merge"}
+                onChange={() => setMode("merge")}
+              />
+              Добавить к существующему ({num(prev.qty)} + {packs} = {num(prev.qty) + packs}{" "}
+              {prev.unit})
+            </label>
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="radio"
+                className="accent-[#D4AF37]"
+                checked={mode === "new"}
+                onChange={() => setMode("new")}
+              />
+              Добавить отдельной строкой
+            </label>
+          </div>
+        </div>
+      )}
 
       {ready && (
         <div className="rounded-lg border border-[#D4AF37]/30 bg-[#1f1f1f] p-4">

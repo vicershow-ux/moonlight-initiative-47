@@ -1420,6 +1420,8 @@ export interface ObjectMaterial {
   price: number
   shop_name: string
   note: string
+  room_id: number | null
+  room_name: string
   created_at: string
 }
 

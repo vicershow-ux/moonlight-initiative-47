@@ -34,8 +34,8 @@ export default function Materials() {
   const [search, setSearch] = useState("")
   const [shopFilter, setShopFilter] = useState("")
 
-  const [openObject, setOpenObject] = useState<number | null>(null)
-  const [addForObject, setAddForObject] = useState<number | null>(null)
+  const [selectedObject, setSelectedObject] = useState<number | null>(null)
+  const [showCalc, setShowCalc] = useState(false)
 
   const load = () => {
     setLoading(true)
@@ -43,7 +43,11 @@ export default function Materials() {
       .list()
       .then((d) => {
         setMaterials(d.materials || [])
-        setObjects(d.objects || [])
+        const list = d.objects || []
+        setObjects(list)
+        setSelectedObject((prev) =>
+          prev && list.some((o) => o.id === prev) ? prev : list[0]?.id ?? null
+        )
         setObjMaterials(d.object_materials || [])
         setRooms(d.rooms || [])
       })
@@ -86,15 +90,32 @@ export default function Materials() {
   const sumOf = (objectId: number) =>
     materialsOf(objectId).reduce((s, m) => s + num(m.qty) * num(m.price), 0)
 
-  const startAdd = (objectId: number) => {
-    setAddForObject(objectId)
-    setOpenObject(objectId)
+  const activeObject = objects.find((o) => o.id === selectedObject) || null
+
+  const groupedByRoom = (objectId: number) => {
+    const list = materialsOf(objectId)
+    const map = new Map<string, { key: string; title: string; items: ObjectMaterial[]; sum: number }>()
+    list.forEach((m) => {
+      const key = m.room_id ? `room-${m.room_id}` : "other"
+      const title = m.room_name || (m.room_id ? "Помещение" : "Без помещения")
+      if (!map.has(key)) map.set(key, { key, title, items: [], sum: 0 })
+      const group = map.get(key)!
+      group.items.push(m)
+      group.sum += num(m.qty) * num(m.price)
+    })
+    return Array.from(map.values())
   }
 
-  const addFromCalc = async (payload: { material_id: number; qty: number; note: string }) => {
-    if (!addForObject) return
-    await materialsApi.addToObject({ object_id: addForObject, ...payload })
-    setAddForObject(null)
+  const addFromCalc = async (payload: {
+    material_id: number
+    qty: number
+    note: string
+    room_id: number | null
+    room_name: string
+    merge: boolean
+  }) => {
+    if (!selectedObject) return
+    await materialsApi.addToObject({ object_id: selectedObject, ...payload })
     load()
   }
 
@@ -127,64 +148,86 @@ export default function Materials() {
                   </Link>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {objects.map((o) => {
-                    const list = materialsOf(o.id)
-                    const isOpen = openObject === o.id
-                    return (
-                      <div key={o.id} className="rounded-lg border border-white/10 bg-[#161616]">
-                        <div className="flex flex-wrap items-center gap-3 p-4">
-                          <button
-                            className="flex flex-1 items-center gap-3 text-left"
-                            onClick={() => setOpenObject(isOpen ? null : o.id)}
-                          >
-                            <Icon
-                              name={isOpen ? "ChevronDown" : "ChevronRight"}
-                              size={16}
-                              className="text-white/40"
-                            />
-                            <div>
-                              <div className="text-sm">
-                                {o.object_code} — {o.client_name}
-                              </div>
-                              <div className="text-xs text-white/40">{o.address || "Адрес не указан"}</div>
-                            </div>
-                          </button>
+                <>
+                  <div className="mb-5 flex flex-wrap items-end gap-3">
+                    <div className="min-w-[280px] flex-1">
+                      <label className="mb-1.5 block text-xs text-white/50">Объект</label>
+                      <select
+                        className={inputCls}
+                        value={selectedObject ?? ""}
+                        onChange={(e) => {
+                          setSelectedObject(e.target.value ? Number(e.target.value) : null)
+                          setShowCalc(false)
+                        }}
+                      >
+                        <option value="">Выберите объект</option>
+                        {objects.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.object_code} — {o.client_name}
+                            {o.address ? ` · ${o.address}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                          <div className="text-right text-xs text-white/40">
-                            <div>{list.length} позиций</div>
-                            <div className="text-sm text-[#D4AF37]">{money(sumOf(o.id))}</div>
-                          </div>
+                    {activeObject && (
+                      <button className={goldBtn} onClick={() => setShowCalc(!showCalc)}>
+                        <Icon name={showCalc ? "X" : "Calculator"} size={16} />
+                        {showCalc ? "Свернуть" : "Рассчитать помещение"}
+                      </button>
+                    )}
+                  </div>
 
-                          <button
-                            className={goldBtn}
-                            onClick={() => (addForObject === o.id ? setAddForObject(null) : startAdd(o.id))}
-                          >
-                            <Icon name={addForObject === o.id ? "X" : "Calculator"} size={16} />
-                            {addForObject === o.id ? "Отмена" : "Рассчитать помещение"}
-                          </button>
+                  {!activeObject ? (
+                    <div className="py-16 text-center text-sm text-white/30">
+                      Выберите объект, чтобы увидеть его расчёты и материалы
+                    </div>
+                  ) : (
+                    <>
+                      {showCalc && (
+                        <div className="mb-5 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4">
+                          <RoomCalculator
+                            objectId={activeObject.id}
+                            materials={materials}
+                            rooms={rooms}
+                            existing={materialsOf(activeObject.id)}
+                            onAdd={addFromCalc}
+                            onCancel={() => setShowCalc(false)}
+                          />
                         </div>
+                      )}
 
-                        {addForObject === o.id && (
-                          <div className="border-t border-white/10 p-4">
-                            <RoomCalculator
-                              objectId={o.id}
-                              materials={materials}
-                              rooms={rooms}
-                              onAdd={addFromCalc}
-                              onCancel={() => setAddForObject(null)}
-                            />
-                          </div>
-                        )}
+                      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-[#161616] px-4 py-3 text-sm">
+                        <div className="text-white/60">
+                          {activeObject.object_code} — {activeObject.client_name}
+                          <span className="ml-2 text-white/30">
+                            {materialsOf(activeObject.id).length} позиций
+                          </span>
+                        </div>
+                        <div className="text-[#D4AF37]">
+                          Итого: {money(sumOf(activeObject.id))}
+                        </div>
+                      </div>
 
-                        {isOpen && (
-                          <div className="border-t border-white/10 p-4">
-                            {list.length === 0 ? (
-                              <div className="py-6 text-center text-sm text-white/30">
-                                Для этого объекта материалы ещё не добавлены
+                      {materialsOf(activeObject.id).length === 0 ? (
+                        <div className="py-14 text-center text-sm text-white/30">
+                          Для этого объекта расчётов ещё нет — нажмите «Рассчитать помещение»
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {groupedByRoom(activeObject.id).map((group) => (
+                            <div
+                              key={group.key}
+                              className="rounded-lg border border-white/10 bg-[#161616]"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Icon name="DoorOpen" size={15} className="text-[#D4AF37]" />
+                                  {group.title}
+                                </div>
+                                <div className="text-sm text-[#D4AF37]">{money(group.sum)}</div>
                               </div>
-                            ) : (
-                              <div className="overflow-x-auto">
+                              <div className="overflow-x-auto p-4">
                                 <table className="w-full text-sm">
                                   <thead>
                                     <tr className="border-b border-white/10 text-xs uppercase text-white/40">
@@ -197,21 +240,24 @@ export default function Materials() {
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {list.map((m) => (
-                                      <tr key={m.id} className="border-b border-white/5 last:border-0">
+                                    {group.items.map((m) => (
+                                      <tr
+                                        key={m.id}
+                                        className="border-b border-white/5 last:border-0"
+                                      >
                                         <td className="py-2.5 pr-4">
                                           {m.name}
                                           {m.note && (
                                             <div className="text-xs text-white/30">{m.note}</div>
                                           )}
                                         </td>
-                                        <td className="py-2.5 pr-4">
+                                        <td className="whitespace-nowrap py-2.5 pr-4">
                                           {num(m.qty)} {m.unit}
                                         </td>
                                         <td className="py-2.5 pr-4 text-white/60">
                                           {money(num(m.price))}
                                         </td>
-                                        <td className="py-2.5 pr-4 text-[#D4AF37]">
+                                        <td className="whitespace-nowrap py-2.5 pr-4 text-[#D4AF37]">
                                           {money(num(m.qty) * num(m.price))}
                                         </td>
                                         <td className="py-2.5 pr-4 text-white/60">
@@ -233,13 +279,13 @@ export default function Materials() {
                                   </tbody>
                                 </table>
                               </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
               )}
             </div>
           </TabsContent>

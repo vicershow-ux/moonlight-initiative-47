@@ -94,12 +94,12 @@ def handler(event: dict, context) -> dict:
 
             cur.execute(
                 "SELECT om.id, om.object_id, om.material_id, om.name, om.unit, om.qty, "
-                "om.price, om.shop_name, om.note, om.created_at "
+                "om.price, om.shop_name, om.note, om.created_at, om.room_id, om.room_name "
                 "FROM object_materials om WHERE om.company_id = %s ORDER BY om.created_at DESC",
                 (company_id,)
             )
             mkeys = ['id', 'object_id', 'material_id', 'name', 'unit', 'qty',
-                     'price', 'shop_name', 'note', 'created_at']
+                     'price', 'shop_name', 'note', 'created_at', 'room_id', 'room_name']
             object_materials = [dict(zip(mkeys, r)) for r in cur.fetchall()]
 
             cur.execute(
@@ -159,11 +159,37 @@ def handler(event: dict, context) -> dict:
             if qty <= 0:
                 return response(400, {'error': 'Укажите количество больше нуля'})
 
+            room_id = body.get('room_id') or None
+            room_name = (body.get('room_name') or '').strip()
+            note = (body.get('note') or '').strip()
+
+            if body.get('merge') and material_id and room_id:
+                cur.execute(
+                    "SELECT id, qty FROM object_materials WHERE company_id = %s AND object_id = %s "
+                    "AND material_id = %s AND room_id = %s LIMIT 1",
+                    (company_id, object_id, material_id, room_id)
+                )
+                existing = cur.fetchone()
+                if existing:
+                    cur.execute(
+                        "UPDATE object_materials SET qty = qty + %s, price = %s, note = %s "
+                        "WHERE id = %s",
+                        (qty, price, note, existing[0])
+                    )
+                    conn.commit()
+                    return response(200, {
+                        'success': True,
+                        'id': existing[0],
+                        'merged': True,
+                        'qty': float(existing[1]) + qty,
+                    })
+
             cur.execute(
                 "INSERT INTO object_materials (company_id, object_id, material_id, name, unit, "
-                "qty, price, shop_name, note) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                "qty, price, shop_name, note, room_id, room_name) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
                 (company_id, object_id, material_id, name, unit, qty, price, shop_name,
-                 (body.get('note') or '').strip())
+                 note, room_id, room_name)
             )
             new_id = cur.fetchone()[0]
             conn.commit()
@@ -258,5 +284,4 @@ def handler(event: dict, context) -> dict:
     finally:
         cur.close()
         conn.close()
-
 
