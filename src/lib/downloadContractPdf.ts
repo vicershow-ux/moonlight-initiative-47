@@ -1,3 +1,5 @@
+import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
+
 export async function downloadContractPdf(contentHtml: string, contractNumber: string) {
   const container = document.createElement("div")
   container.style.position = "fixed"
@@ -12,14 +14,27 @@ export async function downloadContractPdf(contentHtml: string, contractNumber: s
   root.style.fontFamily = "Arial, sans-serif"
   root.style.fontSize = "13px"
   root.style.lineHeight = "1.5"
+  const title = contractNumber.startsWith("Акт")
+    ? contractNumber
+    : `Договор № ${contractNumber}`
+
   root.innerHTML = `<style>
     .pdf-doc p { margin: 0 0 12px; }
     .pdf-doc h3 { margin: 20px 0 8px; }
     .pdf-doc h2 { margin: 24px 0 10px; }
-  </style><div class="pdf-doc">${contentHtml}</div>`
+    ${docBrandStyles}
+  </style>${docBrandHeader(title)}<div class="pdf-doc">${contentHtml}</div>`
 
   container.appendChild(root)
   document.body.appendChild(container)
+
+  await new Promise<void>((resolve) => {
+    const img = new Image()
+    img.onload = () => resolve()
+    img.onerror = () => resolve()
+    img.src = `${window.location.origin}/logo-224.png`
+    setTimeout(resolve, 3000)
+  })
 
   const html2pdf = (await import("html2pdf.js")).default
   await html2pdf()

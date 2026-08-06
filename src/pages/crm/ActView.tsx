@@ -5,6 +5,7 @@ import Icon from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 import { actsApi, Act } from "@/lib/api"
 import { downloadContractPdf } from "@/lib/downloadContractPdf"
+import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
 
 export default function ActView() {
   const { actId } = useParams()
@@ -53,9 +54,10 @@ export default function ActView() {
               .works-table thead th { border: 1.2px solid #6B4508 !important; }
               .works-table tbody td { color: #1a1a1a !important; }
             }
+            ${docBrandStyles}
           </style>
         </head>
-        <body>${act.content_html}</body>
+        <body>${docBrandHeader(`Акт № ${act.act_number}`)}${act.content_html}</body>
       </html>
     `)
     win.document.close()

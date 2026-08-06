@@ -5,6 +5,7 @@ import { estimatesApi, objectsApi, objectStatusesApi, contractsApi, actsApi, mat
 import { printMaterials, downloadMaterialsPdf } from "@/lib/printMaterials"
 import { printEstimate, downloadEstimatePdf } from "@/lib/printEstimate"
 import { downloadContractPdf } from "@/lib/downloadContractPdf"
+import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
 import { useAuth } from "@/contexts/AuthContext"
 import { DocumentsToolbar } from "@/components/crm/documents/DocumentsToolbar"
 import { DocumentEstimateRow, DocumentMatEstimateRow } from "@/components/crm/documents/DocumentEstimateRows"
@@ -81,9 +82,10 @@ export default function Documents() {
           <style>
             body { font-family: Arial, sans-serif; padding: 32px; line-height: 1.5; color: #161616; }
             table { border-collapse: collapse; }
+            ${docBrandStyles}
           </style>
         </head>
-        <body>${act.content_html}</body>
+        <body>${docBrandHeader(`Акт № ${act.act_number}`)}${act.content_html}</body>
       </html>
     `)
     win.document.close()
@@ -114,9 +116,10 @@ export default function Documents() {
             body { font-family: Arial, sans-serif; padding: 32px; line-height: 1.5; color: #161616; }
             h2, h3 { color: #161616; }
             table { border-collapse: collapse; }
+            ${docBrandStyles}
           </style>
         </head>
-        <body>${contract.content_html}</body>
+        <body>${docBrandHeader(`Договор № ${contract.contract_number}`)}${contract.content_html}</body>
       </html>
     `)
     win.document.close()

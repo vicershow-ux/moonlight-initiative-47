@@ -10,6 +10,7 @@ import { ObjectDocumentsPanel } from "@/components/crm/object-detail/ObjectDocum
 import { ObjectSidebar } from "@/components/crm/object-detail/ObjectSidebar"
 import { formatDateTime } from "@/components/crm/object-detail/utils"
 import { printEstimate } from "@/lib/printEstimate"
+import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
 import { getStatusBadgeClass } from "@/lib/objectStatusColors"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -125,9 +126,10 @@ export default function ObjectDetail() {
             body { font-family: Arial, sans-serif; padding: 32px; line-height: 1.5; color: #161616; }
             h2, h3 { color: #161616; }
             table { border-collapse: collapse; }
+            ${docBrandStyles}
           </style>
         </head>
-        <body>${contract.content_html}</body>
+        <body>${docBrandHeader(`Договор № ${contract.contract_number}`)}${contract.content_html}</body>
       </html>
     `)
     win.document.close()

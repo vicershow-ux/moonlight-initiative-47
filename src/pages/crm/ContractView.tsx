@@ -5,6 +5,7 @@ import Icon from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 import { contractsApi, Contract } from "@/lib/api"
 import { downloadContractPdf } from "@/lib/downloadContractPdf"
+import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
 
 export default function ContractView() {
   const { id, contractId } = useParams()
@@ -41,9 +42,10 @@ export default function ContractView() {
             h3 { margin: 24px 0 10px; }
             p { margin: 0 0 14px; }
             table { border-collapse: collapse; }
+            ${docBrandStyles}
           </style>
         </head>
-        <body>${contract.content_html}</body>
+        <body>${docBrandHeader(`Договор № ${contract.contract_number}`)}${contract.content_html}</body>
       </html>
     `)
     win.document.close()
