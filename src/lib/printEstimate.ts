@@ -502,8 +502,10 @@ function scopeStyles(css: string, scope: string) {
       .map((s: string) => {
         const sel = s.trim()
         if (!sel) return ""
-        if (sel === "*") return `${scope} *`
+        if (sel === "*") return `${scope}, ${scope} *`
         if (/^(html|body)$/i.test(sel)) return scope
+        if (sel === ".est-root") return scope
+        if (sel.startsWith(".est-root ")) return `${scope} ${sel.slice(".est-root ".length)}`
         return `${scope} ${sel}`
       })
       .filter(Boolean)
@@ -523,20 +525,24 @@ export async function downloadEstimatePdf(estimate: Estimate, object: ObjectItem
   container.style.top = "0"
   container.style.width = "760px"
   container.style.background = "#ffffff"
-  container.id = "pdf-scope-estimate"
-
-  const styleTag = document.createElement("style")
-  styleTag.textContent = scopeStyles(styles, "#pdf-scope-estimate")
 
   const root = document.createElement("div")
+  root.id = "pdf-scope-estimate"
   root.className = "est-root"
   root.style.width = "760px"
   root.style.maxWidth = "760px"
   root.style.padding = "0"
   root.style.margin = "0"
-  root.innerHTML = bodyContent
+  root.style.background = "#ffffff"
 
-  container.appendChild(styleTag)
+  const styleTag = document.createElement("style")
+  styleTag.textContent = scopeStyles(styles, "#pdf-scope-estimate")
+
+  root.appendChild(styleTag)
+  const content = document.createElement("div")
+  content.innerHTML = bodyContent
+  root.appendChild(content)
+
   container.appendChild(root)
   document.body.appendChild(container)
 
