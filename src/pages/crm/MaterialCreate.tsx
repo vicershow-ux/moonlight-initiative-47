@@ -6,6 +6,16 @@ import { materialsApi } from "@/lib/api"
 
 const UNITS = ["шт", "м²", "м", "м.п.", "м³", "кг", "т", "л", "уп", "рул", "меш", "компл"]
 
+const CONSUMPTION_UNITS = [
+  { value: "м²", label: "м² (квадратный метр)" },
+  { value: "м³", label: "м³ (кубический метр)" },
+  { value: "м.п.", label: "м/п (метр погонный)" },
+  { value: "м", label: "м (метр)" },
+  { value: "шт", label: "шт (штука)" },
+  { value: "точка", label: "точка" },
+  { value: "компл", label: "комплект" },
+]
+
 const inputCls =
   "w-full bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
 
@@ -24,6 +34,8 @@ export default function MaterialCreate() {
     shop_phone: "",
     shop_url: "",
     note: "",
+    consumption: "",
+    consumption_unit: "м²",
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
@@ -34,7 +46,11 @@ export default function MaterialCreate() {
     setError("")
     setSaving(true)
     try {
-      await materialsApi.create({ ...form, price: Number(form.price || 0) })
+      await materialsApi.create({
+        ...form,
+        price: Number(form.price || 0),
+        consumption: Number(form.consumption || 0),
+      })
       navigate("/cabinet/materials")
     } catch (e) {
       setError((e as Error)?.message || "Не удалось сохранить материал")
@@ -106,6 +122,49 @@ export default function MaterialCreate() {
               onChange={(e) => set("price", e.target.value)}
             />
           </div>
+        </div>
+
+        <div className="mb-5 mt-7 text-xs uppercase text-white/40">Расход материала</div>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div>
+            <label className={labelCls}>Расход: сколько покрывает 1 {form.unit}</label>
+            <input
+              className={inputCls}
+              type="number"
+              min="0"
+              step="0.001"
+              placeholder="Например: 4"
+              value={form.consumption}
+              onChange={(e) => set("consumption", e.target.value)}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Единица расхода</label>
+            <select
+              className={inputCls}
+              value={form.consumption_unit}
+              onChange={(e) => set("consumption_unit", e.target.value)}
+            >
+              {CONSUMPTION_UNITS.map((u) => (
+                <option key={u.value} value={u.value}>
+                  {u.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          {Number(form.consumption) > 0 && (
+            <div className="rounded-lg border border-[#D4AF37]/30 bg-[#161616] px-4 py-3 text-sm text-white/70 sm:col-span-2">
+              <Icon name="Info" size={14} className="mr-2 inline text-[#D4AF37]" />
+              1 {form.unit} покрывает {Number(form.consumption)} {form.consumption_unit}
+              {Number(form.price) > 0 && (
+                <span className="text-white/40">
+                  {" "}
+                  · стоимость {(Number(form.price) / Number(form.consumption)).toFixed(2)} ₽ за 1{" "}
+                  {form.consumption_unit}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="mb-5 mt-7 text-xs uppercase text-white/40">Магазин</div>

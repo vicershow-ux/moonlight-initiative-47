@@ -1398,6 +1398,8 @@ export interface MaterialItem {
   shop_phone: string
   shop_url: string
   note: string
+  consumption: number
+  consumption_unit: string
   created_at: string
 }
 

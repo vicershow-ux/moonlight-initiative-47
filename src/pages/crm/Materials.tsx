@@ -234,6 +234,24 @@ export default function Materials() {
                                   <Icon name="Check" size={16} />
                                   Добавить
                                 </button>
+                                {selectedMaterial &&
+                                  num(selectedMaterial.consumption) > 0 &&
+                                  Number(addForm.qty) > 0 && (
+                                    <div className="rounded-lg border border-[#D4AF37]/30 bg-[#1f1f1f] px-4 py-2.5 text-sm text-white/70 md:col-span-4">
+                                      <Icon
+                                        name="Info"
+                                        size={14}
+                                        className="mr-2 inline text-[#D4AF37]"
+                                      />
+                                      {Number(addForm.qty)} {selectedMaterial.unit} хватит на{" "}
+                                      <span className="text-[#D4AF37]">
+                                        {(
+                                          Number(addForm.qty) * num(selectedMaterial.consumption)
+                                        ).toFixed(2)}{" "}
+                                        {selectedMaterial.consumption_unit}
+                                      </span>
+                                    </div>
+                                  )}
                               </div>
                             )}
                           </div>
@@ -355,6 +373,7 @@ export default function Materials() {
                         <th className="py-2 pr-4 text-left font-medium">Категория</th>
                         <th className="py-2 pr-4 text-left font-medium">Ед. изм.</th>
                         <th className="py-2 pr-4 text-left font-medium">Цена</th>
+                        <th className="py-2 pr-4 text-left font-medium">Расход</th>
                         <th className="py-2 pr-4 text-left font-medium">Магазин</th>
                         <th className="py-2 pr-4 text-left font-medium">Адрес</th>
                         <th className="py-2 pr-4 text-left font-medium">Контакты</th>
@@ -372,6 +391,21 @@ export default function Materials() {
                           <td className="py-3 pr-4 text-white/60">{m.unit}</td>
                           <td className="whitespace-nowrap py-3 pr-4 text-[#D4AF37]">
                             {money(num(m.price))}
+                          </td>
+                          <td className="whitespace-nowrap py-3 pr-4 text-white/60">
+                            {num(m.consumption) > 0 ? (
+                              <>
+                                1 {m.unit} = {num(m.consumption)} {m.consumption_unit}
+                                {num(m.price) > 0 && (
+                                  <div className="text-xs text-white/30">
+                                    {(num(m.price) / num(m.consumption)).toFixed(2)} ₽ за{" "}
+                                    {m.consumption_unit}
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              "—"
+                            )}
                           </td>
                           <td className="py-3 pr-4">
                             {m.shop_url ? (
