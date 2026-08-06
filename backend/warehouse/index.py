@@ -44,12 +44,12 @@ def get_current_user(cur, event):
 
 ITEM_KEYS = [
     'id', 'warehouse_id', 'name', 'kind', 'unit', 'qty', 'price',
-    'object_id', 'issued_qty', 'issued_at', 'created_at'
+    'object_id', 'issued_qty', 'issued_at', 'used_qty', 'used_at', 'created_at'
 ]
 
 ITEM_COLS = (
     "i.id, i.warehouse_id, i.name, i.kind, i.unit, i.qty, i.price, "
-    "i.object_id, i.issued_qty, i.issued_at, i.created_at"
+    "i.object_id, i.issued_qty, i.issued_at, i.used_qty, i.used_at, i.created_at"
 )
 
 
@@ -197,12 +197,39 @@ def handler(event: dict, context) -> dict:
             conn.commit()
             return response(200, {'success': True, 'id': issued_id})
 
-        if method == 'PUT' and action == 'return':
+        if method == 'PUT' and action == 'restock':
             if not row_id:
                 return response(400, {'error': 'Не указана позиция'})
-
+            qty = to_num(body.get('qty'))
+            if qty <= 0:
+                return response(400, {'error': 'Укажите количество больше нуля'})
             cur.execute(
-                "SELECT warehouse_id, name, kind, unit, price, issued_qty FROM warehouse_items "
+                "SELECT id FROM warehouse_items WHERE id = %s AND company_id = %s AND object_id IS NULL",
+                (row_id, company_id)
+            )
+            if not cur.fetchone():
+                return response(404, {'error': 'Позиция не найдена на складе'})
+            price = body.get('price')
+            if price is not None and str(price) != '':
+                cur.execute(
+                    "UPDATE warehouse_items SET qty = qty + %s, price = %s, updated_at = now() "
+                    "WHERE id = %s AND company_id = %s",
+                    (qty, to_num(price), row_id, company_id)
+                )
+            else:
+                cur.execute(
+                    "UPDATE warehouse_items SET qty = qty + %s, updated_at = now() "
+                    "WHERE id = %s AND company_id = %s",
+                    (qty, row_id, company_id)
+                )
+            conn.commit()
+            return response(200, {'success': True})
+
+        if method == 'PUT' and action == 'consume':
+            if not row_id:
+                return response(400, {'error': 'Не указана позиция'})
+            cur.execute(
+                "SELECT issued_qty, used_qty, kind FROM warehouse_items "
                 "WHERE id = %s AND company_id = %s AND object_id IS NOT NULL",
                 (row_id, company_id)
             )
@@ -210,11 +237,45 @@ def handler(event: dict, context) -> dict:
             if not src:
                 return response(404, {'error': 'Выданная позиция не найдена'})
 
-            wh_id, name, kind, unit, price, issued_qty = src
+            issued_qty, used_qty, kind = float(src[0]), float(src[1]), src[2]
+            available = issued_qty - used_qty
+            qty = to_num(body.get('qty'), available)
+            if qty <= 0:
+                return response(400, {'error': 'Укажите количество больше нуля'})
+            if qty > available:
+                return response(400, {'error': f'Доступно к списанию только {available:g}'})
+
+            cur.execute(
+                "UPDATE warehouse_items SET used_qty = used_qty + %s, used_at = now(), updated_at = now() "
+                "WHERE id = %s AND company_id = %s",
+                (qty, row_id, company_id)
+            )
+            conn.commit()
+            return response(200, {'success': True})
+
+        if method == 'PUT' and action == 'return':
+            if not row_id:
+                return response(400, {'error': 'Не указана позиция'})
+
+            cur.execute(
+                "SELECT warehouse_id, name, kind, unit, price, issued_qty, used_qty FROM warehouse_items "
+                "WHERE id = %s AND company_id = %s AND object_id IS NOT NULL",
+                (row_id, company_id)
+            )
+            src = cur.fetchone()
+            if not src:
+                return response(404, {'error': 'Выданная позиция не найдена'})
+
+            wh_id, name, kind, unit, price, issued_qty, used_qty = src
             issued_qty = float(issued_qty)
-            back_qty = to_num(body.get('qty'), issued_qty)
-            if back_qty <= 0 or back_qty > issued_qty:
-                back_qty = issued_qty
+            used_qty = float(used_qty)
+            available = issued_qty - used_qty
+            if available <= 0:
+                return response(400, {'error': 'Всё выданное уже списано — возвращать нечего'})
+
+            back_qty = to_num(body.get('qty'), available)
+            if back_qty <= 0 or back_qty > available:
+                back_qty = available
 
             cur.execute(
                 "SELECT id FROM warehouse_items WHERE company_id = %s AND object_id IS NULL "

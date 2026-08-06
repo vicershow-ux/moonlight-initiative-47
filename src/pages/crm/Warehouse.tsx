@@ -47,6 +47,10 @@ export default function Warehouse() {
   const [issueObject, setIssueObject] = useState("")
   const [issueQty, setIssueQty] = useState("")
 
+  const [restockFor, setRestockFor] = useState<WarehouseItem | null>(null)
+  const [restockQty, setRestockQty] = useState("")
+  const [restockPrice, setRestockPrice] = useState("")
+
   const [objectFilter, setObjectFilter] = useState("")
 
   const load = () => {
@@ -118,6 +122,19 @@ export default function Warehouse() {
       setIssueFor(null)
       setIssueObject("")
       setIssueQty("")
+    })
+
+  const submitRestock = () =>
+    run(async () => {
+      if (!restockFor) return
+      await warehouseApi.restock(
+        restockFor.id,
+        Number(restockQty || 0),
+        restockPrice ? Number(restockPrice) : undefined
+      )
+      setRestockFor(null)
+      setRestockQty("")
+      setRestockPrice("")
     })
 
   const kindBadge = (kind: string) => (
@@ -293,6 +310,42 @@ export default function Warehouse() {
                 </div>
               )}
 
+              {restockFor && (
+                <div className="mb-5 grid gap-3 rounded-lg border border-emerald-500/30 bg-[#161616] p-4 md:grid-cols-4">
+                  <div className="flex items-center text-sm text-white/70 md:col-span-4">
+                    Приход «{restockFor.name}» — сейчас на складе {num(restockFor.qty)} {restockFor.unit}
+                  </div>
+                  <input
+                    className={inputCls}
+                    placeholder="Сколько поступило"
+                    type="number"
+                    value={restockQty}
+                    onChange={(e) => setRestockQty(e.target.value)}
+                  />
+                  <input
+                    className={inputCls}
+                    placeholder="Новая цена (необязательно)"
+                    type="number"
+                    value={restockPrice}
+                    onChange={(e) => setRestockPrice(e.target.value)}
+                  />
+                  <button
+                    className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm text-white transition-colors hover:bg-emerald-700 disabled:opacity-40"
+                    onClick={submitRestock}
+                    disabled={Number(restockQty) <= 0}
+                  >
+                    <Icon name="PackagePlus" size={16} />
+                    Оприходовать
+                  </button>
+                  <button
+                    className="rounded-lg border border-white/10 px-4 py-2.5 text-sm text-white/60 transition-colors hover:text-white"
+                    onClick={() => setRestockFor(null)}
+                  >
+                    Отмена
+                  </button>
+                </div>
+              )}
+
               {issueFor && (
                 <div className="mb-5 grid gap-3 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4 md:grid-cols-4">
                   <div className="flex items-center text-sm text-white/70 md:col-span-4">
@@ -366,6 +419,17 @@ export default function Warehouse() {
                           <td className="py-3 pr-4">
                             <div className="flex items-center gap-3">
                               <button
+                                className="text-emerald-400 transition-colors hover:text-emerald-300"
+                                title="Приход на склад"
+                                onClick={() => {
+                                  setRestockFor(i)
+                                  setRestockQty("")
+                                  setRestockPrice("")
+                                }}
+                              >
+                                <Icon name="PackagePlus" size={16} />
+                              </button>
+                              <button
                                 className="text-[#D4AF37] transition-colors hover:text-[#B8860B] disabled:opacity-30"
                                 title="Выдать на объект"
                                 disabled={num(i.qty) <= 0}
@@ -412,6 +476,14 @@ export default function Warehouse() {
                 <span className="text-xs text-white/40">
                   Показаны только позиции, выданные со склада
                 </span>
+                <span className="ml-auto rounded-lg border border-white/10 px-3 py-2 text-sm">
+                  <span className="text-white/40">Израсходовано на сумму:</span>{" "}
+                  <span className="text-[#D4AF37]">
+                    {money(
+                      filteredIssued.reduce((s, i) => s + num(i.used_qty) * num(i.price), 0)
+                    )}
+                  </span>
+                </span>
               </div>
 
               {filteredIssued.length === 0 ? (
@@ -427,9 +499,11 @@ export default function Warehouse() {
                         <th className="py-2 pr-4 text-left font-medium">Адрес</th>
                         <th className="py-2 pr-4 text-left font-medium">Позиция</th>
                         <th className="py-2 pr-4 text-left font-medium">Тип</th>
-                        <th className="py-2 pr-4 text-left font-medium">Кол-во</th>
+                        <th className="py-2 pr-4 text-left font-medium">Выдано</th>
+                        <th className="py-2 pr-4 text-left font-medium">Израсходовано</th>
+                        <th className="py-2 pr-4 text-left font-medium">Остаток</th>
                         <th className="py-2 pr-4 text-left font-medium">Дата выдачи</th>
-                        <th className="py-2 pr-4 text-left font-medium">Сумма</th>
+                        <th className="py-2 pr-4 text-left font-medium">Затраты</th>
                         <th className="py-2 pr-4 text-left font-medium">Действия</th>
                       </tr>
                     </thead>
@@ -446,16 +520,42 @@ export default function Warehouse() {
                           <td className="py-3 pr-4">
                             {num(i.issued_qty)} {i.unit}
                           </td>
-                          <td className="py-3 pr-4 text-white/60">{fmtDate(i.issued_at)}</td>
-                          <td className="py-3 pr-4">{money(num(i.issued_qty) * num(i.price))}</td>
+                          <td className="py-3 pr-4 text-emerald-400">
+                            {num(i.used_qty)} {i.unit}
+                          </td>
                           <td className="py-3 pr-4">
-                            <button
-                              className="flex items-center gap-1.5 rounded-lg border border-[#D4AF37]/40 px-3 py-1.5 text-xs text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10"
-                              onClick={() => run(() => warehouseApi.returnToStock(i.id))}
-                            >
-                              <Icon name="Undo2" size={14} />
-                              Вернуть на склад
-                            </button>
+                            {num(i.issued_qty) - num(i.used_qty)} {i.unit}
+                          </td>
+                          <td className="py-3 pr-4 text-white/60">{fmtDate(i.issued_at)}</td>
+                          <td className="py-3 pr-4">{money(num(i.used_qty) * num(i.price))}</td>
+                          <td className="py-3 pr-4">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <button
+                                className="flex items-center gap-1.5 rounded-lg border border-emerald-500/40 px-3 py-1.5 text-xs text-emerald-400 transition-colors hover:bg-emerald-500/10 disabled:opacity-30"
+                                disabled={num(i.issued_qty) - num(i.used_qty) <= 0}
+                                onClick={() => {
+                                  const rest = num(i.issued_qty) - num(i.used_qty)
+                                  const val = window.prompt(
+                                    `Сколько израсходовано? Доступно ${rest} ${i.unit}`,
+                                    String(rest)
+                                  )
+                                  if (val === null) return
+                                  const q = Number(val)
+                                  if (q > 0) run(() => warehouseApi.consume(i.id, q))
+                                }}
+                              >
+                                <Icon name="CheckCheck" size={14} />
+                                Списать
+                              </button>
+                              <button
+                                className="flex items-center gap-1.5 rounded-lg border border-[#D4AF37]/40 px-3 py-1.5 text-xs text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10 disabled:opacity-30"
+                                disabled={num(i.issued_qty) - num(i.used_qty) <= 0}
+                                onClick={() => run(() => warehouseApi.returnToStock(i.id))}
+                              >
+                                <Icon name="Undo2" size={14} />
+                                Вернуть на склад
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}

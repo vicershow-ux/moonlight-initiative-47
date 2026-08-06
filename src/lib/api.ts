@@ -1259,6 +1259,8 @@ export interface WarehouseItem {
   object_address: string | null
   issued_qty: number
   issued_at: string | null
+  used_qty: number
+  used_at: string | null
   created_at: string
 }
 
@@ -1318,6 +1320,24 @@ export const warehouseApi = {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ object_id: objectId, qty }),
+    })
+    return parseResponse(res)
+  },
+
+  async restock(id: number, qty: number, price?: number) {
+    const res = await fetch(`${WAREHOUSE_URL}?action=restock&id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(price ? { qty, price } : { qty }),
+    })
+    return parseResponse(res)
+  },
+
+  async consume(id: number, qty?: number) {
+    const res = await fetch(`${WAREHOUSE_URL}?action=consume&id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(qty ? { qty } : {}),
     })
     return parseResponse(res)
   },
