@@ -13,6 +13,7 @@ const SITE_URL = funcUrls.site
 const CONTRACTS_URL = funcUrls.contracts
 const ACTS_URL = funcUrls.acts
 const WAREHOUSE_URL = funcUrls.warehouse
+const MATERIALS_URL = funcUrls.materials
 
 const TOKEN_KEY = "fixkey_token"
 
@@ -1381,6 +1382,53 @@ export const warehouseApi = {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify(qty ? { qty } : {}),
+    })
+    return parseResponse(res)
+  },
+}
+
+export interface MaterialItem {
+  id: number
+  name: string
+  category: string
+  unit: string
+  price: number
+  shop_name: string
+  shop_address: string
+  shop_phone: string
+  shop_url: string
+  note: string
+  created_at: string
+}
+
+export const materialsApi = {
+  async list() {
+    const res = await fetch(MATERIALS_URL, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ materials: MaterialItem[] }>
+  },
+
+  async create(payload: Partial<MaterialItem>) {
+    const res = await fetch(MATERIALS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res)
+  },
+
+  async update(id: number, payload: Partial<MaterialItem>) {
+    const res = await fetch(`${MATERIALS_URL}?id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res)
+  },
+
+  async remove(id: number) {
+    const res = await fetch(`${MATERIALS_URL}?id=${id}`, {
+      method: "DELETE",
+      headers: { ...authHeaders() },
     })
     return parseResponse(res)
   },
