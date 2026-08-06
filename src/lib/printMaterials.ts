@@ -57,6 +57,11 @@ function buildMaterialsDocument(
   const groups = groupByShop(items, catalog)
   const total = groups.reduce((s, g) => s + g.sum, 0)
 
+  const roomNames = Array.from(
+    new Set(items.map((it) => it.room_name).filter(Boolean))
+  ) as string[]
+  const roomTitle = roomNames.length ? roomNames.join(", ") : "Без помещения"
+
   const shopsHtml = groups
     .map((group) => {
       const rows = group.items
@@ -75,12 +80,7 @@ function buildMaterialsDocument(
         )
         .join("")
 
-      const contacts = [
-        group.address ? `Адрес: ${escapeHtml(group.address)}` : "",
-        group.phone ? `Тел: ${escapeHtml(group.phone)}` : "",
-      ]
-        .filter(Boolean)
-        .join(" · ")
+      const contacts = group.address ? `Адрес: ${escapeHtml(group.address)}` : ""
 
       return `
       <div class="room-block">
@@ -326,8 +326,8 @@ function buildMaterialsDocument(
       <div class="value">${escapeHtml(object.address || "—")}</div>
     </div>
     <div>
-      <div class="label">Позиций в ведомости</div>
-      <div class="value">${items.length}</div>
+      <div class="label">Помещение</div>
+      <div class="value">${escapeHtml(roomTitle)}</div>
     </div>
   </div>
 
@@ -336,8 +336,8 @@ function buildMaterialsDocument(
   <div class="summary">
     <div class="summary-box">
       <div class="summary-row">
-        <span>Магазинов:</span>
-        <span>${groups.length}</span>
+        <span>Помещение:</span>
+        <span>${escapeHtml(roomTitle)}</span>
       </div>
       <div class="summary-total">
         <span>ИТОГО:</span>
