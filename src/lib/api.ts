@@ -1317,6 +1317,15 @@ export const warehouseApi = {
     return parseResponse(res)
   },
 
+  async updateItem(id: number, payload: Partial<WarehouseItem>) {
+    const res = await fetch(`${WAREHOUSE_URL}?entity=item&id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res)
+  },
+
   async removeItem(id: number) {
     const res = await fetch(`${WAREHOUSE_URL}?entity=item&id=${id}`, {
       method: "DELETE",

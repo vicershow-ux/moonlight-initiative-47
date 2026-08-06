@@ -64,6 +64,16 @@ export default function Warehouse() {
     price: "",
   })
 
+  const [editItem, setEditItem] = useState<WarehouseItem | null>(null)
+  const [editItemForm, setEditItemForm] = useState({
+    name: "",
+    kind: "материал",
+    unit: "шт",
+    qty: "",
+    price: "",
+    warehouse_id: "",
+  })
+
   const [restockFor, setRestockFor] = useState<WarehouseItem | null>(null)
   const [restockQty, setRestockQty] = useState("")
   const [restockPrice, setRestockPrice] = useState("")
@@ -185,6 +195,34 @@ export default function Warehouse() {
       })
       setAddToWh(null)
       setWhItemForm({ name: "", kind: "материал", unit: "шт", qty: "1", price: "" })
+    })
+
+  const startEditItem = (i: WarehouseItem) => {
+    setRestockFor(null)
+    setIssueFor(null)
+    setEditItem(i)
+    setEditItemForm({
+      name: i.name || "",
+      kind: i.kind || "материал",
+      unit: i.unit || "шт",
+      qty: String(num(i.qty)),
+      price: String(num(i.price)),
+      warehouse_id: i.warehouse_id ? String(i.warehouse_id) : "",
+    })
+  }
+
+  const submitEditItem = () =>
+    run(async () => {
+      if (!editItem) return
+      await warehouseApi.updateItem(editItem.id, {
+        name: editItemForm.name,
+        kind: editItemForm.kind,
+        unit: editItemForm.unit,
+        qty: Number(editItemForm.qty || 0),
+        price: Number(editItemForm.price || 0),
+        warehouse_id: editItemForm.warehouse_id ? Number(editItemForm.warehouse_id) : null,
+      })
+      setEditItem(null)
     })
 
   const submitRestock = () =>
@@ -641,6 +679,85 @@ export default function Warehouse() {
                 </div>
               )}
 
+              {editItem && (
+                <div className="mb-5 grid gap-3 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4 md:grid-cols-3">
+                  <div className="text-sm text-white/70 md:col-span-3">
+                    Редактирование позиции «{editItem.name}»
+                  </div>
+                  <input
+                    className={inputCls}
+                    placeholder="Название"
+                    value={editItemForm.name}
+                    onChange={(e) => setEditItemForm({ ...editItemForm, name: e.target.value })}
+                  />
+                  <select
+                    className={inputCls}
+                    value={editItemForm.kind}
+                    onChange={(e) => setEditItemForm({ ...editItemForm, kind: e.target.value })}
+                  >
+                    <option value="материал">Материал</option>
+                    <option value="инструмент">Инструмент</option>
+                    <option value="оборудование">Оборудование</option>
+                    <option value="расходник">Расходник</option>
+                  </select>
+                  <select
+                    className={inputCls}
+                    value={editItemForm.warehouse_id}
+                    onChange={(e) =>
+                      setEditItemForm({ ...editItemForm, warehouse_id: e.target.value })
+                    }
+                  >
+                    <option value="">Склад не выбран</option>
+                    {warehouses.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className={inputCls}
+                    value={editItemForm.unit}
+                    onChange={(e) => setEditItemForm({ ...editItemForm, unit: e.target.value })}
+                  >
+                    {["шт", "м²", "м", "м³", "кг", "т", "л", "уп", "рул", "меш", "компл"].map((u) => (
+                      <option key={u} value={u}>
+                        {u}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className={inputCls}
+                    type="number"
+                    min="0"
+                    placeholder="Количество"
+                    value={editItemForm.qty}
+                    onChange={(e) => setEditItemForm({ ...editItemForm, qty: e.target.value })}
+                  />
+                  <input
+                    className={inputCls}
+                    type="number"
+                    min="0"
+                    placeholder="Цена за единицу"
+                    value={editItemForm.price}
+                    onChange={(e) => setEditItemForm({ ...editItemForm, price: e.target.value })}
+                  />
+                  <button
+                    className={goldBtn}
+                    onClick={submitEditItem}
+                    disabled={editItemForm.name.trim().length < 2}
+                  >
+                    <Icon name="Check" size={16} />
+                    Сохранить
+                  </button>
+                  <button
+                    className="rounded-lg border border-white/10 px-4 py-2.5 text-sm text-white/60 transition-colors hover:text-white"
+                    onClick={() => setEditItem(null)}
+                  >
+                    Отмена
+                  </button>
+                </div>
+              )}
+
               {restockFor && (
                 <div className="mb-5 grid gap-3 rounded-lg border border-emerald-500/30 bg-[#161616] p-4 md:grid-cols-4">
                   <div className="flex items-center text-sm text-white/70 md:col-span-4">
@@ -753,6 +870,7 @@ export default function Warehouse() {
                                 className="text-emerald-400 transition-colors hover:text-emerald-300"
                                 title="Приход на склад"
                                 onClick={() => {
+                                  setEditItem(null)
                                   setRestockFor(i)
                                   setRestockQty("")
                                   setRestockPrice("")
@@ -765,11 +883,21 @@ export default function Warehouse() {
                                 title="Выдать на объект"
                                 disabled={num(i.qty) <= 0}
                                 onClick={() => {
+                                  setEditItem(null)
                                   setIssueFor(i)
                                   setIssueQty(String(num(i.qty)))
                                 }}
                               >
                                 <Icon name="Send" size={16} />
+                              </button>
+                              <button
+                                className="text-white/60 transition-colors hover:text-[#D4AF37]"
+                                title="Редактировать позицию"
+                                onClick={() =>
+                                  editItem?.id === i.id ? setEditItem(null) : startEditItem(i)
+                                }
+                              >
+                                <Icon name={editItem?.id === i.id ? "X" : "Pencil"} size={16} />
                               </button>
                               <button
                                 className="text-white/40 transition-colors hover:text-red-400"
