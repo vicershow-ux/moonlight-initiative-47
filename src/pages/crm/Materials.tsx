@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
+import { useAuth } from "@/contexts/AuthContext"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import Icon from "@/components/ui/icon"
 import { RoomCalculator } from "@/components/crm/RoomCalculator"
-import { exportMaterialsToExcel } from "@/lib/exportMaterials"
+import { printMaterials, downloadMaterialsPdf } from "@/lib/printMaterials"
 import {
   materialsApi,
   MaterialItem,
@@ -25,6 +26,8 @@ const goldBtn =
   "flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg disabled:opacity-40"
 
 export default function Materials() {
+  const { user } = useAuth()
+  const companyName = user?.company_name || ""
   const [materials, setMaterials] = useState<MaterialItem[]>([])
   const [objects, setObjects] = useState<MaterialObject[]>([])
   const [objMaterials, setObjMaterials] = useState<ObjectMaterial[]>([])
@@ -37,6 +40,8 @@ export default function Materials() {
 
   const [selectedObject, setSelectedObject] = useState<number | null>(null)
   const [showCalc, setShowCalc] = useState(false)
+  const [editRow, setEditRow] = useState<ObjectMaterial | null>(null)
+  const [editForm, setEditForm] = useState({ qty: "", price: "", note: "" })
 
   const load = () => {
     setLoading(true)
@@ -106,6 +111,22 @@ export default function Materials() {
     })
     return Array.from(map.values())
   }
+
+  const openEdit = (m: ObjectMaterial) => {
+    setEditRow(m)
+    setEditForm({ qty: String(num(m.qty)), price: String(num(m.price)), note: m.note || "" })
+  }
+
+  const saveEdit = () =>
+    run(async () => {
+      if (!editRow) return
+      await materialsApi.updateObjectMaterial(editRow.id, {
+        qty: Number(editForm.qty || 0),
+        price: Number(editForm.price || 0),
+        note: editForm.note,
+      })
+      setEditRow(null)
+    })
 
   const addFromCalc = async (payload: {
     material_id: number
@@ -177,20 +198,6 @@ export default function Materials() {
                         <button className={goldBtn} onClick={() => setShowCalc(!showCalc)}>
                           <Icon name={showCalc ? "X" : "Calculator"} size={16} />
                           {showCalc ? "Свернуть" : "Рассчитать помещение"}
-                        </button>
-                        <button
-                          className="flex items-center gap-2 rounded-lg border border-[#D4AF37]/40 px-4 py-2.5 text-sm text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10 disabled:opacity-40"
-                          disabled={materialsOf(activeObject.id).length === 0}
-                          onClick={() =>
-                            exportMaterialsToExcel(
-                              activeObject,
-                              materialsOf(activeObject.id),
-                              materials
-                            )
-                          }
-                        >
-                          <Icon name="FileSpreadsheet" size={16} />
-                          Выгрузить в Excel
                         </button>
                       </>
                     )}
@@ -286,15 +293,52 @@ export default function Materials() {
                                           {m.shop_name || "—"}
                                         </td>
                                         <td className="py-2.5 pr-4">
-                                          <button
-                                            className="text-white/40 transition-colors hover:text-red-400"
-                                            title="Убрать с объекта"
-                                            onClick={() =>
-                                              run(() => materialsApi.removeFromObject(m.id))
-                                            }
-                                          >
-                                            <Icon name="Trash2" size={16} />
-                                          </button>
+                                          <div className="flex items-center gap-2.5">
+                                            <button
+                                              className="text-white/50 transition-colors hover:text-[#D4AF37]"
+                                              title="Просмотр"
+                                              onClick={() =>
+                                                printMaterials(
+                                                  activeObject,
+                                                  [m],
+                                                  materials,
+                                                  companyName
+                                                )
+                                              }
+                                            >
+                                              <Icon name="Eye" size={16} />
+                                            </button>
+                                            <button
+                                              className="text-white/50 transition-colors hover:text-[#D4AF37]"
+                                              title="Редактировать"
+                                              onClick={() => openEdit(m)}
+                                            >
+                                              <Icon name="Pencil" size={16} />
+                                            </button>
+                                            <button
+                                              className="text-white/50 transition-colors hover:text-[#D4AF37]"
+                                              title="Скачать PDF"
+                                              onClick={() =>
+                                                downloadMaterialsPdf(
+                                                  activeObject,
+                                                  [m],
+                                                  materials,
+                                                  companyName
+                                                )
+                                              }
+                                            >
+                                              <Icon name="FileDown" size={16} />
+                                            </button>
+                                            <button
+                                              className="text-white/40 transition-colors hover:text-red-400"
+                                              title="Убрать с объекта"
+                                              onClick={() =>
+                                                run(() => materialsApi.removeFromObject(m.id))
+                                              }
+                                            >
+                                              <Icon name="Trash2" size={16} />
+                                            </button>
+                                          </div>
                                         </td>
                                       </tr>
                                     ))}
@@ -437,6 +481,78 @@ export default function Materials() {
             </div>
           </TabsContent>
         </Tabs>
+      )}
+
+      {editRow && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setEditRow(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-xl border border-white/10 bg-[#1f1f1f] p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-1 text-base">{editRow.name}</div>
+            <div className="mb-5 text-xs text-white/40">
+              {editRow.room_name || "Без помещения"}
+              {editRow.work_type ? ` · ${editRow.work_type}` : ""}
+            </div>
+
+            <div className="grid gap-4">
+              <div>
+                <label className="mb-1.5 block text-xs text-white/50">
+                  Количество, {editRow.unit}
+                </label>
+                <input
+                  className={inputCls}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editForm.qty}
+                  onChange={(e) => setEditForm({ ...editForm, qty: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs text-white/50">Цена за единицу, ₽</label>
+                <input
+                  className={inputCls}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editForm.price}
+                  onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs text-white/50">Примечание</label>
+                <input
+                  className={inputCls}
+                  value={editForm.note}
+                  onChange={(e) => setEditForm({ ...editForm, note: e.target.value })}
+                />
+              </div>
+              <div className="rounded-lg border border-[#D4AF37]/30 bg-[#161616] px-4 py-2.5 text-sm">
+                Сумма:{" "}
+                <span className="text-[#D4AF37]">
+                  {money(Number(editForm.qty || 0) * Number(editForm.price || 0))}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center gap-3">
+              <button className={goldBtn} onClick={saveEdit}>
+                <Icon name="Check" size={16} />
+                Сохранить
+              </button>
+              <button
+                className="rounded-lg border border-white/10 px-4 py-2.5 text-sm text-white/60 transition-colors hover:text-white"
+                onClick={() => setEditRow(null)}
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </CrmLayout>
   )
