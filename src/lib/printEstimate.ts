@@ -143,7 +143,7 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
   }
   .doc-title p {
     margin: 0;
-    color: #666;
+    color: #444;
     font-size: 13px;
   }
   .doc-subtitle h2 {
@@ -153,26 +153,26 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
   }
   .doc-subtitle p {
     margin: 4px 0 0;
-    color: #666;
+    color: #444;
     font-size: 12px;
   }
   hr.thin {
     border: none;
-    border-top: 1px solid #e5e5e5;
+    border-top: 1px solid #bbb;
     margin: 20px 0;
   }
   .info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px 32px;
-    background: #fafafa;
+    background: #f0f0f0;
     border-radius: 10px;
     padding: 16px;
     margin-bottom: 24px;
     font-size: 13px;
   }
   .info-grid .label {
-    color: #999;
+    color: #555;
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -190,7 +190,7 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
   .cat-block {
     page-break-inside: avoid;
     break-inside: avoid;
-    border: 1px solid #e5e5e5;
+    border: 1px solid #bbb;
     border-radius: 10px;
     overflow: hidden;
     margin-bottom: 12px;
@@ -210,8 +210,8 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
   thead th:nth-child(7) { width: 92px; }
   tbody td { overflow-wrap: break-word; word-break: break-word; }
   thead th {
-    background: #f3f3f3;
-    color: #888;
+    background: #e4e4e4;
+    color: #555;
     text-align: left;
     padding: 8px 10px;
     font-weight: 500;
@@ -221,15 +221,15 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
   }
   tbody td {
     padding: 8px 10px;
-    border-top: 1px solid #f0f0f0;
+    border-top: 1px solid #ccc;
   }
-  .num { color: #aaa; width: 28px; }
+  .num { color: #555; width: 28px; }
   .center { text-align: center; }
   .right { text-align: right; }
   .amount { font-weight: 600; }
   .cat-row td {
-    background: rgba(192, 138, 42, 0.1);
-    color: #A9711F;
+    background: #EFE0C4;
+    color: #7A4E10;
     font-weight: 600;
     font-size: 11px;
     border-top: none;
@@ -237,14 +237,14 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
   tfoot td {
     padding: 8px 10px;
     font-size: 12.5px;
-    background: #fafafa;
-    border-top: 1px solid #eee;
+    background: #f0f0f0;
+    border-top: 1px solid #bbb;
   }
   .room-total {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: #F5EFE4;
+    background: #EFE2C8;
     border-left: 4px solid #C08A2A;
     border-radius: 6px;
     padding: 12px 16px;
@@ -254,18 +254,18 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #A9711F;
+    color: #7A4E10;
     font-weight: 700;
   }
   .room-total-name {
     font-size: 13px;
-    color: #666;
+    color: #444;
     margin-top: 2px;
   }
   .room-total-amount {
     font-size: 18px;
     font-weight: 700;
-    color: #A9711F;
+    color: #7A4E10;
   }
   .summary {
     display: flex;
@@ -275,7 +275,7 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
   .summary-box {
     width: 100%;
     max-width: 290px;
-    background: #fafafa;
+    background: #f0f0f0;
     border-radius: 10px;
     padding: 16px;
     font-size: 13px;
@@ -284,23 +284,23 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     display: flex;
     justify-content: space-between;
     margin-bottom: 6px;
-    color: #666;
+    color: #444;
   }
-  .summary-row.discount { color: #A9711F; }
+  .summary-row.discount { color: #7A4E10; }
   .summary-total {
     display: flex;
     justify-content: space-between;
     font-size: 16px;
     font-weight: 700;
     padding-top: 8px;
-    border-top: 1px solid #e5e5e5;
+    border-top: 1px solid #bbb;
   }
   .notes {
     margin-bottom: 24px;
     font-size: 13px;
   }
   .notes .label {
-    color: #999;
+    color: #555;
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -314,14 +314,14 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     margin-bottom: 12px;
   }
   .parties .label {
-    color: #999;
+    color: #555;
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 4px;
   }
   .parties .name { font-weight: 600; }
-  .parties .contact { color: #888; font-size: 12px; margin-top: 2px; }
+  .parties .contact { color: #555; font-size: 12px; margin-top: 2px; }
   .parties .signature { height: 40px; object-fit: contain; margin-top: 8px; }
   .signatures {
     display: grid;
@@ -331,7 +331,7 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     margin-bottom: 12px;
   }
   .signature-block .label {
-    color: #999;
+    color: #555;
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -342,17 +342,22 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     padding-top: 6px;
     font-size: 13px;
     text-align: center;
-    color: #333;
+    color: #1a1a1a;
   }
   .footer {
     text-align: right;
     font-size: 11px;
-    color: #bbb;
+    color: #666;
     margin-top: 24px;
   }
   @page { size: A4 portrait; margin: 12mm 10mm; }
   @media print {
     html, body { width: 100%; margin: 0; padding: 0; background: #fff; }
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
     .est-root {
       padding: 0;
       max-width: 100%;
@@ -364,6 +369,11 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     .room-block { break-inside: avoid; }
     table { width: 100%; table-layout: fixed; }
     td, th { overflow-wrap: break-word; word-break: break-word; }
+    thead th { background: #e4e4e4 !important; color: #333 !important; }
+    .cat-row td { background: #EFE0C4 !important; color: #7A4E10 !important; }
+    .room-total { background: #EFE2C8 !important; border-left: 4px solid #A9711F !important; }
+    tfoot td { background: #f0f0f0 !important; }
+    .info-grid, .summary { background: #f0f0f0 !important; }
   }
 `
 
