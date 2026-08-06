@@ -77,6 +77,26 @@ def handler(event: dict, context) -> dict:
         row_id = params.get('id')
         entity = params.get('entity') or 'material'
 
+        if method == 'GET' and entity == 'estimate' and row_id:
+            cur.execute(
+                "SELECT me.id, me.object_id, me.title, me.room_names, me.total_amount, "
+                "me.items_json, me.created_at, o.object_code, o.client_name, o.address "
+                "FROM material_estimates me JOIN objects o ON o.id = me.object_id "
+                "WHERE me.id = %s AND me.company_id = %s",
+                (row_id, company_id)
+            )
+            row = cur.fetchone()
+            if not row:
+                return response(404, {'error': 'Смета не найдена'})
+            return response(200, {
+                'estimate': {
+                    'id': row[0], 'object_id': row[1], 'title': row[2],
+                    'room_names': row[3], 'total_amount': row[4],
+                    'items': json.loads(row[5] or '[]'), 'created_at': row[6],
+                    'object_code': row[7], 'client_name': row[8], 'address': row[9],
+                }
+            })
+
         if method == 'GET':
             cur.execute(
                 f"SELECT {COLS} FROM materials WHERE company_id = %s ORDER BY created_at DESC",
@@ -115,11 +135,23 @@ def handler(event: dict, context) -> dict:
                      'ceiling_height', 'wall_area']
             rooms = [dict(zip(rkeys, r)) for r in cur.fetchall()]
 
+            cur.execute(
+                "SELECT me.id, me.object_id, me.title, me.room_names, me.total_amount, "
+                "me.created_at, o.object_code, o.client_name "
+                "FROM material_estimates me JOIN objects o ON o.id = me.object_id "
+                "WHERE me.company_id = %s ORDER BY me.created_at DESC",
+                (company_id,)
+            )
+            ekeys = ['id', 'object_id', 'title', 'room_names', 'total_amount',
+                     'created_at', 'object_code', 'client_name']
+            estimates = [dict(zip(ekeys, r)) for r in cur.fetchall()]
+
             return response(200, {
                 'materials': materials,
                 'objects': objects,
                 'object_materials': object_materials,
                 'rooms': rooms,
+                'estimates': estimates,
             })
 
         body = json.loads(event.get('body') or '{}')
@@ -223,6 +255,45 @@ def handler(event: dict, context) -> dict:
                 return response(400, {'error': 'Не указана запись'})
             cur.execute(
                 "DELETE FROM object_materials WHERE id = %s AND company_id = %s",
+                (row_id, company_id)
+            )
+            conn.commit()
+            return response(200, {'success': True})
+
+        if method == 'POST' and entity == 'estimate':
+            object_id = body.get('object_id')
+            if not object_id:
+                return response(400, {'error': 'Выберите объект'})
+            cur.execute("SELECT id FROM objects WHERE id = %s AND company_id = %s",
+                        (object_id, company_id))
+            if not cur.fetchone():
+                return response(404, {'error': 'Объект не найден'})
+
+            items = body.get('items') or []
+            if not items:
+                return response(400, {'error': 'В смете нет позиций'})
+
+            total = sum(to_num(i.get('qty')) * to_num(i.get('price')) for i in items)
+            room_names = ', '.join(
+                sorted({(i.get('room_name') or '').strip() for i in items if i.get('room_name')})
+            )
+
+            cur.execute(
+                "INSERT INTO material_estimates (company_id, object_id, title, room_names, "
+                "total_amount, items_json) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
+                (company_id, object_id,
+                 (body.get('title') or 'Смета на материал').strip(),
+                 room_names, total, json.dumps(items, default=str))
+            )
+            new_id = cur.fetchone()[0]
+            conn.commit()
+            return response(200, {'success': True, 'id': new_id})
+
+        if method == 'DELETE' and entity == 'estimate':
+            if not row_id:
+                return response(400, {'error': 'Не указана смета'})
+            cur.execute(
+                "DELETE FROM material_estimates WHERE id = %s AND company_id = %s",
                 (row_id, company_id)
             )
             conn.commit()

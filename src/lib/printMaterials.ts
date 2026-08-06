@@ -300,13 +300,13 @@ function buildMaterialsDocument(
   <div class="header">
     <div class="brand"><div class="brand-logo" style="background-image:url('${window.location.origin}/favicon.png')"></div>Fix<span>Key</span></div>
     <div class="doc-title">
-      <h1>Список материалов</h1>
+      <h1>Смета на материал</h1>
       <p>Объект № ${escapeHtml(object.object_code)}</p>
     </div>
   </div>
 
   <div class="doc-subtitle">
-    <h2>ВЕДОМОСТЬ МАТЕРИАЛОВ</h2>
+    <h2>СМЕТА НА МАТЕРИАЛ</h2>
     <p>Расчёт материалов по помещениям и магазинам</p>
   </div>
 
@@ -363,7 +363,7 @@ function buildMaterialsDocument(
     Сформировано ${formatDateTime(new Date().toISOString())}
   </div>`
 
-  const title = `Материалы № ${object.object_code} — ${escapeHtml(object.client_name)}`
+  const title = `Смета на материал № ${object.object_code} — ${escapeHtml(object.client_name)}`
 
   return { styles, bodyContent, title }
 }
@@ -472,7 +472,7 @@ export async function downloadMaterialsPdf(
     await html2pdf()
       .set({
         margin: [12, 12, 12, 12],
-        filename: `Материалы ${object.object_code}.pdf`,
+        filename: `Смета на материал ${object.object_code}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: {
           scale: 2,

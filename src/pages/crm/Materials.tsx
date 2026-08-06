@@ -58,6 +58,8 @@ export default function Materials() {
   const [selectedObject, setSelectedObject] = useState<number | null>(null)
   const [showCalc, setShowCalc] = useState(false)
   const [editRow, setEditRow] = useState<ObjectMaterial | null>(null)
+  const [savingEstimate, setSavingEstimate] = useState(false)
+  const [savedMsg, setSavedMsg] = useState("")
   const [editForm, setEditForm] = useState({
     material_id: "",
     name: "",
@@ -138,6 +140,23 @@ export default function Materials() {
     })
     return Array.from(map.values())
   }
+
+  const saveEstimate = () =>
+    run(async () => {
+      if (!activeObject) return
+      setSavingEstimate(true)
+      try {
+        await materialsApi.createEstimate({
+          object_id: activeObject.id,
+          title: "Смета на материал",
+          items: materialsOf(activeObject.id),
+        })
+        setSavedMsg("Смета на материал сохранена — она появилась в разделе «Документы»")
+        setTimeout(() => setSavedMsg(""), 5000)
+      } finally {
+        setSavingEstimate(false)
+      }
+    })
 
   const openEdit = (m: ObjectMaterial) => {
     setEditRow(m)
@@ -221,6 +240,13 @@ export default function Materials() {
         </div>
       )}
 
+      {savedMsg && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+          <Icon name="CircleCheck" size={16} />
+          {savedMsg}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-16">
           <Icon name="Loader2" size={24} className="animate-spin text-white/40" />
@@ -269,6 +295,18 @@ export default function Materials() {
                         <button className={goldBtn} onClick={() => setShowCalc(!showCalc)}>
                           <Icon name={showCalc ? "X" : "Calculator"} size={16} />
                           {showCalc ? "Свернуть" : "Рассчитать помещение"}
+                        </button>
+                        <button
+                          className="flex items-center gap-2 rounded-lg border border-[#D4AF37]/40 px-4 py-2.5 text-sm text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10 disabled:opacity-40"
+                          disabled={materialsOf(activeObject.id).length === 0 || savingEstimate}
+                          onClick={saveEstimate}
+                        >
+                          <Icon
+                            name={savingEstimate ? "Loader2" : "FileText"}
+                            size={16}
+                            className={savingEstimate ? "animate-spin" : ""}
+                          />
+                          Сохранить смету на материал
                         </button>
                       </>
                     )}

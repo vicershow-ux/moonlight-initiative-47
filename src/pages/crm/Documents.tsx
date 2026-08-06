@@ -2,18 +2,20 @@ import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
-import { estimatesApi, objectsApi, objectStatusesApi, contractsApi, actsApi, Estimate, ObjectItem, ObjectStatus, Contract, Act } from "@/lib/api"
+import { estimatesApi, objectsApi, objectStatusesApi, contractsApi, actsApi, materialsApi, Estimate, ObjectItem, ObjectStatus, Contract, Act, MaterialEstimate } from "@/lib/api"
+import { printMaterials, downloadMaterialsPdf } from "@/lib/printMaterials"
 import { printEstimate, downloadEstimatePdf } from "@/lib/printEstimate"
 import { downloadContractPdf } from "@/lib/downloadContractPdf"
 import { getStatusBadgeClass } from "@/lib/objectStatusColors"
 import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/lib/utils"
 
-type TabKey = "all" | "estimates" | "contracts" | "acts"
+type TabKey = "all" | "estimates" | "material_estimates" | "contracts" | "acts"
 
 const tabs: { key: TabKey; label: string }[] = [
   { key: "all", label: "Все документы" },
-  { key: "estimates", label: "Сметы" },
+  { key: "estimates", label: "Сметы на работу" },
+  { key: "material_estimates", label: "Сметы на материалы" },
   { key: "contracts", label: "Договоры" },
   { key: "acts", label: "Акты" },
 ]
@@ -29,6 +31,8 @@ export default function Documents() {
   const [estimates, setEstimates] = useState<Estimate[]>([])
   const [contracts, setContracts] = useState<Contract[]>([])
   const [acts, setActs] = useState<Act[]>([])
+  const [matEstimates, setMatEstimates] = useState<MaterialEstimate[]>([])
+  const [matBusyId, setMatBusyId] = useState<number | null>(null)
   const [objectsMap, setObjectsMap] = useState<Record<number, ObjectItem>>({})
   const [objectStatuses, setObjectStatuses] = useState<ObjectStatus[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,11 +44,12 @@ export default function Documents() {
 
   const load = () => {
     setLoading(true)
-    Promise.all([estimatesApi.listAll(), contractsApi.listAll(), actsApi.listAll(), objectsApi.list(), objectStatusesApi.list()])
-      .then(([estData, contractsData, actsData, objData, statusData]) => {
+    Promise.all([estimatesApi.listAll(), contractsApi.listAll(), actsApi.listAll(), objectsApi.list(), objectStatusesApi.list(), materialsApi.list()])
+      .then(([estData, contractsData, actsData, objData, statusData, matData]) => {
         setEstimates(estData.estimates)
         setContracts(contractsData.contracts)
         setActs(actsData.acts)
+        setMatEstimates(matData.estimates || [])
         const map: Record<number, ObjectItem> = {}
         objData.objects.forEach((o) => { map[o.id] = o })
         setObjectsMap(map)
@@ -167,6 +172,41 @@ export default function Documents() {
     })
   }, [estimates, search])
 
+  const filteredMatEstimates = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return matEstimates.filter((m) => {
+      if (!q) return true
+      return (
+        String(m.id).includes(q) ||
+        (m.object_code || "").toLowerCase().includes(q) ||
+        (m.client_name || "").toLowerCase().includes(q)
+      )
+    })
+  }, [matEstimates, search])
+
+  const handleDeleteMatEstimate = async (id: number) => {
+    await materialsApi.removeEstimate(id)
+    load()
+  }
+
+  const openMatEstimate = async (m: MaterialEstimate, mode: "print" | "pdf") => {
+    setMatBusyId(m.id)
+    try {
+      const { estimate } = await materialsApi.getEstimate(m.id)
+      const obj = {
+        id: estimate.object_id,
+        object_code: estimate.object_code,
+        client_name: estimate.client_name,
+        address: estimate.address || "",
+      }
+      const items = estimate.items || []
+      if (mode === "print") printMaterials(obj, items, [], user?.company_name || "")
+      else await downloadMaterialsPdf(obj, items, [], user?.company_name || "")
+    } finally {
+      setMatBusyId(null)
+    }
+  }
+
   const filteredContracts = useMemo(() => {
     const q = search.trim().toLowerCase()
     return contracts.filter((c) => {
@@ -192,10 +232,12 @@ export default function Documents() {
   }, [acts, search])
 
   const showEstimates = tab === "all" || tab === "estimates"
+  const showMatEstimates = tab === "all" || tab === "material_estimates"
   const showContracts = tab === "all" || tab === "contracts"
   const showActs = tab === "all" || tab === "acts"
   const hasAnyRows =
     (showEstimates && filteredEstimates.length > 0) ||
+    (showMatEstimates && filteredMatEstimates.length > 0) ||
     (showContracts && filteredContracts.length > 0) ||
     (showActs && filteredActs.length > 0)
 
@@ -265,7 +307,7 @@ export default function Documents() {
                   return (
                     <tr key={`est-${e.id}`} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
                       <td className="py-3 px-4">
-                        <span className="text-[#D4AF37] font-medium text-xs">Смета</span>
+                        <span className="text-[#D4AF37] font-medium text-xs">Смета на работу</span>
                       </td>
                       <td className="py-3 px-4">
                         <p className="font-medium">Смета на ремонтные работы</p>
@@ -338,6 +380,80 @@ export default function Documents() {
                           </button>
                           <button
                             onClick={() => handleDelete(e.id)}
+                            className="text-white/40 hover:text-red-400 transition-colors"
+                            title="Удалить"
+                          >
+                            <Icon name="Trash2" size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+
+                {showMatEstimates && filteredMatEstimates.map((m) => {
+                  const obj = objectsMap[m.object_id]
+                  return (
+                    <tr key={`matest-${m.id}`} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
+                      <td className="py-3 px-4">
+                        <span className="text-[#B49AE5] font-medium text-xs">Смета на материал</span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <p className="font-medium">{m.title}</p>
+                        <p className="text-xs text-white/30">
+                          №{m.id}{m.room_names ? ` · ${m.room_names}` : ""}
+                        </p>
+                      </td>
+                      <td className="py-3 px-4 text-white/60">{formatDate(m.created_at)}</td>
+                      <td className="py-3 px-4 text-white/60">
+                        {obj?.object_code || m.object_code || "—"}
+                      </td>
+                      <td className="py-3 px-4 text-white/60">{m.client_name || obj?.client_name || "—"}</td>
+                      <td className="py-3 px-4 font-medium">{formatMoney(Number(m.total_amount))}</td>
+                      <td className="py-3 px-4">
+                        {obj?.status ? (
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full text-xs",
+                            getStatusBadgeClass(objectStatuses.find((s) => s.name === obj.status)?.color)
+                          )}>
+                            {obj.status}
+                          </span>
+                        ) : "—"}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-green-500/20 text-green-300">
+                          сохранена
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-3">
+                          <Link
+                            to="/cabinet/materials"
+                            className="text-white/40 hover:text-[#D4AF37] transition-colors"
+                            title="Открыть в материалах"
+                          >
+                            <Icon name="Eye" size={15} />
+                          </Link>
+                          <button
+                            onClick={() => openMatEstimate(m, "print")}
+                            className="text-white/40 hover:text-white transition-colors"
+                            title="Печать"
+                          >
+                            {matBusyId === m.id ? (
+                              <Icon name="Loader2" size={15} className="animate-spin" />
+                            ) : (
+                              <Icon name="Printer" size={15} />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => openMatEstimate(m, "pdf")}
+                            className="text-white/40 hover:text-white transition-colors"
+                            title="Скачать PDF"
+                          >
+                            <Icon name="Download" size={15} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteMatEstimate(m.id)}
                             className="text-white/40 hover:text-red-400 transition-colors"
                             title="Удалить"
                           >

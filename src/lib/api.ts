@@ -1437,6 +1437,19 @@ export interface MaterialRoom {
   wall_area: number
 }
 
+export interface MaterialEstimate {
+  id: number
+  object_id: number
+  title: string
+  room_names: string
+  total_amount: number
+  created_at: string
+  object_code: string
+  client_name: string
+  address?: string
+  items?: ObjectMaterial[]
+}
+
 export const materialsApi = {
   async list() {
     const res = await fetch(MATERIALS_URL, { headers: { ...authHeaders() } })
@@ -1445,7 +1458,36 @@ export const materialsApi = {
       objects: MaterialObject[]
       object_materials: ObjectMaterial[]
       rooms: MaterialRoom[]
+      estimates: MaterialEstimate[]
     }>
+  },
+
+  async createEstimate(payload: {
+    object_id: number
+    title: string
+    items: ObjectMaterial[]
+  }) {
+    const res = await fetch(`${MATERIALS_URL}?entity=estimate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<{ success: boolean; id: number }>
+  },
+
+  async getEstimate(id: number) {
+    const res = await fetch(`${MATERIALS_URL}?entity=estimate&id=${id}`, {
+      headers: { ...authHeaders() },
+    })
+    return parseResponse(res) as Promise<{ estimate: MaterialEstimate }>
+  },
+
+  async removeEstimate(id: number) {
+    const res = await fetch(`${MATERIALS_URL}?entity=estimate&id=${id}`, {
+      method: "DELETE",
+      headers: { ...authHeaders() },
+    })
+    return parseResponse(res)
   },
 
   async addToObject(payload: Partial<ObjectMaterial> & { object_id: number }) {
