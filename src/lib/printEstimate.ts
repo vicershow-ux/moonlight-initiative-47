@@ -494,6 +494,24 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
   }
 }
 
+function scopeStyles(css: string, scope: string) {
+  const withoutAtRules = css.replace(/@page[^{]*\{[^}]*\}/g, "").replace(/@media\s+print\s*\{(?:[^{}]*\{[^}]*\})*[^{}]*\}/g, "")
+  return withoutAtRules.replace(/(^|\})\s*([^{}@]+)\s*\{/g, (_m, brace, selectors) => {
+    const scoped = selectors
+      .split(",")
+      .map((s: string) => {
+        const sel = s.trim()
+        if (!sel) return ""
+        if (sel === "*") return `${scope} *`
+        if (/^(html|body)$/i.test(sel)) return scope
+        return `${scope} ${sel}`
+      })
+      .filter(Boolean)
+      .join(", ")
+    return `${brace} ${scoped} {`
+  })
+}
+
 export async function downloadEstimatePdf(estimate: Estimate, object: ObjectItem, companyName: string) {
   const { styles, bodyContent } = buildEstimateDocument(estimate, object, companyName)
 
@@ -503,15 +521,18 @@ export async function downloadEstimatePdf(estimate: Estimate, object: ObjectItem
   container.style.position = "fixed"
   container.style.left = "-10000px"
   container.style.top = "0"
-  container.style.width = "850px"
+  container.style.width = "760px"
   container.style.background = "#ffffff"
+  container.id = "pdf-scope-estimate"
 
   const styleTag = document.createElement("style")
-  styleTag.textContent = styles
+  styleTag.textContent = scopeStyles(styles, "#pdf-scope-estimate")
 
   const root = document.createElement("div")
   root.className = "est-root"
-  root.style.width = "850px"
+  root.style.width = "760px"
+  root.style.maxWidth = "760px"
+  root.style.padding = "0"
   root.style.margin = "0"
   root.innerHTML = bodyContent
 
@@ -528,19 +549,30 @@ export async function downloadEstimatePdf(estimate: Estimate, object: ObjectItem
     setTimeout(resolve, 3000)
   })
 
-  const html2pdf = (await import("html2pdf.js")).default
-  await html2pdf()
-    .set({
-      margin: [10, 10, 10, 10],
-      filename: `Смета №${estimate.id}.pdf`,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
-      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-    })
-    .from(root)
-    .save()
-
-  document.body.removeChild(container)
+  try {
+    const html2pdf = (await import("html2pdf.js")).default
+    await html2pdf()
+      .set({
+        margin: [8, 8, 8, 8],
+        filename: `Смета №${estimate.id}.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          width: 760,
+          windowWidth: 760,
+          scrollX: 0,
+          scrollY: 0,
+        },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        pagebreak: { mode: ["css", "legacy"], avoid: [".cat-block", ".room-block"] },
+      })
+      .from(root)
+      .save()
+  } finally {
+    if (container.parentNode) document.body.removeChild(container)
+  }
 }
 
 function escapeHtml(str: string) {
