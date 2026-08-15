@@ -9,7 +9,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 
-const NotFound = lazy(() => import("./pages/NotFound"));
+const NotFound = lazy(() => import("./pages/PageNotFound"));
 const Dashboard = lazy(() => import("./pages/crm/Dashboard"));
 const Objects = lazy(() => import("./pages/crm/Objects"));
 const ObjectDetail = lazy(() => import("./pages/crm/ObjectDetail"));

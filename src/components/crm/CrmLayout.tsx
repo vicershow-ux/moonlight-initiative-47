@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react"
+import { ReactNode, useEffect, useState } from "react"
 import { NavLink, useNavigate } from "react-router-dom"
 import Icon from "@/components/ui/icon"
 import { useAuth } from "@/contexts/AuthContext"
@@ -40,6 +40,25 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  useEffect(() => {
+    document.title = `${title} — FixKey`
+
+    let robots = document.querySelector('meta[name="robots"]')
+    if (!robots) {
+      robots = document.createElement("meta")
+      robots.setAttribute("name", "robots")
+      document.head.appendChild(robots)
+    }
+    robots.setAttribute("content", "noindex, nofollow")
+
+    const desc = document.querySelector('meta[name="description"]')
+    if (desc) desc.setAttribute("content", subtitle || `${title} — рабочий кабинет FixKey`)
+
+    return () => {
+      document.querySelector('meta[name="robots"]')?.remove()
+    }
+  }, [title, subtitle])
 
   const handleLogout = () => {
     logout()
