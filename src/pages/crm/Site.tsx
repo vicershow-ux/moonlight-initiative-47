@@ -14,9 +14,11 @@ import { ExpertiseTab } from "@/components/crm/site/ExpertiseTab"
 import { FaqTab } from "@/components/crm/site/FaqTab"
 import { ContactsTab } from "@/components/crm/site/ContactsTab"
 import { AnalyticsTab } from "@/components/crm/site/AnalyticsTab"
+import { SeoTab } from "@/components/crm/site/SeoTab"
 
 const emptyForm: SiteSettings = {
   brand_name: "", logo_url: "", favicon_url: "", meta_title: "", meta_description: "",
+  meta_keywords: "", og_image: "", seo_region: "",
   phone: "", email: "", telegram_url: "", vk_url: "",
   hero_eyebrow: "", hero_title_line1: "", hero_title_line2: "", hero_bg_image: "", hero_fg_image: "",
   about_eyebrow: "", about_title_line1: "", about_title_highlight: "", about_description: "", about_image: "",
@@ -128,6 +130,7 @@ export default function Site() {
           <TabsTrigger value="expertise">Услуги</TabsTrigger>
           <TabsTrigger value="faq">Вопросы</TabsTrigger>
           <TabsTrigger value="contacts">Контакты</TabsTrigger>
+          <TabsTrigger value="seo">SEO</TabsTrigger>
           <TabsTrigger value="analytics">Аналитика</TabsTrigger>
         </TabsList>
 
@@ -151,6 +154,9 @@ export default function Site() {
         </TabsContent>
         <TabsContent value="contacts">
           <ContactsTab form={form} update={update} />
+        </TabsContent>
+        <TabsContent value="seo">
+          <SeoTab form={form} update={update} />
         </TabsContent>
         <TabsContent value="analytics">
           <AnalyticsTab form={form} update={update} />

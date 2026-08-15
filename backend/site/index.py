@@ -9,6 +9,7 @@ LANDING_COMPANY_ID = 2
 
 SETTINGS_FIELDS = [
     'brand_name', 'logo_url', 'favicon_url', 'meta_title', 'meta_description',
+    'meta_keywords', 'og_image', 'seo_region',
     'phone', 'email', 'telegram_url', 'vk_url',
     'hero_eyebrow', 'hero_title_line1', 'hero_title_line2', 'hero_bg_image', 'hero_fg_image',
     'about_eyebrow', 'about_title_line1', 'about_title_highlight', 'about_description', 'about_image',

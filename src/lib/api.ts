@@ -993,6 +993,9 @@ export interface SiteSettings {
   favicon_url: string
   meta_title: string
   meta_description: string
+  meta_keywords: string
+  og_image: string
+  seo_region: string
   phone: string
   email: string
   telegram_url: string

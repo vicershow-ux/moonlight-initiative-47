@@ -114,22 +114,12 @@ export function BrandTab({ form, update, onFileSelected }: BrandTabProps) {
         </div>
       </div>
 
-      <div className="border-t border-white/10 pt-5">
-        <label className={labelClass}>SEO-заголовок страницы (title)</label>
-        <input
-          className={inputClass}
-          value={form.meta_title}
-          onChange={(e) => update("meta_title", e.target.value)}
-        />
-      </div>
-      <div>
-        <label className={labelClass}>SEO-описание (description)</label>
-        <textarea
-          rows={3}
-          className={`${inputClass} resize-none`}
-          value={form.meta_description}
-          onChange={(e) => update("meta_description", e.target.value)}
-        />
+      <div className="border-t border-white/10 pt-5 flex items-start gap-3">
+        <Icon name="Search" size={16} className="text-[#D4AF37] shrink-0 mt-0.5" />
+        <p className="text-xs text-white/40 leading-relaxed">
+          Заголовок и описание для поисковых систем, ключевые слова и город работы теперь настраиваются
+          на вкладке «SEO».
+        </p>
       </div>
     </div>
   )
