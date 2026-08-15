@@ -20,7 +20,12 @@ export function CategoryCombobox({ value, onChange, suggestions, placeholder }: 
     return () => document.removeEventListener("mousedown", handleClick)
   }, [])
 
-  const filtered = suggestions.filter((s) => s.toLowerCase().includes(value.trim().toLowerCase()))
+  const query = value.trim().toLowerCase()
+  const exact = suggestions.some((s) => s.toLowerCase() === query)
+  const filtered = !query || exact
+    ? suggestions
+    : suggestions.filter((s) => s.toLowerCase().includes(query))
+  const isNew = query.length > 0 && !exact
 
   return (
     <div ref={ref} className="relative">
@@ -31,8 +36,18 @@ export function CategoryCombobox({ value, onChange, suggestions, placeholder }: 
         placeholder={placeholder || "Выберите или введите новую"}
         className="w-full bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
       />
-      {open && filtered.length > 0 && (
+      {open && (filtered.length > 0 || isNew) && (
         <div className="absolute z-20 mt-1 w-full bg-[#1f1f1f] border border-white/10 rounded-lg max-h-64 overflow-y-auto shadow-lg">
+          {isNew && (
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-white/5 text-[#D4AF37] transition-colors border-b border-white/10"
+            >
+              <Icon name="Plus" size={14} className="flex-shrink-0" />
+              Создать «{value.trim()}»
+            </button>
+          )}
           {filtered.map((s) => (
             <button
               key={s}

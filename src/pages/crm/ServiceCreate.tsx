@@ -4,22 +4,7 @@ import { CrmLayout } from "@/components/crm/CrmLayout"
 import { CategoryCombobox } from "@/components/crm/CategoryCombobox"
 import Icon from "@/components/ui/icon"
 import { servicesApi } from "@/lib/api"
-
-const CATEGORY_SUGGESTIONS = [
-  "Демонтажные работы",
-  "Подготовительные работы",
-  "Черновые отделочные работы",
-  "Чистовые отделочные работы",
-  "Плиточные работы",
-  "Устройство полов",
-  "Потолочные работы",
-  "Гипсокартонные работы",
-  "Кладочные работы",
-  "Бетонные работы",
-  "Столярные работы",
-  "Электромонтажные работы",
-  "Сантехнические работы",
-]
+import { useServiceCategories } from "@/lib/serviceCategories"
 
 const UNIT_OPTIONS = [
   { value: "м.п.", label: "м/п (метр погонный)" },
@@ -40,6 +25,7 @@ export default function ServiceCreate() {
   const [description, setDescription] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const { categories, subcategories } = useServiceCategories(category)
 
   const handleSubmit = async () => {
     setError("")
@@ -93,18 +79,18 @@ export default function ServiceCreate() {
             <CategoryCombobox
               value={category}
               onChange={setCategory}
-              suggestions={CATEGORY_SUGGESTIONS}
+              suggestions={categories}
               placeholder="Выберите или введите новую"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs text-white/50">Подкатегория</label>
-            <input
+            <CategoryCombobox
               value={subcategory}
-              onChange={(e) => setSubcategory(e.target.value)}
-              placeholder="Например: Полы, Стены, Потолки"
-              className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
+              onChange={setSubcategory}
+              suggestions={subcategories}
+              placeholder="Выберите или введите новую"
             />
           </div>
 
