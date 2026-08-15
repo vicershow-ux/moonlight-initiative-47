@@ -52,6 +52,57 @@ export default function Index() {
       document.head.appendChild(canonical)
     }
     canonical.setAttribute("href", window.location.origin + window.location.pathname)
+
+    const origin = window.location.origin
+    const org = {
+      "@context": "https://schema.org",
+      "@type": "HomeAndConstructionBusiness",
+      name: s.brand_name || "FixKey",
+      description: meta_description,
+      url: origin,
+      image: s.og_image || `${origin}/logo-224.png`,
+      logo: `${origin}/logo-224.png`,
+      ...(s.phone ? { telephone: s.phone } : {}),
+      ...(s.email ? { email: s.email } : {}),
+      ...(s.seo_region
+        ? {
+            address: {
+              "@type": "PostalAddress",
+              addressLocality: s.seo_region.split(",")[0].trim(),
+              addressRegion: s.seo_region,
+              addressCountry: "RU",
+            },
+            areaServed: s.seo_region,
+          }
+        : {}),
+      ...(s.telegram_url || s.vk_url
+        ? { sameAs: [s.telegram_url, s.vk_url].filter(Boolean) }
+        : {}),
+    }
+
+    const graph: object[] = [org]
+
+    const faqItems = (content.faq || []).filter((f) => f.question && f.answer)
+    if (faqItems.length > 0) {
+      graph.push({
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: faqItems.map((f) => ({
+          "@type": "Question",
+          name: f.question,
+          acceptedAnswer: { "@type": "Answer", text: f.answer },
+        })),
+      })
+    }
+
+    let ld = document.getElementById("site-jsonld")
+    if (!ld) {
+      ld = document.createElement("script")
+      ld.id = "site-jsonld"
+      ld.setAttribute("type", "application/ld+json")
+      document.head.appendChild(ld)
+    }
+    ld.textContent = JSON.stringify(graph)
   }, [content])
 
   // Код аналитики (Яндекс.Метрика, Google Analytics и т.д.) — только на лендинге
