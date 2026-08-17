@@ -16,6 +16,7 @@ import { ContactsTab } from "@/components/crm/site/ContactsTab"
 import { AnalyticsTab } from "@/components/crm/site/AnalyticsTab"
 import { SeoTab } from "@/components/crm/site/SeoTab"
 import { LegalTab } from "@/components/crm/site/LegalTab"
+import { CalculatorTab } from "@/components/crm/site/CalculatorTab"
 
 const emptyForm: SiteSettings = {
   brand_name: "", logo_url: "", favicon_url: "", meta_title: "", meta_description: "",
@@ -34,6 +35,11 @@ const emptyForm: SiteSettings = {
   terms_intro: "", terms_body: "",
   cookies_intro: "", cookies_body: "",
   lead_notify_email: "",
+  calc_enabled: true,
+  calc_eyebrow: "", calc_title: "", calc_description: "", calc_note: "",
+  calc_price_cosmetic: 4500, calc_price_standard: 7500, calc_price_premium: 12000,
+  calc_k_apartment: 1, calc_k_newbuild: 0.95, calc_k_house: 1.15,
+  calc_k_bathroom: 1.6, calc_k_commercial: 1.1,
 }
 
 type PendingFiles = Partial<Record<
@@ -65,7 +71,8 @@ export default function Site() {
   }, [])
 
   const update = (field: keyof SiteSettings, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }))
+    const parsed = field === "calc_enabled" ? value === "true" : value
+    setForm((prev) => ({ ...prev, [field]: parsed }))
     setSaved(false)
   }
 
@@ -136,6 +143,7 @@ export default function Site() {
           <TabsTrigger value="expertise">Услуги</TabsTrigger>
           <TabsTrigger value="faq">Вопросы</TabsTrigger>
           <TabsTrigger value="contacts">Контакты</TabsTrigger>
+          <TabsTrigger value="calculator">Калькулятор</TabsTrigger>
           <TabsTrigger value="seo">SEO</TabsTrigger>
           <TabsTrigger value="legal">Документы</TabsTrigger>
           <TabsTrigger value="analytics">Аналитика</TabsTrigger>
@@ -161,6 +169,9 @@ export default function Site() {
         </TabsContent>
         <TabsContent value="contacts">
           <ContactsTab form={form} update={update} />
+        </TabsContent>
+        <TabsContent value="calculator">
+          <CalculatorTab form={form} update={update} />
         </TabsContent>
         <TabsContent value="seo">
           <SeoTab form={form} update={update} />

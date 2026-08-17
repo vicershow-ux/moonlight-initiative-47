@@ -24,7 +24,29 @@ SETTINGS_FIELDS = [
     'terms_intro', 'terms_body',
     'cookies_intro', 'cookies_body',
     'lead_notify_email',
+    'calc_enabled', 'calc_eyebrow', 'calc_title', 'calc_description', 'calc_note',
+    'calc_price_cosmetic', 'calc_price_standard', 'calc_price_premium',
+    'calc_k_apartment', 'calc_k_newbuild', 'calc_k_house', 'calc_k_bathroom', 'calc_k_commercial',
 ]
+
+NUMERIC_SETTINGS = {
+    'calc_price_cosmetic', 'calc_price_standard', 'calc_price_premium',
+    'calc_k_apartment', 'calc_k_newbuild', 'calc_k_house', 'calc_k_bathroom', 'calc_k_commercial',
+}
+
+BOOLEAN_SETTINGS = {'calc_enabled'}
+
+
+def settings_dict(row):
+    '''Собирает настройки сайта, приводя числовые поля к числам для фронтенда'''
+    if not row:
+        return {}
+    data = dict(zip(SETTINGS_FIELDS, row))
+    for key in NUMERIC_SETTINGS:
+        value = data.get(key)
+        if value is not None:
+            data[key] = float(value)
+    return data
 
 PHILOSOPHY_FIELDS = ['id', 'sort_order', 'title', 'description']
 PROJECTS_FIELDS = ['id', 'sort_order', 'title', 'category', 'location', 'year', 'image_url']
@@ -117,7 +139,7 @@ def handler(event: dict, context) -> dict:
             company_id = LANDING_COMPANY_ID
             cur.execute(f"SELECT {', '.join(SETTINGS_FIELDS)} FROM site_settings WHERE company_id = %s", (company_id,))
             row = cur.fetchone()
-            settings = dict(zip(SETTINGS_FIELDS, row)) if row else {}
+            settings = settings_dict(row)
 
             result = {'settings': settings}
             for key, cfg in LIST_CONFIG.items():
@@ -144,7 +166,7 @@ def handler(event: dict, context) -> dict:
                 row = cur.fetchone()
                 if not row:
                     return response(404, {'error': 'Настройки сайта не найдены'})
-                return response(200, dict(zip(SETTINGS_FIELDS, row)))
+                return response(200, settings_dict(row))
 
             if method == 'PUT':
                 body = json.loads(event.get('body') or '{}')
@@ -170,9 +192,20 @@ def handler(event: dict, context) -> dict:
                 set_clauses = []
                 values = []
                 for field in SETTINGS_FIELDS:
-                    if field in body:
-                        set_clauses.append(f'{field} = %s')
-                        values.append(body[field])
+                    if field not in body:
+                        continue
+                    raw = body[field]
+                    if field in BOOLEAN_SETTINGS:
+                        raw = str(raw).lower() not in ('false', '0', 'none', '')
+                    elif field in NUMERIC_SETTINGS:
+                        try:
+                            raw = float(str(raw).replace(',', '.'))
+                        except (TypeError, ValueError):
+                            continue
+                        if raw <= 0:
+                            continue
+                    set_clauses.append(f'{field} = %s')
+                    values.append(raw)
 
                 if not set_clauses:
                     return response(400, {'error': 'Нет данных для обновления'})
@@ -188,7 +221,7 @@ def handler(event: dict, context) -> dict:
 
                 cur.execute(f"SELECT {', '.join(SETTINGS_FIELDS)} FROM site_settings WHERE company_id = %s", (company_id,))
                 row = cur.fetchone()
-                return response(200, dict(zip(SETTINGS_FIELDS, row)))
+                return response(200, settings_dict(row))
 
             return response(405, {'error': 'Метод не поддерживается'})
 

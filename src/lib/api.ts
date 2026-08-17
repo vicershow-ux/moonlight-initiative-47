@@ -1035,6 +1035,19 @@ export interface SiteSettings {
   cookies_intro: string
   cookies_body: string
   lead_notify_email: string
+  calc_enabled: boolean
+  calc_eyebrow: string
+  calc_title: string
+  calc_description: string
+  calc_note: string
+  calc_price_cosmetic: number
+  calc_price_standard: number
+  calc_price_premium: number
+  calc_k_apartment: number
+  calc_k_newbuild: number
+  calc_k_house: number
+  calc_k_bathroom: number
+  calc_k_commercial: number
 }
 
 export interface SitePhilosophyItem {

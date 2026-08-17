@@ -3,7 +3,19 @@ import { ArrowRight } from "lucide-react"
 import { leadsApi } from "@/lib/api"
 import Icon from "@/components/ui/icon"
 
-export function LeadForm() {
+interface LeadFormProps {
+  presetComment?: string
+  commentPlaceholder?: string
+  submitLabel?: string
+  successText?: string
+}
+
+export function LeadForm({
+  presetComment,
+  commentPlaceholder = "Площадь, район, пожелания (необязательно)",
+  submitLabel = "Оставить заявку",
+  successText = "Свяжемся с вами в течение 24 часов",
+}: LeadFormProps = {}) {
   const [clientName, setClientName] = useState("")
   const [clientPhone, setClientPhone] = useState("")
   const [comment, setComment] = useState("")
@@ -31,7 +43,8 @@ export function LeadForm() {
 
     setLoading(true)
     try {
-      await leadsApi.create({ client_name: clientName, client_phone: clientPhone, comment })
+      const fullComment = [presetComment, comment.trim()].filter(Boolean).join(". ")
+      await leadsApi.create({ client_name: clientName, client_phone: clientPhone, comment: fullComment })
       setSuccess(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось отправить заявку")
@@ -47,7 +60,7 @@ export function LeadForm() {
           <Icon name="Check" size={22} className="text-[#D4AF37]" />
         </div>
         <p className="text-lg font-medium">Заявка принята!</p>
-        <p className="text-primary-foreground/60 text-sm">Свяжемся с вами в течение 24 часов</p>
+        <p className="text-primary-foreground/60 text-sm">{successText}</p>
       </div>
     )
   }
@@ -79,7 +92,7 @@ export function LeadForm() {
           type="text"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          placeholder="Площадь, район, пожелания (необязательно)"
+          placeholder={commentPlaceholder}
           className="bg-transparent border border-primary-foreground/20 px-4 py-3 text-sm outline-none focus:border-primary-foreground/60 transition-colors placeholder:text-primary-foreground/40"
         />
       </div>
@@ -138,7 +151,7 @@ export function LeadForm() {
           <Icon name="Loader2" size={16} className="animate-spin" />
         ) : (
           <>
-            Оставить заявку
+            {submitLabel}
             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
           </>
         )}
