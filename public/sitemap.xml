@@ -11,4 +11,22 @@
       <image:title>FixKey — ремонт квартир под ключ</image:title>
     </image:image>
   </url>
+  <url>
+    <loc>https://fixkey.ru/privacy</loc>
+    <lastmod>2026-08-17</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://fixkey.ru/terms</loc>
+    <lastmod>2026-08-17</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://fixkey.ru/cookies</loc>
+    <lastmod>2026-08-17</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
 </urlset>

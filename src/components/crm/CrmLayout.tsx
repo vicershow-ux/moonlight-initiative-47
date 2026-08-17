@@ -66,12 +66,14 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
   }
 
   const canManageSite = user?.role === "owner" || user?.position === "super_admin"
-  const navItems = fullNavItems.filter(
-    (item) =>
+  const navItems = fullNavItems.map((item) => ({
+    ...item,
+    locked: !(
       (!user?.role || item.roles.includes(user.role)) &&
       hasHrefAccess(user?.role, user?.position, item.href) &&
       (!item.siteOnly || canManageSite)
-  )
+    ),
+  }))
   const showNotifications = user?.role === "owner" || user?.role === "admin" || user?.role === "employee"
 
   const today = new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
@@ -111,31 +113,45 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
         <nav className="flex-1 overflow-y-auto py-4 px-3">
           <p className="text-[10px] uppercase tracking-wider text-white/30 px-3 mb-2">Platform</p>
           <ul className="flex flex-col gap-1">
-            {navItems.map((item) => (
-              <li key={item.href}>
-                <NavLink
-                  to={item.href}
-                  end={item.href === "/cabinet"}
-                  onClick={() => setMobileOpen(false)}
-                  className={({ isActive }) =>
-                    cn(
-                      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
-                      isActive
-                        ? "bg-[#D4AF37] text-[#161616]"
-                        : "text-white/60 hover:bg-white/5 hover:text-white"
-                    )
-                  }
-                >
-                  <Icon name={item.icon} size={17} />
-                  <span className="flex-1">{item.label}</span>
-                  {item.badge && (
-                    <span className="text-[9px] font-semibold bg-white/10 text-white/50 px-1.5 py-0.5 rounded">
-                      {item.badge}
-                    </span>
-                  )}
-                </NavLink>
-              </li>
-            ))}
+            {navItems.map((item) =>
+              item.locked ? (
+                <li key={item.href}>
+                  <div
+                    title="Недоступно для вашей должности"
+                    aria-disabled="true"
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/25 cursor-not-allowed"
+                  >
+                    <Icon name={item.icon} size={17} />
+                    <span className="flex-1">{item.label}</span>
+                    <Icon name="Lock" size={13} className="text-white/25" />
+                  </div>
+                </li>
+              ) : (
+                <li key={item.href}>
+                  <NavLink
+                    to={item.href}
+                    end={item.href === "/cabinet"}
+                    onClick={() => setMobileOpen(false)}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
+                        isActive
+                          ? "bg-[#D4AF37] text-[#161616]"
+                          : "text-white/60 hover:bg-white/5 hover:text-white"
+                      )
+                    }
+                  >
+                    <Icon name={item.icon} size={17} />
+                    <span className="flex-1">{item.label}</span>
+                    {item.badge && (
+                      <span className="text-[9px] font-semibold bg-white/10 text-white/50 px-1.5 py-0.5 rounded">
+                        {item.badge}
+                      </span>
+                    )}
+                  </NavLink>
+                </li>
+              )
+            )}
           </ul>
         </nav>
 

@@ -57,22 +57,22 @@ export function Footer() {
             <h4 className="text-sm font-medium mb-4">Компания</h4>
             <ul className="space-y-3 text-sm text-muted-foreground">
               <li>
-                <a href="#projects" className="hover:text-foreground transition-colors">
+                <a href="/#projects" className="hover:text-foreground transition-colors">
                   Объекты
                 </a>
               </li>
               <li>
-                <a href="#about" className="hover:text-foreground transition-colors">
+                <a href="/#about" className="hover:text-foreground transition-colors">
                   О нас
                 </a>
               </li>
               <li>
-                <a href="#services" className="hover:text-foreground transition-colors">
+                <a href="/#services" className="hover:text-foreground transition-colors">
                   Услуги
                 </a>
               </li>
               <li>
-                <a href="#contact" className="hover:text-foreground transition-colors">
+                <a href="/#contact" className="hover:text-foreground transition-colors">
                   Контакты
                 </a>
               </li>
@@ -110,12 +110,15 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="pt-8 border-t border-border flex flex-col md:flex-row md:items-center justify-between gap-4 text-sm text-muted-foreground">
           <p>{copyrightText}</p>
-          <div className="flex gap-6">
-            <a href="#" className="hover:text-foreground transition-colors">
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            <a href="/privacy" className="hover:text-foreground transition-colors">
               Политика конфиденциальности
             </a>
-            <a href="#" className="hover:text-foreground transition-colors">
+            <a href="/terms" className="hover:text-foreground transition-colors">
               Условия использования
+            </a>
+            <a href="/cookies" className="hover:text-foreground transition-colors">
+              Файлы cookie
             </a>
           </div>
         </div>

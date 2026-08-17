@@ -7,9 +7,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { CookieBanner } from "@/components/CookieBanner";
 import Index from "./pages/Index";
 
 const NotFound = lazy(() => import("./pages/PageNotFound"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const TermsOfUse = lazy(() => import("./pages/TermsOfUse"));
+const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
 const Dashboard = lazy(() => import("./pages/crm/Dashboard"));
 const Objects = lazy(() => import("./pages/crm/Objects"));
 const ObjectDetail = lazy(() => import("./pages/crm/ObjectDetail"));
@@ -48,6 +52,9 @@ const App = () => (
           <Suspense fallback={null}>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfUse />} />
+            <Route path="/cookies" element={<CookiePolicy />} />
             <Route path="/cabinet" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Dashboard /></ProtectedRoute>} />
             <Route path="/cabinet/objects" element={<ProtectedRoute><Objects /></ProtectedRoute>} />
             <Route path="/cabinet/objects/new" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><ObjectCreate /></ProtectedRoute>} />
@@ -80,6 +87,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
           </Suspense>
+          <CookieBanner />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

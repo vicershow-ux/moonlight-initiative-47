@@ -7,6 +7,7 @@ export function LeadForm() {
   const [clientName, setClientName] = useState("")
   const [clientPhone, setClientPhone] = useState("")
   const [comment, setComment] = useState("")
+  const [consent, setConsent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
@@ -21,6 +22,10 @@ export function LeadForm() {
     }
     if (clientPhone.trim().length < 5) {
       setError("Введите номер телефона")
+      return
+    }
+    if (!consent) {
+      setError("Необходимо согласие на обработку персональных данных")
       return
     }
 
@@ -79,6 +84,44 @@ export function LeadForm() {
         />
       </div>
 
+      <label className="flex items-start gap-2.5 cursor-pointer select-none group">
+        <input
+          type="checkbox"
+          checked={consent}
+          onChange={(e) => {
+            setConsent(e.target.checked)
+            if (e.target.checked) setError("")
+          }}
+          className="peer sr-only"
+        />
+        <span className="w-4 h-4 mt-0.5 shrink-0 border border-primary-foreground/30 flex items-center justify-center transition-colors peer-checked:bg-[#D4AF37] peer-checked:border-[#D4AF37]">
+          {consent && <Icon name="Check" size={12} className="text-[#161616]" />}
+        </span>
+        <span className="text-xs text-primary-foreground/60 leading-relaxed group-hover:text-primary-foreground/80 transition-colors">
+          Я согласен на обработку персональных данных в соответствии с{" "}
+          <a
+            href="/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-[#D4AF37] hover:underline"
+          >
+            политикой конфиденциальности
+          </a>{" "}
+          и принимаю{" "}
+          <a
+            href="/terms"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-[#D4AF37] hover:underline"
+          >
+            условия использования
+          </a>
+          .
+        </span>
+      </label>
+
       {error && (
         <p className="text-sm text-red-400 flex items-center gap-1.5">
           <Icon name="CircleAlert" size={15} />
@@ -88,7 +131,7 @@ export function LeadForm() {
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || !consent}
         className="inline-flex items-center justify-center gap-3 bg-[#D4AF37] text-foreground px-8 py-4 text-sm tracking-wide hover:bg-[#B8860B] transition-colors duration-300 group disabled:opacity-60"
       >
         {loading ? (
