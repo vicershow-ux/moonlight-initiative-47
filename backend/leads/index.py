@@ -1,6 +1,9 @@
 import json
 import os
+import smtplib
 from datetime import datetime
+from email.message import EmailMessage
+from email.utils import formataddr
 
 import psycopg2
 
@@ -26,6 +29,73 @@ def response(status: int, body):
         'headers': {**cors_headers(), 'Content-Type': 'application/json'},
         'body': json.dumps(body, default=str)
     }
+
+
+def send_lead_email(to_email, brand, client_name, client_phone, comment, object_code):
+    host = os.environ.get('SMTP_HOST', '').strip()
+    user = os.environ.get('SMTP_USER', '').strip()
+    password = os.environ.get('SMTP_PASSWORD', '').strip()
+
+    if not (host and user and password and to_email):
+        return False, 'SMTP не настроен'
+
+    moscow_time = datetime.utcnow().timestamp() + 3 * 3600
+    created = datetime.utcfromtimestamp(moscow_time).strftime('%d.%m.%Y в %H:%M')
+    phone_digits = ''.join(ch for ch in client_phone if ch.isdigit() or ch == '+')
+
+    text_body = (
+        f"Новая заявка с сайта {brand}\n\n"
+        f"Имя: {client_name}\n"
+        f"Телефон: {client_phone}\n"
+        f"Комментарий: {comment or '—'}\n\n"
+        f"Номер объекта: {object_code}\n"
+        f"Получена: {created} (МСК)\n\n"
+        f"Заявка уже создана в кабинете в разделе «Объекты»."
+    )
+
+    html_body = f"""<!DOCTYPE html>
+<html><body style="margin:0;padding:24px;background:#f4f4f4;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;">
+    <tr><td style="background:#161616;padding:20px 28px;">
+      <span style="color:#ffffff;font-size:18px;font-weight:bold;">Новая заявка с сайта</span>
+    </td></tr>
+    <tr><td style="padding:28px;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="font-size:15px;color:#161616;">
+        <tr><td style="padding:8px 0;color:#888;width:120px;">Имя</td><td style="padding:8px 0;font-weight:bold;">{client_name}</td></tr>
+        <tr><td style="padding:8px 0;color:#888;">Телефон</td><td style="padding:8px 0;font-weight:bold;"><a href="tel:{phone_digits}" style="color:#B8860B;text-decoration:none;">{client_phone}</a></td></tr>
+        <tr><td style="padding:8px 0;color:#888;">Комментарий</td><td style="padding:8px 0;">{comment or '—'}</td></tr>
+        <tr><td style="padding:8px 0;color:#888;">Объект</td><td style="padding:8px 0;">{object_code}</td></tr>
+        <tr><td style="padding:8px 0;color:#888;">Получена</td><td style="padding:8px 0;">{created} (МСК)</td></tr>
+      </table>
+      <p style="margin:24px 0 0;padding-top:20px;border-top:1px solid #eee;font-size:13px;color:#999;">
+        Заявка автоматически создана в кабинете в разделе «Объекты» со статусом «лид».
+      </p>
+    </td></tr>
+  </table>
+</body></html>"""
+
+    msg = EmailMessage()
+    msg['Subject'] = f'Заявка с сайта: {client_name}, {client_phone}'
+    msg['From'] = formataddr((f'Сайт {brand}', user))
+    msg['To'] = to_email
+    msg['Reply-To'] = to_email
+    msg.set_content(text_body)
+    msg.add_alternative(html_body, subtype='html')
+
+    try:
+        with smtplib.SMTP_SSL(host, 465, timeout=12) as server:
+            server.login(user, password)
+            server.send_message(msg)
+        return True, 'sent'
+    except Exception as ssl_error:
+        try:
+            with smtplib.SMTP(host, 587, timeout=12) as server:
+                server.starttls()
+                server.login(user, password)
+                server.send_message(msg)
+            return True, 'sent'
+        except Exception as tls_error:
+            return False, f'SSL: {ssl_error}; TLS: {tls_error}'
 
 
 def handler(event: dict, context) -> dict:
@@ -77,7 +147,22 @@ def handler(event: dict, context) -> dict:
 
         conn.commit()
 
-        return response(200, {'success': True, 'object_code': object_code})
+        cur.execute(
+            "SELECT COALESCE(NULLIF(lead_notify_email, ''), email), COALESCE(brand_name, 'FixKey') "
+            "FROM site_settings WHERE company_id = %s",
+            (LEADS_COMPANY_ID,)
+        )
+        row = cur.fetchone()
+        notify_email = (row[0] or '').strip() if row else ''
+        brand = row[1] if row else 'FixKey'
     finally:
         cur.close()
         conn.close()
+
+    email_sent, email_note = send_lead_email(
+        notify_email, brand, client_name, client_phone, comment, object_code
+    )
+    if not email_sent:
+        print(f'Lead email not sent ({object_code}): {email_note}')
+
+    return response(200, {'success': True, 'object_code': object_code})

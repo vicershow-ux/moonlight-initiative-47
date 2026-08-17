@@ -15,11 +15,12 @@ import { FaqTab } from "@/components/crm/site/FaqTab"
 import { ContactsTab } from "@/components/crm/site/ContactsTab"
 import { AnalyticsTab } from "@/components/crm/site/AnalyticsTab"
 import { SeoTab } from "@/components/crm/site/SeoTab"
+import { LegalTab } from "@/components/crm/site/LegalTab"
 
 const emptyForm: SiteSettings = {
   brand_name: "", logo_url: "", favicon_url: "", meta_title: "", meta_description: "",
   meta_keywords: "", og_image: "", seo_region: "",
-  phone: "", email: "", telegram_url: "", vk_url: "",
+  phone: "", email: "", telegram_url: "", vk_url: "", max_url: "",
   hero_eyebrow: "", hero_title_line1: "", hero_title_line2: "", hero_bg_image: "", hero_fg_image: "",
   about_eyebrow: "", about_title_line1: "", about_title_highlight: "", about_description: "", about_image: "",
   projects_eyebrow: "", projects_title: "",
@@ -28,6 +29,11 @@ const emptyForm: SiteSettings = {
   cta_eyebrow: "", cta_title_line1: "", cta_title_highlight: "", cta_description: "",
   footer_description: "", copyright_text: "",
   analytics_head: "",
+  legal_company_name: "", legal_updated_at: "",
+  privacy_intro: "", privacy_body: "",
+  terms_intro: "", terms_body: "",
+  cookies_intro: "", cookies_body: "",
+  lead_notify_email: "",
 }
 
 type PendingFiles = Partial<Record<
@@ -131,6 +137,7 @@ export default function Site() {
           <TabsTrigger value="faq">Вопросы</TabsTrigger>
           <TabsTrigger value="contacts">Контакты</TabsTrigger>
           <TabsTrigger value="seo">SEO</TabsTrigger>
+          <TabsTrigger value="legal">Документы</TabsTrigger>
           <TabsTrigger value="analytics">Аналитика</TabsTrigger>
         </TabsList>
 
@@ -157,6 +164,9 @@ export default function Site() {
         </TabsContent>
         <TabsContent value="seo">
           <SeoTab form={form} update={update} />
+        </TabsContent>
+        <TabsContent value="legal">
+          <LegalTab form={form} update={update} />
         </TabsContent>
         <TabsContent value="analytics">
           <AnalyticsTab form={form} update={update} />

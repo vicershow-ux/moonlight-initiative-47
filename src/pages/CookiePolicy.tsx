@@ -1,114 +1,15 @@
-import { LegalLayout, LegalSection, LegalList } from "@/components/LegalLayout"
-import { useSiteContent } from "@/hooks/useSiteContent"
+import { LegalPage } from "@/components/LegalPage"
+import { COOKIES_INTRO_DEFAULT, COOKIES_BODY_DEFAULT } from "@/lib/legalDefaults"
 
 export default function CookiePolicy() {
-  const { content } = useSiteContent()
-  const email = content?.settings?.email || "rander@fixkey.ru"
-
   return (
-    <LegalLayout
+    <LegalPage
       title="Использование файлов cookie"
-      description="Какие файлы cookie использует сайт FixKey, для чего они нужны и как отказаться от их использования в настройках браузера."
-      updatedAt="17 августа 2026 года"
-    >
-      <p>
-        Настоящий документ разъясняет, какие файлы cookie применяются на сайте, с какой целью и каким
-        образом пользователь может управлять их использованием.
-      </p>
-
-      <LegalSection title="1. Что такое файлы cookie">
-        <p>
-          Файлы cookie — небольшие текстовые файлы, которые сохраняются в браузере при посещении
-          сайта. Они позволяют сайту запоминать действия и настройки пользователя, чтобы при
-          повторном визите не приходилось вводить их заново.
-        </p>
-      </LegalSection>
-
-      <LegalSection title="2. Какие cookie мы используем">
-        <p>
-          <span className="text-foreground font-medium">Строго необходимые.</span> Обеспечивают
-          базовую работу сайта: сохранение сессии авторизованного пользователя в личном кабинете,
-          запоминание факта закрытия уведомления о cookie. Без этих файлов сайт не может
-          функционировать корректно, поэтому они используются всегда.
-        </p>
-        <p>
-          <span className="text-foreground font-medium">Аналитические.</span> Собирают обезличенные
-          сведения о посещаемости: количество визитов, источники переходов, просмотренные страницы,
-          время на сайте. Используются для оценки удобства сайта и улучшения его работы. Применяется
-          сервис Яндекс.Метрика.
-        </p>
-      </LegalSection>
-
-      <LegalSection title="3. Что мы не делаем">
-        <LegalList
-          items={[
-            "не используем cookie для сбора сведений, позволяющих напрямую установить личность посетителя;",
-            "не передаём содержимое файлов cookie третьим лицам в рекламных целях;",
-            "не применяем cookie для отслеживания действий пользователя на сторонних сайтах.",
-          ]}
-        />
-      </LegalSection>
-
-      <LegalSection title="4. Как отказаться от cookie">
-        <p>
-          Пользователь вправе в любой момент запретить сохранение файлов cookie или удалить уже
-          сохранённые. Соответствующие настройки находятся в разделе конфиденциальности вашего
-          браузера:
-        </p>
-        <LegalList
-          items={[
-            "Яндекс.Браузер: Настройки → Сайты → Расширенные настройки сайтов → Cookie-файлы;",
-            "Google Chrome: Настройки → Конфиденциальность и безопасность → Файлы cookie;",
-            "Mozilla Firefox: Настройки → Приватность и защита → Куки и данные сайтов;",
-            "Safari: Настройки → Конфиденциальность → Управление данными веб-сайтов.",
-          ]}
-        />
-        <p>
-          Обратите внимание: при полном отключении файлов cookie некоторые возможности сайта станут
-          недоступны — в частности, вход в личный кабинет.
-        </p>
-        <p>
-          Отказаться от сбора данных Яндекс.Метрикой можно, установив официальное{" "}
-          <a
-            href="https://yandex.ru/support/metrica/general/opt-out.html"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[#D4AF37] hover:underline"
-          >
-            блокирующее дополнение Яндекса
-          </a>
-          .
-        </p>
-      </LegalSection>
-
-      <LegalSection title="5. Срок хранения">
-        <p>
-          Сессионные файлы cookie удаляются автоматически при закрытии браузера. Постоянные файлы
-          хранятся от 30 дней до 1 года в зависимости от назначения, после чего удаляются или
-          обновляются при следующем визите.
-        </p>
-      </LegalSection>
-
-      <LegalSection title="6. Связанные документы и контакты">
-        <p>
-          Порядок обработки персональных данных описан в{" "}
-          <a href="/privacy" className="text-[#D4AF37] hover:underline">
-            Политике конфиденциальности
-          </a>
-          . Правила работы с сайтом изложены в{" "}
-          <a href="/terms" className="text-[#D4AF37] hover:underline">
-            Условиях использования
-          </a>
-          .
-        </p>
-        <p>
-          Вопросы по обработке файлов cookie направляйте на адрес{" "}
-          <a href={`mailto:${email}`} className="text-[#D4AF37] hover:underline">
-            {email}
-          </a>
-          .
-        </p>
-      </LegalSection>
-    </LegalLayout>
+      metaDescription="Какие файлы cookie использует сайт, какие данные собирает Яндекс.Метрика, сколько они хранятся и как отказаться от их использования в настройках браузера."
+      introField="cookies_intro"
+      bodyField="cookies_body"
+      introDefault={COOKIES_INTRO_DEFAULT}
+      bodyDefault={COOKIES_BODY_DEFAULT}
+    />
   )
 }

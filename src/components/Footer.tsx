@@ -13,6 +13,7 @@ export function Footer() {
   const phoneHref = `tel:${phone.replace(/[^\d+]/g, "")}`
   const telegramUrl = s?.telegram_url || "#"
   const vkUrl = s?.vk_url || "#"
+  const maxUrl = s?.max_url || ""
   const copyrightText = s?.copyright_text || "© 2025 FixKey. Все права защищены."
 
   return (
@@ -103,6 +104,18 @@ export function Footer() {
                   ВКонтакте
                 </a>
               </li>
+              {maxUrl && (
+                <li>
+                  <a
+                    href={maxUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-foreground transition-colors"
+                  >
+                    MAX
+                  </a>
+                </li>
+              )}
             </ul>
           </div>
         </div>

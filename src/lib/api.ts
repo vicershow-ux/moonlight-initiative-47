@@ -1000,6 +1000,7 @@ export interface SiteSettings {
   email: string
   telegram_url: string
   vk_url: string
+  max_url: string
   hero_eyebrow: string
   hero_title_line1: string
   hero_title_line2: string
@@ -1025,6 +1026,15 @@ export interface SiteSettings {
   footer_description: string
   copyright_text: string
   analytics_head: string
+  legal_company_name: string
+  legal_updated_at: string
+  privacy_intro: string
+  privacy_body: string
+  terms_intro: string
+  terms_body: string
+  cookies_intro: string
+  cookies_body: string
+  lead_notify_email: string
 }
 
 export interface SitePhilosophyItem {

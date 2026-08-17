@@ -10,7 +10,7 @@ LANDING_COMPANY_ID = 2
 SETTINGS_FIELDS = [
     'brand_name', 'logo_url', 'favicon_url', 'meta_title', 'meta_description',
     'meta_keywords', 'og_image', 'seo_region',
-    'phone', 'email', 'telegram_url', 'vk_url',
+    'phone', 'email', 'telegram_url', 'vk_url', 'max_url',
     'hero_eyebrow', 'hero_title_line1', 'hero_title_line2', 'hero_bg_image', 'hero_fg_image',
     'about_eyebrow', 'about_title_line1', 'about_title_highlight', 'about_description', 'about_image',
     'projects_eyebrow', 'projects_title',
@@ -19,6 +19,11 @@ SETTINGS_FIELDS = [
     'cta_eyebrow', 'cta_title_line1', 'cta_title_highlight', 'cta_description',
     'footer_description', 'copyright_text',
     'analytics_head',
+    'legal_company_name', 'legal_updated_at',
+    'privacy_intro', 'privacy_body',
+    'terms_intro', 'terms_body',
+    'cookies_intro', 'cookies_body',
+    'lead_notify_email',
 ]
 
 PHILOSOPHY_FIELDS = ['id', 'sort_order', 'title', 'description']

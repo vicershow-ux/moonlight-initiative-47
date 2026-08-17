@@ -48,6 +48,30 @@ export function ContactsTab({ form, update }: ContactsTabProps) {
           placeholder="https://vk.com/..."
         />
       </div>
+      <div>
+        <label className={labelClass}>Ссылка на MAX</label>
+        <input
+          className={inputClass}
+          value={form.max_url || ""}
+          onChange={(e) => update("max_url", e.target.value)}
+          placeholder="https://max.ru/..."
+        />
+        <p className="text-xs text-white/30 mt-1.5">
+          Оставьте пустым — ссылка не появится в разделе «Связь» на сайте
+        </p>
+      </div>
+      <div className="border-t border-white/10 pt-5">
+        <label className={labelClass}>Почта для новых заявок</label>
+        <input
+          className={inputClass}
+          value={form.lead_notify_email || ""}
+          onChange={(e) => update("lead_notify_email", e.target.value)}
+          placeholder="Совпадает с Email выше, если не заполнено"
+        />
+        <p className="text-xs text-white/30 mt-1.5">
+          На этот адрес приходит письмо после каждой заявки с сайта
+        </p>
+      </div>
       <div className="border-t border-white/10 pt-5">
         <label className={labelClass}>Описание в футере</label>
         <textarea
