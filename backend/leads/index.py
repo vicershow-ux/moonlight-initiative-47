@@ -18,7 +18,7 @@ def cors_headers():
     return {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, X-Authorization',
         'Access-Control-Max-Age': '86400'
     }
 
@@ -38,15 +38,18 @@ def send_lead_email(to_email, brand, client_name, client_phone, comment, object_
 
     missing = []
     if not host:
-        missing.append('SMTP_HOST (адрес сервера)')
+        missing.append('адрес почтового сервера (SMTP_HOST)')
     if not user:
-        missing.append('SMTP_USER (адрес ящика)')
+        missing.append('адрес ящика-отправителя (SMTP_USER)')
     if not password:
-        missing.append('SMTP_PASSWORD (пароль)')
-    if not to_email:
-        missing.append('почта получателя в настройках сайта')
+        missing.append('пароль от ящика (SMTP_PASSWORD)')
     if missing:
-        return False, 'Не заполнено: ' + ', '.join(missing)
+        return False, (
+            'Почта не настроена. В настройках проекта не заполнено: '
+            + ', '.join(missing)
+        )
+    if not to_email:
+        return False, 'Не указана почта получателя — заполните поле «Почта для новых заявок»'
 
     moscow_time = datetime.utcnow().timestamp() + 3 * 3600
     created = datetime.utcfromtimestamp(moscow_time).strftime('%d.%m.%Y в %H:%M')
@@ -113,7 +116,57 @@ def send_lead_email(to_email, brand, client_name, client_phone, comment, object_
         except Exception as err:
             errors.append(f'{port}/TLS: {err}')
 
-    return False, ' | '.join(errors)
+    joined = ' | '.join(errors)
+    if 'authentication' in joined.lower() or '535' in joined or '534' in joined:
+        return False, 'Почтовый сервер отклонил пароль. Проверьте пароль от ящика-отправителя.'
+    if 'name or service not known' in joined.lower() or 'getaddrinfo' in joined.lower():
+        return False, 'Не найден почтовый сервер. Проверьте его адрес (например smtp.majordomo.ru).'
+    return False, joined
+
+
+def handle_test_email(event):
+    '''Проверка настроек почты — отправляет пробное письмо, доступна владельцу кабинета'''
+    headers = event.get('headers') or {}
+    token = (headers.get('X-Authorization') or headers.get('x-authorization') or '').replace('Bearer ', '')
+    if not token:
+        return response(401, {'error': 'Не авторизован'})
+
+    conn = get_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT u.role, u.position FROM sessions s JOIN users u ON u.id = s.user_id "
+            "WHERE s.token = %s AND s.expires_at > NOW() AND u.is_active = TRUE",
+            (token,)
+        )
+        row = cur.fetchone()
+        if not row:
+            return response(401, {'error': 'Сессия истекла, войдите заново'})
+        if row[0] != 'owner' and row[1] != 'super_admin':
+            return response(403, {'error': 'Доступно только владельцу'})
+
+        cur.execute(
+            "SELECT COALESCE(NULLIF(lead_notify_email, ''), email), COALESCE(brand_name, 'FixKey') "
+            "FROM site_settings WHERE company_id = %s",
+            (LEADS_COMPANY_ID,)
+        )
+        srow = cur.fetchone()
+        to_email = (srow[0] or '').strip() if srow else ''
+        brand = srow[1] if srow else 'FixKey'
+    finally:
+        cur.close()
+        conn.close()
+
+    sent, note = send_lead_email(
+        to_email, brand,
+        'Проверка настроек', '+7 000 000-00-00',
+        'Это пробное письмо. Если оно пришло — заявки с сайта будут дублироваться на эту почту.',
+        'ПРОВЕРКА'
+    )
+
+    if sent:
+        return response(200, {'success': True, 'email': to_email, 'detail': note})
+    return response(200, {'success': False, 'email': to_email, 'detail': note})
 
 
 def handler(event: dict, context) -> dict:
@@ -127,6 +180,10 @@ def handler(event: dict, context) -> dict:
         return response(405, {'error': 'Метод не поддерживается'})
 
     body = json.loads(event.get('body') or '{}')
+
+    if body.get('action') == 'test_email':
+        return handle_test_email(event)
+
     client_name = (body.get('client_name') or '').strip()
     client_phone = (body.get('client_phone') or '').strip()
     comment = (body.get('comment') or '').strip()

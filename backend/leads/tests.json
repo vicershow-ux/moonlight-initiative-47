@@ -28,6 +28,13 @@
       "path": "/",
       "body": {"client_name": "Иван Иванов"},
       "expectedStatus": 400
+    },
+    {
+      "name": "Test email requires auth",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "test_email"},
+      "expectedStatus": 401
     }
   ]
 }

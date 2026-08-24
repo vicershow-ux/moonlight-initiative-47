@@ -879,6 +879,15 @@ export const leadsApi = {
     })
     return parseResponse(res) as Promise<{ success: boolean; object_code: string }>
   },
+
+  async testEmail() {
+    const res = await fetch(LEADS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ action: "test_email" }),
+    })
+    return parseResponse(res) as Promise<{ success: boolean; email: string; detail: string }>
+  },
 }
 
 export interface CompanyData {
