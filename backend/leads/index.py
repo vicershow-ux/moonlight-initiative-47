@@ -36,8 +36,17 @@ def send_lead_email(to_email, brand, client_name, client_phone, comment, object_
     user = os.environ.get('SMTP_USER', '').strip()
     password = os.environ.get('SMTP_PASSWORD', '').strip()
 
-    if not (host and user and password and to_email):
-        return False, 'SMTP не настроен'
+    missing = []
+    if not host:
+        missing.append('SMTP_HOST (адрес сервера)')
+    if not user:
+        missing.append('SMTP_USER (адрес ящика)')
+    if not password:
+        missing.append('SMTP_PASSWORD (пароль)')
+    if not to_email:
+        missing.append('почта получателя в настройках сайта')
+    if missing:
+        return False, 'Не заполнено: ' + ', '.join(missing)
 
     moscow_time = datetime.utcnow().timestamp() + 3 * 3600
     created = datetime.utcfromtimestamp(moscow_time).strftime('%d.%m.%Y в %H:%M')
@@ -82,20 +91,29 @@ def send_lead_email(to_email, brand, client_name, client_phone, comment, object_
     msg.set_content(text_body)
     msg.add_alternative(html_body, subtype='html')
 
+    errors = []
+
     try:
-        with smtplib.SMTP_SSL(host, 465, timeout=12) as server:
+        with smtplib.SMTP_SSL(host, 465, timeout=5) as server:
             server.login(user, password)
             server.send_message(msg)
-        return True, 'sent'
-    except Exception as ssl_error:
+        return True, 'порт 465 (SSL)'
+    except Exception as err:
+        errors.append(f'465/SSL: {err}')
+
+    for port in (587, 25):
         try:
-            with smtplib.SMTP(host, 587, timeout=12) as server:
+            with smtplib.SMTP(host, port, timeout=5) as server:
+                server.ehlo()
                 server.starttls()
+                server.ehlo()
                 server.login(user, password)
                 server.send_message(msg)
-            return True, 'sent'
-        except Exception as tls_error:
-            return False, f'SSL: {ssl_error}; TLS: {tls_error}'
+            return True, f'порт {port} (STARTTLS)'
+        except Exception as err:
+            errors.append(f'{port}/TLS: {err}')
+
+    return False, ' | '.join(errors)
 
 
 def handler(event: dict, context) -> dict:
@@ -162,7 +180,9 @@ def handler(event: dict, context) -> dict:
     email_sent, email_note = send_lead_email(
         notify_email, brand, client_name, client_phone, comment, object_code
     )
-    if not email_sent:
-        print(f'Lead email not sent ({object_code}): {email_note}')
+    if email_sent:
+        print(f'Lead email OK ({object_code}) -> {notify_email}')
+    else:
+        print(f'Lead email FAILED ({object_code}) -> {notify_email or "получатель не задан"}: {email_note}')
 
     return response(200, {'success': True, 'object_code': object_code})
