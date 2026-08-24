@@ -33,7 +33,11 @@ def response(status: int, body):
 
 def send_lead_email(to_email, brand, client_name, client_phone, comment, object_code):
     host = os.environ.get('SMTP_HOST', '').strip()
-    user = os.environ.get('SMTP_USER', '').strip()
+    host = host.replace('https://', '').replace('http://', '').replace('smtps://', '')
+    host = host.strip().strip('/').split('/')[0]
+    if ':' in host:
+        host = host.split(':')[0]
+    user = os.environ.get('SMTP_USER', '').strip().strip('<>').replace(' ', '')
     password = os.environ.get('SMTP_PASSWORD', '').strip()
 
     missing = []
@@ -119,8 +123,15 @@ def send_lead_email(to_email, brand, client_name, client_phone, comment, object_
     joined = ' | '.join(errors)
     if 'authentication' in joined.lower() or '535' in joined or '534' in joined:
         return False, 'Почтовый сервер отклонил пароль. Проверьте пароль от ящика-отправителя.'
-    if 'name or service not known' in joined.lower() or 'getaddrinfo' in joined.lower():
-        return False, 'Не найден почтовый сервер. Проверьте его адрес (например smtp.majordomo.ru).'
+    low = joined.lower()
+    if 'not resolve' in low or 'name or service not known' in low or 'getaddrinfo' in low:
+        return False, (
+            f'Не найден почтовый сервер «{host}». '
+            'Проверьте адрес в настройках: для Majordomo это smtp.majordomo.ru '
+            '(без «https://», без пробелов и лишних символов).'
+        )
+    if 'timed out' in low or 'timeout' in low:
+        return False, f'Почтовый сервер «{host}» не отвечает. Проверьте его адрес.'
     return False, joined
 
 
