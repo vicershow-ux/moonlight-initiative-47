@@ -76,8 +76,8 @@ export default function Index() {
             areaServed: s.seo_region,
           }
         : {}),
-      ...(s.telegram_url || s.vk_url
-        ? { sameAs: [s.telegram_url, s.vk_url].filter(Boolean) }
+      ...(s.telegram_url || s.max_url
+        ? { sameAs: [s.telegram_url, s.max_url].filter(Boolean) }
         : {}),
     }
 

@@ -1,3 +1,5 @@
+import { formatPhone } from "@/lib/phone"
+
 interface ObjectCreateStep2Props {
   clientName: string
   setClientName: (v: string) => void
@@ -37,8 +39,15 @@ export function ObjectCreateStep2({
           </label>
           <input
             value={clientPhone}
-            onChange={(e) => setClientPhone(e.target.value)}
-            placeholder="+7 (999) 123-45-67"
+            onChange={(e) => setClientPhone(formatPhone(e.target.value))}
+            onFocus={() => {
+              if (!clientPhone) setClientPhone("+7 (")
+            }}
+            onBlur={() => {
+              if (clientPhone === "+7 (" || clientPhone === "+7") setClientPhone("")
+            }}
+            inputMode="tel"
+            placeholder="+7 (___) ___-__-__"
             className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
           />
         </div>

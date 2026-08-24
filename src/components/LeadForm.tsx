@@ -2,6 +2,7 @@ import { useState, FormEvent } from "react"
 import { ArrowRight } from "lucide-react"
 import { leadsApi } from "@/lib/api"
 import Icon from "@/components/ui/icon"
+import { formatPhone, isPhoneComplete } from "@/lib/phone"
 
 interface LeadFormProps {
   presetComment?: string
@@ -18,6 +19,7 @@ export function LeadForm({
 }: LeadFormProps = {}) {
   const [clientName, setClientName] = useState("")
   const [clientPhone, setClientPhone] = useState("")
+  const [clientEmail, setClientEmail] = useState("")
   const [comment, setComment] = useState("")
   const [consent, setConsent] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -32,8 +34,12 @@ export function LeadForm({
       setError("Введите имя")
       return
     }
-    if (clientPhone.trim().length < 5) {
-      setError("Введите номер телефона")
+    if (!isPhoneComplete(clientPhone)) {
+      setError("Введите номер телефона полностью")
+      return
+    }
+    if (clientEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(clientEmail.trim())) {
+      setError("Проверьте адрес электронной почты")
       return
     }
     if (!consent) {
@@ -44,7 +50,12 @@ export function LeadForm({
     setLoading(true)
     try {
       const fullComment = [presetComment, comment.trim()].filter(Boolean).join(". ")
-      await leadsApi.create({ client_name: clientName, client_phone: clientPhone, comment: fullComment })
+      await leadsApi.create({
+        client_name: clientName,
+        client_phone: clientPhone,
+        email: clientEmail.trim(),
+        comment: fullComment,
+      })
       setSuccess(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось отправить заявку")
@@ -80,9 +91,27 @@ export function LeadForm({
       <div className="flex flex-col gap-1.5">
         <input
           type="tel"
+          inputMode="tel"
           value={clientPhone}
-          onChange={(e) => setClientPhone(e.target.value)}
-          placeholder="Телефон"
+          onChange={(e) => setClientPhone(formatPhone(e.target.value))}
+          onFocus={() => {
+            if (!clientPhone) setClientPhone("+7 (")
+          }}
+          onBlur={() => {
+            if (clientPhone === "+7 (" || clientPhone === "+7") setClientPhone("")
+          }}
+          placeholder="+7 (___) ___-__-__"
+          className="bg-transparent border border-primary-foreground/20 px-4 py-3 text-sm outline-none focus:border-primary-foreground/60 transition-colors placeholder:text-primary-foreground/40"
+        />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <input
+          type="email"
+          inputMode="email"
+          value={clientEmail}
+          onChange={(e) => setClientEmail(e.target.value)}
+          placeholder="Email (необязательно)"
           className="bg-transparent border border-primary-foreground/20 px-4 py-3 text-sm outline-none focus:border-primary-foreground/60 transition-colors placeholder:text-primary-foreground/40"
         />
       </div>

@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import smtplib
 from datetime import datetime
 from email.message import EmailMessage
@@ -12,6 +13,17 @@ LEADS_COMPANY_ID = 2
 
 def get_conn():
     return psycopg2.connect(os.environ['DATABASE_URL'])
+
+
+def normalize_phone(raw):
+    digits = re.sub(r'\D', '', raw or '')
+    if digits.startswith('8'):
+        digits = '7' + digits[1:]
+    if len(digits) == 10 and digits.startswith('9'):
+        digits = '7' + digits
+    if len(digits) != 11 or not digits.startswith('7'):
+        return ''
+    return f'+7 ({digits[1:4]}) {digits[4:7]}-{digits[7:9]}-{digits[9:11]}'
 
 
 def cors_headers():
@@ -31,7 +43,7 @@ def response(status: int, body):
     }
 
 
-def send_lead_email(to_email, brand, client_name, client_phone, comment, object_code):
+def send_lead_email(to_email, brand, client_name, client_phone, comment, object_code, client_email=''):
     host = os.environ.get('SMTP_HOST', '').strip()
     host = host.replace('https://', '').replace('http://', '').replace('smtps://', '')
     host = host.strip().strip('/').split('/')[0]
@@ -63,10 +75,17 @@ def send_lead_email(to_email, brand, client_name, client_phone, comment, object_
         f"Новая заявка с сайта {brand}\n\n"
         f"Имя: {client_name}\n"
         f"Телефон: {client_phone}\n"
+        f"Email: {client_email or '—'}\n"
         f"Комментарий: {comment or '—'}\n\n"
         f"Номер объекта: {object_code}\n"
         f"Получена: {created} (МСК)\n\n"
         f"Заявка уже создана в кабинете в разделе «Объекты»."
+    )
+
+    email_row = (
+        f'<tr><td style="padding:8px 0;color:#888;">Email</td>'
+        f'<td style="padding:8px 0;"><a href="mailto:{client_email}" style="color:#B8860B;text-decoration:none;">{client_email}</a></td></tr>'
+        if client_email else ''
     )
 
     html_body = f"""<!DOCTYPE html>
@@ -79,6 +98,7 @@ def send_lead_email(to_email, brand, client_name, client_phone, comment, object_
       <table width="100%" cellpadding="0" cellspacing="0" style="font-size:15px;color:#161616;">
         <tr><td style="padding:8px 0;color:#888;width:120px;">Имя</td><td style="padding:8px 0;font-weight:bold;">{client_name}</td></tr>
         <tr><td style="padding:8px 0;color:#888;">Телефон</td><td style="padding:8px 0;font-weight:bold;"><a href="tel:{phone_digits}" style="color:#B8860B;text-decoration:none;">{client_phone}</a></td></tr>
+        {email_row}
         <tr><td style="padding:8px 0;color:#888;">Комментарий</td><td style="padding:8px 0;">{comment or '—'}</td></tr>
         <tr><td style="padding:8px 0;color:#888;">Объект</td><td style="padding:8px 0;">{object_code}</td></tr>
         <tr><td style="padding:8px 0;color:#888;">Получена</td><td style="padding:8px 0;">{created} (МСК)</td></tr>
@@ -196,13 +216,16 @@ def handler(event: dict, context) -> dict:
         return handle_test_email(event)
 
     client_name = (body.get('client_name') or '').strip()
-    client_phone = (body.get('client_phone') or '').strip()
+    client_phone = normalize_phone(body.get('client_phone') or '')
+    client_email = (body.get('email') or '').strip()
     comment = (body.get('comment') or '').strip()
 
     if len(client_name) < 2:
         return response(400, {'error': 'Введите имя'})
-    if len(client_phone) < 5:
-        return response(400, {'error': 'Введите номер телефона'})
+    if not client_phone:
+        return response(400, {'error': 'Введите корректный номер телефона'})
+    if client_email and not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]{2,}$', client_email):
+        return response(400, {'error': 'Проверьте адрес электронной почты'})
 
     conn = get_conn()
     cur = conn.cursor()
@@ -214,13 +237,15 @@ def handler(event: dict, context) -> dict:
         object_code = f"{LEADS_COMPANY_ID:03d}-20{year}-{seq:04d}"
 
         cur.execute(
-            "INSERT INTO objects (company_id, object_code, client_name, client_phone, object_type, area, status) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
-            (LEADS_COMPANY_ID, object_code, client_name, client_phone, 'Заявка с сайта', 0, 'лид')
+            "INSERT INTO objects (company_id, object_code, client_name, client_phone, email, object_type, area, status) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+            (LEADS_COMPANY_ID, object_code, client_name, client_phone, client_email, 'Заявка с сайта', 0, 'лид')
         )
         new_id = cur.fetchone()[0]
 
         message = f"{client_name}, {client_phone}"
+        if client_email:
+            message += f", {client_email}"
         if comment:
             message += f" — {comment}"
 
@@ -246,7 +271,7 @@ def handler(event: dict, context) -> dict:
         conn.close()
 
     email_sent, email_note = send_lead_email(
-        notify_email, brand, client_name, client_phone, comment, object_code
+        notify_email, brand, client_name, client_phone, comment, object_code, client_email
     )
     if email_sent:
         print(f'Lead email OK ({object_code}) -> {notify_email}')

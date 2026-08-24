@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { SiteSettings, leadsApi } from "@/lib/api"
 import Icon from "@/components/ui/icon"
+import { formatPhone } from "@/lib/phone"
 
 interface ContactsTabProps {
   form: SiteSettings
@@ -39,8 +40,15 @@ export function ContactsTab({ form, update }: ContactsTabProps) {
         <input
           className={inputClass}
           value={form.phone}
-          onChange={(e) => update("phone", e.target.value)}
-          placeholder="+7 (495) 123-45-67"
+          onChange={(e) => update("phone", formatPhone(e.target.value))}
+          onFocus={() => {
+            if (!form.phone) update("phone", "+7 (")
+          }}
+          onBlur={() => {
+            if (form.phone === "+7 (" || form.phone === "+7") update("phone", "")
+          }}
+          inputMode="tel"
+          placeholder="+7 (___) ___-__-__"
         />
       </div>
       <div>
@@ -59,15 +67,6 @@ export function ContactsTab({ form, update }: ContactsTabProps) {
           value={form.telegram_url}
           onChange={(e) => update("telegram_url", e.target.value)}
           placeholder="https://t.me/..."
-        />
-      </div>
-      <div>
-        <label className={labelClass}>Ссылка на ВКонтакте</label>
-        <input
-          className={inputClass}
-          value={form.vk_url}
-          onChange={(e) => update("vk_url", e.target.value)}
-          placeholder="https://vk.com/..."
         />
       </div>
       <div>

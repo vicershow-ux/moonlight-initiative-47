@@ -871,7 +871,7 @@ export const notificationsApi = {
 }
 
 export const leadsApi = {
-  async create(payload: { client_name: string; client_phone: string; comment?: string }) {
+  async create(payload: { client_name: string; client_phone: string; email?: string; comment?: string }) {
     const res = await fetch(LEADS_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
