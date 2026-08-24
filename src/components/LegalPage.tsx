@@ -28,8 +28,15 @@ export function LegalPage({
   useEffect(() => {
     document.title = `${title} — ${s?.brand_name || "FixKey"}`
 
-    const desc = document.querySelector('meta[name="description"]')
-    if (desc) desc.setAttribute("content", metaDescription)
+    document.querySelector('meta[name="robots"]')?.remove()
+
+    let desc = document.querySelector('meta[name="description"]')
+    if (!desc) {
+      desc = document.createElement("meta")
+      desc.setAttribute("name", "description")
+      document.head.appendChild(desc)
+    }
+    desc.setAttribute("content", metaDescription)
 
     let canonical = document.querySelector('link[rel="canonical"]')
     if (!canonical) {

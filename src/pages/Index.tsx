@@ -31,6 +31,8 @@ export default function Index() {
       tag.setAttribute("content", value)
     }
 
+    document.querySelector('meta[name="robots"]')?.remove()
+
     setMeta("name", "description", meta_description)
     setMeta("name", "keywords", s.meta_keywords || "")
     setMeta("name", "geo.placename", s.seo_region || "")

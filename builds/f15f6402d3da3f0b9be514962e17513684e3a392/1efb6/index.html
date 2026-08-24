@@ -27,30 +27,14 @@
     <script src="https://cdn.poehali.dev/intertnal/js/telemetry-min.js"></script>
     <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS COMMENT! -->
 
-    <script>
-        (function () {
-            var known = ["/", "/privacy", "/terms", "/cookies"];
-            var path = location.pathname.replace(/\/+$/, "") || "/";
-            var isCabinet = path === "/cabinet" || path.indexOf("/cabinet/") === 0;
-            if (known.indexOf(path) === -1 || isCabinet) {
-                var m = document.createElement("meta");
-                m.setAttribute("name", "robots");
-                m.setAttribute("content", "noindex, follow");
-                document.head.appendChild(m);
-                if (!isCabinet) {
-                    document.title = "Страница не найдена — FixKey";
-                }
-            }
-        })();
-    </script>
-
     <meta name="pp-name" value="moonlight-initiative-47">
       <script src="https://cdn.poehali.dev/intertnal/js/inspector-min.js"></script>
+    <script type="module" crossorigin src="/assets/index-D5hdF3-m.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DniG8cEW.css">
   </head>
 
 <body>
 <div id="root"></div>
-<script type="module" src="/src/main.tsx"></script>
 
 <!-- Yandex.Metrika counter -->
 <script type="text/javascript">

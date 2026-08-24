@@ -23,9 +23,13 @@ export default function PageNotFound() {
     }
     robots.setAttribute("content", "noindex, follow")
 
-    return () => {
-      document.querySelector('meta[name="robots"]')?.remove()
+    let canonical = document.querySelector('link[rel="canonical"]')
+    if (!canonical) {
+      canonical = document.createElement("link")
+      canonical.setAttribute("rel", "canonical")
+      document.head.appendChild(canonical)
     }
+    canonical.setAttribute("href", window.location.origin + "/")
   }, [location.pathname])
 
   return (
