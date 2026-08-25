@@ -22,4 +22,5 @@ Allow: /
 Disallow: /cabinet
 
 Sitemap: https://fixkey.ru/sitemap.xml
+Sitemap: https://fixkey.ru/sitemap_index.xml
 Host: https://fixkey.ru
