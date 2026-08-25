@@ -94,7 +94,7 @@ export function Header() {
         <div className="hidden md:flex items-center gap-3">
           <button
             onClick={openAuth}
-            className="inline-flex items-center gap-2 text-sm px-5 py-2.5 bg-white text-foreground border border-foreground/20 hover:bg-foreground hover:text-white transition-all duration-300"
+            className="inline-flex items-center gap-2 text-sm px-6 py-2.5 rounded-full bg-white text-foreground border border-foreground/20 hover:bg-[#D4AF37] hover:border-[#D4AF37] hover:text-[#161616] transition-all duration-300"
           >
             Войти
           </button>
@@ -150,7 +150,7 @@ export function Header() {
           <div className="flex flex-col gap-3 mb-4">
             <button
               onClick={openAuth}
-              className="inline-flex items-center justify-center gap-2 text-sm px-5 py-3 bg-white text-foreground border border-foreground/20 hover:bg-foreground hover:text-white transition-all duration-300"
+              className="inline-flex items-center justify-center gap-2 text-sm px-6 py-3 rounded-full bg-white text-foreground border border-foreground/20 hover:bg-[#D4AF37] hover:border-[#D4AF37] hover:text-[#161616] transition-all duration-300"
             >
               Войти
             </button>
