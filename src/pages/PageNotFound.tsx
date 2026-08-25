@@ -49,7 +49,7 @@ export default function PageNotFound() {
         </p>
         <a
           href="/"
-          className="inline-flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm font-medium px-6 py-3 rounded-lg"
+          className="inline-flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm font-medium px-6 py-3 rounded-full"
         >
           Вернуться на главную
         </a>

@@ -84,7 +84,7 @@ export function LeadForm({
           value={clientName}
           onChange={(e) => setClientName(e.target.value)}
           placeholder="Ваше имя"
-          className="bg-transparent border border-primary-foreground/20 px-4 py-3 text-sm outline-none focus:border-primary-foreground/60 transition-colors placeholder:text-primary-foreground/40"
+          className="bg-transparent border border-primary-foreground/20 px-5 py-3 rounded-full text-sm outline-none focus:border-primary-foreground/60 transition-colors placeholder:text-primary-foreground/40"
         />
       </div>
 
@@ -101,7 +101,7 @@ export function LeadForm({
             if (clientPhone === "+7 (" || clientPhone === "+7") setClientPhone("")
           }}
           placeholder="+7 (___) ___-__-__"
-          className="bg-transparent border border-primary-foreground/20 px-4 py-3 text-sm outline-none focus:border-primary-foreground/60 transition-colors placeholder:text-primary-foreground/40"
+          className="bg-transparent border border-primary-foreground/20 px-5 py-3 rounded-full text-sm outline-none focus:border-primary-foreground/60 transition-colors placeholder:text-primary-foreground/40"
         />
       </div>
 
@@ -112,7 +112,7 @@ export function LeadForm({
           value={clientEmail}
           onChange={(e) => setClientEmail(e.target.value)}
           placeholder="Email (необязательно)"
-          className="bg-transparent border border-primary-foreground/20 px-4 py-3 text-sm outline-none focus:border-primary-foreground/60 transition-colors placeholder:text-primary-foreground/40"
+          className="bg-transparent border border-primary-foreground/20 px-5 py-3 rounded-full text-sm outline-none focus:border-primary-foreground/60 transition-colors placeholder:text-primary-foreground/40"
         />
       </div>
 
@@ -122,7 +122,7 @@ export function LeadForm({
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           placeholder={commentPlaceholder}
-          className="bg-transparent border border-primary-foreground/20 px-4 py-3 text-sm outline-none focus:border-primary-foreground/60 transition-colors placeholder:text-primary-foreground/40"
+          className="bg-transparent border border-primary-foreground/20 px-5 py-3 rounded-full text-sm outline-none focus:border-primary-foreground/60 transition-colors placeholder:text-primary-foreground/40"
         />
       </div>
 
@@ -174,7 +174,7 @@ export function LeadForm({
       <button
         type="submit"
         disabled={loading || !consent}
-        className="inline-flex items-center justify-center gap-3 bg-[#D4AF37] text-foreground px-8 py-4 text-sm tracking-wide hover:bg-[#B8860B] transition-colors duration-300 group disabled:opacity-60"
+        className="inline-flex items-center justify-center gap-3 bg-[#D4AF37] text-foreground px-8 py-4 rounded-full text-sm tracking-wide hover:bg-[#B8860B] transition-colors duration-300 group disabled:opacity-60"
       >
         {loading ? (
           <Icon name="Loader2" size={16} className="animate-spin" />

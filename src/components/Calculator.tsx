@@ -238,7 +238,7 @@ export function Calculator() {
 
                   <button
                     onClick={() => setFormOpen(true)}
-                    className="w-full mt-6 inline-flex items-center justify-center gap-2.5 bg-[#D4AF37] text-foreground px-6 py-4 rounded-lg text-sm font-medium tracking-wide hover:bg-[#B8860B] transition-colors group"
+                    className="w-full mt-6 inline-flex items-center justify-center gap-2.5 bg-[#D4AF37] text-foreground px-6 py-4 rounded-full text-sm font-medium tracking-wide hover:bg-[#B8860B] transition-colors group"
                   >
                     Отправить расчёт заявкой
                     <Icon
