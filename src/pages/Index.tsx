@@ -72,7 +72,7 @@ export default function Index() {
             address: {
               "@type": "PostalAddress",
               addressLocality: s.seo_region.split(",")[0].trim(),
-              addressRegion: s.seo_region,
+              addressRegion: (s.seo_region.split(",")[1] || s.seo_region).trim(),
               addressCountry: "RU",
             },
             areaServed: s.seo_region,
