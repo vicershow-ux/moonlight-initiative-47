@@ -31,7 +31,7 @@ export function ContractPartiesSection({
   <div className="flex items-center justify-between text-sm mb-6">
     <span>
       г.{" "}
-      <InlineInput value={options.city} onChange={(v) => updateOption("city", v)} placeholder="г. Обнинск" minWidth={90} />
+      <InlineInput value={options.city} onChange={(v) => updateOption("city", v)} placeholder="г. Хабаровск" minWidth={90} />
     </span>
     <input
       type="date"

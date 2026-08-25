@@ -78,7 +78,7 @@ export function SeoTab({ form, update }: SeoTabProps) {
           className={inputClass}
           value={form.meta_title}
           onChange={(e) => update("meta_title", e.target.value)}
-          placeholder="FixKey — ремонт квартир под ключ в Обнинске"
+          placeholder="FixKey — ремонт квартир под ключ в Хабаровске"
         />
         <p className="text-[11px] text-white/30 mt-1.5">
           Оптимально 50–60 символов. Включите главную услугу и город.
@@ -132,7 +132,7 @@ export function SeoTab({ form, update }: SeoTabProps) {
           className={`${inputClass} resize-none`}
           value={form.meta_keywords}
           onChange={(e) => update("meta_keywords", e.target.value)}
-          placeholder="ремонт квартир, отделка под ключ, ремонт в Обнинске"
+          placeholder="ремонт квартир, отделка под ключ, ремонт в Хабаровске"
         />
         <p className="text-[11px] text-white/30 mt-1.5">
           Перечислите через запятую фразы, по которым вас будут искать. Рекомендуется 5–15 фраз.
@@ -163,7 +163,7 @@ export function SeoTab({ form, update }: SeoTabProps) {
           className={inputClass}
           value={form.seo_region}
           onChange={(e) => update("seo_region", e.target.value)}
-          placeholder="Обнинск, Калужская область"
+          placeholder="Хабаровск, Хабаровский край"
         />
         <p className="text-[11px] text-white/30 mt-1.5">
           Помогает показывать сайт людям, которые ищут ремонт именно в вашем городе.
