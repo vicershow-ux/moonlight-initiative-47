@@ -57,22 +57,22 @@ export function Footer() {
             <h4 className="text-sm font-medium mb-4">Компания</h4>
             <ul className="space-y-3 text-sm text-muted-foreground">
               <li>
-                <a href="/#projects" className="hover:text-foreground transition-colors">
+                <a href="/#projects" className="hover:text-[#D4AF37] transition-colors">
                   Объекты
                 </a>
               </li>
               <li>
-                <a href="/#about" className="hover:text-foreground transition-colors">
+                <a href="/#about" className="hover:text-[#D4AF37] transition-colors">
                   О нас
                 </a>
               </li>
               <li>
-                <a href="/#services" className="hover:text-foreground transition-colors">
+                <a href="/#services" className="hover:text-[#D4AF37] transition-colors">
                   Услуги
                 </a>
               </li>
               <li>
-                <a href="/#contact" className="hover:text-foreground transition-colors">
+                <a href="/#contact" className="hover:text-[#D4AF37] transition-colors">
                   Контакты
                 </a>
               </li>
@@ -84,17 +84,17 @@ export function Footer() {
             <h4 className="text-sm font-medium mb-4">Связь</h4>
             <ul className="space-y-3 text-sm text-muted-foreground">
               <li>
-                <a href={`mailto:${email}`} className="hover:text-foreground transition-colors">
+                <a href={`mailto:${email}`} className="hover:text-[#D4AF37] transition-colors">
                   {email}
                 </a>
               </li>
               <li>
-                <a href={phoneHref} className="hover:text-foreground transition-colors">
+                <a href={phoneHref} className="hover:text-[#D4AF37] transition-colors">
                   {phone}
                 </a>
               </li>
               <li>
-                <a href={telegramUrl} className="hover:text-foreground transition-colors">
+                <a href={telegramUrl} className="hover:text-[#D4AF37] transition-colors">
                   Телеграм
                 </a>
               </li>
@@ -104,7 +104,7 @@ export function Footer() {
                     href={maxUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hover:text-foreground transition-colors"
+                    className="hover:text-[#D4AF37] transition-colors"
                   >
                     MAX
                   </a>
@@ -118,13 +118,13 @@ export function Footer() {
         <div className="pt-8 border-t border-border flex flex-col md:flex-row md:items-center justify-between gap-4 text-sm text-muted-foreground">
           <p>{copyrightText}</p>
           <div className="flex flex-wrap gap-x-6 gap-y-2">
-            <a href="/privacy" className="hover:text-foreground transition-colors">
+            <a href="/privacy" className="hover:text-[#D4AF37] transition-colors">
               Политика конфиденциальности
             </a>
-            <a href="/terms" className="hover:text-foreground transition-colors">
+            <a href="/terms" className="hover:text-[#D4AF37] transition-colors">
               Условия использования
             </a>
-            <a href="/cookies" className="hover:text-foreground transition-colors">
+            <a href="/cookies" className="hover:text-[#D4AF37] transition-colors">
               Файлы cookie
             </a>
           </div>

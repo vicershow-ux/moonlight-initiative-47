@@ -32,7 +32,7 @@ export function CallToAction() {
           <LeadForm />
 
           <p className="text-primary-foreground/50 text-sm mt-8">
-            Или позвоните: <a href={phoneHref} className="hover:text-primary-foreground transition-colors">{phone}</a>
+            Или позвоните: <a href={phoneHref} className="hover:text-[#D4AF37] transition-colors">{phone}</a>
           </p>
         </div>
       </div>
