@@ -2,6 +2,8 @@
   "tests": [
     {"name": "OPTIONS preflight", "method": "OPTIONS", "path": "/", "expectedStatus": 200},
     {"name": "Public settings", "method": "GET", "path": "/?resource=public", "expectedStatus": 200},
-    {"name": "Unauthorized settings GET", "method": "GET", "path": "/?resource=settings", "expectedStatus": 401}
+    {"name": "Unauthorized settings GET", "method": "GET", "path": "/?resource=settings", "expectedStatus": 401},
+    {"name": "Public service categories", "method": "GET", "path": "/?resource=public_services", "expectedStatus": 200},
+    {"name": "Public services by category", "method": "GET", "path": "/?resource=public_services&category=%D0%AD%D0%BB%D0%B5%D0%BA%D1%82%D1%80%D0%BE%D0%BC%D0%BE%D0%BD%D1%82%D0%B0%D0%B6%D0%BD%D1%8B%D0%B5%20%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D1%8B", "expectedStatus": 200}
   ]
 }

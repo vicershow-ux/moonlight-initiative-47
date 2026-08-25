@@ -151,6 +151,33 @@ def handler(event: dict, context) -> dict:
 
             return response(200, result)
 
+        if method == 'GET' and resource == 'public_services':
+            category = params.get('category')
+            if category:
+                cur.execute(
+                    "SELECT name, unit, price, subcategory, description FROM services "
+                    "WHERE company_id = %s AND is_active = true AND category = %s AND price > 0 "
+                    "ORDER BY subcategory, price",
+                    (LANDING_COMPANY_ID, category)
+                )
+                items = [
+                    {'name': r[0], 'unit': r[1], 'price': float(r[2]), 'subcategory': r[3] or '', 'description': r[4] or ''}
+                    for r in cur.fetchall()
+                ]
+                return response(200, {'category': category, 'items': items})
+
+            cur.execute(
+                "SELECT category, COUNT(*), MIN(price) FROM services "
+                "WHERE company_id = %s AND is_active = true AND category <> '' AND price > 0 "
+                "GROUP BY category ORDER BY category",
+                (LANDING_COMPANY_ID,)
+            )
+            cats = [
+                {'category': r[0], 'count': int(r[1]), 'min_price': float(r[2])}
+                for r in cur.fetchall()
+            ]
+            return response(200, {'categories': cats})
+
         user = get_current_user(cur, event)
         if not user:
             return response(401, {'error': 'Не авторизован'})

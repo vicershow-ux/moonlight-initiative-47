@@ -14,6 +14,8 @@ const NotFound = lazy(() => import("./pages/PageNotFound"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsOfUse = lazy(() => import("./pages/TermsOfUse"));
 const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
+const ServicesIndex = lazy(() => import("./pages/ServicesIndex"));
+const ServiceLanding = lazy(() => import("./pages/ServiceLanding"));
 const Dashboard = lazy(() => import("./pages/crm/Dashboard"));
 const Objects = lazy(() => import("./pages/crm/Objects"));
 const ObjectDetail = lazy(() => import("./pages/crm/ObjectDetail"));
@@ -52,6 +54,8 @@ const App = () => (
           <Suspense fallback={null}>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/uslugi" element={<ServicesIndex />} />
+            <Route path="/uslugi/:slug" element={<ServiceLanding />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<TermsOfUse />} />
             <Route path="/cookies" element={<CookiePolicy />} />

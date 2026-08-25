@@ -1099,6 +1099,20 @@ export interface SitePublicContent {
   faq: SiteFaqItem[]
 }
 
+export interface PublicServiceCategory {
+  category: string
+  count: number
+  min_price: number
+}
+
+export interface PublicServiceItem {
+  name: string
+  unit: string
+  price: number
+  subcategory: string
+  description: string
+}
+
 export const siteApi = {
   async getPublic() {
     const res = await fetch(`${SITE_URL}?resource=public`)
@@ -1108,6 +1122,16 @@ export const siteApi = {
   async getSettings() {
     const res = await fetch(`${SITE_URL}?resource=settings`, { headers: { ...authHeaders() } })
     return parseResponse(res) as Promise<SiteSettings>
+  },
+
+  async getPublicServiceCategories() {
+    const res = await fetch(`${SITE_URL}?resource=public_services`)
+    return parseResponse(res) as Promise<{ categories: PublicServiceCategory[] }>
+  },
+
+  async getPublicServices(category: string) {
+    const res = await fetch(`${SITE_URL}?resource=public_services&category=${encodeURIComponent(category)}`)
+    return parseResponse(res) as Promise<{ category: string; items: PublicServiceItem[] }>
   },
 
   async updateSettings(payload: Partial<SiteSettings> & Record<`${string}_file`, string | undefined>) {

@@ -1,4 +1,5 @@
 import { useState, useEffect, MouseEvent } from "react"
+import { useLocation } from "react-router-dom"
 import { cn } from "../lib/utils"
 import { AuthModal } from "./AuthModal"
 import { useSiteContent } from "@/hooks/useSiteContent"
@@ -8,6 +9,8 @@ export function Header() {
   const brandName = content?.settings.brand_name || "FixKey"
   const logoUrl = content?.settings.logo_url
 
+  const location = useLocation()
+  const isLandingPage = location.pathname === "/"
   const [scrolled, setScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
@@ -30,6 +33,7 @@ export function Header() {
   }
 
   const scrollToTop = (e: MouseEvent<HTMLAnchorElement>) => {
+    if (!isLandingPage) return
     e.preventDefault()
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
@@ -38,7 +42,7 @@ export function Header() {
     <header
       className={cn(
         "fixed z-50 transition-all duration-500 my-0 py-0 rounded-none",
-        scrolled || mobileMenuOpen
+        scrolled || mobileMenuOpen || !isLandingPage
           ? "bg-primary backdrop-blur-md py-4 top-4 left-4 right-4 rounded-2xl"
           : "bg-transparent py-4 top-0 left-0 right-0",
       )}
@@ -76,7 +80,7 @@ export function Header() {
             { label: "Главная", href: "/#hero" },
             { label: "О нас", href: "/#about" },
             { label: "Проекты", href: "/#projects" },
-            { label: "Услуги", href: "/#services" },
+            { label: "Услуги", href: "/uslugi" },
             { label: "Расчёт стоимости", href: "/#calculator" },
             { label: "Вопросы", href: "/#faq" },
           ].map((item) => (
@@ -131,7 +135,7 @@ export function Header() {
               { label: "Главная", href: "/#hero" },
               { label: "О нас", href: "/#about" },
               { label: "Проекты", href: "/#projects" },
-              { label: "Услуги", href: "/#services" },
+              { label: "Услуги", href: "/uslugi" },
               { label: "Расчёт стоимости", href: "/#calculator" },
               { label: "Вопросы", href: "/#faq" },
             ].map((item) => (
