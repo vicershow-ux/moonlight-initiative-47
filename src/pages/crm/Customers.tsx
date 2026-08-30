@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { DeleteButton } from "@/components/ui/delete-button"
+import { MobileCard, CardAction } from "@/components/crm/MobileCard"
 
 export default function Customers() {
   const { user } = useAuth()
@@ -158,7 +159,7 @@ export default function Customers() {
         </div>
       )}
 
-      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+      <div className="md:bg-[#1f1f1f] md:border md:border-white/10 md:rounded-xl md:p-5">
         {loading ? (
           <div className="flex justify-center py-16">
             <Icon name="Loader2" size={24} className="animate-spin text-white/40" />
@@ -168,7 +169,47 @@ export default function Customers() {
             Пока нет заказчиков с доступом в кабинет
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="md:hidden flex flex-col gap-3">
+            {customers.map((c) => (
+              <MobileCard
+                key={c.id}
+                title={c.full_name}
+                subtitle={c.email}
+                rows={[
+                  {
+                    label: "Объекты",
+                    value:
+                      c.objects && c.objects.length > 0
+                        ? c.objects.map((o) => o.object_code).join(", ")
+                        : "—",
+                  },
+                  { label: "С нами с", value: formatDate(c.created_at) },
+                ]}
+                actions={
+                  canManage ? (
+                    <>
+                      <CardAction
+                        icon={<Icon name="Pencil" size={15} />}
+                        label="Объекты"
+                        onClick={() => openEdit(c)}
+                      />
+                      <CardAction
+                        icon={<Icon name="KeyRound" size={15} />}
+                        label="Пароль"
+                        onClick={() => setPasswordFor(c)}
+                      />
+                      <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/5 shrink-0">
+                        <DeleteButton onConfirm={() => handleDelete(c.id)} />
+                      </div>
+                    </>
+                  ) : undefined
+                }
+              />
+            ))}
+          </div>
+
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-white/40 text-xs uppercase border-b border-white/10">
@@ -216,6 +257,7 @@ export default function Customers() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 

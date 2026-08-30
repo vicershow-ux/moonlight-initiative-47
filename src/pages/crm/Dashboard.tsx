@@ -6,6 +6,7 @@ import { dashboardApi, DashboardStats, objectsApi, objectStatusesApi, ObjectStat
 import { getStatusBadgeClass } from "@/lib/objectStatusColors"
 import { useAuth } from "@/contexts/AuthContext"
 import { DeleteButton } from "@/components/ui/delete-button"
+import { MobileCard } from "@/components/crm/MobileCard"
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -60,37 +61,37 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-4 md:p-5">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm text-white/50">Всего объектов</p>
             <div className="w-9 h-9 rounded-lg bg-blue-500/15 flex items-center justify-center">
               <Icon name="Building2" size={18} className="text-blue-400" />
             </div>
           </div>
-          <p className="text-3xl font-semibold">{stats?.total_objects ?? 0}</p>
+          <p className="text-2xl md:text-3xl font-semibold">{stats?.total_objects ?? 0}</p>
           <p className="text-xs text-white/30 mt-1">активных</p>
         </div>
 
-        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-4 md:p-5">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm text-white/50">Всего смет</p>
             <div className="w-9 h-9 rounded-lg bg-emerald-500/15 flex items-center justify-center">
               <Icon name="FileText" size={18} className="text-emerald-400" />
             </div>
           </div>
-          <p className="text-3xl font-semibold">{stats?.total_estimates ?? 0}</p>
+          <p className="text-2xl md:text-3xl font-semibold">{stats?.total_estimates ?? 0}</p>
           <p className="text-xs text-white/30 mt-1">всего создано смет</p>
         </div>
 
-        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-4 md:p-5">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm text-white/50">Сметы за месяц</p>
             <div className="w-9 h-9 rounded-lg bg-[#D4AF37]/15 flex items-center justify-center">
               <Icon name="Wallet" size={18} className="text-[#D4AF37]" />
             </div>
           </div>
-          <p className="text-2xl font-semibold">{formatMoney(stats?.month_amount ?? 0)}</p>
+          <p className="text-xl md:text-2xl font-semibold">{formatMoney(stats?.month_amount ?? 0)}</p>
           <p className="text-xs text-white/30 mt-1">общая сумма смет за текущий месяц</p>
         </div>
 
@@ -123,7 +124,30 @@ export default function Dashboard() {
           </div>
 
           {stats && stats.recent_objects.length > 0 ? (
-            <div className="overflow-x-auto">
+            <>
+            <div className="md:hidden flex flex-col gap-3">
+              {stats.recent_objects.map((obj) => (
+                <MobileCard
+                  key={obj.id}
+                  title={obj.client_name}
+                  subtitle={obj.client_phone}
+                  onClick={() => navigate(`/cabinet/objects/${obj.id}`)}
+                  badge={
+                    <span className={`px-2 py-1 rounded-full text-[11px] ${getStatusBadgeClass(colorFor(obj.status))}`}>
+                      {obj.status}
+                    </span>
+                  }
+                  rows={[
+                    { label: "Объект", value: <span className="text-[#D4AF37]">{obj.object_code}</span> },
+                    { label: "Тип", value: obj.object_type },
+                    { label: "Площадь", value: `${obj.area} м²` },
+                    { label: "Создан", value: new Date(obj.created_at).toLocaleDateString("ru-RU") },
+                  ]}
+                />
+              ))}
+            </div>
+
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-white/40 text-xs uppercase border-b border-white/10">
@@ -182,6 +206,7 @@ export default function Dashboard() {
                 </tbody>
               </table>
             </div>
+            </>
           ) : (
             <div className="text-center py-10 text-white/30 text-sm">
               Пока нет объектов — создайте первый

@@ -36,6 +36,8 @@ const fullNavItems: NavItem[] = [
   { label: "Профиль", icon: "User", href: "/cabinet/profile", roles: ["owner", "admin", "employee", "client"] },
 ]
 
+const tabHrefs = ["/cabinet", "/cabinet/objects", "/cabinet/documents", "/cabinet/customers"]
+
 export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
@@ -78,14 +80,21 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
 
   const today = new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
 
+  const tabItems = navItems.filter((i) => tabHrefs.includes(i.href) && !i.locked)
+
   return (
     <div className="min-h-screen bg-[#161616] text-white flex">
-      <button
-        className="md:hidden fixed top-4 left-4 z-50 bg-[#1f1f1f] p-2 rounded-lg"
-        onClick={() => setMobileOpen(!mobileOpen)}
-      >
-        <Icon name={mobileOpen ? "X" : "Menu"} size={20} />
-      </button>
+      <header className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-[#1a1a1a]/95 backdrop-blur border-b border-white/10 flex items-center gap-2 px-2">
+        <button
+          className="w-11 h-11 flex items-center justify-center rounded-lg text-white/70 active:bg-white/10"
+          onClick={() => setMobileOpen(true)}
+          aria-label="Меню"
+        >
+          <Icon name="Menu" size={22} />
+        </button>
+        <p className="flex-1 text-base font-medium truncate">{title}</p>
+        {showNotifications && <NotificationBell />}
+      </header>
 
       <aside
         className={cn(
@@ -103,6 +112,13 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
             className="w-14 h-14 object-contain"
           />
           <span className="text-xl font-semibold tracking-tight"><span className="text-white">Fix</span><span className="text-[#D4AF37]">Key</span></span>
+          <button
+            className="md:hidden ml-auto w-10 h-10 flex items-center justify-center rounded-lg text-white/60 active:bg-white/10"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Закрыть меню"
+          >
+            <Icon name="X" size={20} />
+          </button>
         </div>
 
         <div className="px-5 py-4 border-b border-white/10">
@@ -119,7 +135,7 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
                   <div
                     title="Недоступно для вашей должности"
                     aria-disabled="true"
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/25 cursor-not-allowed"
+                    className="flex items-center gap-3 px-3 py-3 md:py-2.5 rounded-lg text-sm text-white/25 cursor-not-allowed"
                   >
                     <Icon name={item.icon} size={17} />
                     <span className="flex-1">{item.label}</span>
@@ -134,7 +150,7 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
                     onClick={() => setMobileOpen(false)}
                     className={({ isActive }) =>
                       cn(
-                        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
+                        "flex items-center gap-3 px-3 py-3 md:py-2.5 rounded-lg text-sm transition-colors",
                         isActive
                           ? "bg-[#D4AF37] text-[#161616]"
                           : "text-white/60 hover:bg-white/5 hover:text-white"
@@ -158,7 +174,7 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
         <div className="p-3 border-t border-white/10">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:bg-white/5 hover:text-white transition-colors mb-2"
+            className="w-full flex items-center gap-3 px-3 py-3 md:py-2.5 rounded-lg text-sm text-white/60 hover:bg-white/5 hover:text-white transition-colors mb-2"
           >
             <Icon name="LogOut" size={17} />
             Выйти
@@ -181,18 +197,44 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
         />
       )}
 
-      <main className="flex-1 min-h-screen overflow-y-auto md:ml-64">
-        <div className="px-6 md:px-10 py-8 md:py-10 max-w-[1600px] mx-auto">
-          <div className="mb-8 flex items-start justify-between gap-4">
+      <main className="flex-1 min-h-screen overflow-y-auto md:ml-64 pt-14 md:pt-0 pb-20 md:pb-0">
+        <div className="px-4 sm:px-6 md:px-10 py-5 md:py-10 max-w-[1600px] mx-auto">
+          <div className="mb-6 md:mb-8 flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">{title}</h1>
-              <p className="text-sm text-white/40 mt-1">{subtitle || today}</p>
+              <h1 className="hidden md:block text-2xl md:text-3xl font-semibold tracking-tight">{title}</h1>
+              <p className="text-sm text-white/40 md:mt-1">{subtitle || today}</p>
             </div>
-            {showNotifications && <NotificationBell />}
+            <div className="hidden md:block">{showNotifications && <NotificationBell />}</div>
           </div>
           {children}
         </div>
       </main>
+
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#1a1a1a]/95 backdrop-blur border-t border-white/10 flex pb-[env(safe-area-inset-bottom)]">
+        {tabItems.map((item) => (
+          <NavLink
+            key={item.href}
+            to={item.href}
+            end={item.href === "/cabinet"}
+            className={({ isActive }) =>
+              cn(
+                "flex-1 flex flex-col items-center justify-center gap-1 py-2.5 min-h-[56px] text-[11px] transition-colors",
+                isActive ? "text-[#D4AF37]" : "text-white/50 active:text-white"
+              )
+            }
+          >
+            <Icon name={item.icon} size={20} />
+            <span className="leading-none">{item.label}</span>
+          </NavLink>
+        ))}
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 min-h-[56px] text-[11px] text-white/50 active:text-white transition-colors"
+        >
+          <Icon name="Menu" size={20} />
+          <span className="leading-none">Ещё</span>
+        </button>
+      </nav>
     </div>
   )
 }

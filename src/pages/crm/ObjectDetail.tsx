@@ -157,9 +157,9 @@ export default function ObjectDetail() {
         Назад к списку
       </Link>
 
-      <div className="flex items-center justify-between mb-6 -mt-2">
-        <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-semibold tracking-tight">{object.object_code}</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 -mt-2">
+        <div className="flex items-center gap-3 flex-wrap">
+          <h2 className="text-xl md:text-2xl font-semibold tracking-tight">{object.object_code}</h2>
           <span className={`px-2 py-0.5 rounded-full text-xs ${getStatusBadgeClass(statuses.find((s) => s.name === object.status)?.color)}`}>
             {object.status}
           </span>
@@ -168,14 +168,14 @@ export default function ObjectDetail() {
           <div className="flex items-center gap-2">
             <Link
               to={`/cabinet/objects/${object.id}/rooms`}
-              className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-4 py-2.5 rounded-lg"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-4 min-h-[44px] rounded-lg"
             >
               <Icon name="DoorOpen" size={16} />
               Помещения
             </Link>
             <Link
               to={`/cabinet/objects/${object.id}/edit`}
-              className="flex items-center gap-2 bg-white/5 hover:bg-white/10 transition-colors text-white text-sm px-4 py-2.5 rounded-lg"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 transition-colors text-white text-sm px-4 min-h-[44px] rounded-lg"
             >
               <Icon name="Pencil" size={16} />
               Редактировать

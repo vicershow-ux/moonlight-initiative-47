@@ -6,6 +6,7 @@ import { objectsApi, objectStatusesApi, ObjectItem, ObjectStatus, ObjectStatusTr
 import { getStatusBadgeClass } from "@/lib/objectStatusColors"
 import { useAuth } from "@/contexts/AuthContext"
 import { DeleteButton } from "@/components/ui/delete-button"
+import { MobileCard } from "@/components/crm/MobileCard"
 
 export default function Objects() {
   const navigate = useNavigate()
@@ -71,7 +72,7 @@ export default function Objects() {
         </div>
       )}
 
-      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+      <div className="md:bg-[#1f1f1f] md:border md:border-white/10 md:rounded-xl md:p-5">
         {loading ? (
           <div className="flex justify-center py-16">
             <Icon name="Loader2" size={24} className="animate-spin text-white/40" />
@@ -81,7 +82,56 @@ export default function Objects() {
             Пока нет объектов — создайте первый
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="md:hidden flex flex-col gap-3">
+            {objects.map((obj) => (
+              <MobileCard
+                key={obj.id}
+                title={obj.client_name}
+                subtitle={obj.client_phone}
+                onClick={() => navigate(`/cabinet/objects/${obj.id}`)}
+                badge={
+                  <span className={`px-2 py-1 rounded-full text-[11px] ${getStatusBadgeClass(statusByName.get(obj.status)?.color)}`}>
+                    {obj.status}
+                  </span>
+                }
+                rows={[
+                  { label: "Объект", value: <span className="text-[#D4AF37]">{obj.object_code}</span> },
+                  { label: "Тип", value: obj.object_type },
+                  { label: "Площадь", value: `${obj.area} м²` },
+                ]}
+                actions={
+                  isClient ? undefined : (
+                    <>
+                      <select
+                        value={obj.status}
+                        onChange={(e) => handleStatusChange(obj.id, e.target.value)}
+                        className="flex-1 min-h-[40px] px-3 rounded-lg text-xs bg-[#161616] border border-white/10 outline-none text-white"
+                      >
+                        {getAllowedNextStatuses(obj.status).map((s) => (
+                          <option key={s.id} value={s.name} className="bg-[#1a1a1a] text-white">
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                      <Link
+                        to={`/cabinet/objects/${obj.id}/edit`}
+                        className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/5 active:bg-white/10 text-white/60 shrink-0"
+                        title="Редактировать"
+                      >
+                        <Icon name="Pencil" size={17} />
+                      </Link>
+                      <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/5 shrink-0">
+                        <DeleteButton onConfirm={() => handleDelete(obj.id)} />
+                      </div>
+                    </>
+                  )
+                }
+              />
+            ))}
+          </div>
+
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-white/40 text-xs uppercase border-b border-white/10">
@@ -150,6 +200,7 @@ export default function Objects() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
     </CrmLayout>

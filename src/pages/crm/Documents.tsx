@@ -11,6 +11,8 @@ import { DocumentsToolbar } from "@/components/crm/documents/DocumentsToolbar"
 import { DocumentEstimateRow, DocumentMatEstimateRow } from "@/components/crm/documents/DocumentEstimateRows"
 import { DocumentContractRow, DocumentActRow } from "@/components/crm/documents/DocumentContractRows"
 import { TabKey } from "@/components/crm/documents/constants"
+import { DocumentMobileCard } from "@/components/crm/documents/DocumentMobileCard"
+import { DeleteButton } from "@/components/ui/delete-button"
 
 export default function Documents() {
   const { user } = useAuth()
@@ -254,7 +256,118 @@ export default function Documents() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="md:hidden flex flex-col gap-3">
+            {showEstimates && filteredEstimates.map((e) => (
+              <DocumentMobileCard
+                key={`m-est-${e.id}`}
+                kind="Смета на работу"
+                kindClass="text-[#D4AF37]"
+                title="Смета на ремонтные работы"
+                subtitle={`№${e.id}`}
+                createdAt={e.created_at}
+                amount={Number(e.total_amount)}
+                obj={objectsMap[e.object_id]}
+                objectCode={e.object_code}
+                clientName={e.client_name}
+                objectStatuses={objectStatuses}
+                statusBadge={
+                  e.has_pending ? (
+                    <span className="px-2 py-1 rounded-full text-[11px] bg-orange-500/20 text-orange-300">ожидает</span>
+                  ) : (
+                    <span className="px-2 py-1 rounded-full text-[11px] bg-green-500/20 text-green-300">утверждена</span>
+                  )
+                }
+                viewTo={`/cabinet/objects/${e.object_id}/estimates/${e.id}`}
+                editTo={`/cabinet/objects/${e.object_id}/estimates/${e.id}/edit`}
+                onPrint={() => handlePrint(e)}
+                onDownload={() => handleDownloadPdf(e)}
+                printing={printingId === e.id}
+                downloading={downloadingId === e.id}
+                deleteButton={<DeleteButton onConfirm={() => handleDelete(e.id)} />}
+              />
+            ))}
+
+            {showMatEstimates && filteredMatEstimates.map((m) => (
+              <DocumentMobileCard
+                key={`m-mat-${m.id}`}
+                kind="Смета на материал"
+                kindClass="text-[#B49AE5]"
+                title={m.title}
+                subtitle={`№${m.id}${m.room_names ? ` · ${m.room_names}` : ""}`}
+                createdAt={m.created_at}
+                amount={Number(m.total_amount)}
+                obj={objectsMap[m.object_id]}
+                objectCode={m.object_code}
+                clientName={m.client_name}
+                objectStatuses={objectStatuses}
+                statusBadge={
+                  <span className="px-2 py-1 rounded-full text-[11px] bg-green-500/20 text-green-300">сохранена</span>
+                }
+                viewTo="/cabinet/materials"
+                onPrint={() => openMatEstimate(m, "print")}
+                onDownload={() => openMatEstimate(m, "pdf")}
+                printing={matBusyId === m.id}
+                deleteButton={<DeleteButton onConfirm={() => handleDeleteMatEstimate(m.id)} />}
+              />
+            ))}
+
+            {showContracts && filteredContracts.map((c) => (
+              <DocumentMobileCard
+                key={`m-con-${c.id}`}
+                kind="Договор"
+                kindClass="text-blue-400"
+                title="Договор подряда на ремонт"
+                subtitle={`№ ${c.contract_number}`}
+                createdAt={c.contract_date || c.created_at}
+                amount={Number(c.total_amount)}
+                obj={objectsMap[c.object_id]}
+                objectCode={c.object_code}
+                clientName={c.client_name}
+                objectStatuses={objectStatuses}
+                statusBadge={
+                  <span className={`px-2 py-1 rounded-full text-[11px] ${c.status === "signed" ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"}`}>
+                    {c.status === "signed" ? "подписан" : "черновик"}
+                  </span>
+                }
+                viewTo={`/cabinet/objects/${c.object_id}/contracts/${c.id}`}
+                editTo={`/cabinet/objects/${c.object_id}/contracts/${c.id}/edit`}
+                onPrint={() => handlePrintContract(c)}
+                onDownload={() => handleDownloadContractPdf(c)}
+                downloading={downloadingContractId === c.id}
+                deleteButton={<DeleteButton onConfirm={() => handleDeleteContract(c.id)} />}
+              />
+            ))}
+
+            {showActs && filteredActs.map((a) => (
+              <DocumentMobileCard
+                key={`m-act-${a.id}`}
+                kind="Акт"
+                kindClass="text-purple-400"
+                title="Акт выполненных работ"
+                subtitle={`№ ${a.act_number}`}
+                createdAt={a.act_date || a.created_at}
+                amount={Number(a.total_amount)}
+                obj={objectsMap[a.object_id]}
+                objectCode={a.object_code}
+                clientName={a.client_name}
+                objectStatuses={objectStatuses}
+                statusBadge={
+                  <span className={`px-2 py-1 rounded-full text-[11px] ${a.status === "signed" ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"}`}>
+                    {a.status === "signed" ? "подписан" : "черновик"}
+                  </span>
+                }
+                viewTo={`/cabinet/objects/${a.object_id}/acts/${a.id}`}
+                editTo={`/cabinet/objects/${a.object_id}/acts/${a.id}/edit`}
+                onPrint={() => handlePrintAct(a)}
+                onDownload={() => handleDownloadActPdf(a)}
+                downloading={downloadingContractId === a.id}
+                deleteButton={<DeleteButton onConfirm={() => handleDeleteAct(a.id)} />}
+              />
+            ))}
+          </div>
+
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-white/40 text-[11px] uppercase border-b border-white/10">
@@ -324,6 +437,7 @@ export default function Documents() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
     </CrmLayout>
