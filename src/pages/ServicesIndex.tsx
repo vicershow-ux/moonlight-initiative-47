@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import { HighlightedText } from "@/components/HighlightedText"
 import { useSiteContent } from "@/hooks/useSiteContent"
-import { siteApi, PublicServiceCategory } from "@/lib/api"
-import { SERVICE_LANDINGS } from "@/lib/serviceLanding"
+import { useServiceLandings } from "@/hooks/useServiceLandings"
 import Icon from "@/components/ui/icon"
 
 const META_TITLE = "Услуги по ремонту и строительству в Хабаровске — цены | FixKey"
@@ -20,7 +19,7 @@ export default function ServicesIndex() {
   const phone = s?.phone || "+7 (495) 123-45-67"
   const phoneHref = `tel:${phone.replace(/[^\d+]/g, "")}`
 
-  const [stats, setStats] = useState<Record<string, PublicServiceCategory>>({})
+  const { landings, statsByCategory, loading } = useServiceLandings()
 
   useEffect(() => {
     document.title = META_TITLE
@@ -44,24 +43,6 @@ export default function ServicesIndex() {
     canonical.setAttribute("href", `${window.location.origin}/uslugi`)
 
     window.scrollTo(0, 0)
-  }, [])
-
-  useEffect(() => {
-    let alive = true
-    siteApi
-      .getPublicServiceCategories()
-      .then((res) => {
-        if (!alive) return
-        const map: Record<string, PublicServiceCategory> = {}
-        ;(res.categories || []).forEach((c) => {
-          map[c.category] = c
-        })
-        setStats(map)
-      })
-      .catch(() => {})
-    return () => {
-      alive = false
-    }
   }, [])
 
   return (
@@ -97,9 +78,14 @@ export default function ServicesIndex() {
 
         <section className="pb-20 md:pb-28">
           <div className="container mx-auto px-6 md:px-12">
+            {loading && landings.length === 0 && (
+              <div className="flex items-center justify-center py-16">
+                <Icon name="Loader2" size={26} className="animate-spin text-muted-foreground" />
+              </div>
+            )}
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {SERVICE_LANDINGS.map((c) => {
-                const stat = stats[c.category]
+              {landings.map((c) => {
+                const stat = statsByCategory[c.category]
                 return (
                   <a
                     key={c.slug}

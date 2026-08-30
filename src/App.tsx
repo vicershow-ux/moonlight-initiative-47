@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { CookieBanner } from "@/components/CookieBanner";
+import { MetrikaTracker } from "@/components/MetrikaTracker";
 import Index from "./pages/Index";
 
 const NotFound = lazy(() => import("./pages/PageNotFound"));
@@ -51,6 +52,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <MetrikaTracker />
           <Suspense fallback={null}>
           <Routes>
             <Route path="/" element={<Index />} />

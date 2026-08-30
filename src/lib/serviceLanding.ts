@@ -12,7 +12,46 @@ export interface ServiceLandingMeta {
 
 const CITY = "Хабаровске"
 
-export const SERVICE_LANDINGS: ServiceLandingMeta[] = [
+const TRANSLIT: Record<string, string> = {
+  а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z",
+  и: "i", й: "y", к: "k", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r",
+  с: "s", т: "t", у: "u", ф: "f", х: "h", ц: "c", ч: "ch", ш: "sh", щ: "sch",
+  ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya",
+}
+
+export function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .split("")
+    .map((ch) => (ch in TRANSLIT ? TRANSLIT[ch] : ch))
+    .join("")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+}
+
+const GENERIC_BENEFITS = [
+  "Фиксированная смета до начала работ",
+  "Отчёт по каждому этапу с фотографиями",
+  "Гарантия 3 года на выполненные работы",
+]
+
+export function buildLanding(category: string): ServiceLandingMeta {
+  const lower = category.toLowerCase()
+  return {
+    slug: slugify(category),
+    category,
+    h1: `${category} в ${CITY}`,
+    navLabel: category,
+    icon: "Wrench",
+    intro: `Выполняем ${lower} в ${CITY} и районе. Работаем по фиксированной смете, соблюдаем технологию и сдаём результат с гарантией.`,
+    metaTitle: `${category} в ${CITY} — цены на услуги | FixKey`,
+    metaDescription: `${category} в ${CITY}: прайс по каждой позиции, фиксированная смета до начала работ, бесплатный замер, гарантия 3 года.`,
+    benefits: GENERIC_BENEFITS,
+  }
+}
+
+export const CURATED_LANDINGS: ServiceLandingMeta[] = [
   {
     slug: "elektromontazhnye-raboty",
     category: "Электромонтажные работы",
@@ -351,7 +390,43 @@ export const SERVICE_LANDINGS: ServiceLandingMeta[] = [
   },
 ]
 
+export const SERVICE_LANDINGS = CURATED_LANDINGS
+
+export function resolveLandings(categories: string[]): ServiceLandingMeta[] {
+  const curatedByCategory = new Map(CURATED_LANDINGS.map((c) => [c.category, c]))
+  const seen = new Set<string>()
+  const result: ServiceLandingMeta[] = []
+
+  CURATED_LANDINGS.forEach((c) => {
+    if (categories.includes(c.category)) {
+      result.push(c)
+      seen.add(c.category)
+    }
+  })
+
+  categories.forEach((cat) => {
+    if (seen.has(cat)) return
+    const curated = curatedByCategory.get(cat)
+    result.push(curated || buildLanding(cat))
+    seen.add(cat)
+  })
+
+  return result
+}
+
+export function resolveLandingBySlug(
+  slug: string | undefined,
+  categories: string[],
+): ServiceLandingMeta | undefined {
+  if (!slug) return undefined
+  const curated = CURATED_LANDINGS.find((c) => c.slug === slug)
+  if (curated && categories.includes(curated.category)) return curated
+  const match = categories.find((cat) => slugify(cat) === slug)
+  if (!match) return undefined
+  return CURATED_LANDINGS.find((c) => c.category === match) || buildLanding(match)
+}
+
 export function findLandingBySlug(slug?: string) {
   if (!slug) return undefined
-  return SERVICE_LANDINGS.find((c) => c.slug === slug)
+  return CURATED_LANDINGS.find((c) => c.slug === slug)
 }

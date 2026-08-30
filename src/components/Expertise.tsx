@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { Home, Building, Armchair, Trees, ArrowRight } from "lucide-react"
 import { HighlightedText } from "./HighlightedText"
 import { useSiteContent } from "@/hooks/useSiteContent"
-import { SERVICE_LANDINGS } from "@/lib/serviceLanding"
+import { useServiceLandings } from "@/hooks/useServiceLandings"
 
 const iconMap: Record<string, typeof Home> = { Home, Building, Armchair, Trees }
 
@@ -34,6 +34,7 @@ const defaultExpertiseAreas = [
 
 export function Expertise() {
   const { content } = useSiteContent()
+  const { landings } = useServiceLandings()
   const s = content?.settings
   const servicesEyebrow = s?.services_eyebrow || "Наши услуги"
   const servicesTitleHighlight = s?.services_title_highlight || "Опыт"
@@ -124,7 +125,7 @@ export function Expertise() {
             Работаем и по отдельным направлениям — с открытым прайсом на каждую позицию:
           </p>
           <div className="flex flex-wrap gap-3">
-            {SERVICE_LANDINGS.map((c) => (
+            {landings.map((c) => (
               <a
                 key={c.slug}
                 href={`/uslugi/${c.slug}`}

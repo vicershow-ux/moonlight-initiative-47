@@ -2,6 +2,8 @@ import {defineConfig} from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import {componentTagger} from "pp-tagger";
+// @ts-expect-error - JS module without types
+import {sitemapPlugin} from "./scripts/generate-sitemap.mjs";
 
 // https://vitejs.dev/config/
 const hmrKeepalive = {
@@ -23,6 +25,7 @@ export default defineConfig(({mode}) => ({
     plugins: [
         hmrKeepalive,
         react(),
+        sitemapPlugin(),
         mode === 'development' &&
         componentTagger(),
     ].filter(Boolean),

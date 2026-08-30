@@ -6,7 +6,9 @@ import { LeadForm } from "@/components/LeadForm"
 import { HighlightedText } from "@/components/HighlightedText"
 import { useSiteContent } from "@/hooks/useSiteContent"
 import { siteApi, PublicServiceItem } from "@/lib/api"
-import { SERVICE_LANDINGS, findLandingBySlug } from "@/lib/serviceLanding"
+import { resolveLandingBySlug } from "@/lib/serviceLanding"
+import { useServiceLandings } from "@/hooks/useServiceLandings"
+import { getServiceFaq } from "@/lib/serviceFaq"
 import Icon from "@/components/ui/icon"
 import PageNotFound from "@/pages/PageNotFound"
 
@@ -15,12 +17,15 @@ const formatPrice = (value: number) =>
 
 export default function ServiceLanding() {
   const { slug } = useParams<{ slug: string }>()
-  const meta = findLandingBySlug(slug)
+  const { landings, categories, loading: catsLoading } = useServiceLandings()
+  const meta = resolveLandingBySlug(slug, categories)
   const { content } = useSiteContent()
   const s = content?.settings
 
   const [items, setItems] = useState<PublicServiceItem[]>([])
   const [loading, setLoading] = useState(true)
+
+  const faq = useMemo(() => (meta ? getServiceFaq(meta) : []), [meta])
 
   const phone = s?.phone || "+7 (495) 123-45-67"
   const phoneHref = `tel:${phone.replace(/[^\d+]/g, "")}`
@@ -49,6 +54,57 @@ export default function ServiceLanding() {
 
     window.scrollTo(0, 0)
   }, [meta])
+
+  useEffect(() => {
+    if (!meta || faq.length === 0) return
+
+    const origin = window.location.origin
+    const schema = {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "FAQPage",
+          mainEntity: faq.map((f) => ({
+            "@type": "Question",
+            name: f.question,
+            acceptedAnswer: { "@type": "Answer", text: f.answer },
+          })),
+        },
+        {
+          "@type": "Service",
+          name: meta.h1,
+          serviceType: meta.category,
+          description: meta.metaDescription,
+          areaServed: { "@type": "City", name: "Хабаровск" },
+          provider: {
+            "@type": "LocalBusiness",
+            name: s?.brand_name || "FixKey",
+            telephone: phone,
+            address: { "@type": "PostalAddress", addressLocality: "Хабаровск", addressCountry: "RU" },
+          },
+          url: `${origin}/uslugi/${meta.slug}`,
+        },
+        {
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Главная", item: origin },
+            { "@type": "ListItem", position: 2, name: "Услуги", item: `${origin}/uslugi` },
+            { "@type": "ListItem", position: 3, name: meta.category },
+          ],
+        },
+      ],
+    }
+
+    const el = document.createElement("script")
+    el.type = "application/ld+json"
+    el.dataset.serviceSchema = "true"
+    el.textContent = JSON.stringify(schema)
+    document.head.appendChild(el)
+
+    return () => {
+      el.remove()
+    }
+  }, [meta, faq, phone, s?.brand_name])
 
   useEffect(() => {
     if (!meta) return
@@ -84,9 +140,21 @@ export default function ServiceLanding() {
   )
 
   const others = useMemo(
-    () => SERVICE_LANDINGS.filter((c) => c.slug !== meta?.slug).slice(0, 8),
-    [meta?.slug],
+    () => landings.filter((c) => c.slug !== meta?.slug).slice(0, 8),
+    [landings, meta?.slug],
   )
+
+  if (catsLoading && !meta) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex items-center justify-center py-40">
+          <Icon name="Loader2" size={28} className="animate-spin text-muted-foreground" />
+        </div>
+        <Footer />
+      </div>
+    )
+  }
 
   if (!meta) return <PageNotFound />
 
@@ -234,6 +302,37 @@ export default function ServiceLanding() {
                 ))}
               </div>
             )}
+          </div>
+        </section>
+
+        <section className="pb-20 md:pb-28">
+          <div className="container mx-auto px-6 md:px-12">
+            <div className="max-w-3xl">
+              <h2 className="text-2xl md:text-3xl font-medium tracking-tight mb-3">
+                Частые вопросы
+              </h2>
+              <p className="text-muted-foreground mb-10">
+                Собрали то, что чаще всего спрашивают до начала работ.
+              </p>
+
+              <div className="divide-y divide-border border-y border-border">
+                {faq.map((item, i) => (
+                  <details key={item.question} className="group py-5" open={i === 0}>
+                    <summary className="flex items-start justify-between gap-6 cursor-pointer list-none">
+                      <h3 className="text-base md:text-lg font-medium pr-4">{item.question}</h3>
+                      <Icon
+                        name="Plus"
+                        size={20}
+                        className="shrink-0 mt-0.5 text-[#D4AF37] transition-transform duration-300 group-open:rotate-45"
+                      />
+                    </summary>
+                    <p className="text-muted-foreground leading-relaxed mt-4 pr-10">
+                      {item.answer}
+                    </p>
+                  </details>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
 

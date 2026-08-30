@@ -1,5 +1,5 @@
 import { useSiteContent } from "@/hooks/useSiteContent"
-import { SERVICE_LANDINGS } from "@/lib/serviceLanding"
+import { useServiceLandings } from "@/hooks/useServiceLandings"
 
 const FOOTER_SERVICE_SLUGS = [
   "elektromontazhnye-raboty",
@@ -9,12 +9,14 @@ const FOOTER_SERVICE_SLUGS = [
   "potolochnye-raboty",
 ]
 
-const FOOTER_SERVICES = FOOTER_SERVICE_SLUGS.map((slug) =>
-  SERVICE_LANDINGS.find((c) => c.slug === slug),
-).filter(Boolean) as typeof SERVICE_LANDINGS
-
 export function Footer() {
   const { content } = useSiteContent()
+  const { landings } = useServiceLandings()
+
+  const preferred = FOOTER_SERVICE_SLUGS.map((slug) =>
+    landings.find((c) => c.slug === slug),
+  ).filter(Boolean) as typeof landings
+  const footerServices = preferred.length ? preferred.slice(0, 5) : landings.slice(0, 5)
   const s = content?.settings
   const brandName = s?.brand_name || "FixKey"
   const logoUrl = s?.logo_url
@@ -96,7 +98,7 @@ export function Footer() {
           <div>
             <h4 className="text-sm font-medium mb-4">Услуги</h4>
             <ul className="space-y-3 text-sm text-muted-foreground">
-              {FOOTER_SERVICES.map((item) => (
+              {footerServices.map((item) => (
                 <li key={item.slug}>
                   <a
                     href={`/uslugi/${item.slug}`}
