@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon"
 import { HighlightedText } from "./HighlightedText"
 import { LeadForm } from "./LeadForm"
 import { useSiteContent } from "@/hooks/useSiteContent"
+import { reachGoal } from "@/lib/metrika"
 import {
   LEVELS,
   ROOM_TYPES,
@@ -194,6 +195,7 @@ export function Calculator() {
                   </div>
 
                   <LeadForm
+                    formName="Калькулятор — расчёт"
                     presetComment={buildCalcComment(result)}
                     commentPlaceholder="Адрес, сроки, пожелания (необязательно)"
                     submitLabel="Отправить расчёт"
@@ -237,7 +239,14 @@ export function Calculator() {
                   </div>
 
                   <button
-                    onClick={() => setFormOpen(true)}
+                    onClick={() => {
+                      setFormOpen(true)
+                      reachGoal("calc_used", {
+                        tip: result.roomLabel,
+                        uroven: result.levelLabel,
+                        ploshad: result.area,
+                      })
+                    }}
                     className="w-full mt-6 inline-flex items-center justify-center gap-2.5 bg-[#D4AF37] text-foreground px-6 py-4 rounded-full text-sm font-medium tracking-wide hover:bg-[#B8860B] transition-colors group"
                   >
                     Отправить расчёт заявкой

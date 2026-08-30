@@ -5,6 +5,7 @@ import { HighlightedText } from "@/components/HighlightedText"
 import { useSiteContent } from "@/hooks/useSiteContent"
 import { useServiceLandings } from "@/hooks/useServiceLandings"
 import Icon from "@/components/ui/icon"
+import { reachGoal } from "@/lib/metrika"
 
 const META_TITLE = "Услуги по ремонту и строительству в Хабаровске — цены | FixKey"
 const META_DESCRIPTION =
@@ -148,6 +149,7 @@ export default function ServicesIndex() {
               </a>
               <a
                 href={phoneHref}
+                onClick={() => reachGoal("phone_click", { mesto: "Раздел услуг" })}
                 className="text-sm text-primary-foreground/60 hover:text-[#D4AF37] transition-colors"
               >
                 {phone}

@@ -1,10 +1,13 @@
 import { useState, FormEvent } from "react"
+import { useLocation } from "react-router-dom"
 import { ArrowRight } from "lucide-react"
 import { leadsApi } from "@/lib/api"
+import { reachGoal, sourceFromPath } from "@/lib/metrika"
 import Icon from "@/components/ui/icon"
 import { formatPhone, isPhoneComplete } from "@/lib/phone"
 
 interface LeadFormProps {
+  formName?: string
   presetComment?: string
   commentPlaceholder?: string
   submitLabel?: string
@@ -12,6 +15,7 @@ interface LeadFormProps {
 }
 
 export function LeadForm({
+  formName = "Форма заявки",
   presetComment,
   commentPlaceholder = "Площадь, район, пожелания (необязательно)",
   submitLabel = "Оставить заявку",
@@ -25,6 +29,15 @@ export function LeadForm({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
+  const [started, setStarted] = useState(false)
+  const location = useLocation()
+  const source = sourceFromPath(location.pathname)
+
+  const markStarted = () => {
+    if (started) return
+    setStarted(true)
+    reachGoal("lead_form_start", { forma: formName, stranica: source })
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -57,6 +70,7 @@ export function LeadForm({
         comment: fullComment,
       })
       setSuccess(true)
+      reachGoal("lead_submit", { forma: formName, stranica: source })
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось отправить заявку")
     } finally {
@@ -82,7 +96,10 @@ export function LeadForm({
         <input
           type="text"
           value={clientName}
-          onChange={(e) => setClientName(e.target.value)}
+          onChange={(e) => {
+            setClientName(e.target.value)
+            markStarted()
+          }}
           placeholder="Ваше имя"
           className="bg-transparent border border-primary-foreground/20 px-5 py-3 rounded-full text-sm outline-none focus:border-primary-foreground/60 transition-colors placeholder:text-primary-foreground/40"
         />
@@ -96,6 +113,7 @@ export function LeadForm({
           onChange={(e) => setClientPhone(formatPhone(e.target.value))}
           onFocus={() => {
             if (!clientPhone) setClientPhone("+7 (")
+            markStarted()
           }}
           onBlur={() => {
             if (clientPhone === "+7 (" || clientPhone === "+7") setClientPhone("")

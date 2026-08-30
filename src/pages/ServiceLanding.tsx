@@ -11,6 +11,7 @@ import { useServiceLandings } from "@/hooks/useServiceLandings"
 import { getServiceFaq } from "@/lib/serviceFaq"
 import Icon from "@/components/ui/icon"
 import PageNotFound from "@/pages/PageNotFound"
+import { reachGoal } from "@/lib/metrika"
 
 const formatPrice = (value: number) =>
   new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(value)
@@ -219,6 +220,7 @@ export default function ServiceLanding() {
                   </a>
                   <a
                     href={phoneHref}
+                    onClick={() => reachGoal("phone_click", { mesto: meta.category })}
                     className="text-sm text-muted-foreground hover:text-[#D4AF37] transition-colors"
                   >
                     Или позвоните: {phone}
@@ -354,11 +356,18 @@ export default function ServiceLanding() {
                 Оставьте заявку на бесплатный замер — рассчитаем смету и сроки в течение 24 часов.
               </p>
 
-              <LeadForm commentPlaceholder={`Что нужно сделать: ${meta.navLabel.toLowerCase()}`} />
+              <LeadForm
+                formName={`Услуга — ${meta.category}`}
+                commentPlaceholder={`Что нужно сделать: ${meta.navLabel.toLowerCase()}`}
+              />
 
               <p className="text-primary-foreground/50 text-sm mt-8">
                 Или позвоните:{" "}
-                <a href={phoneHref} className="hover:text-[#D4AF37] transition-colors">
+                <a
+                  href={phoneHref}
+                  onClick={() => reachGoal("phone_click", { mesto: meta.category })}
+                  className="hover:text-[#D4AF37] transition-colors"
+                >
                   {phone}
                 </a>
               </p>

@@ -1,6 +1,7 @@
 import { HighlightedText } from "./HighlightedText"
 import { LeadForm } from "./LeadForm"
 import { useSiteContent } from "@/hooks/useSiteContent"
+import { reachGoal } from "@/lib/metrika"
 
 export function CallToAction() {
   const { content } = useSiteContent()
@@ -29,10 +30,10 @@ export function CallToAction() {
             {ctaDescription}
           </p>
 
-          <LeadForm />
+          <LeadForm formName="Главная — заявка" />
 
           <p className="text-primary-foreground/50 text-sm mt-8">
-            Или позвоните: <a href={phoneHref} className="hover:text-[#D4AF37] transition-colors">{phone}</a>
+            Или позвоните: <a href={phoneHref} onClick={() => reachGoal("phone_click", { mesto: "Блок заявки" })} className="hover:text-[#D4AF37] transition-colors">{phone}</a>
           </p>
         </div>
       </div>

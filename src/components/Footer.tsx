@@ -1,5 +1,6 @@
 import { useSiteContent } from "@/hooks/useSiteContent"
 import { useServiceLandings } from "@/hooks/useServiceLandings"
+import { reachGoal } from "@/lib/metrika"
 
 const FOOTER_SERVICE_SLUGS = [
   "elektromontazhnye-raboty",
@@ -126,7 +127,11 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a href={phoneHref} className="hover:text-[#D4AF37] transition-colors">
+                <a
+                  href={phoneHref}
+                  onClick={() => reachGoal("phone_click", { mesto: "Подвал" })}
+                  className="hover:text-[#D4AF37] transition-colors"
+                >
                   {phone}
                 </a>
               </li>
