@@ -40,9 +40,6 @@ function buildXml(categories, today) {
     url(`${SITE_URL}/`, "1.0", "daily"),
     url(`${SITE_URL}/uslugi`, "0.9", "weekly"),
     ...categories.map((c) => url(`${SITE_URL}/uslugi/${slugify(c)}`, "0.8", "weekly")),
-    url(`${SITE_URL}/privacy`, "0.3", "yearly", "2026-08-17"),
-    url(`${SITE_URL}/terms`, "0.3", "yearly", "2026-08-17"),
-    url(`${SITE_URL}/cookies`, "0.3", "yearly", "2026-08-17"),
   ]
 
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`

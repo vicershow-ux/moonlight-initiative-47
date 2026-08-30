@@ -31,7 +31,12 @@ export default function Index() {
       tag.setAttribute("content", value)
     }
 
-    document.querySelector('meta[name="robots"]')?.remove()
+    const params = new URLSearchParams(window.location.search)
+    let junk = false
+    params.forEach((_v, key) => {
+      if (!/^(utm_|yclid|gclid|from|ysclid)/.test(key)) junk = true
+    })
+    if (!junk) document.querySelector('meta[name="robots"]')?.remove()
 
     setMeta("name", "description", meta_description)
     setMeta("name", "keywords", s.meta_keywords || "")

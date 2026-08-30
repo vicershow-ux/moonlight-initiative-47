@@ -34,7 +34,12 @@ export default function ServiceLanding() {
     if (!meta) return
     document.title = meta.metaTitle
 
-    document.querySelector('meta[name="robots"]')?.remove()
+    const params = new URLSearchParams(window.location.search)
+    let junk = false
+    params.forEach((_v, key) => {
+      if (!/^(utm_|yclid|gclid|from|ysclid)/.test(key)) junk = true
+    })
+    if (!junk) document.querySelector('meta[name="robots"]')?.remove()
 
     let desc = document.querySelector('meta[name="description"]')
     if (!desc) {

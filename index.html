@@ -29,19 +29,40 @@
 
     <script>
         (function () {
-            var known = ["/", "/privacy", "/terms", "/cookies", "/uslugi"];
+            var known = ["/", "/uslugi"];
+            var noindexPages = ["/privacy", "/terms", "/cookies"];
             var path = location.pathname.replace(/\/+$/, "") || "/";
             var isCabinet = path === "/cabinet" || path.indexOf("/cabinet/") === 0;
             var isService = path.indexOf("/uslugi/") === 0;
+            var hasQuery = location.search.length > 0;
+
             window.__isCabinet = isCabinet;
-            if ((known.indexOf(path) === -1 && !isService) || isCabinet) {
+
+            var isKnown = known.indexOf(path) !== -1 || isService;
+            var isLegal = noindexPages.indexOf(path) !== -1;
+            var isUnknown = !isKnown && !isLegal && !isCabinet;
+
+            function noindex() {
+                if (document.querySelector('meta[name="robots"]')) return;
                 var m = document.createElement("meta");
                 m.setAttribute("name", "robots");
                 m.setAttribute("content", "noindex, follow");
                 document.head.appendChild(m);
-                if (!isCabinet) {
-                    document.title = "Страница не найдена — FixKey";
-                }
+            }
+
+            if (isUnknown) {
+                noindex();
+                document.title = "Страница не найдена — FixKey";
+            } else if (isCabinet || isLegal) {
+                noindex();
+            } else if (hasQuery) {
+                var allowed = /^(utm_|yclid|gclid|from|ysclid)/;
+                var junk = false;
+                location.search.slice(1).split("&").forEach(function (pair) {
+                    var key = pair.split("=")[0];
+                    if (key && !allowed.test(key)) junk = true;
+                });
+                if (junk) noindex();
             }
         })();
     </script>

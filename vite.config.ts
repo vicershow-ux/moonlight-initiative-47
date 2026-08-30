@@ -4,6 +4,8 @@ import path from "path";
 import {componentTagger} from "pp-tagger";
 // @ts-expect-error - JS module without types
 import {sitemapPlugin} from "./scripts/generate-sitemap.mjs";
+// @ts-expect-error - JS module without types
+import {prerenderPlugin} from "./scripts/prerender.mjs";
 
 // https://vitejs.dev/config/
 const hmrKeepalive = {
@@ -26,6 +28,7 @@ export default defineConfig(({mode}) => ({
         hmrKeepalive,
         react(),
         sitemapPlugin(),
+        prerenderPlugin(),
         mode === 'development' &&
         componentTagger(),
     ].filter(Boolean),

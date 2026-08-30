@@ -28,7 +28,13 @@ export function LegalPage({
   useEffect(() => {
     document.title = `${title} — ${s?.brand_name || "FixKey"}`
 
-    document.querySelector('meta[name="robots"]')?.remove()
+    let robots = document.querySelector('meta[name="robots"]')
+    if (!robots) {
+      robots = document.createElement("meta")
+      robots.setAttribute("name", "robots")
+      document.head.appendChild(robots)
+    }
+    robots.setAttribute("content", "noindex, follow")
 
     let desc = document.querySelector('meta[name="description"]')
     if (!desc) {

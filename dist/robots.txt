@@ -1,15 +1,48 @@
 User-agent: Yandex
 Allow: /
 Disallow: /cabinet
-Clean-param: utm_source&utm_medium&utm_campaign&utm_term&utm_content&yclid&gclid&from
+Disallow: /privacy
+Disallow: /terms
+Disallow: /cookies
+Disallow: /*?page_id=
+Disallow: /*?p=
+Disallow: /*?cat=
+Disallow: /*?feed=
+Disallow: /*?s=
+Disallow: /*?replytocom=
+Disallow: /*?attachment_id=
+Disallow: /wp-admin
+Disallow: /wp-content
+Disallow: /wp-includes
+Disallow: /xmlrpc.php
+Clean-param: utm_source&utm_medium&utm_campaign&utm_term&utm_content&yclid&gclid&from&ysclid
 
 User-agent: Googlebot
 Allow: /
 Disallow: /cabinet
+Disallow: /privacy
+Disallow: /terms
+Disallow: /cookies
+Disallow: /*?page_id=
+Disallow: /*?p=
+Disallow: /*?cat=
+Disallow: /*?feed=
+Disallow: /*?s=
+Disallow: /*?replytocom=
+Disallow: /*?attachment_id=
+Disallow: /wp-admin
+Disallow: /wp-content
+Disallow: /wp-includes
+Disallow: /xmlrpc.php
 
 User-agent: Bingbot
 Allow: /
 Disallow: /cabinet
+Disallow: /privacy
+Disallow: /terms
+Disallow: /cookies
+Disallow: /*?page_id=
+Disallow: /wp-admin
 
 User-agent: Twitterbot
 Allow: /
@@ -20,6 +53,16 @@ Allow: /
 User-agent: *
 Allow: /
 Disallow: /cabinet
+Disallow: /privacy
+Disallow: /terms
+Disallow: /cookies
+Disallow: /*?page_id=
+Disallow: /*?p=
+Disallow: /*?feed=
+Disallow: /wp-admin
+Disallow: /wp-content
+Disallow: /wp-includes
+Disallow: /xmlrpc.php
 
 Sitemap: https://fixkey.ru/sitemap.xml
 Host: https://fixkey.ru
