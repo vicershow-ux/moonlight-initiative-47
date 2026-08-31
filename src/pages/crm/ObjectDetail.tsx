@@ -167,6 +167,13 @@ export default function ObjectDetail() {
         {!isClient && (
           <div className="flex items-center gap-2">
             <Link
+              to={`/cabinet/objects/${object.id}/planner`}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 min-h-[44px] rounded-lg"
+            >
+              <Icon name="PenLine" size={16} />
+              Планировщик
+            </Link>
+            <Link
               to={`/cabinet/objects/${object.id}/rooms`}
               className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-4 min-h-[44px] rounded-lg"
             >
