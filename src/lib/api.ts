@@ -15,6 +15,7 @@ const ACTS_URL = funcUrls.acts
 const WAREHOUSE_URL = funcUrls.warehouse
 const MATERIALS_URL = funcUrls.materials
 const OBJECT_FILES_URL = funcUrls.object_files
+const RENTALS_URL = funcUrls.rentals
 
 const TOKEN_KEY = "fixkey_token"
 
@@ -1638,5 +1639,203 @@ export const objectFilesApi = {
       headers: { ...authHeaders() },
     })
     return parseResponse(res)
+  },
+}
+export type RentalPartyKind = "individual" | "entrepreneur" | "legal"
+
+export interface RentalCounterparty {
+  id: number
+  party_kind: RentalPartyKind
+  display_name: string
+  phone: string
+  email: string
+  full_name: string
+  passport_series: string
+  passport_number: string
+  passport_issued_by: string
+  passport_issued_date: string | null
+  passport_department_code: string
+  birth_date: string | null
+  registration_address: string
+  org_name: string
+  inn: string
+  kpp: string
+  ogrn: string
+  legal_address: string
+  bank_name: string
+  bik: string
+  account_number: string
+  correspondent_account: string
+  director_position: string
+  director_name: string
+  acts_basis: string
+  notes: string
+  created_at: string
+}
+
+export interface Rental {
+  id: number
+  direction: "out" | "in"
+  rental_number: string
+  counterparty_id: number | null
+  warehouse_item_id: number | null
+  warehouse_id: number | null
+  object_id: number | null
+  item_name: string
+  unit: string
+  qty: number
+  rate: number
+  rate_period: "day" | "week" | "month"
+  deposit: number
+  date_from: string
+  date_to: string | null
+  returned_at: string | null
+  returned_qty: number
+  status: "active" | "returned" | "overdue"
+  paid_amount: number
+  condition_note: string
+  notes: string
+  created_at: string
+  counterparty_name: string | null
+  counterparty_kind: RentalPartyKind | null
+  counterparty_phone: string | null
+  warehouse_name: string | null
+  object_code: string | null
+  contract_id: number | null
+}
+
+export interface RentalStockItem {
+  id: number
+  name: string
+  kind: string
+  unit: string
+  qty: number
+  price: number
+  warehouse_id: number | null
+  warehouse_name: string | null
+}
+
+export interface RentalContract {
+  id: number
+  rental_id: number
+  contract_number: string
+  contract_date: string
+  status: "draft" | "signed"
+  options: Record<string, unknown>
+  content_html: string
+  total_amount: number
+  created_at: string
+}
+
+export const rentalsApi = {
+  async list() {
+    const res = await fetch(RENTALS_URL, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{
+      rentals: Rental[]
+      counterparties: RentalCounterparty[]
+      stock: RentalStockItem[]
+      objects: WarehouseObject[]
+    }>
+  },
+
+  async create(payload: Partial<Rental> & { counterparty?: Partial<RentalCounterparty> }) {
+    const res = await fetch(`${RENTALS_URL}?entity=rental`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<{ success: boolean; id: number; rental_number: string }>
+  },
+
+  async update(id: number, payload: Partial<Rental>) {
+    const res = await fetch(`${RENTALS_URL}?entity=rental&id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res)
+  },
+
+  async returnItem(id: number, payload: { qty?: number; condition_note?: string }) {
+    const res = await fetch(`${RENTALS_URL}?entity=rental&action=return&id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<{ success: boolean; status: string }>
+  },
+
+  async remove(id: number) {
+    const res = await fetch(`${RENTALS_URL}?entity=rental&id=${id}`, {
+      method: "DELETE",
+      headers: { ...authHeaders() },
+    })
+    return parseResponse(res)
+  },
+
+  counterparties: {
+    async create(payload: Partial<RentalCounterparty>) {
+      const res = await fetch(`${RENTALS_URL}?entity=counterparty`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify(payload),
+      })
+      return parseResponse(res) as Promise<{ success: boolean; id: number }>
+    },
+    async update(id: number, payload: Partial<RentalCounterparty>) {
+      const res = await fetch(`${RENTALS_URL}?entity=counterparty&id=${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify(payload),
+      })
+      return parseResponse(res)
+    },
+    async remove(id: number) {
+      const res = await fetch(`${RENTALS_URL}?entity=counterparty&id=${id}`, {
+        method: "DELETE",
+        headers: { ...authHeaders() },
+      })
+      return parseResponse(res)
+    },
+  },
+
+  contracts: {
+    async get(id: number) {
+      const res = await fetch(`${RENTALS_URL}?entity=contract&id=${id}`, {
+        headers: { ...authHeaders() },
+      })
+      return parseResponse(res) as Promise<RentalContract>
+    },
+    async create(payload: {
+      rental_id: number
+      contract_number: string
+      contract_date: string
+      status?: string
+      options?: Record<string, unknown>
+      content_html: string
+      total_amount: number
+    }) {
+      const res = await fetch(`${RENTALS_URL}?entity=contract`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify(payload),
+      })
+      return parseResponse(res) as Promise<{ success: boolean; id: number }>
+    },
+    async update(id: number, payload: {
+      contract_number: string
+      contract_date: string
+      status?: string
+      options?: Record<string, unknown>
+      content_html: string
+      total_amount: number
+    }) {
+      const res = await fetch(`${RENTALS_URL}?entity=contract&id=${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify(payload),
+      })
+      return parseResponse(res)
+    },
   },
 }

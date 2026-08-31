@@ -46,6 +46,7 @@ const ALL_PREFIXES = [
   "/cabinet/services",
   "/cabinet/company",
   "/cabinet/team",
+  "/cabinet/rentals",
 ]
 
 export const positionPrefixes: Record<PositionKey, string[]> = {
@@ -53,7 +54,7 @@ export const positionPrefixes: Record<PositionKey, string[]> = {
   director: ["/cabinet", ...ALL_PREFIXES],
   estimator: ["/cabinet/objects", "/cabinet/documents"],
   surveyor: ["/cabinet/objects"],
-  foreman: ["/cabinet/objects", "/cabinet/documents"],
+  foreman: ["/cabinet/objects", "/cabinet/documents", "/cabinet/rentals"],
   manager: ["/cabinet", "/cabinet/objects", "/cabinet/documents", "/cabinet/customers"],
   designer: ["/cabinet/objects"],
 }

@@ -1,0 +1,30 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS CORS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET without auth returns 401",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 401
+    },
+    {
+      "name": "POST rental without auth returns 401",
+      "method": "POST",
+      "path": "/?entity=rental",
+      "body": {"item_name": "Перфоратор"},
+      "expectedStatus": 401
+    },
+    {
+      "name": "POST counterparty without auth returns 401",
+      "method": "POST",
+      "path": "/?entity=counterparty",
+      "body": {"display_name": "Иванов Иван"},
+      "expectedStatus": 401
+    }
+  ]
+}
