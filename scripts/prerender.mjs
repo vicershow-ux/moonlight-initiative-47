@@ -117,12 +117,31 @@ function renderHtml(template, route) {
 }
 
 function writeRoute(outDir, route, html) {
-  const target =
+  const targets = [
     route.url === "/"
       ? path.join(outDir, "index.html")
-      : path.join(outDir, route.url.replace(/^\//, ""), "index.html")
-  fs.mkdirSync(path.dirname(target), { recursive: true })
-  fs.writeFileSync(target, html)
+      : path.join(outDir, route.url.replace(/^\//, ""), "index.html"),
+  ]
+
+  if (route.url !== "/") {
+    targets.push(
+      path.join(process.cwd(), "public", route.url.replace(/^\//, ""), "index.html"),
+    )
+  }
+
+  targets.forEach((target) => {
+    fs.mkdirSync(path.dirname(target), { recursive: true })
+    fs.writeFileSync(target, html)
+  })
+}
+
+function cleanPublicRoutes() {
+  const dir = path.join(process.cwd(), "public", "uslugi")
+  if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true })
+  ;["privacy", "terms", "cookies"].forEach((p) => {
+    const legal = path.join(process.cwd(), "public", p)
+    if (fs.existsSync(legal)) fs.rmSync(legal, { recursive: true, force: true })
+  })
 }
 
 export function prerenderPlugin() {
@@ -135,6 +154,8 @@ export function prerenderPlugin() {
       if (!fs.existsSync(indexPath)) return
 
       const template = fs.readFileSync(indexPath, "utf8")
+
+      cleanPublicRoutes()
 
       let categories = []
       try {

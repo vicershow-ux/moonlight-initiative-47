@@ -9,6 +9,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { CookieBanner } from "@/components/CookieBanner";
 import { MetrikaTracker } from "@/components/MetrikaTracker";
+import { AnalyticsHead } from "@/components/AnalyticsHead";
 import Index from "./pages/Index";
 
 const NotFound = lazy(() => import("./pages/PageNotFound"));
@@ -53,6 +54,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <MetrikaTracker />
+          <AnalyticsHead />
           <Suspense fallback={null}>
           <Routes>
             <Route path="/" element={<Index />} />

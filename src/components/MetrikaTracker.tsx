@@ -7,6 +7,7 @@ declare global {
     __ymId?: number
     __ymReady?: boolean
     __isCabinet?: boolean
+    gtag?: (command: string, ...args: unknown[]) => void
   }
 }
 
@@ -49,6 +50,19 @@ export function MetrikaTracker() {
     if (previous.current === current) return
 
     window.ym(id, "hit", current, { referer: previous.current })
+
+    document.querySelectorAll("script[src*='metrika/tag.js']").forEach((el) => {
+      const match = (el.getAttribute("src") || "").match(/[?&]id=(\d+)/)
+      const extra = match ? Number(match[1]) : null
+      if (extra && extra !== id) {
+        window.ym?.(extra, "hit", current, { referer: previous.current })
+      }
+    })
+
+    if (typeof window.gtag === "function") {
+      window.gtag("event", "page_view", { page_path: current })
+    }
+
     previous.current = current
   }, [location.pathname, location.search])
 
