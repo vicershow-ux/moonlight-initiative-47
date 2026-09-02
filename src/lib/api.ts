@@ -16,7 +16,6 @@ const WAREHOUSE_URL = funcUrls.warehouse
 const MATERIALS_URL = funcUrls.materials
 const OBJECT_FILES_URL = funcUrls.object_files
 const RENTALS_URL = funcUrls.rentals
-const OBJECT_PLANS_URL = funcUrls.object_plans
 
 const TOKEN_KEY = "fixkey_token"
 
@@ -1838,49 +1837,5 @@ export const rentalsApi = {
       })
       return parseResponse(res)
     },
-  },
-}
-
-export interface ObjectPlan {
-  id: number
-  scheme: Record<string, unknown>
-  default_height: number
-  total_floor_area: number
-  total_wall_area: number
-  total_perimeter: number
-  file_id: number | null
-  file_url: string | null
-  updated_at: string
-}
-
-export const objectPlansApi = {
-  async get(objectId: number) {
-    const res = await fetch(`${OBJECT_PLANS_URL}?object_id=${objectId}`, {
-      headers: { ...authHeaders() },
-    })
-    return parseResponse(res) as Promise<{ plan: ObjectPlan | null }>
-  },
-
-  async save(payload: {
-    object_id: number
-    scheme: unknown
-    default_height: number
-    totals: { floor: number; wall: number; perimeter: number }
-    pdf_data?: string
-    file_name?: string
-    sync_rooms?: boolean
-  }) {
-    const res = await fetch(OBJECT_PLANS_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify(payload),
-    })
-    return parseResponse(res) as Promise<{
-      success: boolean
-      id: number
-      file_id: number | null
-      file_url: string | null
-      synced_rooms: number
-    }>
   },
 }
