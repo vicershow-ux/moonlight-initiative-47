@@ -356,87 +356,64 @@ docker compose logs --tail 30 api
 > Выгрузка базы работает, даже если кабинет не открывается из-за лимита —
 > ограничение касается только функций, а не самой базы.
 
-### Где взять адрес старой базы
+Адрес старой базы вам знать не нужно — выгрузка уже подготовлена
+и лежит по ссылке. Достаточно скачать её на сервер.
 
-Это секрет `DATABASE_URL` — вы выписывали его в блокнот на шаге 0.
-Если не выписали, возьмите сейчас:
-
-1. Откройте poehali.dev, раздел **Ядро → Секреты**
-2. Найдите строку **DATABASE_URL**
-3. Нажмите на иконку копирования справа от строки — либо откройте
-   секрет на редактирование, значение подставится в поле, оттуда
-   его можно выделить и скопировать
-
-Строка выглядит примерно так — длинный адрес, начинается с `postgresql://`:
+### Скачиваем выгрузку
 
 ```
-postgresql://логин:пароль@rc1a-xxxx.mdb.yandexcloud.net:6432/db1
+curl -L "https://cdn.poehali.dev/projects/17c1a9d3-9c72-4270-abec-e542b49c03f2/bucket/export/fixkey-20260905-122738.sql.gz" -o /root/fixkey.sql.gz
 ```
 
-### Команда выгрузки
-
-Замените `ВСТАВЬТЕ_АДРЕС` на скопированную строку. **Кавычки обязательны** —
-без них в адресе ломаются спецсимволы пароля. Имя вашей схемы уже подставлено:
+Проверяем, что файл на месте:
 
 ```
-pg_dump "ВСТАВЬТЕ_АДРЕС" -n t_p98567891_moonlight_initiative -Fc -f /root/fixkey.dump
+ls -lh /root/fixkey.sql.gz
 ```
 
-Команда молча отработает 10–30 секунд — это нормально.
+Размер должен быть около `93K`. Если `0` или файла нет — повторите
+команду скачивания.
 
-> **Если написало `pg_dump: command not found`** — не установлен клиент
-> базы. Поставьте его и повторите команду выше:
->
-> ```
-> apt install -y postgresql-client-16
-> ```
-
-> **Если написало `no matching schemas found`** — проверьте, что скопировали
-> адрес целиком, вместе с частью после `@`.
-
-Проверяем, что файл выгрузился и не пустой:
+Распаковываем:
 
 ```
-ls -lh /root/fixkey.dump
+gunzip -f /root/fixkey.sql.gz && ls -lh /root/fixkey.sql
 ```
 
-В строке ответа найдите размер — он идёт перед датой. Должно быть
-хотя бы несколько десятков килобайт, например `84K` или `1,2M`.
-Если там `0` — выгрузка не удалась, вернитесь к команде выше.
+Теперь размер около `1,1M` — это ваши данные в виде текста.
 
-Переносим файл в новую базу:
+### Загружаем данные в новую базу
 
-```
-cd /var/www/fixkey/selfhost && docker compose cp /root/fixkey.dump db:/tmp/fixkey.dump
-```
-
-Убираем пустые таблицы, созданные при первом запуске:
+Таблицы уже созданы на шаге 6, поэтому просто заливаем содержимое:
 
 ```
-docker compose exec -T db psql -U fixkey -d fixkey -c "DROP SCHEMA IF EXISTS public CASCADE;"
+cd /var/www/fixkey/selfhost && docker compose cp /root/fixkey.sql db:/tmp/fixkey.sql
 ```
 
-Загружаем ваши данные:
-
 ```
-docker compose exec -T db pg_restore -U fixkey -d fixkey --no-owner --no-acl /tmp/fixkey.dump
+docker compose exec -T db psql -U fixkey -d fixkey -f /tmp/fixkey.sql > /root/load.log 2>&1; tail -3 /root/load.log
 ```
 
-Делаем перенесённую схему основной:
+Загрузка занимает около минуты. Строки со словом `NOTICE` — это
+нормально, на них внимания не обращайте.
+
+### Проверяем, что всё перенеслось
 
 ```
-docker compose exec -T db psql -U fixkey -d fixkey -c "ALTER SCHEMA t_p98567891_moonlight_initiative RENAME TO public;"
+docker compose exec -T db psql -U fixkey -d fixkey -c "SELECT (SELECT COUNT(*) FROM users) AS сотрудники, (SELECT COUNT(*) FROM objects) AS объекты, (SELECT COUNT(*) FROM services) AS услуги, (SELECT COUNT(*) FROM warehouse_items) AS склад;"
 ```
 
-Строки с надписью `warning` — это нормально.
+Должно показать ровно эти числа:
 
-Проверяем, что данные на месте:
+| сотрудники | объекты | услуги | склад |
+|---|---|---|---|
+| 4 | 5 | 2002 | 150 |
 
-```
-docker compose exec -T db psql -U fixkey -d fixkey -c "SELECT (SELECT COUNT(*) FROM users) AS сотрудники, (SELECT COUNT(*) FROM objects) AS объекты, (SELECT COUNT(*) FROM services) AS услуги;"
-```
+Если числа совпали — данные переехали полностью.
 
-Должно показать: сотрудники — 4, объекты — 5, услуги — около 2000.
+> **Если увидели ошибки `relation does not exist`** — значит таблицы
+> ещё не создались на шаге 6. Выполните `docker compose exec -T api
+> python3 migrate.py` и повторите загрузку.
 
 Отмечаем базу как актуальную, чтобы сервер не пытался пересоздать таблицы:
 
