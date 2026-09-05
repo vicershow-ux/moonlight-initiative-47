@@ -100,12 +100,12 @@ def upload_to_s3(company_id, object_id, file_name, b64data):
 
     s3 = boto3.client(
         's3',
-        endpoint_url='https://bucket.poehali.dev',
+        endpoint_url=os.environ.get('S3_ENDPOINT', 'https://bucket.poehali.dev'),
         aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
         aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
     )
     s3.put_object(Bucket='files', Key=key, Body=file_bytes, ContentType=content_type)
-    url = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
+    url = f"{os.environ.get('S3_PUBLIC_URL', 'https://cdn.poehali.dev/projects/' + os.environ['AWS_ACCESS_KEY_ID'] + '/bucket').rstrip('/')}/{key}"
     return url, (kind, len(file_bytes)), None
 
 

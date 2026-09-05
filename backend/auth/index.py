@@ -472,13 +472,13 @@ def handle_company(method, event, conn, cur):
                 key = f"signatures/{company_id}/{uuid.uuid4().hex}.{ext}"
                 s3 = boto3.client(
                     's3',
-                    endpoint_url='https://bucket.poehali.dev',
+                    endpoint_url=os.environ.get('S3_ENDPOINT', 'https://bucket.poehali.dev'),
                     aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
                     aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
                 )
                 content_type = 'image/jpeg' if ext == 'jpg' else 'image/png'
                 s3.put_object(Bucket='files', Key=key, Body=file_bytes, ContentType=content_type)
-                signature_url = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
+                signature_url = f"{os.environ.get('S3_PUBLIC_URL', 'https://cdn.poehali.dev/projects/' + os.environ['AWS_ACCESS_KEY_ID'] + '/bucket').rstrip('/')}/{key}"
             except Exception:
                 return response(400, {'error': 'Не удалось загрузить файл подписи'})
 

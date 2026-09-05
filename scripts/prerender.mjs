@@ -1,8 +1,10 @@
 import fs from "node:fs"
 import path from "node:path"
 
-const SITE_URL = "https://fixkey.ru"
-const API = "https://functions.poehali.dev/bda13702-0c6f-4b74-8da0-007b85e92f50"
+const SITE_URL = process.env.VITE_SITE_URL || "https://fixkey.ru"
+const API = process.env.VITE_API_BASE
+  ? `${process.env.VITE_API_BASE.replace(/\/$/, "")}/site`
+  : "https://functions.poehali.dev/bda13702-0c6f-4b74-8da0-007b85e92f50"
 
 const TRANSLIT = {
   а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z",

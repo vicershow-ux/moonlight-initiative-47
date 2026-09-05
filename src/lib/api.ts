@@ -1,21 +1,27 @@
 import funcUrls from "../../backend/func2url.json"
 import { EstimateStatus } from "@/lib/estimateStatus"
 
-const AUTH_URL = funcUrls.auth
-const OBJECTS_URL = funcUrls.objects
-const SERVICES_URL = funcUrls.services
-const DASHBOARD_URL = funcUrls.dashboard
-const ESTIMATES_URL = funcUrls.estimates
-const LEADS_URL = funcUrls.leads
-const OBJECT_ROOMS_URL = funcUrls.object_rooms
-const OBJECT_STATUSES_URL = funcUrls.object_statuses
-const SITE_URL = funcUrls.site
-const CONTRACTS_URL = funcUrls.contracts
-const ACTS_URL = funcUrls.acts
-const WAREHOUSE_URL = funcUrls.warehouse
-const MATERIALS_URL = funcUrls.materials
-const OBJECT_FILES_URL = funcUrls.object_files
-const RENTALS_URL = funcUrls.rentals
+const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/$/, "")
+
+function funcUrl(name: keyof typeof funcUrls) {
+  return API_BASE ? `${API_BASE}/${name}` : funcUrls[name]
+}
+
+const AUTH_URL = funcUrl("auth")
+const OBJECTS_URL = funcUrl("objects")
+const SERVICES_URL = funcUrl("services")
+const DASHBOARD_URL = funcUrl("dashboard")
+const ESTIMATES_URL = funcUrl("estimates")
+const LEADS_URL = funcUrl("leads")
+const OBJECT_ROOMS_URL = funcUrl("object_rooms")
+const OBJECT_STATUSES_URL = funcUrl("object_statuses")
+const SITE_URL = funcUrl("site")
+const CONTRACTS_URL = funcUrl("contracts")
+const ACTS_URL = funcUrl("acts")
+const WAREHOUSE_URL = funcUrl("warehouse")
+const MATERIALS_URL = funcUrl("materials")
+const OBJECT_FILES_URL = funcUrl("object_files")
+const RENTALS_URL = funcUrl("rentals")
 
 const TOKEN_KEY = "fixkey_token"
 
