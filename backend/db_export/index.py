@@ -78,6 +78,12 @@ def handler(event: dict, context) -> dict:
     ]
     stats = {}
 
+    if tables:
+        all_tables = ', '.join(f'"{t}"' for t in tables)
+        parts.append('-- Очистка всех таблиц одной командой (до вставок)')
+        parts.append(f'TRUNCATE TABLE {all_tables} RESTART IDENTITY CASCADE;')
+        parts.append('')
+
     for table in tables:
         cur.execute(
             "SELECT column_name, data_type FROM information_schema.columns "
@@ -95,7 +101,6 @@ def handler(event: dict, context) -> dict:
         stats[table] = len(rows)
 
         parts.append(f'-- {table}: {len(rows)} строк')
-        parts.append(f'TRUNCATE TABLE "{table}" CASCADE;')
         for row in rows:
             values = ', '.join(quote_literal(v) for v in row)
             parts.append(f'INSERT INTO "{table}" ({col_list}) VALUES ({values});')

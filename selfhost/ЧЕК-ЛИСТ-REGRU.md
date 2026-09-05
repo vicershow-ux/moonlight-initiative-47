@@ -362,7 +362,7 @@ docker compose logs --tail 30 api
 ### Скачиваем выгрузку
 
 ```
-curl -L "https://cdn.poehali.dev/projects/17c1a9d3-9c72-4270-abec-e542b49c03f2/bucket/export/fixkey-20260905-122738.sql.gz" -o /root/fixkey.sql.gz
+curl -L "https://cdn.poehali.dev/projects/17c1a9d3-9c72-4270-abec-e542b49c03f2/bucket/export/fixkey-20260905-124939.sql.gz" -o /root/fixkey.sql.gz
 ```
 
 Проверяем, что файл на месте:
