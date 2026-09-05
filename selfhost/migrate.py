@@ -36,6 +36,35 @@ def main() -> int:
     )
     conn.commit()
 
+    # Режим для перенесённой базы: таблицы уже есть, миграции применять не нужно
+    if "--mark-applied" in sys.argv:
+        for path in files:
+            cur.execute(
+                "INSERT INTO schema_migrations (name) VALUES (%s) "
+                "ON CONFLICT (name) DO NOTHING",
+                (path.name,),
+            )
+        conn.commit()
+        cur.close()
+        conn.close()
+        print(f"База отмечена как актуальная ({len(files)} миграций)")
+        return 0
+
+    # Если таблицы уже есть, а отметок нет — база перенесена, но не отмечена
+    cur.execute("SELECT to_regclass('users')")
+    users_exists = cur.fetchone()[0] is not None
+    cur.execute("SELECT COUNT(*) FROM schema_migrations")
+    marks = cur.fetchone()[0]
+    if users_exists and marks == 0:
+        print(
+            "Таблицы уже существуют, но миграции не отмечены.\n"
+            "Похоже, база перенесена со старой платформы. Выполните:\n"
+            "  docker compose exec -T api python3 migrate.py --mark-applied"
+        )
+        cur.close()
+        conn.close()
+        return 1
+
     cur.execute("SELECT name FROM schema_migrations")
     done = {row[0] for row in cur.fetchall()}
 

@@ -13,4 +13,4 @@ WORKDIR /app/selfhost
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python migrate.py && gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 120 server:application"]
+CMD ["sh", "-c", "python migrate.py || echo 'Миграции пропущены — см. сообщение выше'; gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 120 server:application"]

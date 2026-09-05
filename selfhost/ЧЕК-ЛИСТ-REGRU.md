@@ -197,6 +197,9 @@ curl http://localhost:8000/health
 
 Должны увидеть ответ со словом `"ok"` и списком из 16 разделов.
 
+> На этом шаге сервер создаст пустые таблицы — это нормально.
+> На следующем шаге они заменятся вашими настоящими данными.
+
 Если ответа нет — смотрите, что пошло не так:
 
 ```
@@ -207,31 +210,67 @@ docker compose logs --tail 30 api
 
 ## Шаг 7. Перенести данные из платформы
 
-Выгружаем текущую базу (подставьте `DATABASE_URL` из блокнота, в кавычках):
+> Выгрузка базы работает, даже если кабинет не открывается из-за лимита —
+> ограничение касается только функций, а не самой базы.
+
+Ваши данные лежат в отдельной схеме — при выгрузке её нужно указать явно.
+Подставьте `DATABASE_URL` из блокнота (обязательно в кавычках):
 
 ```
-pg_dump "postgresql://ваш_адрес_старой_базы" -Fc -f /root/fixkey.dump
+pg_dump "postgresql://ваш_адрес_старой_базы" -n t_p98567891_moonlight_initiative -Fc -f /root/fixkey.dump
 ```
 
-Загружаем в новую базу:
+Проверяем, что файл выгрузился и не пустой:
+
+```
+ls -lh /root/fixkey.dump
+```
+
+Переносим файл в новую базу:
 
 ```
 cd /var/www/fixkey/selfhost && docker compose cp /root/fixkey.dump db:/tmp/fixkey.dump
 ```
 
-```
-docker compose exec db pg_restore -U fixkey -d fixkey --no-owner --clean --if-exists /tmp/fixkey.dump
-```
-
-Несколько строк с надписью `warning` — это нормально.
-
-Проверяем, что сотрудники на месте:
+Убираем пустые таблицы, созданные при первом запуске:
 
 ```
-docker compose exec db psql -U fixkey -d fixkey -c "SELECT COUNT(*) AS сотрудников FROM users;"
+docker compose exec -T db psql -U fixkey -d fixkey -c "DROP SCHEMA IF EXISTS public CASCADE;"
 ```
 
-Должно показать число больше нуля.
+Загружаем ваши данные:
+
+```
+docker compose exec -T db pg_restore -U fixkey -d fixkey --no-owner --no-acl /tmp/fixkey.dump
+```
+
+Делаем перенесённую схему основной:
+
+```
+docker compose exec -T db psql -U fixkey -d fixkey -c "ALTER SCHEMA t_p98567891_moonlight_initiative RENAME TO public;"
+```
+
+Строки с надписью `warning` — это нормально.
+
+Проверяем, что данные на месте:
+
+```
+docker compose exec -T db psql -U fixkey -d fixkey -c "SELECT (SELECT COUNT(*) FROM users) AS сотрудники, (SELECT COUNT(*) FROM objects) AS объекты, (SELECT COUNT(*) FROM services) AS услуги;"
+```
+
+Должно показать: сотрудники — 4, объекты — 5, услуги — около 2000.
+
+Отмечаем базу как актуальную, чтобы сервер не пытался пересоздать таблицы:
+
+```
+docker compose exec -T api python3 migrate.py --mark-applied
+```
+
+Перезапускаем сервер:
+
+```
+docker compose restart api && sleep 5 && curl -s http://localhost:8000/health
+```
 
 ---
 
@@ -389,30 +428,21 @@ docker compose restart api
 
 ### Если старый ключ достать не удалось
 
-Тогда войти по прежним паролям нельзя, но доступ легко вернуть —
-зададим новый пароль напрямую в базе.
+Тогда войти по прежним паролям нельзя, но доступ возвращается одной командой.
 
-Впишите любое значение в `PASSWORD_SALT` (например, `fixkey_salt_new`),
-сохраните файл и перезапустите: `docker compose restart api`.
-
-Теперь задайте себе новый пароль. Подставьте свою почту и новый пароль:
+Задайте себе новый пароль — подставьте свою почту и придуманный пароль:
 
 ```
-cd /var/www/fixkey/selfhost && docker compose exec -T api python3 -c "
-import os, hashlib, psycopg2
-EMAIL = 'randerr@yandex.ru'
-NEW_PASSWORD = 'ПридумайтеНовыйПароль'
-salt = os.environ.get('PASSWORD_SALT') or os.environ.get('AWS_SECRET_ACCESS_KEY', 'fixkey_salt')
-h = hashlib.pbkdf2_hmac('sha256', NEW_PASSWORD.encode(), salt[:16].encode(), 100000).hex()
-c = psycopg2.connect(os.environ['DATABASE_URL']); cur = c.cursor()
-cur.execute('UPDATE users SET password_hash = %s WHERE email = %s', (h, EMAIL))
-c.commit(); print('Обновлено записей:', cur.rowcount)
-"
+cd /var/www/fixkey/selfhost && docker compose exec -T api python3 set-password.py randerr@yandex.ru ПридумайтеНовыйПароль
 ```
 
-Должно вывести `Обновлено записей: 1`. Теперь входите с новым паролем.
+Должно вывести `Пароль обновлён: Ершов Виктор Витальевич (owner)`.
+Теперь входите на сайте с этой почтой и новым паролем.
 
-Пароли сотрудникам вы потом зададите сами в разделе **Команда**.
+Если ошиблись в почте — скрипт покажет список всех учётных записей,
+которые есть в базе. Выберите нужную и повторите команду.
+
+Пароли сотрудникам после входа задайте в разделе **Команда**.
 
 ---
 
