@@ -1,23 +1,8 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react"
+import { useContext, useState, useEffect, ReactNode } from "react"
 import { authApi, getToken, setToken, clearToken, UserData } from "@/lib/api"
+import { AuthContext, AuthContextValue, LoginOutcome } from "./authContextValue"
 
-interface LoginOutcome {
-  requires2fa: boolean
-  challengeToken?: string
-}
-
-interface AuthContextValue {
-  user: UserData | null
-  loading: boolean
-  login: (email: string, password: string, remember?: boolean) => Promise<LoginOutcome>
-  verify2fa: (challengeToken: string, code: string, remember?: boolean) => Promise<void>
-  logout: () => void
-  updateCompanyName: (name: string) => void
-  updateProfile: (data: { full_name?: string; email?: string }) => void
-  setTotpEnabled: (enabled: boolean) => void
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null)
+export type { AuthContextValue, LoginOutcome }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserData | null>(null)
