@@ -9,7 +9,7 @@
 
 **Обозначения в тексте:**
 
-- `вашдомен.ru` — везде заменяйте на свой настоящий домен
+- `fixkey.ru` — везде заменяйте на свой настоящий домен
 - `ЧИСЛО.ЧИСЛО.ЧИСЛО.ЧИСЛО` — IP-адрес сервера, вы получите его на шаге 1
 
 ---
@@ -134,19 +134,16 @@ docker --version && nginx -v && node --version
 1. В poehali.dev нажмите **Скачать** → **Подключить GitHub**
 2. Авторизуйтесь, выберите аккаунт, дождитесь загрузки
 3. Скопируйте адрес получившегося репозитория — вида
-   `https://github.com/ваш-логин/fixkey.git`
+   `https://github.com/vicershow-ux/moonlight-initiative-47.git`
 
 ### Куда вводить токен
 
 Отдельно «добавлять» токен никуда не нужно — он вставляется прямо
-в команду скачивания кода, один раз. Возьмите команду ниже и замените
-в ней **три** места:
-
-- `ваш-логин` (встречается дважды) — ваш логин на GitHub, не почта
-- `ВАШ_ТОКЕН` — тот токен, который вы только что создали
+в команду скачивания кода, один раз. В команде ниже замените только
+`ВАШ_ТОКЕН` на свой токен, остальное уже подставлено:
 
 ```
-mkdir -p /var/www && cd /var/www && git clone https://ваш-логин:ВАШ_ТОКЕН@github.com/ваш-логин/fixkey.git fixkey
+mkdir -p /var/www && cd /var/www && git clone https://vicershow-ux:ВАШ_ТОКЕН@github.com/vicershow-ux/moonlight-initiative-47.git fixkey
 ```
 
 Удобнее собрать эту строку в блокноте на своём компьютере, а потом
@@ -155,13 +152,17 @@ mkdir -p /var/www && cd /var/www && git clone https://ваш-логин:ВАШ_�
 Пойдут строки `Receiving objects...` — значит доступ принят,
 код скачивается. Это занимает меньше минуты.
 
+> **Если написало `destination path ... already exists`** — код уже
+> скачан ранее, токен принят, всё в порядке. Просто переходите
+> к следующему разделу.
+
 ### Обязательно: убрать токен с сервера
 
 После успешной загрузки токен не должен оставаться на сервере открытым.
 Первая команда убирает его из настроек папки:
 
 ```
-cd /var/www/fixkey && git remote set-url origin https://github.com/ваш-логин/fixkey.git
+cd /var/www/fixkey && git remote set-url origin https://github.com/vicershow-ux/moonlight-initiative-47.git
 ```
 
 Вторая стирает его из истории набранных команд:
@@ -182,7 +183,7 @@ history -c && rm -f ~/.bash_history
 Исправьте и повторите команду, добавив в начало удаление неудачной папки:
 
 ```
-rm -rf /var/www/fixkey && mkdir -p /var/www && cd /var/www && git clone https://ваш-логин:ВАШ_ТОКЕН@github.com/ваш-логин/fixkey.git fixkey
+rm -rf /var/www/fixkey && mkdir -p /var/www && cd /var/www && git clone https://vicershow-ux:ВАШ_ТОКЕН@github.com/vicershow-ux/moonlight-initiative-47.git fixkey
 ```
 
 Проверяем, что код на месте:
@@ -236,7 +237,7 @@ cd /var/www/fixkey/selfhost && cp .env.example .env && nano .env
 
 ```
 DB_PASSWORD=пароль_который_вы_придумали
-CORS_ORIGIN=https://вашдомен.ru
+CORS_ORIGIN=https://fixkey.ru
 PASSWORD_SALT=значение_AWS_SECRET_ACCESS_KEY_из_блокнота
 ```
 
@@ -287,7 +288,7 @@ sed -i 's|^DB_PASSWORD=.*|DB_PASSWORD=ВашПарольБазы|' .env
 ```
 
 ```
-sed -i 's|^CORS_ORIGIN=.*|CORS_ORIGIN=https://вашдомен.ru|' .env
+sed -i 's|^CORS_ORIGIN=.*|CORS_ORIGIN=https://fixkey.ru|' .env
 ```
 
 ```
@@ -306,8 +307,8 @@ sed -i 's|^SMTP_HOST=.*|SMTP_HOST=значение|; s|^SMTP_USER=.*|SMTP_USER=�
 grep -E "^(DB_PASSWORD|CORS_ORIGIN|PASSWORD_SALT|SMTP_HOST)=" .env
 ```
 
-Должны увидеть четыре строки со своими значениями — без слов
-«ПРИДУМАЙТЕ_ПАРОЛЬ» и «вашдомен».
+Должны увидеть четыре строки со своими значениями. Слова
+«ПРИДУМАЙТЕ_ПАРОЛЬ» остаться не должно.
 
 Проверяем, что файл создан:
 
@@ -418,10 +419,10 @@ docker compose restart api && sleep 5 && curl -s http://localhost:8000/health
 
 ## Шаг 8. Собрать сайт
 
-Указываем сайту адрес нового сервера — **замените `вашдомен.ru` на свой**:
+Указываем сайту адрес нового сервера — **замените `fixkey.ru` на свой**:
 
 ```
-cd /var/www/fixkey && printf 'VITE_API_BASE=https://api.вашдомен.ru\nVITE_SITE_URL=https://вашдомен.ru\n' > .env.production
+cd /var/www/fixkey && printf 'VITE_API_BASE=https://api.fixkey.ru\nVITE_SITE_URL=https://fixkey.ru\n' > .env.production
 ```
 
 Проверяем, что записалось верно:
@@ -430,7 +431,8 @@ cd /var/www/fixkey && printf 'VITE_API_BASE=https://api.вашдомен.ru\nVIT
 cat /var/www/fixkey/.env.production
 ```
 
-Должны увидеть две строки с вашим доменом, без слова «вашдомен».
+Должны увидеть ровно две строки: `VITE_API_BASE=https://api.fixkey.ru`
+и `VITE_SITE_URL=https://fixkey.ru`.
 
 Собираем (займёт 3–5 минут):
 
@@ -453,7 +455,7 @@ ls /var/www/fixkey/dist/index.html
 Проверяем, что сайт будет обращаться к вашему серверу:
 
 ```
-grep -rlo "api.вашдомен.ru" /var/www/fixkey/dist/assets/ | head -1
+grep -rlo "api.fixkey.ru" /var/www/fixkey/dist/assets/ | head -1
 ```
 
 Должен вывестись путь к файлу — значит адрес вашего сервера попал в сборку.
@@ -473,13 +475,13 @@ grep -rlo "api.вашдомен.ru" /var/www/fixkey/dist/assets/ | head -1
 nano /etc/nginx/sites-available/fixkey
 ```
 
-Вставьте текст ниже целиком, **заменив `вашдомен.ru` на свой домен**
+Вставьте текст ниже целиком, **заменив `fixkey.ru` на свой домен**
 (в редакторе вставка — правая кнопка мыши или Ctrl+Shift+V):
 
 ```
 server {
     listen 80;
-    server_name вашдомен.ru www.вашдомен.ru;
+    server_name fixkey.ru www.fixkey.ru;
     root /var/www/fixkey/dist;
     index index.html;
 
@@ -490,7 +492,7 @@ server {
 
 server {
     listen 80;
-    server_name api.вашдомен.ru;
+    server_name api.fixkey.ru;
 
     client_max_body_size 20M;
 
@@ -539,7 +541,7 @@ systemctl reload nginx
 Проверить, готово ли (выполняйте на сервере):
 
 ```
-ping -c 2 api.вашдомен.ru
+ping -c 2 api.fixkey.ru
 ```
 
 Если в ответе виден IP вашего сервера — можно продолжать.
@@ -552,7 +554,7 @@ ping -c 2 api.вашдомен.ru
 Только после того, как шаг 10 заработал:
 
 ```
-certbot --nginx -d вашдомен.ru -d www.вашдомен.ru -d api.вашдомен.ru
+certbot --nginx -d fixkey.ru -d www.fixkey.ru -d api.fixkey.ru
 ```
 
 Программа спросит:
@@ -568,9 +570,9 @@ certbot --nginx -d вашдомен.ru -d www.вашдомен.ru -d api.ваш�
 
 ## Шаг 12. Проверить, что всё работает
 
-Откройте в браузере `https://вашдомен.ru` — должен открыться сайт с замочком.
+Откройте в браузере `https://fixkey.ru` — должен открыться сайт с замочком.
 
-Затем `https://вашдомен.ru/login` и входите:
+Затем `https://fixkey.ru/login` и входите:
 
 - **если вы перенесли `PASSWORD_SALT`** со старой платформы — своим
   обычным логином и паролем, они продолжают работать;
