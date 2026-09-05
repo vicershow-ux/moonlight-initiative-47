@@ -326,6 +326,12 @@ chmod 600 /var/www/fixkey/selfhost/.env
 
 ## Шаг 6. Запустить сервер кабинета
 
+> **Все команды с `docker compose` выполняются в папке проекта.**
+> Если ответ — `no configuration file provided: not found`, значит вы
+> не в той папке (так бывает после переподключения к серверу). Выполните
+> `cd /var/www/fixkey/selfhost` и повторите команду. Подсказка — в начале
+> строки: должно быть `.../selfhost#`, а не `~#`.
+
 ```
 cd /var/www/fixkey/selfhost && docker compose up -d --build
 ```
@@ -431,7 +437,7 @@ docker compose restart api && sleep 5 && curl -s http://localhost:8000/health
 
 ## Шаг 8. Собрать сайт
 
-Указываем сайту адрес нового сервера — **замените `fixkey.ru` на свой**:
+Указываем сайту адрес нового сервера (ваш домен уже подставлен):
 
 ```
 cd /var/www/fixkey && printf 'VITE_API_BASE=https://api.fixkey.ru\nVITE_SITE_URL=https://fixkey.ru\n' > .env.production
@@ -449,7 +455,7 @@ cat /var/www/fixkey/.env.production
 Собираем (займёт 3–5 минут):
 
 ```
-cd /var/www/fixkey && npm install && npm run build
+cd /var/www/fixkey && npm install && NODE_OPTIONS=--max-old-space-size=2048 npm run build
 ```
 
 В конце сборки появятся строки `[sitemap]` и `[prerender]`. Если рядом
