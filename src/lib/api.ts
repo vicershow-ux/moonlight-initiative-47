@@ -935,6 +935,25 @@ export const companyApi = {
   },
 }
 
+export interface MigrationSettings {
+  password_salt: string
+  database_url: string
+  smtp_host: string
+  smtp_user: string
+  smtp_password: string
+}
+
+export const migrationApi = {
+  async get(password: string) {
+    const res = await fetch(`${AUTH_URL}?resource=migration`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ password }),
+    })
+    return parseResponse(res) as Promise<MigrationSettings>
+  },
+}
+
 export interface ObjectStatus {
   id: number
   name: string

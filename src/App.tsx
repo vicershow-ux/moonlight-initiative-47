@@ -45,6 +45,7 @@ const ObjectPipeline = lazy(() => import("./pages/crm/ObjectPipeline"));
 const Site = lazy(() => import("./pages/crm/Site"));
 const Team = lazy(() => import("./pages/crm/Team"));
 const Profile = lazy(() => import("./pages/crm/Profile"));
+const Migration = lazy(() => import("./pages/crm/Migration"));
 
 const queryClient = new QueryClient();
 
@@ -95,6 +96,7 @@ const App = () => (
             <Route path="/cabinet/site" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]} section="/cabinet/company"><Site /></ProtectedRoute>} />
             <Route path="/cabinet/team" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Team /></ProtectedRoute>} />
             <Route path="/cabinet/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/cabinet/migration" element={<ProtectedRoute allowedRoles={["owner"]} section="/cabinet/company"><Migration /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

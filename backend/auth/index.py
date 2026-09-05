@@ -659,6 +659,39 @@ def handle_2fa(method, event, conn, cur, action):
     return response(404, {'error': 'Неизвестное действие'})
 
 
+def handle_migration(method, event, conn, cur):
+    '''Выдаёт владельцу настройки для переезда на свой сервер. Требует пароль.'''
+    user = get_current_user(cur, event)
+    if not user:
+        return response(401, {'error': 'Не авторизован'})
+    if user['role'] != 'owner':
+        return response(403, {'error': 'Доступно только владельцу компании'})
+
+    if method != 'POST':
+        return response(405, {'error': 'Метод не поддерживается'})
+
+    body = json.loads(event.get('body') or '{}')
+    password = body.get('password') or ''
+
+    cur.execute("SELECT password_hash FROM users WHERE id = %s", (user['id'],))
+    stored_hash = cur.fetchone()[0]
+    if not password or stored_hash != hash_password(password):
+        return response(401, {'error': 'Неверный пароль'})
+
+    salt = os.environ.get(
+        'PASSWORD_SALT',
+        os.environ.get('AWS_SECRET_ACCESS_KEY', 'fixkey_salt'),
+    )[:16]
+
+    return response(200, {
+        'password_salt': salt,
+        'database_url': os.environ.get('DATABASE_URL', ''),
+        'smtp_host': os.environ.get('SMTP_HOST', ''),
+        'smtp_user': os.environ.get('SMTP_USER', ''),
+        'smtp_password': os.environ.get('SMTP_PASSWORD', ''),
+    })
+
+
 def handle_notifications(method, event, conn, cur):
     user = get_current_user(cur, event)
     if not user:
@@ -721,6 +754,8 @@ def handler(event: dict, context) -> dict:
             return handle_team(method, event, conn, cur)
         if resource == 'notifications':
             return handle_notifications(method, event, conn, cur)
+        if resource == 'migration':
+            return handle_migration(method, event, conn, cur)
         if resource == 'company':
             return handle_company(method, event, conn, cur)
         if resource == 'profile':
