@@ -1,5 +1,8 @@
 import fs from "node:fs"
 import path from "node:path"
+import {loadEnvFiles} from "./read-env.mjs"
+
+loadEnvFiles()
 
 const SITE_URL = process.env.VITE_SITE_URL || "https://fixkey.ru"
 const API = process.env.VITE_API_BASE
