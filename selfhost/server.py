@@ -156,6 +156,8 @@ def application(environ, start_response):
     headers = dict(CORS_HEADERS)
     headers.setdefault("Content-Type", "application/json")
     for key, value in (result.get("headers") or {}).items():
+        if key.lower().startswith("access-control-"):
+            continue
         headers["Set-Cookie" if key.lower() == "x-set-cookie" else key] = value
 
     payload = result.get("body", "")

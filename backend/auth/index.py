@@ -16,7 +16,10 @@ def get_conn():
 
 
 def hash_password(password: str) -> str:
-    salt = os.environ.get('AWS_SECRET_ACCESS_KEY', 'fixkey_salt')[:16]
+    salt = os.environ.get(
+        'PASSWORD_SALT',
+        os.environ.get('AWS_SECRET_ACCESS_KEY', 'fixkey_salt'),
+    )[:16]
     return hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 100000).hex()
 
 
@@ -728,4 +731,3 @@ def handler(event: dict, context) -> dict:
     finally:
         cur.close()
         conn.close()
-
