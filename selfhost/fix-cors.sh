@@ -1,92 +1,132 @@
 #!/bin/bash
 # Чинит вход в личный кабинет.
-# Проблема: сервер добавляет свой заголовок разрешения поверх того,
-# который уже отдаёт функция. Они склеиваются в «*https://fixkey.ru»,
-# браузер считает это ошибкой и не пускает в кабинет.
-# Решение: убрать заголовки на стороне сервера — функции отдают их сами.
+#
+# Причина: в настройках сервера (.env) параметр CORS_ORIGIN склеился
+# в «*https://fixkey.ru». Браузер принимает либо «*», либо ровно один
+# адрес — склейку он считает ошибкой и отменяет вход в кабинет.
+#
+# Скрипт чинит .env, убирает дублирующие заголовки в nginx
+# и перезапускает серверную часть.
 #
 # Запуск:  bash /var/www/fixkey/selfhost/fix-cors.sh
 
 set -e
 
+APP_DIR="${APP_DIR:-/var/www/fixkey}"
 CONF="/etc/nginx/sites-available/fixkey"
 DOMAIN="${FIXKEY_DOMAIN:-fixkey.ru}"
 API="api.$DOMAIN"
-BACKUP="$CONF.bak-cors-$(date +%Y%m%d-%H%M%S)"
+STAMP=$(date +%Y%m%d-%H%M%S)
 
-if [ ! -f "$CONF" ]; then
-  echo "ОШИБКА: не найдена настройка сайта: $CONF"
-  exit 1
-fi
+check_header() {
+  curl -sS -i --max-time 15 "https://$API/site?resource=public" \
+    -H "Origin: https://$DOMAIN" 2>/dev/null \
+    | grep -i "access-control-allow-origin" | tr -d '\r' || true
+}
 
 echo "=== Чиню вход в кабинет ==="
 echo ""
-echo "--- Было (заголовок разрешения):"
-curl -sS -i --max-time 15 "https://$API/site?resource=public" \
-  -H "Origin: https://$DOMAIN" 2>/dev/null \
-  | grep -i "access-control-allow-origin" || echo "  (не отвечает)"
+echo "--- Сейчас сервер отвечает:"
+BEFORE=$(check_header)
+echo "  ${BEFORE:-(нет ответа)}"
 
-cp "$CONF" "$BACKUP"
+# --- 1. Главная причина: значение в .env
 echo ""
-echo "--- Копия старой настройки: $BACKUP"
+echo "--- 1/4 Проверяю настройки сервера (.env)"
+ENV_FILE="$APP_DIR/selfhost/.env"
+[ -f "$ENV_FILE" ] || ENV_FILE="$APP_DIR/.env"
 
-echo "--- 1/3 Убираю лишние заголовки"
-python3 - "$CONF" "$API" <<'PY'
+if [ -f "$ENV_FILE" ]; then
+  CURRENT=$(grep -E "^CORS_ORIGIN=" "$ENV_FILE" | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'" | xargs || echo "")
+  echo "    было: ${CURRENT:-(не задано)}"
+
+  FIXED="$CURRENT"
+  case "$FIXED" in
+    \**http*) FIXED="${FIXED#\*}"; FIXED="${FIXED#,}" ;;
+  esac
+  FIXED=$(echo "$FIXED" | cut -d, -f1 | xargs)
+  FIXED="${FIXED%/}"
+  [ -z "$FIXED" ] && FIXED="https://$DOMAIN"
+  case "$FIXED" in http*) : ;; *) FIXED="https://$DOMAIN" ;; esac
+
+  if [ "$CURRENT" != "$FIXED" ]; then
+    cp "$ENV_FILE" "$ENV_FILE.bak-$STAMP"
+    if grep -qE "^CORS_ORIGIN=" "$ENV_FILE"; then
+      sed -i "s|^CORS_ORIGIN=.*|CORS_ORIGIN=$FIXED|" "$ENV_FILE"
+    else
+      echo "CORS_ORIGIN=$FIXED" >> "$ENV_FILE"
+    fi
+    echo "    стало: $FIXED  (копия: $ENV_FILE.bak-$STAMP)"
+  else
+    echo "    значение корректное"
+  fi
+else
+  echo "    файл .env не найден — пропускаю"
+fi
+
+# --- 2. Дублирующие заголовки в nginx
+echo "--- 2/4 Убираю дублирующие заголовки в nginx"
+if [ -f "$CONF" ]; then
+  cp "$CONF" "$CONF.bak-cors-$STAMP"
+  python3 - "$CONF" <<'PY'
 import re, sys
-
-path, api_host = sys.argv[1], sys.argv[2]
+path = sys.argv[1]
 conf = open(path, encoding='utf-8').read()
-
-# Убираем все add_header Access-Control-* внутри блоков api-домена
 before = conf
 conf = re.sub(r'[ \t]*add_header\s+[\'"]?Access-Control-[^\n;]*;[ \t]*\n', '', conf)
-
-# Убираем ручную обработку OPTIONS (функции делают это сами)
 conf = re.sub(
     r'[ \t]*if\s*\(\s*\$request_method\s*=\s*[\'"]?OPTIONS[\'"]?\s*\)\s*\{[^{}]*\}\s*\n',
     '', conf)
-
-# Гарантируем, что заголовки от функции доходят без изменений
-if 'proxy_pass_header' not in conf:
-    conf = conf.replace(
-        'proxy_pass http://127.0.0.1:8000;',
-        'proxy_pass http://127.0.0.1:8000;\n        proxy_pass_header Access-Control-Allow-Origin;')
-
-if conf == before and 'proxy_pass_header' in before:
-    print('Лишних заголовков не найдено — настройка уже чистая')
-else:
+if conf != before:
     open(path, 'w', encoding='utf-8').write(conf)
-    print('Настройка очищена')
+    print('    лишние заголовки убраны')
+else:
+    print('    настройка уже чистая')
 PY
-
-echo "--- 2/3 Проверяю"
-if ! nginx -t; then
-  echo "ОШИБКА в настройке — возвращаю прежнюю"
-  cp "$BACKUP" "$CONF"
-  nginx -t
-  exit 1
+  if nginx -t 2>/dev/null; then
+    systemctl reload nginx
+  else
+    echo "    ОШИБКА в настройке nginx — возвращаю прежнюю"
+    cp "$CONF.bak-cors-$STAMP" "$CONF"
+    nginx -t
+  fi
+else
+  echo "    настройка nginx не найдена — пропускаю"
 fi
 
-echo "--- 3/3 Применяю"
-systemctl reload nginx
-sleep 2
+# --- 3. Перезапуск серверной части
+echo "--- 3/4 Перезапускаю серверную часть"
+cd "$APP_DIR/selfhost"
+docker compose up -d --force-recreate api >/dev/null 2>&1 || docker compose up -d >/dev/null 2>&1
+sleep 6
 
+# --- 4. Проверка
+echo "--- 4/4 Проверяю результат"
+AFTER=$(check_header)
 echo ""
-echo "--- Стало (заголовок разрешения):"
-RESULT=$(curl -sS -i --max-time 15 "https://$API/site?resource=public" \
-  -H "Origin: https://$DOMAIN" 2>/dev/null \
-  | grep -i "access-control-allow-origin" || echo "")
-echo "  ${RESULT:-(не отвечает)}"
+echo "  было:  ${BEFORE:-(нет ответа)}"
+echo "  стало: ${AFTER:-(нет ответа)}"
+echo ""
 
-echo ""
-case "$RESULT" in
-  *"*"*"http"*)
-    echo "=== ЗАГОЛОВОК ВСЁ ЕЩЁ СКЛЕЕН ==="
-    echo "Пришлите в чат строку выше — разберу."
+VALUE=$(echo "$AFTER" | cut -d: -f2- | xargs)
+
+if [ -z "$AFTER" ]; then
+  echo "=== Сервер не ответил на проверку ==="
+  echo "Это не всегда ошибка. Откройте сайт, нажмите Ctrl+F5 и войдите."
+  echo "Если не пустит — пришлите в чат вывод команды:"
+  echo "  curl -sI https://$API/site?resource=public | grep -i access-control"
+  exit 0
+fi
+
+case "$VALUE" in
+  \**http*|*,*)
+    echo "=== Значение всё ещё склеено: $VALUE ==="
+    echo "Пришлите эту строку в чат — разберу."
     exit 1
     ;;
   *)
     echo "=== ГОТОВО ==="
+    echo "Разрешение корректное: $VALUE"
     echo "Откройте сайт, нажмите Ctrl+F5 и войдите в кабинет."
     ;;
 esac

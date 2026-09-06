@@ -16,8 +16,35 @@ from wsgiref.simple_server import make_server, WSGIRequestHandler
 BASE_DIR = Path(__file__).resolve().parent.parent
 BACKEND_DIR = BASE_DIR / "backend"
 
+def _clean_origin() -> str:
+    """Приводит CORS_ORIGIN к корректному виду.
+
+    Браузер принимает либо '*', либо ровно один адрес. Если в настройках
+    значение склеилось ('*https://site.ru') или задано несколько адресов —
+    вход в кабинет ломается. Здесь такие случаи чинятся автоматически.
+    """
+    raw = (os.environ.get("CORS_ORIGIN") or "*").strip().strip('"').strip("'")
+
+    if not raw or raw == "*":
+        return "*"
+
+    # '*https://site.ru' или '*, https://site.ru' — берём адрес, а не звёздочку
+    if raw.startswith("*") and len(raw) > 1:
+        raw = raw.lstrip("*").lstrip(",").strip()
+
+    # Несколько адресов через запятую/пробел — оставляем первый
+    for sep in (",", " "):
+        if sep in raw:
+            raw = raw.split(sep)[0].strip()
+
+    if not raw.startswith("http"):
+        return "*"
+
+    return raw.rstrip("/")
+
+
 CORS_HEADERS = {
-    "Access-Control-Allow-Origin": os.environ.get("CORS_ORIGIN", "*"),
+    "Access-Control-Allow-Origin": _clean_origin(),
     "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
     "Access-Control-Allow-Headers":
         "Content-Type, X-Authorization, Authorization, X-User-Id, "
