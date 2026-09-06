@@ -18,7 +18,6 @@ interface NavItem {
   href: string
   roles: string[]
   siteOnly?: boolean
-  ownerOnly?: boolean
   badge?: string
 }
 
@@ -36,7 +35,6 @@ const fullNavItems: NavItem[] = [
   { label: "Сайт", icon: "Globe", href: "/cabinet/site", roles: ["owner", "admin", "employee"], siteOnly: true },
   { label: "Команда", icon: "UsersRound", href: "/cabinet/team", roles: ["owner", "admin", "employee"] },
   { label: "Профиль", icon: "User", href: "/cabinet/profile", roles: ["owner", "admin", "employee", "client"] },
-  { label: "Переезд", icon: "ServerCog", href: "/cabinet/migration", roles: ["owner"], ownerOnly: true },
 ]
 
 const tabHrefs = ["/cabinet", "/cabinet/objects", "/cabinet/documents", "/cabinet/customers"]
@@ -72,7 +70,6 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
 
   const canManageSite = user?.role === "owner" || user?.position === "super_admin"
   const navItems = fullNavItems
-    .filter((item) => !item.ownerOnly || user?.role === "owner")
     .map((item) => ({
     ...item,
     locked: !(
