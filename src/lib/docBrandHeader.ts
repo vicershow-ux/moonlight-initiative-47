@@ -17,13 +17,14 @@ export const docBrandStyles = `
     color: #1a1a1a;
   }
   .doc-brand-logo {
-    width: 72px;
-    height: 44px;
-    min-width: 72px;
-    background-repeat: no-repeat;
-    background-position: left center;
-    background-size: contain;
+    width: 96px;
+    height: 52px;
+    min-width: 96px;
+    object-fit: contain;
+    object-position: left center;
     flex: 0 0 auto;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   .doc-brand span { color: #7A4E10; }
   .doc-brand-meta {
@@ -39,10 +40,10 @@ export const docBrandStyles = `
 `
 
 export function docBrandHeader(subtitle = ""): string {
-  const logo = `${window.location.origin}/logo-448.png`
+  const logo = `${window.location.origin}/logo-print.png`
   return `
   <div class="doc-brand-header">
-    <div class="doc-brand"><div class="doc-brand-logo" style="background-image:url('${logo}')"></div>Fix<span>Key</span></div>
+    <div class="doc-brand"><img class="doc-brand-logo" src="${logo}" alt="FixKey"/>Fix<span>Key</span></div>
     <div class="doc-brand-meta">
       <strong>FixKey</strong>
       ${subtitle}

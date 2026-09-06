@@ -28,6 +28,16 @@ export default function ServiceLanding() {
 
   const faq = useMemo(() => (meta ? getServiceFaq(meta) : []), [meta])
 
+  const minPrice = useMemo(
+    () => (items.length ? Math.min(...items.map((i) => i.price)) : 0),
+    [items],
+  )
+
+  const maxPrice = useMemo(
+    () => (items.length ? Math.max(...items.map((i) => i.price)) : 0),
+    [items],
+  )
+
   const phone = s?.phone || "+7 (495) 123-45-67"
   const phoneHref = `tel:${phone.replace(/[^\d+]/g, "")}`
 
@@ -65,6 +75,65 @@ export default function ServiceLanding() {
     if (!meta || faq.length === 0) return
 
     const origin = window.location.origin
+    const pageUrl = `${origin}/uslugi/${meta.slug}`
+    const brand = s?.brand_name || "FixKey"
+
+    const provider = {
+      "@type": "LocalBusiness",
+      name: brand,
+      telephone: phone,
+      address: { "@type": "PostalAddress", addressLocality: "Хабаровск", addressCountry: "RU" },
+    }
+
+    const priceBlock =
+      items.length > 0
+        ? {
+            offers: {
+              "@type": "AggregateOffer",
+              priceCurrency: "RUB",
+              lowPrice: minPrice,
+              highPrice: maxPrice,
+              offerCount: items.length,
+              availability: "https://schema.org/InStock",
+              areaServed: { "@type": "City", name: "Хабаровск" },
+              seller: provider,
+            },
+          }
+        : {}
+
+    const priceList =
+      items.length > 0
+        ? [
+            {
+              "@type": "OfferCatalog",
+              name: `Цены: ${meta.h1}`,
+              url: pageUrl,
+              itemListElement: items.slice(0, 60).map((item, i) => ({
+                "@type": "Offer",
+                position: i + 1,
+                name: item.name,
+                description: item.description || undefined,
+                price: item.price,
+                priceCurrency: "RUB",
+                availability: "https://schema.org/InStock",
+                url: pageUrl,
+                priceSpecification: {
+                  "@type": "UnitPriceSpecification",
+                  price: item.price,
+                  priceCurrency: "RUB",
+                  unitText: item.unit || "усл.",
+                },
+                itemOffered: {
+                  "@type": "Service",
+                  name: item.name,
+                  serviceType: item.subcategory || meta.category,
+                },
+                seller: provider,
+              })),
+            },
+          ]
+        : []
+
     const schema = {
       "@context": "https://schema.org",
       "@graph": [
@@ -82,14 +151,11 @@ export default function ServiceLanding() {
           serviceType: meta.category,
           description: meta.metaDescription,
           areaServed: { "@type": "City", name: "Хабаровск" },
-          provider: {
-            "@type": "LocalBusiness",
-            name: s?.brand_name || "FixKey",
-            telephone: phone,
-            address: { "@type": "PostalAddress", addressLocality: "Хабаровск", addressCountry: "RU" },
-          },
-          url: `${origin}/uslugi/${meta.slug}`,
+          provider,
+          url: pageUrl,
+          ...priceBlock,
         },
+        ...priceList,
         {
           "@type": "BreadcrumbList",
           itemListElement: [
@@ -110,7 +176,7 @@ export default function ServiceLanding() {
     return () => {
       el.remove()
     }
-  }, [meta, faq, phone, s?.brand_name])
+  }, [meta, faq, phone, s?.brand_name, items, minPrice, maxPrice])
 
   useEffect(() => {
     if (!meta) return
@@ -139,11 +205,6 @@ export default function ServiceLanding() {
     })
     return Array.from(map.entries())
   }, [items])
-
-  const minPrice = useMemo(
-    () => (items.length ? Math.min(...items.map((i) => i.price)) : 0),
-    [items],
-  )
 
   const others = useMemo(
     () => landings.filter((c) => c.slug !== meta?.slug).slice(0, 8),

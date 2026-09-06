@@ -140,13 +140,14 @@ function buildMaterialsDocument(
     letter-spacing: -0.5px;
   }
   .brand .brand-logo {
-    width: 72px;
-    height: 44px;
-    min-width: 72px;
-    background-repeat: no-repeat;
-    background-position: left center;
-    background-size: contain;
+    width: 96px;
+    height: 52px;
+    min-width: 96px;
+    object-fit: contain;
+    object-position: left center;
     flex: 0 0 auto;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   .brand span { color: #7A4E10; }
   .doc-title { text-align: right; }
@@ -298,7 +299,7 @@ function buildMaterialsDocument(
 
   const bodyContent = `
   <div class="header">
-    <div class="brand"><div class="brand-logo" style="background-image:url('${window.location.origin}/logo-224.png')"></div>Fix<span>Key</span></div>
+    <div class="brand"><img class="brand-logo" src="${window.location.origin}/logo-print.png" alt="FixKey"/>Fix<span>Key</span></div>
     <div class="doc-title">
       <h1>Смета на материал</h1>
       <p>Объект № ${escapeHtml(object.object_code)}</p>
@@ -463,7 +464,7 @@ export async function downloadMaterialsPdf(
     const img = new Image()
     img.onload = () => resolve()
     img.onerror = () => resolve()
-    img.src = `${window.location.origin}/logo-224.png`
+    img.src = `${window.location.origin}/logo-print.png`
     setTimeout(resolve, 3000)
   })
 

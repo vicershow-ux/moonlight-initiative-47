@@ -273,7 +273,7 @@ export async function downloadPlanPdf(
     const img = new Image()
     img.onload = () => resolve()
     img.onerror = () => resolve()
-    img.src = `${window.location.origin}/logo-224.png`
+    img.src = `${window.location.origin}/logo-print.png`
     setTimeout(resolve, 2500)
   })
 
