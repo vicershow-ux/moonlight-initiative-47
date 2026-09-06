@@ -1,59 +1,34 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 220" width="390" height="220">
-  <defs>
-    <linearGradient id="gold" x1="5%" y1="0%" x2="95%" y2="100%">
-      <stop offset="0%" stop-color="#F7E7B4"/>
-      <stop offset="25%" stop-color="#E2B44F"/>
-      <stop offset="48%" stop-color="#FFF0B8"/>
-      <stop offset="65%" stop-color="#C08A2A"/>
-      <stop offset="85%" stop-color="#F3D373"/>
-      <stop offset="100%" stop-color="#B8860B"/>
-    </linearGradient>
-    <filter id="dropshadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#000000" flood-opacity="0.35"/>
-    </filter>
-  </defs>
-
-  <g filter="url(#dropshadow)" fill="url(#gold)">
-    <!-- Кольцо головки ключа: наружный r=98, внутренний r=74, центр (110,110) -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240" width="400" height="240" fill="none">
+  <g fill="#B8901F">
+    <!-- Кольцо головки ключа: центр (120,120), внешний r=100, толщина 22 -->
     <path fill-rule="evenodd" d="
-      M 110 12
-      A 98 98 0 1 0 110.01 12
+      M 120 20
+      A 100 100 0 1 0 120.01 20
       Z
-      M 110 36
-      A 74 74 0 1 1 109.99 36
+      M 120 42
+      A 78 78 0 1 1 119.99 42
       Z
     "/>
 
-    <!-- Труба дымохода (рисуется под крышей) -->
-    <rect x="136" y="70" width="14" height="28"/>
+    <!-- Стержень ключа: от кольца вправо, по центру кольца -->
+    <path d="M 196 100 L 344 100 L 368 120 L 344 140 L 196 140 Z"/>
 
-    <!-- Крыша -->
-    <path d="M 110 60 L 160 100 L 60 100 Z"/>
+    <!-- Зубцы снизу -->
+    <rect x="252" y="140" width="20" height="34"/>
+    <rect x="296" y="140" width="20" height="48"/>
 
-    <!-- Тело дома -->
-    <rect x="60" y="100" width="100" height="60"/>
+    <!-- Дом внутри кольца -->
+    <path d="M 120 66 L 172 112 L 68 112 Z"/>
+    <rect x="140" y="76" width="13" height="22"/>
+    <rect x="82" y="112" width="76" height="62"/>
 
     <!-- Дверной проём -->
-    <path fill="#161616" d="
-      M 95 160
-      L 95 132
-      A 15 15 0 0 1 125 132
-      L 125 160
+    <path fill="#FFFFFF" d="
+      M 108 174
+      L 108 146
+      A 12 12 0 0 1 132 146
+      L 132 174
       Z
     "/>
-
-    <!-- Стержень ключа -->
-    <rect x="208" y="100" width="130" height="20"/>
-    <!-- Бородка сверху у кольца -->
-    <rect x="218" y="90" width="16" height="10"/>
-    <!-- Зубцы снизу -->
-    <rect x="242" y="120" width="14" height="20"/>
-    <rect x="272" y="120" width="14" height="28"/>
-    <rect x="302" y="120" width="14" height="20"/>
-    <!-- Наконечник (бородка) -->
-    <path d="M 338 92 L 372 110 L 338 128 Z"/>
-
-    <!-- Блик на стержне -->
-    <rect x="218" y="104" width="118" height="3" fill="#FFF3D0" opacity="0.55"/>
   </g>
 </svg>
