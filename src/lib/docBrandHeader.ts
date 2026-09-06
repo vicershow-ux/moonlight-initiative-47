@@ -39,7 +39,7 @@ export const docBrandStyles = `
 `
 
 export function docBrandHeader(subtitle = ""): string {
-  const logo = `${window.location.origin}/logo-224.png`
+  const logo = `${window.location.origin}/logo-448.png`
   return `
   <div class="doc-brand-header">
     <div class="doc-brand"><div class="doc-brand-logo" style="background-image:url('${logo}')"></div>Fix<span>Key</span></div>

@@ -7,7 +7,7 @@ import { useSiteContent } from "@/hooks/useSiteContent"
 export function Header() {
   const { content } = useSiteContent()
   const brandName = content?.settings?.brand_name || "FixKey"
-  const logoUrl = content?.settings?.logo_url
+  const logoUrl = content?.settings?.logo_url || "/favicon.png"
 
   const location = useLocation()
   const isLandingPage = location.pathname === "/"
@@ -54,7 +54,7 @@ export function Header() {
               src={logoUrl === "/favicon.png" ? "/logo-112.png" : logoUrl}
               srcSet={
                 logoUrl === "/favicon.png"
-                  ? "/logo-112.png 1x, /logo-168.png 1.5x, /logo-224.png 2x"
+                  ? "/logo-112.png 1x, /logo-168.png 1.5x, /logo-224.png 2x, /logo-448.png 4x"
                   : undefined
               }
               alt={brandName}

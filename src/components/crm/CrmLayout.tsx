@@ -110,7 +110,7 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
         <div className="px-5 py-6 flex items-center gap-2 border-b border-white/10">
           <img
             src="/logo-112.png"
-            srcSet="/logo-112.png 1x, /logo-168.png 1.5x, /logo-224.png 2x"
+            srcSet="/logo-112.png 1x, /logo-168.png 1.5x, /logo-224.png 2x, /logo-448.png 4x"
             alt="FixKey"
             width={56}
             height={56}

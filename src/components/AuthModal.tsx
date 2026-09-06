@@ -27,7 +27,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const { login, verify2fa } = useAuth()
   const navigate = useNavigate()
   const { content } = useSiteContent()
-  const logoUrl = content?.settings?.logo_url
+  const logoUrl = content?.settings?.logo_url || "/favicon.png"
 
   const reset = () => {
     setEmail("")
@@ -99,7 +99,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
               src={logoUrl === "/favicon.png" ? "/logo-112.png" : logoUrl}
               srcSet={
                 logoUrl === "/favicon.png"
-                  ? "/logo-112.png 1x, /logo-168.png 1.5x, /logo-224.png 2x"
+                  ? "/logo-112.png 1x, /logo-168.png 1.5x, /logo-224.png 2x, /logo-448.png 4x"
                   : undefined
               }
               alt="Логотип"

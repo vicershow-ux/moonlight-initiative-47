@@ -20,7 +20,7 @@ export function Footer() {
   const footerServices = preferred.length ? preferred.slice(0, 5) : landings.slice(0, 5)
   const s = content?.settings
   const brandName = s?.brand_name || "FixKey"
-  const logoUrl = s?.logo_url
+  const logoUrl = s?.logo_url || "/favicon.png"
   const footerDescription =
     s?.footer_description ||
     "Ремонт квартир и домов под ключ с гарантией результата. Прозрачная смета и контроль на каждом этапе."
@@ -43,7 +43,7 @@ export function Footer() {
                   src={logoUrl === "/favicon.png" ? "/logo-112.png" : logoUrl}
                   srcSet={
                     logoUrl === "/favicon.png"
-                      ? "/logo-112.png 1x, /logo-168.png 1.5x, /logo-224.png 2x"
+                      ? "/logo-112.png 1x, /logo-168.png 1.5x, /logo-224.png 2x, /logo-448.png 4x"
                       : undefined
                   }
                   alt={brandName}
