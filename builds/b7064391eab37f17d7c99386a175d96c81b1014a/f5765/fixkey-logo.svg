@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240" width="400" height="240" fill="none">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="60%" y2="100%">
+      <stop offset="0%" stop-color="#F0DFA8"/>
+      <stop offset="18%" stop-color="#D9BA6A"/>
+      <stop offset="42%" stop-color="#C9A245"/>
+      <stop offset="58%" stop-color="#EBD79B"/>
+      <stop offset="78%" stop-color="#B58F2E"/>
+      <stop offset="100%" stop-color="#9A7622"/>
+    </linearGradient>
+    <linearGradient id="gs" x1="0%" y1="0%" x2="35%" y2="100%">
+      <stop offset="0%" stop-color="#E8D191"/>
+      <stop offset="30%" stop-color="#C9A245"/>
+      <stop offset="55%" stop-color="#EFDFAC"/>
+      <stop offset="80%" stop-color="#B08A2C"/>
+      <stop offset="100%" stop-color="#8F6D1E"/>
+    </linearGradient>
+  </defs>
+
+  <g stroke="#2B3038" stroke-width="7" stroke-linejoin="round" stroke-linecap="round">
+    <!-- Стержень ключа с резной бородкой -->
+    <path fill="url(#gs)" d="
+      M 186 98
+      L 214 98
+      L 224 88
+      L 356 88
+      L 378 118
+      L 356 148
+      L 330 148
+      L 316 130
+      L 300 148
+      L 284 130
+      L 268 148
+      L 252 130
+      L 236 148
+      L 214 148
+      L 204 138
+      L 186 138
+      Z
+    "/>
+
+    <!-- Кольцо головки ключа -->
+    <path fill="url(#g)" fill-rule="evenodd" d="
+      M 118 22
+      A 98 98 0 1 0 118.01 22
+      Z
+      M 118 46
+      A 74 74 0 1 1 117.99 46
+      Z
+    "/>
+
+    <!-- Труба (под крышей) -->
+    <path fill="url(#g)" d="M 137 66 L 153 66 L 153 100 L 137 100 Z"/>
+    <!-- Дом внутри кольца: контур с прозрачным дверным проёмом -->
+    <path fill="url(#g)" fill-rule="evenodd" d="
+      M 118 62
+      L 172 110
+      L 158 110
+      L 158 172
+      L 78 172
+      L 78 110
+      L 64 110
+      Z
+      M 106 172
+      L 106 144
+      A 12 12 0 0 1 130 144
+      L 130 172
+      Z
+    "/>
+  </g>
+</svg>
