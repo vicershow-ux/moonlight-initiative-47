@@ -54,15 +54,18 @@ old = re.compile(
 
 conf_new = old.sub('', conf)
 
-conf_new = re.sub(
-    r'(server\s*\{[^{}]*?root\s+/var/www/fixkey/dist;[^{}]*?index\s+index\.html;\s*)',
+# Вставляем блок в КАЖДЫЙ server-блок сайта (их два: обычный и защищённый)
+conf_new, n = re.subn(
+    r'(server\s*\{[^{}]*?root\s+/var/www/fixkey/dist;[^{}]*?index\s+index\.html;[ \t]*\n)',
     lambda m: m.group(1) + '\n' + block + '\n',
-    conf_new, count=1, flags=re.S)
+    conf_new, flags=re.S)
 
-if 'error_page 404' not in conf_new:
+if n == 0:
     print('НЕ УДАЛОСЬ применить автоматически.')
     print('Поправьте вручную по чек-листу, шаг 9.')
     sys.exit(2)
+
+print(f'Обновлено блоков сайта: {n}')
 
 open(path, 'w', encoding='utf-8').write(conf_new)
 print('Настройка обновлена')
@@ -92,6 +95,23 @@ check "/robots.txt" 200
 check "/cabinet" 200
 check "/takoy-stranicy-net-123" 404
 
+BAD=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "https://$DOMAIN/takoy-stranicy-net-123" || echo "нет")
+
+if [ "$BAD" != "404" ]; then
+  echo ""
+  echo "=== Несуществующие страницы всё ещё отдают $BAD ==="
+  echo "Похоже, сайт обслуживает другая настройка. Проверяю..."
+  echo ""
+  echo "--- Все настройки с папкой сайта:"
+  grep -rl "/var/www/fixkey/dist" /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null || echo "  не найдено"
+  echo ""
+  echo "--- Включённые настройки:"
+  ls -l /etc/nginx/sites-enabled/ 2>/dev/null
+  echo ""
+  echo "Пришлите этот текст в чат — подскажу, что поправить."
+  exit 1
+fi
+
 echo ""
 echo "=== ГОТОВО ==="
-echo "Если цифры совпали с ожидаемыми — всё в порядке."
+echo "Все проверки пройдены."
