@@ -1,7 +1,22 @@
 import funcUrls from "../../backend/func2url.json"
 import { EstimateStatus } from "@/lib/estimateStatus"
 
-const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/$/, "")
+function detectApiBase() {
+  const fromEnv = (import.meta.env.VITE_API_BASE || "").replace(/\/$/, "")
+  if (fromEnv) return fromEnv
+
+  if (typeof window !== "undefined") {
+    const runtime = (window as unknown as { __FIXKEY_API__?: string }).__FIXKEY_API__
+    if (runtime) return runtime.replace(/\/$/, "")
+
+    const host = window.location.hostname
+    if (host.endsWith("fixkey.ru")) return "https://api.fixkey.ru"
+  }
+
+  return ""
+}
+
+const API_BASE = detectApiBase()
 
 function funcUrl(name: keyof typeof funcUrls) {
   return API_BASE ? `${API_BASE}/${name}` : funcUrls[name]

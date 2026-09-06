@@ -1,6 +1,8 @@
 #!/bin/bash
-# Обновление сайта FixKey на своём сервере.
-# Забирает свежую версию из GitHub, пересобирает сайт и перезапускает сервер.
+# Обновление FixKey на своём сервере.
+# Сайт уже собран платформой и лежит в репозитории (папка dist),
+# поэтому сервер просто забирает готовое — секунды вместо минут,
+# без нагрузки на память.
 # Запуск:  bash /var/www/fixkey/selfhost/update.sh
 
 set -e
@@ -15,26 +17,28 @@ echo "=== Обновление начато: $(date '+%d.%m.%Y %H:%M') ==="
 
 cd "$APP_DIR"
 
-echo "--- 1/4 Забираю свежую версию из GitHub"
-git fetch --all
-git reset --hard origin/main
+echo "--- 1/3 Забираю свежую версию из GitHub"
+git fetch --all --quiet
+git reset --hard origin/main --quiet
+git clean -fd dist --quiet 2>/dev/null || true
 
-if [ ! -f .env.production ]; then
-  echo "VITE_API_BASE=https://api.fixkey.ru" > .env.production
-  echo "Создан .env.production — проверьте адрес внутри, если домен другой"
+echo "--- 2/3 Проверяю готовую сборку"
+if [ ! -f "$APP_DIR/dist/index.html" ]; then
+  echo "ОШИБКА: готовой сборки нет в репозитории."
+  echo "Откройте проект на poehali.dev и нажмите «Опубликовать»,"
+  echo "затем повторите обновление."
+  exit 1
 fi
 
-echo "--- 2/4 Ставлю зависимости"
-npm install --no-audit --no-fund
+FILES=$(find "$APP_DIR/dist" -type f | wc -l)
+echo "Сборка на месте: $FILES файлов"
 
-echo "--- 3/4 Собираю сайт (3-7 минут, это нормально)"
-NODE_OPTIONS=--max-old-space-size=2048 nice -n 15 npm run build
-
-if ! grep -rqo "$(grep VITE_API_BASE .env.production | cut -d/ -f3)" dist/assets/ 2>/dev/null; then
-  echo "ВНИМАНИЕ: адрес сервера не попал в сборку — проверьте .env.production"
+if ! grep -rq "api.fixkey.ru" "$APP_DIR/dist/assets/" 2>/dev/null; then
+  echo "ВНИМАНИЕ: в сборке не найден адрес api.fixkey.ru —"
+  echo "личный кабинет может не подключиться к серверу."
 fi
 
-echo "--- 4/4 Обновляю серверную часть"
+echo "--- 3/3 Обновляю серверную часть"
 cd "$APP_DIR/selfhost"
 docker compose build api
 docker compose up -d
