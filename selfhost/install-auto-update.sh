@@ -33,6 +33,14 @@ echo "--- 2/4 Готовлю скрипты"
 chmod +x "$APP_DIR/selfhost/update.sh" "$APP_DIR/selfhost/auto-update.sh"
 touch /var/log/fixkey-update.log
 
+# Короткая команда для обновления вручную — показывает весь ход работы
+cat > /usr/local/bin/fixkey-update <<EOF
+#!/bin/bash
+exec /bin/bash $APP_DIR/selfhost/update.sh "\$@"
+EOF
+chmod +x /usr/local/bin/fixkey-update
+echo "Команда fixkey-update готова"
+
 echo "--- 3/4 Настраиваю расписание"
 cat > /etc/systemd/system/fixkey-update.service <<EOF
 [Unit]
@@ -74,8 +82,8 @@ echo "=== Автообновление включено ==="
 echo "Сервер сам проверяет новую версию раз в час и обновляется."
 echo ""
 echo "Полезные команды:"
+echo "  обновить сейчас    — fixkey-update      (показывает весь ход работы)"
 echo "  что было           — tail -30 /var/log/fixkey-update.log"
-echo "  обновить сейчас    — systemctl start fixkey-update.service"
 echo "  выключить          — systemctl disable --now fixkey-update.timer"
 echo ""
 systemctl list-timers fixkey-update.timer --no-pager
