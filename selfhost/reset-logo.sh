@@ -11,7 +11,6 @@
 # Запуск:  bash /var/www/fixkey/selfhost/reset-logo.sh
 
 APP_DIR="${APP_DIR:-/var/www/fixkey}"
-DOMAIN="${FIXKEY_DOMAIN:-fixkey.ru}"
 DB_USER="${DB_USER:-fixkey}"
 DB_NAME="${DB_NAME:-fixkey}"
 
@@ -40,19 +39,23 @@ docker compose exec -T db psql -U "$DB_USER" -d "$DB_NAME" -t -A -F' | ' \
   2>/dev/null | sed 's/^/    /'
 
 echo ""
-echo "--- Проверяю, что отдаёт сайт"
-sleep 2
-RESULT=$(curl -sS --max-time 20 "https://api.$DOMAIN/site?resource=public" 2>/dev/null \
-  | python3 -c "import sys,json;print(json.load(sys.stdin).get('settings',{}).get('logo_url') or '(из проекта)')" 2>/dev/null \
-  || echo "нет ответа")
-echo "    логотип: $RESULT"
+echo "--- Проверяю результат"
+
+# Считаем записи, где логотип всё ещё задан вручную
+LEFT=$(docker compose exec -T db psql -U "$DB_USER" -d "$DB_NAME" -t -A \
+  -c "SELECT count(*) FROM site_settings WHERE coalesce(logo_url,'') <> '' OR coalesce(favicon_url,'') <> '';" \
+  2>/dev/null | tr -d '[:space:]')
 
 echo ""
-if [ "$RESULT" = "(из проекта)" ]; then
+if [ "$LEFT" = "0" ]; then
   echo "=== ГОТОВО ==="
-  echo "Теперь сайт берёт логотип из проекта."
+  echo "Старый логотип убран — сайт берёт логотип из проекта."
+  echo ""
   echo "Откройте сайт и нажмите Ctrl+F5."
+  echo "Если картинка не поменялась — откройте в режиме инкогнито"
+  echo "(Ctrl+Shift+N): браузер держит логотипы в памяти особенно долго."
 else
-  echo "=== Сайт всё ещё отдаёт: $RESULT ==="
+  echo "=== Осталось записей со старым логотипом: $LEFT ==="
   echo "Пришлите эту строку в чат — разберу."
+  exit 1
 fi
