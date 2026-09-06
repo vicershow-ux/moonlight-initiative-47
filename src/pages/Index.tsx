@@ -16,6 +16,7 @@ export default function Index() {
   useEffect(() => {
     if (!content) return
     const s = content.settings
+    if (!s) return
     const { meta_title, meta_description } = s
 
     if (meta_title) document.title = meta_title

@@ -19,8 +19,13 @@ export function useSiteContent() {
     }
     inflight
       .then((data: SitePublicContent) => {
-        cache = data
-        setContent(data)
+        if (data && data.settings) {
+          cache = data
+          setContent(data)
+        }
+      })
+      .catch(() => {
+        inflight = null
       })
       .finally(() => setLoading(false))
   }, [])
