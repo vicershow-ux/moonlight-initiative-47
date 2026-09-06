@@ -6,8 +6,8 @@ import { useSiteContent } from "@/hooks/useSiteContent"
 
 export function Header() {
   const { content } = useSiteContent()
-  const brandName = content?.settings.brand_name || "FixKey"
-  const logoUrl = content?.settings.logo_url
+  const brandName = content?.settings?.brand_name || "FixKey"
+  const logoUrl = content?.settings?.logo_url
 
   const location = useLocation()
   const isLandingPage = location.pathname === "/"

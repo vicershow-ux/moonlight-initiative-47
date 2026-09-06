@@ -38,8 +38,8 @@ const defaultProjects = [
 
 export function Projects() {
   const { content } = useSiteContent()
-  const projectsEyebrow = content?.settings.projects_eyebrow || "Портфолио"
-  const projectsTitle = content?.settings.projects_title || "Наши объекты"
+  const projectsEyebrow = content?.settings?.projects_eyebrow || "Портфолио"
+  const projectsTitle = content?.settings?.projects_title || "Наши объекты"
   const projects = content?.projects?.length
     ? content.projects.map((p) => ({ id: p.id, title: p.title, category: p.category, location: p.location, year: p.year, image: p.image_url }))
     : defaultProjects

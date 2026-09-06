@@ -27,7 +27,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const { login, verify2fa } = useAuth()
   const navigate = useNavigate()
   const { content } = useSiteContent()
-  const logoUrl = content?.settings.logo_url
+  const logoUrl = content?.settings?.logo_url
 
   const reset = () => {
     setEmail("")

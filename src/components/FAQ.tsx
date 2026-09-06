@@ -37,8 +37,8 @@ const defaultFaqs = [
 
 export function FAQ() {
   const { content } = useSiteContent()
-  const faqEyebrow = content?.settings.faq_eyebrow || "Вопросы"
-  const faqTitle = content?.settings.faq_title || "Частые вопросы"
+  const faqEyebrow = content?.settings?.faq_eyebrow || "Вопросы"
+  const faqTitle = content?.settings?.faq_title || "Частые вопросы"
   const faqs = content?.faq?.length ? content.faq : defaultFaqs
 
   const [openIndex, setOpenIndex] = useState<number | null>(null)
