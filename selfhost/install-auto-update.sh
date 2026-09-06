@@ -22,11 +22,11 @@ EOF
 
 cat > /etc/systemd/system/fixkey-update.timer <<EOF
 [Unit]
-Description=Проверка новых правок каждые 20 минут
+Description=Проверка новых правок каждые 10 минут
 
 [Timer]
 OnBootSec=5min
-OnUnitActiveSec=20min
+OnUnitActiveSec=10min
 Unit=fixkey-update.service
 
 [Install]
@@ -38,6 +38,6 @@ systemctl enable --now fixkey-update.timer
 
 echo ""
 echo "=== Автообновление включено ==="
-echo "Сервер проверяет новые правки каждые 5 минут и обновляется сам."
+echo "Сервер проверяет новые правки каждые 10 минут и обновляется сам."
 echo ""
 systemctl list-timers fixkey-update.timer --no-pager
