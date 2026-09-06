@@ -63,7 +63,7 @@ export function Header() {
               className="h-14 w-auto object-contain"
             />
           )}
-          <span className="text-xl font-semibold tracking-tight">
+          <span className="text-2xl md:text-[28px] font-semibold tracking-tight leading-none">
             {brandName.toLowerCase().endsWith("key") ? (
               <>
                 <span className="text-white">{brandName.slice(0, -3)}</span>
@@ -75,7 +75,7 @@ export function Header() {
           </span>
         </a>
 
-        <ul className="hidden md:flex items-center gap-10 text-sm tracking-wide">
+        <ul className="hidden md:flex items-center gap-7 lg:gap-9 text-[15px] tracking-wide">
           {[
             { label: "Главная", href: "/#hero" },
             { label: "О нас", href: "/#about" },
@@ -98,7 +98,7 @@ export function Header() {
         <div className="hidden md:flex items-center gap-3">
           <button
             onClick={openAuth}
-            className="inline-flex items-center gap-2 text-sm px-6 py-2.5 rounded-full bg-white text-foreground border border-foreground/20 hover:bg-[#D4AF37] hover:border-[#D4AF37] hover:text-[#161616] transition-all duration-300"
+            className="inline-flex items-center gap-2 text-[15px] px-7 py-3 rounded-full bg-white text-foreground border border-foreground/20 hover:bg-[#D4AF37] hover:border-[#D4AF37] hover:text-[#161616] transition-all duration-300"
           >
             Войти
           </button>

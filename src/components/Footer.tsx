@@ -52,7 +52,7 @@ export function Footer() {
                   className="h-14 w-auto object-contain"
                 />
               )}
-              <span className="text-xl font-semibold tracking-tight">
+              <span className="text-2xl md:text-[28px] font-semibold tracking-tight leading-none">
                 {brandName.toLowerCase().endsWith("key") ? (
                   <>
                     <span className="text-foreground">{brandName.slice(0, -3)}</span>
