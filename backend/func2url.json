@@ -1,3 +1,19 @@
 {
+  "object_plans": "https://functions.poehali.dev/6aaece23-90d0-42e3-a415-89342e54d191",
+  "rentals": "https://functions.poehali.dev/7dad80e1-512e-4722-81ca-537d8d2df8d3",
+  "object_files": "https://functions.poehali.dev/e78117ef-6009-4488-99b3-2364ae022c65",
+  "materials": "https://functions.poehali.dev/ba5c9089-a6f7-4530-bba6-442ad0ae6c76",
+  "warehouse": "https://functions.poehali.dev/e7b6ff4c-540c-499f-a479-978943167707",
+  "acts": "https://functions.poehali.dev/de13534e-6e22-473a-b5a7-95bfa72b439a",
+  "contracts": "https://functions.poehali.dev/76441974-77ec-4b92-8377-7724ca8bab26",
+  "site": "https://functions.poehali.dev/bda13702-0c6f-4b74-8da0-007b85e92f50",
+  "object_statuses": "https://functions.poehali.dev/38b58fb8-bbb8-4909-9abe-ccddc300f65a",
+  "object_rooms": "https://functions.poehali.dev/580923c1-5ffc-434e-95b3-56b709dd75ea",
+  "leads": "https://functions.poehali.dev/033c0480-d8ba-4c17-9aae-20798c7f92b4",
+  "estimates": "https://functions.poehali.dev/d5e87c6e-337c-4dd6-9d0a-e47cd87c8338",
+  "dashboard": "https://functions.poehali.dev/16823f94-4981-430b-8f01-c6cd81e4e51a",
+  "auth": "https://functions.poehali.dev/4d18862c-5ed9-4350-b87e-fd35b6b45f89",
+  "services": "https://functions.poehali.dev/cc385ae4-00eb-438d-b155-9a9aacfff08f",
+  "objects": "https://functions.poehali.dev/b850da2c-9fb2-49e6-aa01-ae71ff14b795",
   "db_export": "https://functions.poehali.dev/ef334a26-9bed-4fa2-b960-7c61cd7ec659"
 }

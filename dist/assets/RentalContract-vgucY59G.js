@@ -1,0 +1,101 @@
+import{j as t,I as b,d as se,g as ne,r as c,a8 as T,a5 as ae}from"./index-CPqCHmeJ.js";import{C as J}from"./CrmLayout-CXfPoOrw.js";import{m as K,r as U,d as q,g as re,P as ie,p as le,n as B,f as oe}from"./rentalsUi-CwUsuJpa.js";import{m as O}from"./numberToWordsRu-B5XR1I00.js";import{d as de,a as ce}from"./docBrandHeader-DkY6yQ_5.js";import{d as _e}from"./downloadContractPdf-CbahpAxk.js";const v="w-full bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50";function me({options:e,onChange:a}){return t.jsxs("div",{className:"rounded-xl border border-white/10 bg-[#1f1f1f] p-4",children:[t.jsx("div",{className:"mb-3 text-xs uppercase text-white/40",children:"Реквизиты договора"}),t.jsxs("div",{className:"space-y-3",children:[t.jsxs("div",{children:[t.jsx("label",{className:"mb-1.5 block text-xs text-white/50",children:"Номер"}),t.jsx("input",{className:v,value:e.contract_number||"",onChange:n=>a({contract_number:n.target.value})})]}),t.jsxs("div",{children:[t.jsx("label",{className:"mb-1.5 block text-xs text-white/50",children:"Дата"}),t.jsx("input",{className:v,type:"date",value:e.contract_date||"",onChange:n=>a({contract_date:n.target.value})})]}),t.jsxs("div",{children:[t.jsx("label",{className:"mb-1.5 block text-xs text-white/50",children:"Город"}),t.jsx("input",{className:v,value:e.city||"",onChange:n=>a({city:n.target.value}),placeholder:"Хабаровск"})]}),t.jsxs("div",{children:[t.jsx("label",{className:"mb-1.5 block text-xs text-white/50",children:"Цель использования"}),t.jsx("input",{className:v,value:e.purpose||"",onChange:n=>a({purpose:n.target.value}),placeholder:"ремонтные работы на объекте"})]}),t.jsxs("div",{children:[t.jsx("label",{className:"mb-1.5 block text-xs text-white/50",children:"Передача имущества"}),t.jsxs("select",{className:v,value:e.delivery||"self_pickup",onChange:n=>a({delivery:n.target.value}),children:[t.jsx("option",{value:"self_pickup",children:"Забирает арендатор"}),t.jsx("option",{value:"by_lessor",children:"Доставляет арендодатель"})]})]}),t.jsxs("div",{className:"grid grid-cols-2 gap-3",children:[t.jsxs("div",{children:[t.jsx("label",{className:"mb-1.5 block text-xs text-white/50",children:"Пени, %"}),t.jsx("input",{className:v,value:e.penalty_pct||"",onChange:n=>a({penalty_pct:n.target.value})})]}),t.jsxs("div",{children:[t.jsx("label",{className:"mb-1.5 block text-xs text-white/50",children:"Претензия, дн."}),t.jsx("input",{className:v,value:e.claim_days||"",onChange:n=>a({claim_days:n.target.value})})]})]}),t.jsxs("div",{children:[t.jsx("label",{className:"mb-1.5 block text-xs text-white/50",children:"Дополнительные условия"}),t.jsx("textarea",{className:`${v} min-h-[80px] resize-y`,value:e.extra_terms||"",onChange:n=>a({extra_terms:n.target.value}),placeholder:"Отдельным пунктом в конце договора"})]})]})]})}function pe({rental:e,edited:a,onRegenerate:n}){return t.jsxs("div",{className:"rounded-xl border border-white/10 bg-[#1f1f1f] p-4 text-sm",children:[t.jsx("div",{className:"mb-3 text-xs uppercase text-white/40",children:"Условия аренды"}),t.jsxs("div",{className:"space-y-2 text-white/70",children:[t.jsxs("div",{className:"flex justify-between gap-3",children:[t.jsx("span",{className:"text-white/40",children:"Инструмент"}),t.jsx("span",{className:"text-right",children:e.item_name})]}),t.jsxs("div",{className:"flex justify-between gap-3",children:[t.jsx("span",{className:"text-white/40",children:"Количество"}),t.jsxs("span",{children:[Number(e.qty)," ",e.unit]})]}),t.jsxs("div",{className:"flex justify-between gap-3",children:[t.jsx("span",{className:"text-white/40",children:"Сумма аренды"}),t.jsx("span",{className:"text-[#D4AF37]",children:K(U(e))})]}),Number(e.deposit)>0&&t.jsxs("div",{className:"flex justify-between gap-3",children:[t.jsx("span",{className:"text-white/40",children:"Залог"}),t.jsx("span",{children:K(Number(e.deposit))})]})]}),t.jsxs("button",{onClick:n,className:`${q} mt-4 w-full`,children:[t.jsx(b,{name:"RefreshCw",size:15}),"Пересобрать текст"]}),a&&t.jsx("div",{className:"mt-2 text-xs text-amber-400",children:"Текст правился вручную — пересборка сотрёт правки"})]})}function ue({editorRef:e,html:a,saving:n,downloading:s,hasExisting:d,onEdit:u,onSave:p,onPrint:k,onDownload:$}){return t.jsxs("div",{className:"space-y-4",children:[t.jsxs("div",{className:"flex flex-wrap gap-2",children:[t.jsxs("button",{className:re,onClick:p,disabled:n,children:[n?t.jsx(b,{name:"Loader2",size:16,className:"animate-spin"}):t.jsx(b,{name:"Check",size:16}),d?"Сохранить изменения":"Сохранить договор"]}),t.jsxs("button",{className:q,onClick:k,children:[t.jsx(b,{name:"Printer",size:16}),"Печать"]}),t.jsxs("button",{className:q,onClick:$,disabled:s,children:[t.jsx(b,{name:s?"Loader2":"Download",size:16,className:s?"animate-spin":""}),"Скачать PDF"]})]}),t.jsx("div",{className:"rounded-xl border border-white/10 bg-white p-5 md:p-8",children:t.jsx("div",{ref:e,contentEditable:!0,suppressContentEditableWarning:!0,onInput:u,className:"contract-doc min-h-[500px] text-[#161616] outline-none",dangerouslySetInnerHTML:{__html:a}})}),t.jsx("div",{className:"text-xs text-white/40",children:"Текст договора можно править прямо здесь — щёлкните в нужное место и печатайте"})]})}const i=e=>e==null?"":String(e),r=(e,a)=>{const n=i(a).trim();return n?`<p>${e}: ${n}</p>`:""},E=e=>{if(!e)return"____________";const a=new Date(e);return isNaN(a.getTime())?i(e):a.toLocaleDateString("ru-RU",{day:"numeric",month:"long",year:"numeric"})},F=e=>new Intl.NumberFormat("ru-RU",{maximumFractionDigits:0}).format(Math.round(e||0));function Q(e){if(!e)return"<p>____________</p>";if(e.party_kind==="legal")return[r("",e.org_name||e.display_name),r("ИНН",e.inn),r("КПП",e.kpp),r("ОГРН",e.ogrn),r("Юр. адрес",e.legal_address),r("Банк",e.bank_name),r("БИК",e.bik),r("Р/с",e.account_number),r("К/с",e.correspondent_account),r("Тел.",e.phone),r("Email",e.email)].join("");if(e.party_kind==="entrepreneur")return[r("",`ИП ${e.org_name||e.full_name||e.display_name}`),r("ИНН",e.inn),r("ОГРНИП",e.ogrn),r("Адрес",e.legal_address||e.registration_address),r("Банк",e.bank_name),r("БИК",e.bik),r("Р/с",e.account_number),r("Тел.",e.phone),r("Email",e.email)].join("");const a=[e.passport_series,e.passport_number].filter(Boolean).join(" ");return[r("",e.full_name||e.display_name),r("Паспорт",a),r("Выдан",e.passport_issued_by),e.passport_issued_date?r("Дата выдачи",E(e.passport_issued_date)):"",r("Код подразделения",e.passport_department_code),e.birth_date?r("Дата рождения",E(e.birth_date)):"",r("Адрес регистрации",e.registration_address),r("Тел.",e.phone),r("Email",e.email)].join("")}function V(e){if(!e)return"____________ (далее — «Арендатор»)";if(e.party_kind==="legal"){const s=e.org_name||e.display_name,d=e.director_position||"генеральный директор",u=e.director_name||"",p=e.acts_basis||"Устава";return`${i(s)}, именуемое в дальнейшем «Арендатор», от имени которого действует ${i(d)} ${i(u)} на основании ${i(p)}`}if(e.party_kind==="entrepreneur"){const s=e.full_name||e.org_name||e.display_name;return`Индивидуальный предприниматель ${i(s)}, ОГРНИП ${i(e.ogrn)||"____________"}, именуемый в дальнейшем «Арендатор»`}const a=e.full_name||e.display_name,n=[e.passport_series,e.passport_number].filter(Boolean).join(" ");return`${i(a)}, паспорт ${i(n)||"____________"}, выдан ${i(e.passport_issued_by)||"____________"}, зарегистрированный по адресу: ${i(e.registration_address)||"____________"}, именуемый в дальнейшем «Арендатор»`}function xe(e){const{rental:a,counterparty:n,company:s,options:d}=e,u=a.direction==="out",p=(s==null?void 0:s.name)||(s==null?void 0:s.contact_full_name)||"____________",k=ie[a.rate_period]||"сутки",$=le(a),C=U(a),y=B(a.rate),D=B(a.qty),g=B(a.deposit),l=u?`${i(p)}, именуемое в дальнейшем «Арендодатель», с одной стороны, и ${V(n)}, с другой стороны,`:`${V(n).replace(/«Арендатор»/g,"«Арендодатель»")}, с одной стороны, и ${i(p)}, именуемое в дальнейшем «Арендатор», с другой стороны,`,L=d.penalty_pct||"0,5",N=d.claim_days||"10",R=d.copies_total||"двух",z=d.delivery==="by_lessor"?"Передача и возврат Имущества осуществляются силами и за счёт Арендодателя по адресу, согласованному Сторонами.":"Получение и возврат Имущества осуществляются Арендатором самостоятельно по адресу Арендодателя.",H=g?`<p>3.4. В обеспечение исполнения обязательств Арендатор вносит обеспечительный платёж (залог) в размере ${F(g)} рублей (${O(g)}). Залог возвращается Арендатору в течение 3 (трёх) рабочих дней с момента возврата Имущества в исправном состоянии, за вычетом сумм задолженности и стоимости устранения повреждений при их наличии.</p>`:"",h=a.condition_note?`<p>2.3. Состояние Имущества на момент передачи: ${i(a.condition_note)}.</p>`:"",S=d.extra_terms?`<h3>10. Дополнительные условия</h3><p>${i(d.extra_terms).replace(/\n/g,"</p><p>")}</p>`:"",f=a.date_to?`по ${E(a.date_to)} включительно`:"до момента возврата Имущества Арендодателю";return`
+<div class="contract-doc">
+<h2 style="text-align:center">Договор аренды оборудования № ${i(d.contract_number)||i(a.rental_number)}</h2>
+<p style="text-align:right">г. ${i(d.city)||"________"}, ${E(d.contract_date)}</p>
+
+<p>${l} вместе именуемые «Стороны», заключили настоящий договор (далее — «Договор») о нижеследующем:</p>
+
+<h3>1. Предмет договора</h3>
+<p>1.1. Арендодатель обязуется предоставить Арендатору во временное владение и пользование за плату следующее имущество (далее — «Имущество»):</p>
+<p>1.1.1. ${i(a.item_name)} — ${D} ${i(a.unit)}.</p>
+<p>1.2. Имущество передаётся для использования по прямому назначению${d.purpose?`: ${i(d.purpose)}`:""}.</p>
+<p>1.3. Имущество принадлежит Арендодателю на праве собственности, не заложено, не арестовано и не является предметом требований третьих лиц.</p>
+
+<h3>2. Передача имущества</h3>
+<p>2.1. Имущество передаётся Арендатору ${E(a.date_from)} и подлежит возврату ${f}.</p>
+<p>2.2. ${z}</p>
+${h}
+<p>2.4. Передача и возврат Имущества оформляются актом приёма-передачи, подписываемым обеими Сторонами. Подписание Сторонами настоящего Договора подтверждает факт передачи Имущества в исправном состоянии.</p>
+
+<h3>3. Арендная плата и порядок расчётов</h3>
+<p>3.1. Арендная плата составляет ${F(y)} рублей (${O(y)}) за ${k} за единицу Имущества.</p>
+<p>3.2. Расчётный период аренды составляет ${$} ${a.rate_period==="day"?"сут.":a.rate_period==="week"?"нед.":"мес."}, общая сумма арендной платы — ${F(C)} рублей (${O(C)}).</p>
+<p>3.3. Оплата производится наличными денежными средствами либо безналичным переводом на расчётный счёт Арендодателя. Неполный расчётный период оплачивается как полный.</p>
+${H}
+
+<h3>4. Права и обязанности сторон</h3>
+<p>4.1. Арендатор обязан использовать Имущество исключительно по прямому назначению и в соответствии с правилами его эксплуатации и техники безопасности.</p>
+<p>4.2. Арендатор обязан поддерживать Имущество в исправном состоянии, нести расходы на его содержание и обеспечивать сохранность в течение всего срока аренды.</p>
+<p>4.3. Арендатор не вправе передавать Имущество третьим лицам, сдавать в субаренду, передавать в залог или иным образом им распоряжаться без письменного согласия Арендодателя.</p>
+<p>4.4. Арендатор обязан вернуть Имущество в том состоянии, в котором он его получил, с учётом нормального износа.</p>
+<p>4.5. Арендодатель обязан передать Имущество в состоянии, пригодном для использования по назначению, вместе со всеми принадлежностями и документами, если таковые необходимы.</p>
+<p>4.6. Арендодатель вправе проверять состояние и условия эксплуатации Имущества, предварительно уведомив Арендатора.</p>
+
+<h3>5. Ответственность сторон</h3>
+<p>5.1. В случае повреждения Имущества по вине Арендатора он обязан возместить Арендодателю стоимость восстановительного ремонта, а при невозможности ремонта — полную стоимость Имущества.</p>
+<p>5.2. В случае утраты или хищения Имущества Арендатор возмещает Арендодателю его полную стоимость в течение 5 (пяти) рабочих дней с момента предъявления требования.</p>
+<p>5.3. За просрочку возврата Имущества Арендатор уплачивает неустойку в размере ${L} % от суммы арендной платы за каждый день просрочки, а также арендную плату за фактическое время пользования.</p>
+<p>5.4. За просрочку внесения арендной платы Арендатор уплачивает пени в размере ${L} % от суммы задолженности за каждый день просрочки.</p>
+<p>5.5. Риск случайной гибели или повреждения Имущества с момента его передачи и до момента возврата несёт Арендатор.</p>
+
+<h3>6. Срок действия и расторжение</h3>
+<p>6.1. Договор вступает в силу с момента подписания и действует до полного исполнения Сторонами своих обязательств.</p>
+<p>6.2. Арендодатель вправе досрочно расторгнуть Договор в одностороннем порядке при использовании Имущества не по назначению, существенном ухудшении его состояния либо просрочке оплаты более 10 (десяти) календарных дней.</p>
+<p>6.3. При досрочном расторжении Имущество подлежит возврату в течение 1 (одного) рабочего дня с момента получения соответствующего уведомления.</p>
+
+<h3>7. Форс-мажор</h3>
+<p>7.1. Стороны освобождаются от ответственности за неисполнение обязательств, если оно явилось следствием обстоятельств непреодолимой силы, возникших после заключения Договора.</p>
+
+<h3>8. Разрешение споров</h3>
+<p>8.1. Споры решаются путём переговоров с обязательным направлением письменной претензии. Срок рассмотрения претензии — ${N} календарных дней.</p>
+<p>8.2. При недостижении согласия спор передаётся на рассмотрение суда в соответствии с законодательством Российской Федерации.</p>
+
+<h3>9. Заключительные положения</h3>
+<p>9.1. Все изменения и дополнения к Договору действительны при оформлении в письменном виде и подписании обеими Сторонами.</p>
+<p>9.2. Договор составлен в ${R} экземплярах, имеющих равную юридическую силу, по одному для каждой из Сторон.</p>
+
+${S}
+
+<h3>${S?"11":"10"}. Реквизиты и подписи сторон</h3>
+<table style="width:100%;margin-top:16px">
+<tr>
+<td style="width:50%;vertical-align:top;padding-right:16px">
+<p><strong>АРЕНДОДАТЕЛЬ</strong></p>
+${u?[r("",p),r("ИНН",s==null?void 0:s.inn),r("Юр. адрес",s==null?void 0:s.legal_address),r("Банк",s==null?void 0:s.bank_name),r("БИК",s==null?void 0:s.bik),r("Р/с",s==null?void 0:s.account_number),r("К/с",s==null?void 0:s.correspondent_account),r("Тел.",s==null?void 0:s.phone),r("Email",s==null?void 0:s.email)].join(""):Q(n)}
+</td>
+<td style="width:50%;vertical-align:top;padding-left:16px">
+<p><strong>АРЕНДАТОР</strong></p>
+${u?Q(n):[r("",p),r("ИНН",s==null?void 0:s.inn),r("Юр. адрес",s==null?void 0:s.legal_address),r("Тел.",s==null?void 0:s.phone),r("Email",s==null?void 0:s.email)].join("")}
+</td>
+</tr>
+<tr>
+<td style="width:50%;vertical-align:bottom;padding:36px 16px 0 0">
+<p style="margin-bottom:28px"><strong>ОТ ИМЕНИ АРЕНДОДАТЕЛЯ</strong></p>
+<p style="border-top:1px solid #999;padding-top:4px;max-width:240px;margin:0">${i(u?(s==null?void 0:s.contact_full_name)||p:(n==null?void 0:n.full_name)||(n==null?void 0:n.display_name)||"")}</p>
+<p style="font-size:11px;color:#666;margin:2px 0 0">(подпись, М.П.)</p>
+</td>
+<td style="width:50%;vertical-align:bottom;padding:36px 0 0 16px">
+<p style="margin-bottom:28px"><strong>ОТ ИМЕНИ АРЕНДАТОРА</strong></p>
+<p style="border-top:1px solid #999;padding-top:4px;max-width:240px;margin:0">${i(u?(n==null?void 0:n.full_name)||(n==null?void 0:n.display_name)||"":(s==null?void 0:s.contact_full_name)||p)}</p>
+<p style="font-size:11px;color:#666;margin:2px 0 0">(подпись)</p>
+</td>
+</tr>
+</table>
+</div>
+`.trim()}function Ne(){const{rentalId:e}=se(),a=ne(),n=c.useRef(null),[s,d]=c.useState(!0),[u,p]=c.useState(!1),[k,$]=c.useState(!1),[C,y]=c.useState(""),[D,g]=c.useState(""),[l,L]=c.useState(null),[N,R]=c.useState(null),[z,H]=c.useState(null),[h,S]=c.useState(null),[f,I]=c.useState(""),[M,W]=c.useState(!1),[j,A]=c.useState({city:"",contract_number:"",contract_date:new Date().toISOString().slice(0,10),purpose:"",delivery:"self_pickup",penalty_pct:"0,5",claim_days:"10",copies_total:"двух",extra_terms:""});c.useEffect(()=>{e&&(d(!0),Promise.all([T.list(),ae.get()]).then(async([_,m])=>{const o=(_.rentals||[]).find(x=>x.id===Number(e));if(!o){a("/cabinet/rentals");return}L(o),H(m);const w=(_.counterparties||[]).find(x=>x.id===o.counterparty_id)||null;if(R(w),o.contract_id){const x=await T.contracts.get(o.contract_id);S(x),I(x.content_html),A(te=>({...te,...x.options,contract_number:x.contract_number,contract_date:String(x.contract_date).slice(0,10)}))}else A(x=>({...x,contract_number:o.rental_number}))}).catch(_=>y(_ instanceof Error?_.message:"Не удалось загрузить")).finally(()=>d(!1)))},[e]);const P=c.useMemo(()=>l?xe({rental:l,counterparty:N,company:z,options:j}):"",[l,N,z,j]);c.useEffect(()=>{!l||M||h&&f||I(P)},[P,l,M,h,f]);const G=c.useMemo(()=>N?oe(N):["контрагент не выбран"],[N]),X=()=>{I(P),W(!1),n.current&&(n.current.innerHTML=P),g("Текст пересобран по данным аренды"),setTimeout(()=>g(""),2500)},Y=async()=>{var _;if(l){p(!0),y("");try{const m=((_=n.current)==null?void 0:_.innerHTML)||f,o={rental_id:l.id,contract_number:j.contract_number||l.rental_number,contract_date:j.contract_date||new Date().toISOString().slice(0,10),status:(h==null?void 0:h.status)||"draft",options:j,content_html:m,total_amount:U(l)};if(h)await T.contracts.update(h.id,o);else{const w=await T.contracts.create(o);S({id:w.id,rental_id:l.id,contract_number:o.contract_number,contract_date:o.contract_date,status:"draft",options:o.options,content_html:m,total_amount:o.total_amount,created_at:new Date().toISOString()})}I(m),g("Договор сохранён"),setTimeout(()=>g(""),2500)}catch(m){y(m instanceof Error?m.message:"Не удалось сохранить")}finally{p(!1)}}},Z=()=>{var w;const _=((w=n.current)==null?void 0:w.innerHTML)||f,m=`Договор аренды № ${j.contract_number||(l==null?void 0:l.rental_number)||""}`,o=window.open("","_blank");o&&(o.document.write(`
+      <html>
+        <head>
+          <title>${m}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 32px; line-height: 1.5; color: #161616; }
+            h2, h3 { color: #161616; }
+            h2 { margin: 28px 0 12px; }
+            h3 { margin: 24px 0 10px; }
+            p { margin: 0 0 14px; }
+            table { border-collapse: collapse; }
+            ${de}
+          </style>
+        </head>
+        <body>${ce(m)}${_}</body>
+      </html>
+    `),o.document.close(),o.focus(),o.print())},ee=async()=>{var _;$(!0);try{const m=((_=n.current)==null?void 0:_.innerHTML)||f;await _e(m,j.contract_number||(l==null?void 0:l.rental_number)||"аренда")}finally{$(!1)}};return s?t.jsx(J,{title:"Договор аренды",children:t.jsx("div",{className:"flex items-center justify-center py-24",children:t.jsx(b,{name:"Loader2",size:28,className:"animate-spin text-white/40"})})}):l?t.jsxs(J,{title:"Договор аренды",subtitle:`${l.item_name} · ${l.counterparty_name||"контрагент не выбран"}`,children:[t.jsxs("button",{onClick:()=>a("/cabinet/rentals"),className:"mb-4 inline-flex items-center gap-1.5 text-sm text-white/50 transition-colors hover:text-white",children:[t.jsx(b,{name:"ChevronLeft",size:16}),"Назад к аренде"]}),G.length>0&&t.jsxs("div",{className:"mb-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200",children:[t.jsx(b,{name:"TriangleAlert",size:16,className:"mt-0.5 shrink-0"}),t.jsxs("div",{children:["В договоре останутся пропуски — у контрагента не заполнено: ",G.join(", "),"."," ",t.jsx("button",{onClick:()=>a("/cabinet/rentals"),className:"underline hover:text-white",children:"Заполнить"})]})]}),C&&t.jsxs("div",{className:"mb-4 flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300",children:[t.jsx(b,{name:"CircleAlert",size:16}),C]}),D&&t.jsxs("div",{className:"mb-4 flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-300",children:[t.jsx(b,{name:"Check",size:16}),D]}),t.jsxs("div",{className:"grid gap-4 lg:grid-cols-[320px_1fr]",children:[t.jsxs("div",{className:"space-y-4",children:[t.jsx(me,{options:j,onChange:_=>A(m=>({...m,..._}))}),t.jsx(pe,{rental:l,edited:M,onRegenerate:X})]}),t.jsx(ue,{editorRef:n,html:f,saving:u,downloading:k,hasExisting:!!h,onEdit:()=>W(!0),onSave:Y,onPrint:Z,onDownload:ee})]})]}):null}export{Ne as default};
