@@ -2,6 +2,8 @@ import json
 import os
 import re
 import smtplib
+import urllib.parse
+import urllib.request
 from datetime import datetime
 from email.message import EmailMessage
 from email.utils import formataddr
@@ -9,6 +11,63 @@ from email.utils import formataddr
 import psycopg2
 
 LEADS_COMPANY_ID = 2
+
+
+def escape_html(text):
+    return (str(text or '')
+            .replace('&', '&amp;')
+            .replace('<', '&lt;')
+            .replace('>', '&gt;'))
+
+
+def send_telegram(text):
+    '''Отправляет сообщение в Telegram. Молча пропускает, если не настроен.'''
+    token = os.environ.get('TELEGRAM_BOT_TOKEN', '').strip()
+    chat_id = os.environ.get('TELEGRAM_CHAT_ID', '').strip()
+    if not token or not chat_id:
+        return False, 'Telegram не настроен'
+
+    payload = urllib.parse.urlencode({
+        'chat_id': chat_id,
+        'text': text,
+        'parse_mode': 'HTML',
+        'disable_web_page_preview': 'true',
+    }).encode()
+
+    url = f'https://api.telegram.org/bot{token}/sendMessage'
+    try:
+        req = urllib.request.Request(url, data=payload)
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            data = json.loads(resp.read().decode())
+        if data.get('ok'):
+            return True, 'отправлено'
+        return False, str(data.get('description') or 'неизвестная ошибка')
+    except Exception as err:
+        return False, str(err)
+
+
+def build_lead_message(brand, client_name, client_phone, comment, object_code, client_email=''):
+    moscow = datetime.utcfromtimestamp(datetime.utcnow().timestamp() + 3 * 3600)
+    created = moscow.strftime('%d.%m.%Y в %H:%M')
+    digits = ''.join(ch for ch in client_phone if ch.isdigit())
+    lines = [
+        f'<b>Новая заявка с сайта {escape_html(brand)}</b>',
+        '',
+        f'Имя: <b>{escape_html(client_name)}</b>',
+        f'Телефон: <a href="tel:+{digits}">{escape_html(client_phone)}</a>',
+    ]
+    if client_email:
+        lines.append(f'Почта: {escape_html(client_email)}')
+    if comment:
+        lines.append(f'Комментарий: {escape_html(comment)}')
+    lines += [
+        '',
+        f'Объект: {escape_html(object_code)}',
+        f'Получена: {created} (МСК)',
+        '',
+        '<i>Заявка уже в кабинете, раздел «Объекты».</i>',
+    ]
+    return '\n'.join(lines)
 
 
 def get_conn():
@@ -277,5 +336,13 @@ def handler(event: dict, context) -> dict:
         print(f'Lead email OK ({object_code}) -> {notify_email}')
     else:
         print(f'Lead email FAILED ({object_code}) -> {notify_email or "получатель не задан"}: {email_note}')
+
+    tg_sent, tg_note = send_telegram(
+        build_lead_message(brand, client_name, client_phone, comment, object_code, client_email)
+    )
+    if tg_sent:
+        print(f'Lead telegram OK ({object_code})')
+    else:
+        print(f'Lead telegram SKIP ({object_code}): {tg_note}')
 
     return response(200, {'success': True, 'object_code': object_code})
