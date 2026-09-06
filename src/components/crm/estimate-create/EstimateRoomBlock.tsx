@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon"
 import { ServiceItem, ObjectRoom } from "@/lib/api"
 import { ServicePickerModal } from "@/components/crm/estimate-create/ServicePickerModal"
 import { DeleteButton } from "@/components/ui/delete-button"
+import { num2 } from "@/lib/formatNumber"
 
 export interface RoomWorkItem {
   key: string
@@ -63,8 +64,8 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
     onChange({
       room_id: tpl.id,
       name: tpl.name,
-      area: String(tpl.area),
-      perimeter: String(tpl.perimeter),
+      area: num2(tpl.area),
+      perimeter: num2(tpl.perimeter),
     })
     setTemplateOpen(false)
   }
@@ -139,7 +140,7 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
                       className="w-full flex flex-col items-start px-3 py-2 text-left hover:bg-white/5 transition-colors"
                     >
                       <span className="text-sm">{tpl.name}</span>
-                      <span className="text-xs text-white/30">{tpl.area} м² · {tpl.perimeter} м/п</span>
+                      <span className="text-xs text-white/30">{num2(tpl.area)} м² · {num2(tpl.perimeter)} м/п</span>
                     </button>
                   ))
                 )}

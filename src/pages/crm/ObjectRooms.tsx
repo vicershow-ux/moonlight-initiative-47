@@ -4,6 +4,7 @@ import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { CategoryCombobox } from "@/components/crm/CategoryCombobox"
 import { objectsApi, objectRoomsApi, ObjectItem, ObjectRoom } from "@/lib/api"
+import { num2 } from "@/lib/formatNumber"
 
 const ROOM_TYPE_SUGGESTIONS = [
   "Ванная",
@@ -38,7 +39,7 @@ const emptyForm = (): RoomFormState => ({
   notes: "",
 })
 
-const numToStr = (n: number) => (n && Number(n) !== 0 ? String(n) : "")
+const numToStr = (n: number) => (n && Number(n) !== 0 ? num2(n) : "")
 
 const toForm = (room: ObjectRoom): RoomFormState => ({
   id: room.id,

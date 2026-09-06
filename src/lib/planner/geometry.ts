@@ -10,6 +10,9 @@ import {
 export const dist = (a: PlanPoint, b: PlanPoint) =>
   Math.hypot(b.x - a.x, b.y - a.y)
 
+export const round2 = (n: number) =>
+  Number.isFinite(n) ? Math.round((n + Number.EPSILON) * 100) / 100 : 0
+
 export function polygonArea(points: PlanPoint[]): number {
   if (points.length < 3) return 0
   let sum = 0
@@ -54,11 +57,11 @@ export function roomMetrics(room: PlanRoom, openings: PlanOpening[]): RoomMetric
   const wallIds = new Set(segments.map((s) => s.id))
   const roomOpenings = openings.filter((o) => wallIds.has(o.wallId))
 
-  const area = polygonArea(room.points)
-  const perimeter = room.points.length > 2 ? polygonPerimeter(room.points) : 0
+  const area = round2(polygonArea(room.points))
+  const perimeter = round2(room.points.length > 2 ? polygonPerimeter(room.points) : 0)
   const height = room.height || 0
-  const wallAreaGross = perimeter * height
-  const openingsArea = roomOpenings.reduce((s, o) => s + openingArea(o), 0)
+  const wallAreaGross = round2(perimeter * height)
+  const openingsArea = round2(roomOpenings.reduce((s, o) => s + openingArea(o), 0))
 
   return {
     id: room.id,
@@ -69,7 +72,7 @@ export function roomMetrics(room: PlanRoom, openings: PlanOpening[]): RoomMetric
     perimeter,
     wallAreaGross,
     openingsArea,
-    wallAreaNet: Math.max(wallAreaGross - openingsArea, 0),
+    wallAreaNet: round2(Math.max(wallAreaGross - openingsArea, 0)),
     windows: roomOpenings.filter((o) => o.kind === "window").length,
     doors: roomOpenings.filter((o) => o.kind !== "window").length,
     wallCount: segments.length,
@@ -106,6 +109,13 @@ export function schemeMetrics(scheme: PlanScheme): {
       rooms: 0,
     },
   )
+
+  totals.floor = round2(totals.floor)
+  totals.ceiling = round2(totals.ceiling)
+  totals.wall = round2(totals.wall)
+  totals.wallNet = round2(totals.wallNet)
+  totals.perimeter = round2(totals.perimeter)
+  totals.openingsArea = round2(totals.openingsArea)
 
   return { rooms, totals }
 }

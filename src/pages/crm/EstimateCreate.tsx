@@ -13,6 +13,7 @@ import {
   Estimate,
 } from "@/lib/api"
 import { EstimateRoomBlock, RoomBlockState } from "@/components/crm/estimate-create/EstimateRoomBlock"
+import { num2 } from "@/lib/formatNumber"
 
 const formatMoney = (n: number) =>
   new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(Number.isFinite(n) ? n : 0) + " ₽"
@@ -41,8 +42,8 @@ const buildRoomsFromEstimate = (est: Estimate, objectRoomsList: ObjectRoom[]): R
         key,
         room_id: it.room_id ?? null,
         name: it.room_name || tpl?.name || "",
-        area: tpl ? String(tpl.area) : "",
-        perimeter: tpl ? String(tpl.perimeter) : "",
+        area: tpl ? num2(tpl.area) : "",
+        perimeter: tpl ? num2(tpl.perimeter) : "",
         works: [],
       })
     }

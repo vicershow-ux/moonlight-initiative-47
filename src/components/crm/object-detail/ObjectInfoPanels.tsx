@@ -2,6 +2,7 @@ import { Link } from "react-router-dom"
 import Icon from "@/components/ui/icon"
 import { ObjectItem, ObjectRoom } from "@/lib/api"
 import { yesNo, capitalizeFirst } from "./utils"
+import { num2 } from "@/lib/formatNumber"
 
 interface ObjectInfoPanelsProps {
   object: ObjectItem
@@ -152,7 +153,7 @@ export function ObjectInfoPanels({ object, rooms, roomsLoading }: ObjectInfoPane
                 <p className="text-sm font-medium">{room.name}</p>
                 <p className="text-xs text-white/30 mt-1">
                   {room.room_type && `${room.room_type} · `}
-                  {room.area} м² · {room.perimeter} м/п
+                  {num2(room.area)} м² · {num2(room.perimeter)} м/п
                 </p>
               </div>
             ))}
