@@ -499,12 +499,18 @@ nano /etc/nginx/sites-available/fixkey
 ```
 server {
     listen 80;
-    server_name fixkey.ru www.fixkey.ru;
+    server_name www.fixkey.ru;
+    return 301 https://fixkey.ru$request_uri;
+}
+
+server {
+    listen 80;
+    server_name fixkey.ru;
     root /var/www/fixkey/dist;
     index index.html;
 
     location / {
-        try_files $uri $uri/ /index.html;
+        try_files $uri $uri/index.html /index.html;
     }
 }
 
