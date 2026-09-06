@@ -509,8 +509,17 @@ server {
     root /var/www/fixkey/dist;
     index index.html;
 
+    location /cabinet {
+        try_files $uri /index.html;
+    }
+
     location / {
-        try_files $uri $uri/index.html /index.html;
+        try_files $uri $uri/index.html =404;
+    }
+
+    error_page 404 /404.html;
+    location = /404.html {
+        internal;
     }
 }
 

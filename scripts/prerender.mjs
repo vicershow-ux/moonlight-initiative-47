@@ -188,6 +188,14 @@ export function prerenderPlugin() {
         writeRoute(outDir, route, renderHtml(template, route))
       })
 
+      const notFound = renderHtml(template, {
+        url: "/404",
+        title: "Страница не найдена — FixKey",
+        description: "Запрошенная страница не существует. Вернитесь на главную FixKey.",
+        index: false,
+      })
+      fs.writeFileSync(path.join(outDir, "404.html"), notFound)
+
       console.log(`[prerender] подготовлено страниц: ${routes.length}`)
     },
   }
