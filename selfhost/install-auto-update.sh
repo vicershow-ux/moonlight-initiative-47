@@ -16,17 +16,17 @@ After=network-online.target docker.service
 [Service]
 Type=oneshot
 WorkingDirectory=$APP_DIR
-ExecStart=/bin/bash $APP_DIR/selfhost/auto-update.sh
+ExecStart=/usr/bin/nice -n 15 /bin/bash $APP_DIR/selfhost/auto-update.sh
 TimeoutStartSec=3600
 EOF
 
 cat > /etc/systemd/system/fixkey-update.timer <<EOF
 [Unit]
-Description=Проверка новых правок каждые 5 минут
+Description=Проверка новых правок каждые 20 минут
 
 [Timer]
-OnBootSec=3min
-OnUnitActiveSec=5min
+OnBootSec=5min
+OnUnitActiveSec=20min
 Unit=fixkey-update.service
 
 [Install]

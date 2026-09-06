@@ -28,7 +28,7 @@ echo "--- 2/4 Ставлю зависимости"
 npm install --no-audit --no-fund
 
 echo "--- 3/4 Собираю сайт (3-7 минут, это нормально)"
-NODE_OPTIONS=--max-old-space-size=3072 npm run build
+NODE_OPTIONS=--max-old-space-size=2048 nice -n 15 npm run build
 
 if ! grep -rqo "$(grep VITE_API_BASE .env.production | cut -d/ -f3)" dist/assets/ 2>/dev/null; then
   echo "ВНИМАНИЕ: адрес сервера не попал в сборку — проверьте .env.production"
