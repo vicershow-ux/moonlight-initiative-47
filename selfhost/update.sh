@@ -77,6 +77,31 @@ sleep 5
 CODE=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 20 "https://$DOMAIN/" 2>/dev/null || echo "нет ответа")
 echo "    сайт отвечает: $CODE"
 
+# Сверяем, что браузеру отдаётся именно свежая сборка, а не старая из кэша.
+WANT=$(grep -o 'assets/index-[^"]*\.js' "$APP_DIR/dist/index.html" | head -1)
+GOT=$(curl -sS --max-time 20 "https://$DOMAIN/" 2>/dev/null | grep -o 'assets/index-[^"]*\.js' | head -1)
+if [ -n "$WANT" ] && [ -n "$GOT" ]; then
+  if [ "$WANT" = "$GOT" ]; then
+    echo "    версия сайта: свежая"
+  else
+    echo "    ВНИМАНИЕ: сайт отдаёт старую версию"
+    echo "      ожидалось: $WANT"
+    echo "      отдаётся:  $GOT"
+    echo "    Обычно помогает перезапуск веб-сервера: systemctl reload nginx"
+  fi
+fi
+
+# Проверяем, что таблицы из новых миграций действительно создались.
+MISSING=$(docker compose exec -T db psql -U "${DB_USER:-fixkey}" -d "${DB_NAME:-fixkey}" -t -A \
+  -c "SELECT count(*) FROM information_schema.tables WHERE table_name = 'material_offers';" \
+  2>/dev/null | tr -d '[:space:]')
+if [ "$MISSING" = "1" ]; then
+  echo "    база данных: таблицы обновлены"
+elif [ -n "$MISSING" ]; then
+  echo "    ВНИМАНИЕ: таблица магазинов не создалась — посмотрите:"
+  echo "      docker compose logs api | tail -30"
+fi
+
 echo ""
 echo "=== ГОТОВО: $(date '+%d.%m.%Y %H:%M') ==="
 echo "Версия на сервере: $BEFORE  ->  $AFTER"
