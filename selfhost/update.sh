@@ -89,12 +89,23 @@ sleep 5
 CODE=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 20 "https://$DOMAIN/" 2>/dev/null || echo "нет ответа")
 echo "    сайт отвечает: $CODE"
 
-# Сверяем, что браузеру отдаётся именно свежая сборка, а не старая из кэша.
+# Сверяем, что браузеру отдаётся именно свежая сборка.
+# Проверяем несколько раз: сразу после обновления сайт пару секунд
+# может отдавать прежние файлы, и одна проверка даёт ложную тревогу.
 WANT=$(grep -o 'assets/index-[^"]*\.js' "$APP_DIR/dist/index.html" | head -1)
-GOT=$(curl -sS --max-time 20 "https://$DOMAIN/" 2>/dev/null | grep -o 'assets/index-[^"]*\.js' | head -1)
-if [ -n "$WANT" ] && [ -n "$GOT" ]; then
+if [ -n "$WANT" ]; then
+  GOT=""
+  for _ in 1 2 3 4 5 6; do
+    GOT=$(curl -sS --max-time 20 "https://$DOMAIN/?c=$$" 2>/dev/null \
+      | grep -o 'assets/index-[^"]*\.js' | head -1)
+    [ "$WANT" = "$GOT" ] && break
+    sleep 5
+  done
+
   if [ "$WANT" = "$GOT" ]; then
     echo "    версия сайта: свежая"
+  elif [ -z "$GOT" ]; then
+    echo "    версию сайта проверить не удалось — откройте сайт вручную"
   else
     echo "    ВНИМАНИЕ: сайт отдаёт старую версию"
     echo "      ожидалось: $WANT"
