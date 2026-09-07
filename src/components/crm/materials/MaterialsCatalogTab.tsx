@@ -27,7 +27,8 @@ export function MaterialsCatalogTab({
   setShopFilter,
   run,
 }: MaterialsCatalogTabProps) {
-  const [editing, setEditing] = useState<MaterialItem | null>(null)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const editing = materials.find((m) => m.id === editingId) || null
 
   return (
     <div className="rounded-xl border border-white/10 bg-[#1f1f1f] p-5">
@@ -79,9 +80,9 @@ export function MaterialsCatalogTab({
                 <th className="py-2 pr-4 text-left font-medium">Ед. изм.</th>
                 <th className="py-2 pr-4 text-left font-medium">Цена</th>
                 <th className="py-2 pr-4 text-left font-medium">Расход</th>
-                <th className="py-2 pr-4 text-left font-medium">Магазин</th>
-                <th className="py-2 pr-4 text-left font-medium">Адрес</th>
-                <th className="py-2 pr-4 text-left font-medium">Контакты</th>
+                <th className="py-2 pr-4 text-left font-medium">Где дешевле</th>
+                <th className="py-2 pr-4 text-left font-medium">Магазины</th>
+                <th className="py-2 pr-4 text-left font-medium">Наличие</th>
                 <th className="py-2 pr-4 text-left font-medium">Действия</th>
               </tr>
             </thead>
@@ -113,35 +114,80 @@ export function MaterialsCatalogTab({
                     )}
                   </td>
                   <td className="py-3 pr-4">
-                    {m.shop_url ? (
-                      <a
-                        href={m.shop_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="hover:text-[#D4AF37]"
-                      >
-                        {m.shop_name || "—"}
-                      </a>
-                    ) : (
-                      m.shop_name || "—"
-                    )}
+                    {(() => {
+                      const offers = m.offers || []
+                      const priced = offers.filter((o) => num(o.price) > 0)
+                      if (priced.length === 0) return <span className="text-white/30">—</span>
+                      const best = priced.reduce((a, b) => (num(b.price) < num(a.price) ? b : a))
+                      return (
+                        <>
+                          {best.shop_url ? (
+                            <a
+                              href={best.shop_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="hover:text-[#D4AF37]"
+                            >
+                              {best.shop_name || "—"}
+                            </a>
+                          ) : (
+                            best.shop_name || "—"
+                          )}
+                          {best.shop_address && (
+                            <div className="text-xs text-white/30">{best.shop_address}</div>
+                          )}
+                        </>
+                      )
+                    })()}
                   </td>
-                  <td className="py-3 pr-4 text-white/60">{m.shop_address || "—"}</td>
-                  <td className="py-3 pr-4 text-white/60">
-                    {m.shop_phone ? (
-                      <a href={`tel:${m.shop_phone}`} className="hover:text-[#D4AF37]">
-                        {m.shop_phone}
-                      </a>
-                    ) : (
-                      "—"
-                    )}
+                  <td className="whitespace-nowrap py-3 pr-4 text-white/60">
+                    {(() => {
+                      const offers = m.offers || []
+                      if (offers.length === 0)
+                        return <span className="text-white/30">не добавлены</span>
+                      const priced = offers
+                        .filter((o) => num(o.price) > 0)
+                        .map((o) => num(o.price))
+                      if (priced.length < 2) return `${offers.length} шт`
+                      const min = Math.min(...priced)
+                      const max = Math.max(...priced)
+                      return (
+                        <>
+                          {offers.length} шт
+                          {max > min && (
+                            <div className="text-xs text-white/30">
+                              от {money(min)} до {money(max)}
+                            </div>
+                          )}
+                        </>
+                      )
+                    })()}
+                  </td>
+                  <td className="whitespace-nowrap py-3 pr-4 text-xs">
+                    {(() => {
+                      const known = (m.offers || []).filter((o) => o.stock_known)
+                      if (known.length === 0)
+                        return <span className="text-white/30">не указано</span>
+                      const inStock = known.filter((o) => num(o.stock) > 0)
+                      if (inStock.length === 0)
+                        return <span className="text-red-400">нет в наличии</span>
+                      const total = inStock.reduce((s, o) => s + num(o.stock), 0)
+                      return (
+                        <span className="text-emerald-400">
+                          {total} {m.unit}
+                          <div className="text-white/30">
+                            в {inStock.length} из {known.length}
+                          </div>
+                        </span>
+                      )
+                    })()}
                   </td>
                   <td className="py-3 pr-4">
                     <div className="flex items-center gap-1">
                       <button
                         className="rounded-lg p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-[#D4AF37]"
                         title="Редактировать материал"
-                        onClick={() => setEditing(m)}
+                        onClick={() => setEditingId(m.id)}
                       >
                         <Icon name="Pencil" size={15} />
                       </button>
@@ -157,8 +203,9 @@ export function MaterialsCatalogTab({
 
       {editing && (
         <CatalogEditModal
+          key={editing.id}
           material={editing}
-          onClose={() => setEditing(null)}
+          onClose={() => setEditingId(null)}
           onSaved={() => run(async () => {})}
         />
       )}

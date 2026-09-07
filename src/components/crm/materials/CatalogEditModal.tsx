@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import Icon from "@/components/ui/icon"
 import { materialsApi, MaterialItem } from "@/lib/api"
 import { inputCls } from "./constants"
+import { MaterialOffers } from "./MaterialOffers"
 
 const UNITS = ["шт", "м²", "м", "м.п.", "м³", "кг", "т", "л", "уп", "рул", "меш", "компл"]
 
@@ -29,10 +30,6 @@ export function CatalogEditModal({ material, onClose, onSaved }: CatalogEditModa
     category: material.category || "",
     unit: material.unit || "шт",
     price: material.price ? String(material.price) : "",
-    shop_name: material.shop_name || "",
-    shop_address: material.shop_address || "",
-    shop_phone: material.shop_phone || "",
-    shop_url: material.shop_url || "",
     note: material.note || "",
     consumption: material.consumption ? String(material.consumption) : "",
     consumption_unit: material.consumption_unit || "м²",
@@ -142,6 +139,9 @@ export function CatalogEditModal({ material, onClose, onSaved }: CatalogEditModa
               value={form.price}
               onChange={(e) => set("price", e.target.value)}
             />
+            <div className="mt-1 text-xs text-white/30">
+              Подставится лучшая цена из магазинов ниже
+            </div>
           </div>
         </div>
 
@@ -188,55 +188,22 @@ export function CatalogEditModal({ material, onClose, onSaved }: CatalogEditModa
           )}
         </div>
 
-        <div className="mb-4 mt-6 text-xs uppercase text-white/40">Магазин</div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className={labelCls}>Название магазина</label>
-            <input
-              className={inputCls}
-              placeholder="Например: Леруа Мерлен"
-              value={form.shop_name}
-              onChange={(e) => set("shop_name", e.target.value)}
-            />
-          </div>
-          <div>
-            <label className={labelCls}>Адрес магазина</label>
-            <input
-              className={inputCls}
-              placeholder="Город, улица, дом"
-              value={form.shop_address}
-              onChange={(e) => set("shop_address", e.target.value)}
-            />
-          </div>
-          <div>
-            <label className={labelCls}>Телефон</label>
-            <input
-              className={inputCls}
-              type="tel"
-              placeholder="+7"
-              value={form.shop_phone}
-              onChange={(e) => set("shop_phone", e.target.value)}
-            />
-          </div>
-          <div>
-            <label className={labelCls}>Сайт или ссылка на товар</label>
-            <input
-              className={inputCls}
-              placeholder="https://"
-              value={form.shop_url}
-              onChange={(e) => set("shop_url", e.target.value)}
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <label className={labelCls}>Примечание</label>
-            <input
-              className={inputCls}
-              placeholder="Необязательно"
-              value={form.note}
-              onChange={(e) => set("note", e.target.value)}
-            />
-          </div>
+        <div className="mt-6">
+          <MaterialOffers
+            materialId={material.id}
+            unit={form.unit}
+            offers={material.offers || []}
+            onChanged={onSaved}
+          />
         </div>
+
+        <div className="mb-4 mt-6 text-xs uppercase text-white/40">Примечание к материалу</div>
+        <input
+          className={inputCls}
+          placeholder="Необязательно"
+          value={form.note}
+          onChange={(e) => set("note", e.target.value)}
+        />
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <button

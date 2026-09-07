@@ -1483,6 +1483,21 @@ export interface MaterialItem {
   consumption: number
   consumption_unit: string
   created_at: string
+  offers?: MaterialOffer[]
+}
+
+export interface MaterialOffer {
+  id: number
+  material_id: number
+  shop_name: string
+  shop_address: string
+  shop_phone: string
+  shop_url: string
+  price: number
+  stock: number
+  stock_known: boolean
+  note: string
+  checked_at: string
 }
 
 export interface MaterialObject {
@@ -1618,6 +1633,32 @@ export const materialsApi = {
 
   async remove(id: number) {
     const res = await fetch(`${MATERIALS_URL}?id=${id}`, {
+      method: "DELETE",
+      headers: { ...authHeaders() },
+    })
+    return parseResponse(res)
+  },
+
+  async createOffer(payload: Partial<MaterialOffer> & { material_id: number }) {
+    const res = await fetch(`${MATERIALS_URL}?entity=offer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res)
+  },
+
+  async updateOffer(id: number, payload: Partial<MaterialOffer>) {
+    const res = await fetch(`${MATERIALS_URL}?entity=offer&id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res)
+  },
+
+  async removeOffer(id: number) {
+    const res = await fetch(`${MATERIALS_URL}?entity=offer&id=${id}`, {
       method: "DELETE",
       headers: { ...authHeaders() },
     })

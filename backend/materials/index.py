@@ -49,12 +49,42 @@ KEYS = ['id'] + FIELDS + ['created_at']
 
 COLS = 'id, ' + ', '.join(FIELDS) + ', created_at'
 
+OFFER_FIELDS = ['shop_name', 'shop_address', 'shop_phone', 'shop_url',
+                'price', 'stock', 'stock_known', 'note']
+
+OFFER_KEYS = ['id', 'material_id'] + OFFER_FIELDS + ['checked_at']
+
+OFFER_COLS = 'id, material_id, ' + ', '.join(OFFER_FIELDS) + ', checked_at'
+
 
 def to_num(v, default=0):
     try:
         return float(v)
     except (TypeError, ValueError):
         return default
+
+
+def sync_material_best(cur, material_id, company_id):
+    """Записывает в материал самое выгодное предложение из магазинов.
+
+    Берём минимальную цену среди тех магазинов, где товар есть в наличии.
+    Если наличие нигде не указано — просто минимальную цену.
+    Так старые сметы и расчёты продолжают видеть привычные поля материала.
+    """
+    cur.execute(
+        "SELECT shop_name, shop_address, shop_phone, shop_url, price FROM material_offers "
+        "WHERE material_id = %s AND company_id = %s AND price > 0 "
+        "ORDER BY (stock_known AND stock <= 0), price ASC, id ASC LIMIT 1",
+        (material_id, company_id)
+    )
+    best = cur.fetchone()
+    if not best:
+        return
+    cur.execute(
+        "UPDATE materials SET shop_name = %s, shop_address = %s, shop_phone = %s, "
+        "shop_url = %s, price = %s, updated_at = now() WHERE id = %s AND company_id = %s",
+        (best[0], best[1], best[2], best[3], best[4], material_id, company_id)
+    )
 
 
 def handler(event: dict, context) -> dict:
@@ -103,6 +133,18 @@ def handler(event: dict, context) -> dict:
                 (company_id,)
             )
             materials = [dict(zip(KEYS, r)) for r in cur.fetchall()]
+
+            cur.execute(
+                f"SELECT {OFFER_COLS} FROM material_offers WHERE company_id = %s "
+                "ORDER BY price ASC, id ASC",
+                (company_id,)
+            )
+            offers = [dict(zip(OFFER_KEYS, r)) for r in cur.fetchall()]
+            by_material = {}
+            for off in offers:
+                by_material.setdefault(off['material_id'], []).append(off)
+            for m in materials:
+                m['offers'] = by_material.get(m['id'], [])
 
             cur.execute(
                 "SELECT id, object_code, client_name, address FROM objects "
@@ -155,6 +197,80 @@ def handler(event: dict, context) -> dict:
             })
 
         body = json.loads(event.get('body') or '{}')
+
+        if entity == 'offer':
+            if method == 'POST':
+                material_id = body.get('material_id')
+                if not material_id:
+                    return response(400, {'error': 'Не указан материал'})
+                cur.execute("SELECT id FROM materials WHERE id = %s AND company_id = %s",
+                            (material_id, company_id))
+                if not cur.fetchone():
+                    return response(404, {'error': 'Материал не найден'})
+                cur.execute(
+                    "INSERT INTO material_offers (company_id, material_id, shop_name, "
+                    "shop_address, shop_phone, shop_url, price, stock, stock_known, note) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                    (company_id, material_id,
+                     (body.get('shop_name') or '').strip(),
+                     (body.get('shop_address') or '').strip(),
+                     (body.get('shop_phone') or '').strip(),
+                     (body.get('shop_url') or '').strip(),
+                     to_num(body.get('price')),
+                     to_num(body.get('stock')),
+                     bool(body.get('stock_known')),
+                     (body.get('note') or '').strip())
+                )
+                new_id = cur.fetchone()[0]
+                sync_material_best(cur, material_id, company_id)
+                conn.commit()
+                return response(200, {'id': new_id})
+
+            if method == 'PUT':
+                if not row_id:
+                    return response(400, {'error': 'Не указан магазин'})
+                fields = []
+                values = []
+                for key in OFFER_FIELDS:
+                    if key in body:
+                        fields.append(f"{key} = %s")
+                        if key in ('price', 'stock'):
+                            values.append(to_num(body[key]))
+                        elif key == 'stock_known':
+                            values.append(bool(body[key]))
+                        else:
+                            values.append(body[key])
+                if not fields:
+                    return response(400, {'error': 'Нет данных для сохранения'})
+                values.extend([row_id, company_id])
+                cur.execute(
+                    f"UPDATE material_offers SET {', '.join(fields)}, "
+                    "checked_at = now(), updated_at = now() "
+                    "WHERE id = %s AND company_id = %s RETURNING material_id",
+                    values
+                )
+                res = cur.fetchone()
+                if not res:
+                    return response(404, {'error': 'Магазин не найден'})
+                sync_material_best(cur, res[0], company_id)
+                conn.commit()
+                return response(200, {'ok': True})
+
+            if method == 'DELETE':
+                if not row_id:
+                    return response(400, {'error': 'Не указан магазин'})
+                cur.execute(
+                    "SELECT material_id FROM material_offers WHERE id = %s AND company_id = %s",
+                    (row_id, company_id)
+                )
+                res = cur.fetchone()
+                if not res:
+                    return response(404, {'error': 'Магазин не найден'})
+                cur.execute("DELETE FROM material_offers WHERE id = %s AND company_id = %s",
+                            (row_id, company_id))
+                sync_material_best(cur, res[0], company_id)
+                conn.commit()
+                return response(200, {'ok': True})
 
         if method == 'POST' and entity == 'object_material':
             object_id = body.get('object_id')
@@ -315,6 +431,19 @@ def handler(event: dict, context) -> dict:
                  (body.get('consumption_unit') or 'м²').strip())
             )
             new_id = cur.fetchone()[0]
+
+            shop_name = (body.get('shop_name') or '').strip()
+            if shop_name or to_num(body.get('price')) > 0:
+                cur.execute(
+                    "INSERT INTO material_offers (company_id, material_id, shop_name, "
+                    "shop_address, shop_phone, shop_url, price) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                    (company_id, new_id, shop_name,
+                     (body.get('shop_address') or '').strip(),
+                     (body.get('shop_phone') or '').strip(),
+                     (body.get('shop_url') or '').strip(),
+                     to_num(body.get('price')))
+                )
             conn.commit()
             return response(200, {'success': True, 'id': new_id})
 
@@ -345,6 +474,10 @@ def handler(event: dict, context) -> dict:
             cur.execute(
                 "UPDATE object_materials SET material_id = NULL "
                 "WHERE material_id = %s AND company_id = %s",
+                (row_id, company_id)
+            )
+            cur.execute(
+                "DELETE FROM material_offers WHERE material_id = %s AND company_id = %s",
                 (row_id, company_id)
             )
             cur.execute(

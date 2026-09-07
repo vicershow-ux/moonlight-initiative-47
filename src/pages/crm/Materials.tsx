@@ -76,21 +76,32 @@ export default function Materials() {
     }
   }
 
-  const shops = useMemo(
-    () => Array.from(new Set(materials.map((m) => m.shop_name).filter(Boolean))).sort(),
-    [materials]
-  )
+  const shops = useMemo(() => {
+    const all = materials.flatMap((m) => [
+      m.shop_name,
+      ...(m.offers || []).map((o) => o.shop_name),
+    ])
+    return Array.from(new Set(all.filter(Boolean))).sort()
+  }, [materials])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return materials.filter(
-      (m) =>
-        (!shopFilter || m.shop_name === shopFilter) &&
-        (!q ||
-          [m.name, m.category, m.shop_name, m.shop_address]
-            .filter(Boolean)
-            .some((v) => String(v).toLowerCase().includes(q)))
-    )
+    return materials.filter((m) => {
+      const offerShops = (m.offers || []).map((o) => o.shop_name)
+      if (shopFilter && m.shop_name !== shopFilter && !offerShops.includes(shopFilter)) {
+        return false
+      }
+      if (!q) return true
+      const haystack = [
+        m.name,
+        m.category,
+        m.shop_name,
+        m.shop_address,
+        ...offerShops,
+        ...(m.offers || []).map((o) => o.shop_address),
+      ]
+      return haystack.filter(Boolean).some((v) => String(v).toLowerCase().includes(q))
+    })
   }, [materials, search, shopFilter])
 
   const materialsOf = (objectId: number) =>
