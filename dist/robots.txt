@@ -65,4 +65,3 @@ Disallow: /wp-includes
 Disallow: /xmlrpc.php
 
 Sitemap: https://fixkey.ru/sitemap.xml
-Host: https://fixkey.ru
