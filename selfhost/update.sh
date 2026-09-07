@@ -72,6 +72,18 @@ if ! docker compose build api; then
 fi
 docker compose up -d
 
+# Ждём, пока сервер поднимется и применит миграции при старте.
+sleep 8
+
+# Подстраховка: если таблицы из новых миграций не появились, применяем вручную.
+HAS=$(docker compose exec -T db psql -U "${DB_USER:-fixkey}" -d "${DB_NAME:-fixkey}" -t -A \
+  -c "SELECT count(*) FROM information_schema.tables WHERE table_name = 'material_offers';" \
+  2>/dev/null | tr -d '[:space:]')
+if [ "$HAS" = "0" ]; then
+  echo "    обновляю таблицы базы данных"
+  docker compose exec -T api python migrate.py 2>&1 | tail -5
+fi
+
 echo "--- 4/4 Проверяю сайт"
 sleep 5
 CODE=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 20 "https://$DOMAIN/" 2>/dev/null || echo "нет ответа")

@@ -64,6 +64,19 @@ def to_num(v, default=0):
         return default
 
 
+def has_offers_table(cur):
+    """Проверяет, создана ли таблица магазинов.
+
+    На своём сервере таблица появляется после обновления базы. Пока её нет,
+    справочник должен работать по-старому, а не падать с ошибкой.
+    """
+    cur.execute(
+        "SELECT to_regclass('public.material_offers') IS NOT NULL"
+    )
+    row = cur.fetchone()
+    return bool(row and row[0])
+
+
 def sync_material_best(cur, material_id, company_id):
     """Записывает в материал самое выгодное предложение из магазинов.
 
@@ -134,15 +147,16 @@ def handler(event: dict, context) -> dict:
             )
             materials = [dict(zip(KEYS, r)) for r in cur.fetchall()]
 
-            cur.execute(
-                f"SELECT {OFFER_COLS} FROM material_offers WHERE company_id = %s "
-                "ORDER BY price ASC, id ASC",
-                (company_id,)
-            )
-            offers = [dict(zip(OFFER_KEYS, r)) for r in cur.fetchall()]
             by_material = {}
-            for off in offers:
-                by_material.setdefault(off['material_id'], []).append(off)
+            if has_offers_table(cur):
+                cur.execute(
+                    f"SELECT {OFFER_COLS} FROM material_offers WHERE company_id = %s "
+                    "ORDER BY price ASC, id ASC",
+                    (company_id,)
+                )
+                for r in cur.fetchall():
+                    off = dict(zip(OFFER_KEYS, r))
+                    by_material.setdefault(off['material_id'], []).append(off)
             for m in materials:
                 m['offers'] = by_material.get(m['id'], [])
 
@@ -199,6 +213,10 @@ def handler(event: dict, context) -> dict:
         body = json.loads(event.get('body') or '{}')
 
         if entity == 'offer':
+            if not has_offers_table(cur):
+                return response(400, {
+                    'error': 'Раздел магазинов ещё не готов — обновите базу данных сервера'
+                })
             if method == 'POST':
                 material_id = body.get('material_id')
                 if not material_id:
@@ -433,7 +451,7 @@ def handler(event: dict, context) -> dict:
             new_id = cur.fetchone()[0]
 
             shop_name = (body.get('shop_name') or '').strip()
-            if shop_name or to_num(body.get('price')) > 0:
+            if (shop_name or to_num(body.get('price')) > 0) and has_offers_table(cur):
                 cur.execute(
                     "INSERT INTO material_offers (company_id, material_id, shop_name, "
                     "shop_address, shop_phone, shop_url, price) "
@@ -476,10 +494,11 @@ def handler(event: dict, context) -> dict:
                 "WHERE material_id = %s AND company_id = %s",
                 (row_id, company_id)
             )
-            cur.execute(
-                "DELETE FROM material_offers WHERE material_id = %s AND company_id = %s",
-                (row_id, company_id)
-            )
+            if has_offers_table(cur):
+                cur.execute(
+                    "DELETE FROM material_offers WHERE material_id = %s AND company_id = %s",
+                    (row_id, company_id)
+                )
             cur.execute(
                 "DELETE FROM materials WHERE id = %s AND company_id = %s",
                 (row_id, company_id)
