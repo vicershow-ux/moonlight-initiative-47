@@ -1,5 +1,7 @@
+import { useState } from "react"
 import { Link } from "react-router-dom"
 import Icon from "@/components/ui/icon"
+import { PurchaseListModal } from "./PurchaseListModal"
 import { RoomCalculator } from "@/components/crm/RoomCalculator"
 import { DeleteButton } from "@/components/ui/delete-button"
 import { printMaterials, downloadMaterialsPdf } from "@/lib/printMaterials"
@@ -59,6 +61,8 @@ export function MaterialsObjectsTab({
   openEdit,
   run,
 }: MaterialsObjectsTabProps) {
+  const [showPurchase, setShowPurchase] = useState(false)
+
   return (
     <div className="rounded-xl border border-white/10 bg-[#1f1f1f] p-5">
       {objects.length === 0 ? (
@@ -108,6 +112,14 @@ export function MaterialsObjectsTab({
                     className={savingEstimate ? "animate-spin" : ""}
                   />
                   Сохранить смету на материал
+                </button>
+                <button
+                  className="flex items-center gap-2 rounded-lg border border-[#D4AF37]/40 px-4 py-2.5 text-sm text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10 disabled:opacity-40"
+                  disabled={materialsOf(activeObject.id).length === 0}
+                  onClick={() => setShowPurchase(true)}
+                >
+                  <Icon name="ShoppingCart" size={16} />
+                  Список на закупку
                 </button>
               </>
             )}
@@ -270,6 +282,16 @@ export function MaterialsObjectsTab({
             </>
           )}
         </>
+      )}
+
+      {showPurchase && activeObject && (
+        <PurchaseListModal
+          object={activeObject}
+          items={materialsOf(activeObject.id)}
+          catalog={materials}
+          companyName={companyName}
+          onClose={() => setShowPurchase(false)}
+        />
       )}
     </div>
   )
