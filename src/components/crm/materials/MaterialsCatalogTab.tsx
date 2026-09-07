@@ -1,8 +1,10 @@
+import { useState } from "react"
 import { Link } from "react-router-dom"
 import Icon from "@/components/ui/icon"
 import { DeleteButton } from "@/components/ui/delete-button"
 import { materialsApi, MaterialItem } from "@/lib/api"
 import { money, num, inputCls, goldBtn } from "./constants"
+import { CatalogEditModal } from "./CatalogEditModal"
 
 interface MaterialsCatalogTabProps {
   materials: MaterialItem[]
@@ -25,6 +27,8 @@ export function MaterialsCatalogTab({
   setShopFilter,
   run,
 }: MaterialsCatalogTabProps) {
+  const [editing, setEditing] = useState<MaterialItem | null>(null)
+
   return (
     <div className="rounded-xl border border-white/10 bg-[#1f1f1f] p-5">
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -133,13 +137,30 @@ export function MaterialsCatalogTab({
                     )}
                   </td>
                   <td className="py-3 pr-4">
-                    <DeleteButton onConfirm={() => run(() => materialsApi.remove(m.id))} />
+                    <div className="flex items-center gap-1">
+                      <button
+                        className="rounded-lg p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-[#D4AF37]"
+                        title="Редактировать материал"
+                        onClick={() => setEditing(m)}
+                      >
+                        <Icon name="Pencil" size={15} />
+                      </button>
+                      <DeleteButton onConfirm={() => run(() => materialsApi.remove(m.id))} />
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {editing && (
+        <CatalogEditModal
+          material={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => run(async () => {})}
+        />
       )}
     </div>
   )
