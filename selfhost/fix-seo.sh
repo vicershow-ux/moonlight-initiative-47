@@ -31,8 +31,16 @@ import re, sys
 path = sys.argv[1]
 conf = open(path, encoding='utf-8').read()
 
-block = '''    location /cabinet {
+block = '''    if ($host ~* ^www\\.(.+)$) {
+        return 301 https://$1$request_uri;
+    }
+
+    location /cabinet {
         try_files $uri /index.html;
+    }
+
+    location ~ ^(?<no_slash>/.+)/$ {
+        return 301 $no_slash$is_args$args;
     }
 
     location / {
@@ -46,7 +54,9 @@ block = '''    location /cabinet {
 '''
 
 old = re.compile(
-    r'[ \t]*location /cabinet \{.*?\}\s*'
+    r'[ \t]*if \(\$host ~\* \^www\\\.\(\.\+\)\$\) \{.*?\}\s*'
+    r'|[ \t]*location /cabinet \{.*?\}\s*'
+    r'|[ \t]*location ~ \^\(\?<no_slash>[^\n]*\{.*?\}\s*'
     r'|[ \t]*error_page 404[^\n]*\n'
     r'|[ \t]*location = /404\.html \{.*?\}\s*'
     r'|[ \t]*location / \{\s*try_files[^\}]*\}\s*',
