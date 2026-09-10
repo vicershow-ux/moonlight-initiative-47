@@ -122,30 +122,26 @@ function renderHtml(template, route) {
 }
 
 function writeRoute(outDir, route, html) {
-  const targets = [
+  // Пишем только в готовую сборку. Копии в public нельзя: оттуда файлы
+  // попадают в следующую сборку как есть и перетирают свежие страницы
+  // прошлогодними ссылками на уже удалённые файлы — сайт белеет.
+  const target =
     route.url === "/"
       ? path.join(outDir, "index.html")
-      : path.join(outDir, route.url.replace(/^\//, ""), "index.html"),
-  ]
+      : path.join(outDir, route.url.replace(/^\//, ""), "index.html")
 
-  if (route.url !== "/") {
-    targets.push(
-      path.join(process.cwd(), "public", route.url.replace(/^\//, ""), "index.html"),
-    )
-  }
-
-  targets.forEach((target) => {
-    fs.mkdirSync(path.dirname(target), { recursive: true })
-    fs.writeFileSync(target, html)
-  })
+  fs.mkdirSync(path.dirname(target), { recursive: true })
+  fs.writeFileSync(target, html)
 }
 
 function cleanPublicRoutes() {
-  const dir = path.join(process.cwd(), "public", "uslugi")
-  if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true })
-  ;["privacy", "terms", "cookies"].forEach((p) => {
-    const legal = path.join(process.cwd(), "public", p)
-    if (fs.existsSync(legal)) fs.rmSync(legal, { recursive: true, force: true })
+  // Подчищаем копии страниц, оставшиеся от прежней версии сборщика:
+  // пока они лежат в public, они затирают свежие страницы в сборке.
+  ;["uslugi", "privacy", "terms", "cookies"].forEach((name) => {
+    const dir = path.join(process.cwd(), "public", name)
+    if (fs.existsSync(path.join(dir, "index.html")) || name === "uslugi") {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
   })
 }
 
@@ -196,7 +192,37 @@ export function prerenderPlugin() {
       })
       fs.writeFileSync(path.join(outDir, "404.html"), notFound)
 
-      console.log(`[prerender] подготовлено страниц: ${routes.length}`)
+      // Каждая страница обязана ссылаться на файлы, которые реально
+      // лежат в сборке. Иначе сайт откроется белым экраном, и узнаем мы
+      // об этом только от посетителя. Лучше уронить сборку здесь.
+      const broken = []
+      const pages = [path.join(outDir, "404.html")]
+      routes.forEach((r) => {
+        pages.push(
+          r.url === "/"
+            ? path.join(outDir, "index.html")
+            : path.join(outDir, r.url.replace(/^\//, ""), "index.html"),
+        )
+      })
+
+      pages.forEach((page) => {
+        if (!fs.existsSync(page)) return
+        const html = fs.readFileSync(page, "utf8")
+        const assets = html.match(/assets\/[A-Za-z0-9._-]+\.(js|css)/g) || []
+        assets.forEach((asset) => {
+          if (!fs.existsSync(path.join(outDir, asset))) {
+            broken.push(`${path.relative(outDir, page)} -> ${asset}`)
+          }
+        })
+      })
+
+      if (broken.length) {
+        throw new Error(
+          `[prerender] страницы ссылаются на несуществующие файлы:\n  ${broken.join("\n  ")}`,
+        )
+      }
+
+      console.log(`[prerender] подготовлено страниц: ${routes.length}, ссылки проверены`)
     },
   }
 }
