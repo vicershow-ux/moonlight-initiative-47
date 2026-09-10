@@ -59,6 +59,25 @@ fi
 FILES=$(find "$APP_DIR/dist" -type f | wc -l)
 echo "    сборка на месте: $FILES файлов"
 
+# Каждая страница должна ссылаться на существующие файлы сборки.
+# Если ссылка ведёт на удалённый файл — страница откроется белым экраном.
+BROKEN=0
+while read -r page; do
+  for asset in $(grep -o 'assets/index-[^"]*\.\(js\|css\)' "$page" 2>/dev/null); do
+    if [ ! -f "$APP_DIR/dist/$asset" ]; then
+      echo "    БЕЛЫЙ ЭКРАН: ${page#$APP_DIR/dist} ссылается на $asset — файла нет"
+      BROKEN=1
+    fi
+  done
+done < <(find "$APP_DIR/dist" -name "*.html")
+
+if [ "$BROKEN" = "1" ]; then
+  echo "    Сборка собрана неполностью. Откройте проект на poehali.dev,"
+  echo "    нажмите «Опубликовать» ещё раз и повторите обновление."
+else
+  echo "    страницы: ссылки в порядке"
+fi
+
 if ! grep -rq "api.$DOMAIN" "$APP_DIR/dist/assets/" 2>/dev/null; then
   echo "    ВНИМАНИЕ: в сборке не найден адрес api.$DOMAIN —"
   echo "    личный кабинет может не подключиться к серверу."
