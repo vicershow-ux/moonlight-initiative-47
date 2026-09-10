@@ -282,7 +282,22 @@ function buildMaterialsDocument(
     }
     .est-root { padding: 0 2mm; width: 100%; max-width: 100%; margin: 0; overflow: visible; }
     .no-print { display: none; }
-    .cat-block, .room-block { break-inside: avoid; }
+
+    /* Длинные списки переносим по строкам, а не блоком целиком:
+       иначе на листе остаётся пустота. Шапка повторяется на каждой
+       странице, чтобы был виден перечень колонок. */
+    .cat-block, .room-block { break-inside: auto; }
+    .cat-block { overflow: visible; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+    table { break-inside: auto; }
+    tr, .cat-row, tfoot tr { break-inside: avoid; }
+    thead { display: table-header-group; }
+    tfoot { display: table-row-group; }
+    thead th:first-child { border-top-left-radius: 9px; }
+    thead th:last-child { border-top-right-radius: 9px; }
+    .room-title, .cat-row { break-after: avoid; }
+    .room-total { break-before: avoid; }
+    tbody { orphans: 3; widows: 3; }
+
     table { width: 100%; table-layout: fixed; }
     td, th { overflow-wrap: break-word; word-break: break-word; }
     thead th { background: #5C3A11 !important; color: #ffffff !important; }

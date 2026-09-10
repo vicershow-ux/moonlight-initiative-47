@@ -205,7 +205,7 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     table-layout: fixed;
     color: #1a1a1a;
   }
-  thead th:nth-child(1) { width: 30px; }
+  thead th:nth-child(1) { width: 34px; }
   thead th:nth-child(2) { width: auto; }
   thead th:nth-child(3) { width: 44px; }
   thead th:nth-child(4) { width: 64px; white-space: nowrap; }
@@ -229,7 +229,7 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     color: #1a1a1a;
     font-size: 12.5px;
   }
-  .num { color: #1a1a1a; width: 28px; }
+  .num { color: #1a1a1a; width: 34px; white-space: nowrap; word-break: normal; }
   .center { text-align: center; }
   .right { text-align: right; }
   .amount { font-weight: 600; }
@@ -378,11 +378,42 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
       overflow: visible;
     }
     .no-print { display: none; }
-    .cat-block { break-inside: avoid; }
-    .room-block { break-inside: avoid; }
+
+    /* Таблице разрешаем переноситься между страницами: иначе длинная
+       категория целиком уезжает на следующий лист и оставляет
+       полстраницы пустоты. Рвём только между строками. */
+    .cat-block {
+      break-inside: auto;
+      overflow: visible;
+      /* Рамка и скругление рисуются на каждом куске отдельно,
+         поэтому продолжение на новой странице выглядит так же,
+         как начало таблицы на первой. */
+      -webkit-box-decoration-break: clone;
+      box-decoration-break: clone;
+    }
+    .room-block { break-inside: auto; }
+    /* Скругляем углы самой шапки — она повторяется на каждой странице */
+    thead th:first-child { border-top-left-radius: 9px; }
+    thead th:last-child { border-top-right-radius: 9px; }
+    table { break-inside: auto; }
+    tr, .cat-row, tfoot tr { break-inside: avoid; }
+
+    /* Шапка таблицы повторяется на каждой новой странице,
+       чтобы был виден перечень колонок: Ед., Кол-во, Цена и т.д. */
+    thead { display: table-header-group; }
+    tfoot { display: table-row-group; }
+
+    /* Не отрываем заголовок помещения и название категории от их строк */
+    .room-title { break-after: avoid; }
+    .cat-row { break-after: avoid; }
+    .room-total { break-before: avoid; }
+
+    /* Одинокая строка внизу или вверху листа смотрится неряшливо */
+    tbody { orphans: 3; widows: 3; }
+
     table { width: 100%; table-layout: fixed; }
     td, th { overflow-wrap: break-word; word-break: break-word; }
-    thead th:nth-child(1) { width: 5%; }
+    thead th:nth-child(1) { width: 6%; }
     thead th:nth-child(2) { width: auto; }
     thead th:nth-child(3) { width: 7%; }
     thead th:nth-child(4) { width: 10%; }

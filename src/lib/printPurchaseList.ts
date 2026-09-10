@@ -280,7 +280,14 @@ export function buildPurchaseDocument(
   @page { size: A4; margin: 12mm; }
   @media print {
     body { padding: 0; }
-    .room-block { page-break-inside: avoid; }
+
+    /* Список переносим по строкам, а не блоком целиком, иначе внизу
+       листа остаётся пустота. Шапка повторяется на каждой странице. */
+    .room-block { break-inside: auto; }
+    table { break-inside: auto; }
+    tr { break-inside: avoid; }
+    thead { display: table-header-group; }
+    tbody { orphans: 3; widows: 3; }
   }
 `
 
