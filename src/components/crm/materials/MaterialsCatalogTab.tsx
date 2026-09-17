@@ -5,6 +5,7 @@ import { DeleteButton } from "@/components/ui/delete-button"
 import { materialsApi, MaterialItem } from "@/lib/api"
 import { money, num, inputCls, goldBtn } from "./constants"
 import { CatalogEditModal } from "./CatalogEditModal"
+import { consumptionLabel, getMode } from "@/lib/materialConsumption"
 
 interface MaterialsCatalogTabProps {
   materials: MaterialItem[]
@@ -101,11 +102,14 @@ export function MaterialsCatalogTab({
                   <td className="whitespace-nowrap py-3 pr-4 text-white/60">
                     {num(m.consumption) > 0 ? (
                       <>
-                        1 {m.unit} = {num(m.consumption)} {m.consumption_unit}
+                        {consumptionLabel(m)}
                         {num(m.price) > 0 && (
                           <div className="text-xs text-white/30">
-                            {(num(m.price) / num(m.consumption)).toFixed(2)} ₽ за{" "}
-                            {m.consumption_unit}
+                            {(getMode(m) === "per_unit"
+                              ? num(m.price) * num(m.consumption)
+                              : num(m.price) / num(m.consumption)
+                            ).toFixed(2)}{" "}
+                            ₽ за {m.consumption_unit}
                           </div>
                         )}
                       </>

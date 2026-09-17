@@ -43,7 +43,8 @@ def get_current_user(cur, event):
 
 
 FIELDS = ['name', 'category', 'unit', 'price', 'shop_name', 'shop_address',
-          'shop_phone', 'shop_url', 'note', 'consumption', 'consumption_unit']
+          'shop_phone', 'shop_url', 'note', 'consumption', 'consumption_unit',
+          'consumption_mode']
 
 KEYS = ['id'] + FIELDS + ['created_at']
 
@@ -439,14 +440,16 @@ def handler(event: dict, context) -> dict:
                 return response(400, {'error': 'Введите название материала'})
             cur.execute(
                 "INSERT INTO materials (company_id, name, category, unit, price, shop_name, "
-                "shop_address, shop_phone, shop_url, note, consumption, consumption_unit) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                "shop_address, shop_phone, shop_url, note, consumption, consumption_unit, "
+                "consumption_mode) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
                 (company_id, name, (body.get('category') or '').strip(),
                  (body.get('unit') or 'шт').strip(), to_num(body.get('price')),
                  (body.get('shop_name') or '').strip(), (body.get('shop_address') or '').strip(),
                  (body.get('shop_phone') or '').strip(), (body.get('shop_url') or '').strip(),
                  (body.get('note') or '').strip(), to_num(body.get('consumption')),
-                 (body.get('consumption_unit') or 'м²').strip())
+                 (body.get('consumption_unit') or 'м²').strip(),
+                 (body.get('consumption_mode') or 'coverage').strip())
             )
             new_id = cur.fetchone()[0]
 

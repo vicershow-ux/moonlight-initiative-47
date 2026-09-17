@@ -1482,6 +1482,7 @@ export interface MaterialItem {
   note: string
   consumption: number
   consumption_unit: string
+  consumption_mode?: "coverage" | "per_unit"
   created_at: string
   offers?: MaterialOffer[]
 }

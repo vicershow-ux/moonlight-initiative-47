@@ -1,6 +1,9 @@
 import { MaterialItem, MaterialObject, ObjectMaterial } from "@/lib/api"
 import { buildPurchasePlan } from "@/lib/purchaseList"
 
+const cssString = (s: string) =>
+  String(s ?? "").replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r?\n/g, " ")
+
 const num = (v: unknown, fallback = 0): number => {
   const n = typeof v === "string" ? parseFloat(v) : Number(v)
   return Number.isFinite(n) ? n : fallback
@@ -277,7 +280,29 @@ export function buildPurchaseDocument(
     color: #6B4508;
     font-size: 11px;
   }
-  @page { size: A4; margin: 12mm; }
+  /* Колонтитулы: сверху объект и заказчик, снизу номер страницы */
+  @page {
+    size: A4;
+    margin: 16mm 12mm 14mm;
+    @top-left {
+      content: "${cssString(`Список закупок · объект ${object.object_code || ""}`.trim())}";
+      font-family: Arial, sans-serif;
+      font-size: 8.5pt;
+      color: #6B4508;
+    }
+    @top-right {
+      content: "${cssString(object.client_name || companyName)}";
+      font-family: Arial, sans-serif;
+      font-size: 8.5pt;
+      color: #6B4508;
+    }
+    @bottom-center {
+      content: "Страница " counter(page) " из " counter(pages);
+      font-family: Arial, sans-serif;
+      font-size: 8.5pt;
+      color: #555555;
+    }
+  }
   @media print {
     body { padding: 0; }
 

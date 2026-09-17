@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import Icon from "@/components/ui/icon"
 import { MaterialItem, MaterialRoom, ObjectMaterial } from "@/lib/api"
+import { calcMaterialQty, consumptionLabel, getMode } from "@/lib/materialConsumption"
 
 const money = (n: number) =>
   new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(n || 0) + " ₽"
@@ -13,21 +14,6 @@ const inputCls =
 
 const goldBtn =
   "flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg disabled:opacity-40"
-
-const WORK_TYPES = [
-  "Демонтажные работы",
-  "Подготовительные работы",
-  "Черновые работы",
-  "Чистовые работы",
-  "Плиточные работы",
-  "Устройство полов",
-  "Потолочные работы",
-  "Гипсокартонные работы",
-  "Малярные работы",
-  "Электромонтажные работы",
-  "Сантехнические работы",
-  "Столярные работы",
-]
 
 const SURFACES = [
   { value: "area", label: "Пол / потолок (площадь)" },
@@ -73,7 +59,6 @@ export function RoomCalculator({
   const [reserve, setReserve] = useState("10")
   const [saving, setSaving] = useState(false)
   const [mode, setMode] = useState<"merge" | "new">("merge")
-  const [workType, setWorkType] = useState("Черновые работы")
 
   const material = materials.find((m) => String(m.id) === materialId)
   const room = objectRooms.find((r) => String(r.id) === roomId)
@@ -87,7 +72,7 @@ export function RoomCalculator({
 
   const consumption = num(material?.consumption)
 
-  const needExact = consumption > 0 ? totalArea / consumption : 0
+  const needExact = calcMaterialQty(totalArea, consumption, getMode(material))
   const withReserve = needExact * (1 + num(reserve) / 100)
   const buyQty = Math.ceil(withReserve * 100) / 100
   const packs = Math.ceil(withReserve)
@@ -98,14 +83,9 @@ export function RoomCalculator({
   const prev = useMemo(() => {
     if (!material || !room) return null
     return (
-      existing.find(
-        (e) =>
-          e.material_id === material.id &&
-          e.room_id === room.id &&
-          (e.work_type || "") === workType
-      ) || null
+      existing.find((e) => e.material_id === material.id && e.room_id === room.id) || null
     )
-  }, [existing, material, room, workType])
+  }, [existing, material, room])
 
   const roomRecords = useMemo(
     () => (room ? existing.filter((e) => e.room_id === room.id) : []),
@@ -126,7 +106,7 @@ export function RoomCalculator({
         note: noteText,
         room_id: room ? room.id : null,
         room_name: room ? room.name : "",
-        work_type: workType,
+        work_type: "",
         merge: mode === "merge",
       })
       setMaterialId("")
@@ -160,7 +140,7 @@ export function RoomCalculator({
             {materials.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name} — {money(num(m.price))}/{m.unit}
-                {num(m.consumption) > 0 ? ` · 1 ${m.unit} = ${num(m.consumption)} ${m.consumption_unit}` : ""}
+                {num(m.consumption) > 0 ? ` · ${consumptionLabel(m)}` : ""}
               </option>
             ))}
           </select>
@@ -189,20 +169,6 @@ export function RoomCalculator({
           )}
         </div>
 
-        <div className="md:col-span-2">
-          <label className="mb-1.5 block text-xs text-white/50">Вид работ</label>
-          <select
-            className={inputCls}
-            value={workType}
-            onChange={(e) => setWorkType(e.target.value)}
-          >
-            {WORK_TYPES.map((w) => (
-              <option key={w} value={w}>
-                {w}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
 
       <div className="grid gap-3 md:grid-cols-4">
@@ -282,12 +248,7 @@ export function RoomCalculator({
           <div className="space-y-1.5 text-sm text-white/60">
             {roomRecords.map((r) => (
               <div key={r.id} className="flex flex-wrap justify-between gap-2">
-                <span>
-                  {r.name}
-                  {r.work_type && (
-                    <span className="ml-2 text-xs text-white/30">{r.work_type}</span>
-                  )}
-                </span>
+                <span>{r.name}</span>
                 <span>
                   {num(r.qty)} {r.unit} · {money(num(r.qty) * num(r.price))}
                 </span>
@@ -302,8 +263,8 @@ export function RoomCalculator({
           <div className="mb-3 flex items-start gap-2 text-sm text-amber-200">
             <Icon name="TriangleAlert" size={15} className="mt-0.5 shrink-0" />
             <span>
-              По помещению «{room?.name}» в разделе «{workType}» уже есть расчёт «{prev.name}» —{" "}
-              {num(prev.qty)} {prev.unit}. Что сделать с новым расчётом?
+              По помещению «{room?.name}» уже есть расчёт «{prev.name}» — {num(prev.qty)}{" "}
+              {prev.unit}. Что сделать с новым расчётом?
             </span>
           </div>
           <div className="flex flex-wrap gap-4 text-sm">

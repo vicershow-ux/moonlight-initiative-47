@@ -14,6 +14,9 @@ const formatDate = (d: string) =>
 const formatDateTime = (d: string) =>
   new Date(d).toLocaleString("ru-RU", { day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
 
+const cssString = (s: string) =>
+  String(s ?? "").replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r?\n/g, " ")
+
 function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyName: string) {
   const items = estimate.items || []
 
@@ -362,7 +365,30 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     color: #444;
     margin-top: 24px;
   }
-  @page { size: A4 portrait; margin: 10mm; }
+  /* Колонтитулы: на каждом листе сверху номер сметы и заказчик,
+     снизу — "Страница N из M", чтобы распечатанные листы не путались */
+  @page {
+    size: A4 portrait;
+    margin: 16mm 10mm 14mm;
+    @top-left {
+      content: "${cssString(`Смета № ${estimate.id} от ${formatDate(estimate.created_at)}`)}";
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 8.5pt;
+      color: #6B4508;
+    }
+    @top-right {
+      content: "${cssString(object.client_name || companyName)}";
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 8.5pt;
+      color: #6B4508;
+    }
+    @bottom-center {
+      content: "Страница " counter(page) " из " counter(pages);
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 8.5pt;
+      color: #555555;
+    }
+  }
   @media print {
     html, body { width: auto; margin: 0; padding: 0; background: #fff; overflow: visible; }
     * {
@@ -572,8 +598,35 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
   }
 }
 
+function stripAtRule(css: string, startRe: RegExp) {
+  let out = css
+  for (;;) {
+    const m = startRe.exec(out)
+    if (!m) return out
+    const open = out.indexOf("{", m.index)
+    if (open === -1) return out
+    let depth = 0
+    let end = -1
+    for (let i = open; i < out.length; i++) {
+      if (out[i] === "{") depth++
+      else if (out[i] === "}") {
+        depth--
+        if (depth === 0) {
+          end = i
+          break
+        }
+      }
+    }
+    if (end === -1) return out
+    out = out.slice(0, m.index) + out.slice(end + 1)
+    startRe.lastIndex = 0
+  }
+}
+
 function scopeStyles(css: string, scope: string) {
-  const withoutAtRules = css.replace(/@page[^{]*\{[^}]*\}/g, "").replace(/@media\s+print\s*\{(?:[^{}]*\{[^}]*\})*[^{}]*\}/g, "")
+  // @page и @media print содержат вложенные блоки (@top-left и т.п.),
+  // поэтому вырезаем их со счётом скобок, а не простой заменой
+  const withoutAtRules = stripAtRule(stripAtRule(css, /@page\b/g), /@media\s+print\b/g)
   return withoutAtRules.replace(/(^|\})\s*([^{}@]+)\s*\{/g, (_m, brace, selectors) => {
     const scoped = selectors
       .split(",")

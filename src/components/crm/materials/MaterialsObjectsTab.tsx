@@ -42,6 +42,25 @@ interface MaterialsObjectsTabProps {
   run: (fn: () => Promise<unknown>) => Promise<void>
 }
 
+/**
+ * Ссылка на страницу товара: сначала ищем предложение того магазина,
+ * который указан в позиции, иначе берём ссылку из карточки справочника.
+ */
+function findProductUrl(m: ObjectMaterial, catalog: MaterialItem[]): string {
+  const ref = catalog.find((c) => c.id === m.material_id)
+  if (!ref) return ""
+  const offers = ref.offers || []
+  const shop = (m.shop_name || "").trim().toLowerCase()
+  if (shop) {
+    const byShop = offers.find(
+      (o) => (o.shop_name || "").trim().toLowerCase() === shop && o.shop_url
+    )
+    if (byShop) return byShop.shop_url
+  }
+  const anyOffer = offers.find((o) => o.shop_url)
+  return anyOffer?.shop_url || ref.shop_url || ""
+}
+
 export function MaterialsObjectsTab({
   objects,
   materials,
@@ -62,6 +81,8 @@ export function MaterialsObjectsTab({
   run,
 }: MaterialsObjectsTabProps) {
   const [showPurchase, setShowPurchase] = useState(false)
+
+  const productUrl = (m: ObjectMaterial) => findProductUrl(m, materials)
 
   return (
     <div className="rounded-xl border border-white/10 bg-[#1f1f1f] p-5">
@@ -179,7 +200,7 @@ export function MaterialsObjectsTab({
                           <thead>
                             <tr className="border-b border-white/10 text-xs uppercase text-white/40">
                               <th className="py-2 pr-4 text-left font-medium">Материал</th>
-                              <th className="py-2 pr-4 text-left font-medium">Вид работ</th>
+                              <th className="py-2 pr-4 text-left font-medium">Ссылка</th>
                               <th className="py-2 pr-4 text-left font-medium">Кол-во</th>
                               <th className="py-2 pr-4 text-left font-medium">Цена</th>
                               <th className="py-2 pr-4 text-left font-medium">Сумма</th>
@@ -199,8 +220,23 @@ export function MaterialsObjectsTab({
                                     <div className="text-xs text-white/30">{m.note}</div>
                                   )}
                                 </td>
-                                <td className="py-2.5 pr-4 text-white/60">
-                                  {m.work_type || "—"}
+                                <td className="py-2.5 pr-4">
+                                  {(() => {
+                                    const url = productUrl(m)
+                                    if (!url) return <span className="text-white/30">—</span>
+                                    return (
+                                      <a
+                                        href={url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        title="Открыть страницу товара в магазине"
+                                        className="inline-flex items-center gap-1.5 text-white/60 transition-colors hover:text-[#D4AF37]"
+                                      >
+                                        <Icon name="ExternalLink" size={14} />
+                                        <span className="text-xs">Открыть</span>
+                                      </a>
+                                    )
+                                  })()}
                                 </td>
                                 <td className="whitespace-nowrap py-2.5 pr-4">
                                   {num(m.qty)} {m.unit}

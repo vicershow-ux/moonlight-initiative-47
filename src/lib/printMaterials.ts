@@ -1,5 +1,8 @@
 import { MaterialItem, MaterialObject, ObjectMaterial } from "@/lib/api"
 
+const cssString = (s: string) =>
+  String(s ?? "").replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r?\n/g, " ")
+
 const num = (v: unknown, fallback = 0): number => {
   const n = typeof v === "string" ? parseFloat(v) : Number(v)
   return Number.isFinite(n) ? n : fallback
@@ -71,7 +74,6 @@ function buildMaterialsDocument(
               <td class="num">${idx + 1}</td>
               <td>${escapeHtml(it.name)}</td>
               <td>${escapeHtml(it.room_name || "—")}</td>
-              <td>${escapeHtml(it.work_type || "—")}</td>
               <td class="center">${num(it.qty)}</td>
               <td class="center">${escapeHtml(it.unit)}</td>
               <td class="right">${formatMoney(it.price)}</td>
@@ -91,7 +93,6 @@ function buildMaterialsDocument(
                 <th class="num">№</th>
                 <th>Наименование материала</th>
                 <th>Помещение</th>
-                <th>Вид работ</th>
                 <th class="center">Кол-во</th>
                 <th class="center">Ед.</th>
                 <th class="right">Цена</th>
@@ -99,12 +100,12 @@ function buildMaterialsDocument(
               </tr>
             </thead>
             <tbody>
-              <tr class="cat-row"><td colspan="8">${escapeHtml(group.name)}${contacts ? ` — ${contacts}` : ""}</td></tr>
+              <tr class="cat-row"><td colspan="7">${escapeHtml(group.name)}${contacts ? ` — ${contacts}` : ""}</td></tr>
               ${rows}
             </tbody>
             <tfoot>
               <tr>
-                <td colspan="7" class="right">Итого по магазину</td>
+                <td colspan="6" class="right">Итого по магазину</td>
                 <td class="right amount">${formatMoney(group.sum)}</td>
               </tr>
             </tfoot>
@@ -192,14 +193,13 @@ function buildMaterialsDocument(
     table-layout: fixed;
     color: #1a1a1a;
   }
-  thead th:nth-child(1) { width: 28px; }
+  thead th:nth-child(1) { width: 34px; }
   thead th:nth-child(2) { width: auto; }
-  thead th:nth-child(3) { width: 90px; }
-  thead th:nth-child(4) { width: 110px; }
-  thead th:nth-child(5) { width: 56px; }
-  thead th:nth-child(6) { width: 44px; }
-  thead th:nth-child(7) { width: 78px; }
-  thead th:nth-child(8) { width: 88px; }
+  thead th:nth-child(3) { width: 110px; }
+  thead th:nth-child(4) { width: 62px; }
+  thead th:nth-child(5) { width: 48px; }
+  thead th:nth-child(6) { width: 84px; }
+  thead th:nth-child(7) { width: 94px; }
   tbody td { overflow-wrap: break-word; word-break: break-word; }
   thead th {
     background: #5C3A11;
@@ -217,7 +217,7 @@ function buildMaterialsDocument(
     color: #1a1a1a;
     font-size: 12.5px;
   }
-  .num { color: #1a1a1a; }
+  .num { color: #1a1a1a; white-space: nowrap; word-break: normal; }
   .center { text-align: center; }
   .right { text-align: right; }
   .amount { font-weight: 600; }
@@ -272,7 +272,29 @@ function buildMaterialsDocument(
   .parties .name { font-weight: 600; }
   .parties .contact { color: #333; font-size: 12.5px; margin-top: 2px; }
   .footer { text-align: right; font-size: 11.5px; color: #444; margin-top: 24px; }
-  @page { size: A4 portrait; margin: 10mm; }
+  /* Колонтитулы: сверху объект и заказчик, снизу номер страницы */
+  @page {
+    size: A4 portrait;
+    margin: 16mm 10mm 14mm;
+    @top-left {
+      content: "${cssString(`Материалы · объект ${object.object_code || ""}`.trim())}";
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 8.5pt;
+      color: #6B4508;
+    }
+    @top-right {
+      content: "${cssString(object.client_name || companyName)}";
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 8.5pt;
+      color: #6B4508;
+    }
+    @bottom-center {
+      content: "Страница " counter(page) " из " counter(pages);
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 8.5pt;
+      color: #555555;
+    }
+  }
   @media print {
     html, body { width: auto; margin: 0; padding: 0; background: #fff; overflow: visible; }
     * {
@@ -418,10 +440,34 @@ export function printMaterials(
   }
 }
 
+function stripAtRule(css: string, startRe: RegExp) {
+  let out = css
+  for (;;) {
+    const m = startRe.exec(out)
+    if (!m) return out
+    const open = out.indexOf("{", m.index)
+    if (open === -1) return out
+    let depth = 0
+    let end = -1
+    for (let i = open; i < out.length; i++) {
+      if (out[i] === "{") depth++
+      else if (out[i] === "}") {
+        depth--
+        if (depth === 0) {
+          end = i
+          break
+        }
+      }
+    }
+    if (end === -1) return out
+    out = out.slice(0, m.index) + out.slice(end + 1)
+    startRe.lastIndex = 0
+  }
+}
+
 function scopeStyles(css: string, scope: string) {
-  const withoutAtRules = css
-    .replace(/@page[^{]*\{[^}]*\}/g, "")
-    .replace(/@media\s+print\s*\{(?:[^{}]*\{[^}]*\})*[^{}]*\}/g, "")
+  // @page содержит вложенные блоки (@top-left и т.п.) — вырезаем со счётом скобок
+  const withoutAtRules = stripAtRule(stripAtRule(css, /@page\b/g), /@media\s+print\b/g)
   return withoutAtRules.replace(/(^|\})\s*([^{}@]+)\s*\{/g, (_m, brace, selectors) => {
     const scoped = selectors
       .split(",")

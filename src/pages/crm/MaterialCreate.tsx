@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { materialsApi } from "@/lib/api"
+import { CONSUMPTION_MODES, ConsumptionMode } from "@/lib/materialConsumption"
 
 const UNITS = ["шт", "м²", "м", "м.п.", "м³", "кг", "т", "л", "уп", "рул", "меш", "компл"]
 
@@ -36,11 +37,12 @@ export default function MaterialCreate() {
     note: "",
     consumption: "",
     consumption_unit: "м²",
+    consumption_mode: "coverage" as ConsumptionMode,
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
-  const set = (k: string, v: string) => setForm({ ...form, [k]: v })
+  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }))
 
   const save = async () => {
     setError("")
@@ -126,14 +128,38 @@ export default function MaterialCreate() {
 
         <div className="mb-5 mt-7 text-xs uppercase text-white/40">Расход материала</div>
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label className={labelCls}>Как считать расход</label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {CONSUMPTION_MODES.map((m) => (
+                <button
+                  key={m.value}
+                  type="button"
+                  onClick={() => set("consumption_mode", m.value)}
+                  className={`rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
+                    form.consumption_mode === m.value
+                      ? "border-[#D4AF37] bg-[#D4AF37]/10 text-white"
+                      : "border-white/10 bg-[#161616] text-white/60 hover:border-white/25"
+                  }`}
+                >
+                  <div className="font-medium">{m.label}</div>
+                  <div className="mt-0.5 text-xs text-white/40">{m.hint}</div>
+                </button>
+              ))}
+            </div>
+          </div>
           <div>
-            <label className={labelCls}>Расход: сколько покрывает 1 {form.unit}</label>
+            <label className={labelCls}>
+              {form.consumption_mode === "per_unit"
+                ? `Сколько ${form.unit} нужно на 1 ${form.consumption_unit}`
+                : `Сколько ${form.consumption_unit} покрывает 1 ${form.unit}`}
+            </label>
             <input
               className={inputCls}
               type="number"
               min="0"
               step="0.001"
-              placeholder="Например: 4"
+              placeholder={form.consumption_mode === "per_unit" ? "Например: 3 или 0.3" : "Например: 4"}
               value={form.consumption}
               onChange={(e) => set("consumption", e.target.value)}
             />
@@ -155,12 +181,18 @@ export default function MaterialCreate() {
           {Number(form.consumption) > 0 && (
             <div className="rounded-lg border border-[#D4AF37]/30 bg-[#161616] px-4 py-3 text-sm text-white/70 sm:col-span-2">
               <Icon name="Info" size={14} className="mr-2 inline text-[#D4AF37]" />
-              1 {form.unit} покрывает {Number(form.consumption)} {form.consumption_unit}
+              {form.consumption_mode === "per_unit"
+                ? `На 1 ${form.consumption_unit} нужно ${Number(form.consumption)} ${form.unit}`
+                : `1 ${form.unit} покрывает ${Number(form.consumption)} ${form.consumption_unit}`}
               {Number(form.price) > 0 && (
                 <span className="text-white/40">
                   {" "}
-                  · стоимость {(Number(form.price) / Number(form.consumption)).toFixed(2)} ₽ за 1{" "}
-                  {form.consumption_unit}
+                  · стоимость{" "}
+                  {(form.consumption_mode === "per_unit"
+                    ? Number(form.price) * Number(form.consumption)
+                    : Number(form.price) / Number(form.consumption)
+                  ).toFixed(2)}{" "}
+                  ₽ за 1 {form.consumption_unit}
                 </span>
               )}
             </div>

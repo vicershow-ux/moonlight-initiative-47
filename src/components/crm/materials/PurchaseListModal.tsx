@@ -127,7 +127,20 @@ export function PurchaseListModal({
                       {shop.lines.map((line, i) => (
                         <tr key={i} className="border-b border-white/5 last:border-0">
                           <td className="py-2.5 pl-4 pr-3">
-                            {line.name}
+                            <div className="flex items-center gap-2">
+                              <span>{line.name}</span>
+                              {line.shopUrl && (
+                                <a
+                                  href={line.shopUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title="Открыть страницу товара в магазине"
+                                  className="shrink-0 text-white/40 transition-colors hover:text-[#D4AF37]"
+                                >
+                                  <Icon name="ExternalLink" size={14} />
+                                </a>
+                              )}
+                            </div>
                             {line.roomName && (
                               <div className="text-xs text-white/30">{line.roomName}</div>
                             )}

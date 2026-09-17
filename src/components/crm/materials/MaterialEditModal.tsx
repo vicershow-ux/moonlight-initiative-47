@@ -1,6 +1,6 @@
 import Icon from "@/components/ui/icon"
 import { MaterialItem, MaterialObject, MaterialRoom, ObjectMaterial } from "@/lib/api"
-import { money, num, inputCls, goldBtn, UNITS, WORK_TYPES, EditFormState } from "./constants"
+import { money, num, inputCls, goldBtn, UNITS, EditFormState } from "./constants"
 
 interface MaterialEditModalProps {
   editRow: ObjectMaterial
@@ -80,22 +80,6 @@ export function MaterialEditModal({
                     {r.name}
                   </option>
                 ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-xs text-white/50">Вид работ</label>
-            <select
-              className={inputCls}
-              value={editForm.work_type}
-              onChange={(e) => setEditForm({ ...editForm, work_type: e.target.value })}
-            >
-              <option value="">Не указан</option>
-              {WORK_TYPES.map((w) => (
-                <option key={w} value={w}>
-                  {w}
-                </option>
-              ))}
             </select>
           </div>
 
