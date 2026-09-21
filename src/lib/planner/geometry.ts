@@ -210,6 +210,15 @@ export function openingPosition(
   return null
 }
 
+/** Кратчайшее расстояние от точки до отрезка — для попадания кликом по линии */
+export function distToSegment(p: PlanPoint, a: PlanPoint, b: PlanPoint): number {
+  const len = dist(a, b)
+  if (len < 1e-9) return dist(p, a)
+  const t = ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / (len * len)
+  const clamped = Math.min(Math.max(t, 0), 1)
+  return dist(p, { x: a.x + (b.x - a.x) * clamped, y: a.y + (b.y - a.y) * clamped })
+}
+
 export function snap(value: number, step: number) {
   return Math.round(value / step) * step
 }

@@ -4,12 +4,20 @@ import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { PlanCanvas, PlanTool } from "@/components/crm/planner/PlanCanvas"
 import { PlanSidebar } from "@/components/crm/planner/PlanSidebar"
+import { EngineerSidebar } from "@/components/crm/planner/EngineerSidebar"
 import { objectsApi, objectPlansApi, ObjectItem } from "@/lib/api"
-import { schemeMetrics } from "@/lib/planner/geometry"
+import { pointInPolygon, schemeMetrics } from "@/lib/planner/geometry"
 import { downloadPlanPdf } from "@/lib/planner/planPdf"
 import {
+  LAYERS,
+  LINK_SPECS,
+  NODE_PRESETS,
+  NodeKind,
   OPENING_PRESETS,
   OpeningKind,
+  PlanLayer,
+  PlanLink,
+  PlanNode,
   PlanOpening,
   PlanPoint,
   PlanRoom,
@@ -33,6 +41,12 @@ const TOOLS: { key: PlanTool; label: string; icon: string }[] = [
   { key: "arch", label: "Проём", icon: "Frame" },
 ]
 
+const ENGINEER_TOOLS: { key: PlanTool; label: string; icon: string }[] = [
+  { key: "select", label: "Выбор", icon: "MousePointer2" },
+  { key: "node", label: "Поставить точку", icon: "CirclePlus" },
+  { key: "link", label: "Соединить", icon: "Spline" },
+]
+
 export default function ObjectPlanner() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -46,9 +60,15 @@ export default function ObjectPlanner() {
   const [error, setError] = useState("")
 
   const [tool, setTool] = useState<PlanTool>("draw")
+  const [layer, setLayer] = useState<PlanLayer>("plan")
+  const [nodeKind, setNodeKind] = useState<NodeKind>("socket")
+  const [linkSpec, setLinkSpec] = useState("2.5 мм²")
+  const [linkFromId, setLinkFromId] = useState<string | null>(null)
   const [draft, setDraft] = useState<PlanPoint[]>([])
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null)
   const [selectedOpeningId, setSelectedOpeningId] = useState<string | null>(null)
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null)
   const [fileUrl, setFileUrl] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
   const [syncRooms, setSyncRooms] = useState(true)
@@ -67,6 +87,8 @@ export default function ObjectPlanner() {
               rooms: raw.rooms || [],
               openings: raw.openings || [],
               defaultHeight: Number(planData.plan.default_height) || 2.7,
+              nodes: raw.nodes || [],
+              links: raw.links || [],
             })
           }
           setFileUrl(planData.plan.file_url || null)
@@ -177,6 +199,137 @@ export default function ObjectPlanner() {
       ),
     }))
     setDirty(true)
+  }
+
+  const selectedNode = useMemo(
+    () => (scheme.nodes || []).find((n) => n.id === selectedNodeId) || null,
+    [scheme.nodes, selectedNodeId],
+  )
+  const selectedLink = useMemo(
+    () => (scheme.links || []).find((l) => l.id === selectedLinkId) || null,
+    [scheme.links, selectedLinkId],
+  )
+
+  /** Ставим точку (розетку, щит, вывод воды) в том помещении, куда кликнули */
+  const addNode = (point: PlanPoint) => {
+    if (layer === "plan") return
+    const preset = NODE_PRESETS[nodeKind]
+    const room = [...scheme.rooms].reverse().find((r) => pointInPolygon(point, r.points))
+    const node: PlanNode = {
+      id: uid(),
+      layer,
+      kind: nodeKind,
+      x: point.x,
+      y: point.y,
+      height: preset.height,
+      label: "",
+      roomId: room ? room.id : null,
+    }
+    setScheme((s) => ({ ...s, nodes: [...(s.nodes || []), node] }))
+    setSelectedNodeId(node.id)
+    setSelectedLinkId(null)
+    touch()
+  }
+
+  const updateNode = (nodeId: string, patch: Partial<PlanNode>) => {
+    setScheme((s) => ({
+      ...s,
+      nodes: (s.nodes || []).map((n) => (n.id === nodeId ? { ...n, ...patch } : n)),
+    }))
+    touch()
+  }
+
+  const deleteNode = (nodeId: string) => {
+    setScheme((s) => ({
+      ...s,
+      nodes: (s.nodes || []).filter((n) => n.id !== nodeId),
+      links: (s.links || []).filter((l) => l.fromId !== nodeId && l.toId !== nodeId),
+    }))
+    setSelectedNodeId(null)
+    touch()
+  }
+
+  const moveNode = (nodeId: string, point: PlanPoint) => {
+    setScheme((s) => ({
+      ...s,
+      nodes: (s.nodes || []).map((n) =>
+        n.id === nodeId
+          ? {
+              ...n,
+              x: point.x,
+              y: point.y,
+              roomId:
+                [...s.rooms].reverse().find((r) => pointInPolygon(point, r.points))?.id ?? null,
+            }
+          : n,
+      ),
+    }))
+    setDirty(true)
+  }
+
+  /** Первый клик — откуда тянем, второй — куда. Линия получает текущее сечение */
+  const handleLinkClick = (nodeId: string) => {
+    if (layer === "plan") return
+    if (!linkFromId) {
+      setLinkFromId(nodeId)
+      setSelectedNodeId(nodeId)
+      return
+    }
+    if (linkFromId === nodeId) {
+      setLinkFromId(null)
+      return
+    }
+
+    const exists = (scheme.links || []).some(
+      (l) =>
+        (l.fromId === linkFromId && l.toId === nodeId) ||
+        (l.fromId === nodeId && l.toId === linkFromId),
+    )
+    if (!exists) {
+      const link: PlanLink = {
+        id: uid(),
+        layer,
+        fromId: linkFromId,
+        toId: nodeId,
+        spec: linkSpec,
+        points: [],
+      }
+      setScheme((s) => ({ ...s, links: [...(s.links || []), link] }))
+      setSelectedLinkId(link.id)
+      touch()
+    }
+    setLinkFromId(nodeId)
+  }
+
+  const updateLink = (linkId: string, patch: Partial<PlanLink>) => {
+    setScheme((s) => ({
+      ...s,
+      links: (s.links || []).map((l) => (l.id === linkId ? { ...l, ...patch } : l)),
+    }))
+    touch()
+  }
+
+  const deleteLink = (linkId: string) => {
+    setScheme((s) => ({ ...s, links: (s.links || []).filter((l) => l.id !== linkId) }))
+    setSelectedLinkId(null)
+    touch()
+  }
+
+  /** Смена слоя сбрасывает инструмент и выделение — чтобы не рисовать стены поверх электрики */
+  const changeLayer = (next: PlanLayer) => {
+    setLayer(next)
+    setTool("select")
+    setLinkFromId(null)
+    setSelectedNodeId(null)
+    setSelectedLinkId(null)
+    setDraft([])
+    if (next === "electric") {
+      setNodeKind("socket")
+      setLinkSpec(LINK_SPECS.electric[1])
+    } else if (next === "plumbing") {
+      setNodeKind("water_cold")
+      setLinkSpec(LINK_SPECS.plumbing[1])
+    }
   }
 
   const setAllHeights = (height: number) => {
@@ -299,14 +452,38 @@ export default function ObjectPlanner() {
         </div>
       )}
 
+      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-[#1f1f1f] p-2">
+        <span className="px-2 text-xs uppercase text-white/40">Слой</span>
+        {LAYERS.map((l) => (
+          <button
+            key={l.value}
+            onClick={() => changeLayer(l.value)}
+            className={`flex min-h-[40px] items-center gap-2 rounded-lg px-4 text-sm transition-colors ${
+              layer === l.value
+                ? "bg-[#D4AF37] text-[#161616]"
+                : "bg-white/5 text-white/60 hover:bg-white/10"
+            }`}
+          >
+            <Icon name={l.icon} size={16} />
+            {l.label}
+          </button>
+        ))}
+        {layer !== "plan" && (
+          <span className="ml-auto pr-2 text-xs text-white/40">
+            Планировка показана подложкой — менять её можно на слое «Планировка»
+          </span>
+        )}
+      </div>
+
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap gap-2">
-          {TOOLS.map((t) => (
+          {(layer === "plan" ? TOOLS : ENGINEER_TOOLS).map((t) => (
             <button
               key={t.key}
               onClick={() => {
                 setTool(t.key)
                 if (t.key !== "draw") setDraft([])
+                if (t.key !== "link") setLinkFromId(null)
               }}
               className={`flex min-h-[42px] items-center gap-2 rounded-lg px-3 text-sm transition-colors ${
                 tool === t.key
@@ -354,6 +531,59 @@ export default function ObjectPlanner() {
         </div>
       </div>
 
+      {layer !== "plan" && (
+        <div className="mb-4 rounded-xl border border-white/10 bg-[#1f1f1f] p-3">
+          <div className="mb-2 text-xs uppercase text-white/40">
+            {tool === "link" ? "Сечение / диаметр новой линии" : "Что ставим на план"}
+          </div>
+
+          {tool === "link" ? (
+            <div className="flex flex-wrap gap-2">
+              {LINK_SPECS[layer].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setLinkSpec(s)}
+                  className={`min-h-[38px] rounded-lg px-3 text-sm transition-colors ${
+                    linkSpec === s
+                      ? "bg-[#D4AF37] text-[#161616]"
+                      : "bg-white/5 text-white/60 hover:bg-white/10"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+              <span className="flex items-center pl-2 text-xs text-white/40">
+                {linkFromId
+                  ? "Кликните по второй точке — линия соединит их"
+                  : "Кликните по первой точке, затем по второй"}
+              </span>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(NODE_PRESETS) as NodeKind[])
+                .filter((k) => NODE_PRESETS[k].layer === layer)
+                .map((k) => (
+                  <button
+                    key={k}
+                    onClick={() => {
+                      setNodeKind(k)
+                      setTool("node")
+                    }}
+                    className={`flex min-h-[38px] items-center gap-2 rounded-lg px-3 text-sm transition-colors ${
+                      nodeKind === k && tool === "node"
+                        ? "bg-[#D4AF37] text-[#161616]"
+                        : "bg-white/5 text-white/60 hover:bg-white/10"
+                    }`}
+                  >
+                    <Icon name={NODE_PRESETS[k].icon} size={15} />
+                    {NODE_PRESETS[k].label}
+                  </button>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="mb-4 flex flex-wrap items-center gap-4 rounded-xl border border-white/10 bg-[#1f1f1f] p-3">
         <div className="flex items-center gap-2 text-sm">
           <span className="text-white/50">Высота стен, м</span>
@@ -399,9 +629,14 @@ export default function ObjectPlanner() {
           <PlanCanvas
             scheme={scheme}
             tool={tool}
+            layer={layer}
+            nodeKind={nodeKind}
+            linkFromId={linkFromId}
             draft={draft}
             selectedRoomId={selectedRoomId}
             selectedOpeningId={selectedOpeningId}
+            selectedNodeId={selectedNodeId}
+            selectedLinkId={selectedLinkId}
             onDraftChange={setDraft}
             onFinishRoom={finishRoom}
             onSelectRoom={(rid) => {
@@ -412,26 +647,55 @@ export default function ObjectPlanner() {
               setSelectedOpeningId(oid)
               if (oid) setSelectedRoomId(null)
             }}
+            onSelectNode={(nid) => {
+              setSelectedNodeId(nid)
+              if (nid) setSelectedLinkId(null)
+            }}
+            onSelectLink={(lid) => {
+              setSelectedLinkId(lid)
+              if (lid) setSelectedNodeId(null)
+            }}
             onAddOpening={addOpening}
             onMoveVertex={moveVertex}
+            onAddNode={addNode}
+            onMoveNode={moveNode}
+            onLinkClick={handleLinkClick}
           />
         </div>
 
-        <PlanSidebar
-          scheme={scheme}
-          totals={totals}
-          selectedRoom={selectedRoom}
-          selectedOpening={selectedOpening}
-          onUpdateRoom={updateRoom}
-          onDeleteRoom={deleteRoom}
-          onUpdateOpening={updateOpening}
-          onDeleteOpening={deleteOpening}
-          onSelectRoom={(rid) => {
-            setSelectedRoomId(rid)
-            setSelectedOpeningId(null)
-            setTool("select")
-          }}
-        />
+        {layer === "plan" ? (
+          <PlanSidebar
+            scheme={scheme}
+            totals={totals}
+            selectedRoom={selectedRoom}
+            selectedOpening={selectedOpening}
+            onUpdateRoom={updateRoom}
+            onDeleteRoom={deleteRoom}
+            onUpdateOpening={updateOpening}
+            onDeleteOpening={deleteOpening}
+            onSelectRoom={(rid) => {
+              setSelectedRoomId(rid)
+              setSelectedOpeningId(null)
+              setTool("select")
+            }}
+          />
+        ) : (
+          <EngineerSidebar
+            scheme={scheme}
+            layer={layer}
+            selectedNode={selectedNode}
+            selectedLink={selectedLink}
+            onUpdateNode={updateNode}
+            onDeleteNode={deleteNode}
+            onUpdateLink={updateLink}
+            onDeleteLink={deleteLink}
+            onSelectNode={(nid) => {
+              setSelectedNodeId(nid)
+              setSelectedLinkId(null)
+              setTool("select")
+            }}
+          />
+        )}
       </div>
     </CrmLayout>
   )

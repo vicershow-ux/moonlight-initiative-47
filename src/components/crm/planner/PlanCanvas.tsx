@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   dist,
+  distToSegment,
   openingPosition,
   polygonCentroid,
   pointInPolygon,
@@ -9,22 +10,41 @@ import {
   wallSegments,
   fmtNum,
 } from "@/lib/planner/geometry"
-import { PlanOpening, PlanPoint, PlanScheme } from "@/lib/planner/types"
+import {
+  NODE_PRESETS,
+  NodeKind,
+  PlanLayer,
+  PlanLink,
+  PlanNode,
+  PlanOpening,
+  PlanPoint,
+  PlanScheme,
+} from "@/lib/planner/types"
 
-export type PlanTool = "select" | "draw" | "window" | "door" | "arch"
+export type PlanTool = "select" | "draw" | "window" | "door" | "arch" | "node" | "link"
 
 interface Props {
   scheme: PlanScheme
   tool: PlanTool
+  layer: PlanLayer
+  nodeKind: NodeKind
+  linkFromId: string | null
   draft: PlanPoint[]
   selectedRoomId: string | null
   selectedOpeningId: string | null
+  selectedNodeId: string | null
+  selectedLinkId: string | null
   onDraftChange: (points: PlanPoint[]) => void
   onFinishRoom: (points: PlanPoint[]) => void
   onSelectRoom: (id: string | null) => void
   onSelectOpening: (id: string | null) => void
+  onSelectNode: (id: string | null) => void
+  onSelectLink: (id: string | null) => void
   onAddOpening: (wallId: string, offset: number) => void
   onMoveVertex: (roomId: string, index: number, point: PlanPoint) => void
+  onAddNode: (point: PlanPoint) => void
+  onMoveNode: (id: string, point: PlanPoint) => void
+  onLinkClick: (nodeId: string) => void
 }
 
 const GRID_STEP = 0.5
@@ -34,15 +54,25 @@ const CLOSE_DISTANCE = 0.45
 export function PlanCanvas({
   scheme,
   tool,
+  layer,
+  nodeKind,
+  linkFromId,
   draft,
   selectedRoomId,
   selectedOpeningId,
+  selectedNodeId,
+  selectedLinkId,
   onDraftChange,
   onFinishRoom,
   onSelectRoom,
   onSelectOpening,
+  onSelectNode,
+  onSelectLink,
   onAddOpening,
   onMoveVertex,
+  onAddNode,
+  onMoveNode,
+  onLinkClick,
 }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ w: 800, h: 560 })
@@ -51,8 +81,23 @@ export function PlanCanvas({
   const [drag, setDrag] = useState<
     | { type: "pan"; startX: number; startY: number; tx: number; ty: number }
     | { type: "vertex"; roomId: string; index: number }
+    | { type: "node"; nodeId: string }
     | null
   >(null)
+
+  const nodes = useMemo(
+    () => (scheme.nodes || []).filter((n) => n.layer === layer),
+    [scheme.nodes, layer],
+  )
+  const links = useMemo(
+    () => (scheme.links || []).filter((l) => l.layer === layer),
+    [scheme.links, layer],
+  )
+  const nodeById = useMemo(() => {
+    const map = new Map<string, PlanNode>()
+    for (const n of scheme.nodes || []) map.set(n.id, n)
+    return map
+  }, [scheme.nodes])
 
   useEffect(() => {
     const el = wrapRef.current
@@ -114,7 +159,44 @@ export function PlanCanvas({
       return
     }
 
+    const hitNode = () =>
+      [...nodes].reverse().find((n) => dist({ x: n.x, y: n.y }, world) * view.scale < 14) || null
+
+    if (tool === "node") {
+      onAddNode({ x: snap(world.x, SNAP_STEP), y: snap(world.y, SNAP_STEP) })
+      return
+    }
+
+    if (tool === "link") {
+      const n = hitNode()
+      if (n) onLinkClick(n.id)
+      return
+    }
+
     if (tool === "select") {
+      // На инженерных слоях сначала ищем точку — её можно двигать
+      if (layer !== "plan") {
+        const n = hitNode()
+        if (n) {
+          setDrag({ type: "node", nodeId: n.id })
+          onSelectNode(n.id)
+          return
+        }
+
+        const link = links.find((l) => {
+          const a = nodeById.get(l.fromId)
+          const b = nodeById.get(l.toId)
+          if (!a || !b) return false
+          return distToSegment(world, { x: a.x, y: a.y }, { x: b.x, y: b.y }) * view.scale < 10
+        })
+        if (link) {
+          onSelectLink(link.id)
+          return
+        }
+        onSelectNode(null)
+        onSelectLink(null)
+      }
+
       for (const room of scheme.rooms) {
         const idx = room.points.findIndex((p) => dist(p, world) * view.scale < 10)
         if (idx >= 0) {
@@ -179,6 +261,13 @@ export function PlanCanvas({
       setView((v) => ({ ...v, tx: drag.tx + (sx - drag.startX), ty: drag.ty + (sy - drag.startY) }))
       return
     }
+    if (drag.type === "node") {
+      onMoveNode(drag.nodeId, {
+        x: snap(world.x, SNAP_STEP),
+        y: snap(world.y, SNAP_STEP),
+      })
+      return
+    }
     onMoveVertex(drag.roomId, drag.index, {
       x: snap(world.x, SNAP_STEP),
       y: snap(world.y, SNAP_STEP),
@@ -240,6 +329,10 @@ export function PlanCanvas({
     const selected = room.id === selectedRoomId
     const centroid = toScreen(polygonCentroid(room.points))
     const area = polygonArea(room.points)
+    // На слоях электрики и сантехники подпись уходит под верхнюю стену,
+    // чтобы не перекрывать оборудование в центре помещения
+    const topY = toScreen({ x: 0, y: Math.min(...room.points.map((p) => p.y)) }).y
+    const labelY = layer === "plan" ? centroid.y - 4 : topY + 22
 
     return (
       <g key={room.id}>
@@ -278,7 +371,7 @@ export function PlanCanvas({
           <>
             <text
               x={centroid.x}
-              y={centroid.y - 4}
+              y={labelY}
               textAnchor="middle"
               fontSize="13"
               fontWeight="600"
@@ -288,7 +381,7 @@ export function PlanCanvas({
             </text>
             <text
               x={centroid.x}
-              y={centroid.y + 14}
+              y={labelY + 18}
               textAnchor="middle"
               fontSize="11"
               fill="rgba(255,255,255,0.6)"
@@ -350,6 +443,79 @@ export function PlanCanvas({
     )
   }
 
+  const renderLink = (l: PlanLink) => {
+    const a = nodeById.get(l.fromId)
+    const b = nodeById.get(l.toId)
+    if (!a || !b) return null
+    const pa = toScreen({ x: a.x, y: a.y })
+    const pb = toScreen({ x: b.x, y: b.y })
+    const selected = l.id === selectedLinkId
+    const color = layer === "electric" ? "#E8B23A" : "#7FB5E8"
+    const mx = (pa.x + pb.x) / 2
+    const my = (pa.y + pb.y) / 2
+    const angle = (Math.atan2(pb.y - pa.y, pb.x - pa.x) * 180) / Math.PI
+    const flip = angle > 90 || angle < -90
+    const len = dist({ x: a.x, y: a.y }, { x: b.x, y: b.y })
+
+    return (
+      <g key={l.id}>
+        <line
+          x1={pa.x}
+          y1={pa.y}
+          x2={pb.x}
+          y2={pb.y}
+          stroke={color}
+          strokeWidth={selected ? 4 : 2.5}
+          strokeDasharray={layer === "plumbing" ? "8 4" : undefined}
+          strokeLinecap="round"
+          opacity={selected ? 1 : 0.85}
+        />
+        {len * view.scale > 46 && (
+          <text
+            x={mx}
+            y={my - 5}
+            textAnchor="middle"
+            fontSize="10"
+            fill={color}
+            transform={`rotate(${flip ? angle + 180 : angle}, ${mx}, ${my})`}
+          >
+            {l.spec} · {fmtNum(len, 2)} м
+          </text>
+        )}
+      </g>
+    )
+  }
+
+  const renderNode = (n: PlanNode) => {
+    const p = toScreen({ x: n.x, y: n.y })
+    const preset = NODE_PRESETS[n.kind]
+    const selected = n.id === selectedNodeId
+    const isFrom = n.id === linkFromId
+    const r = 11
+
+    return (
+      <g key={n.id} style={{ cursor: tool === "select" ? "grab" : "pointer" }}>
+        {(selected || isFrom) && (
+          <circle cx={p.x} cy={p.y} r={r + 5} fill="none" stroke={isFrom ? "#fff" : preset.color} strokeWidth={2} />
+        )}
+        <circle
+          cx={p.x}
+          cy={p.y}
+          r={r}
+          fill="#161616"
+          stroke={preset.color}
+          strokeWidth={selected ? 3 : 2}
+        />
+        <circle cx={p.x} cy={p.y} r={4} fill={preset.color} />
+        {view.scale > 26 && (
+          <text x={p.x + r + 4} y={p.y + 4} fontSize="10" fill="rgba(255,255,255,0.75)">
+            {n.label || preset.label}
+          </text>
+        )}
+      </g>
+    )
+  }
+
   const draftScreen = draft.map(toScreen)
 
   return (
@@ -358,7 +524,14 @@ export function PlanCanvas({
         width={size.w}
         height={size.h}
         className="touch-none rounded-xl bg-[#141414]"
-        style={{ cursor: tool === "draw" ? "crosshair" : drag ? "grabbing" : "default" }}
+        style={{
+          cursor:
+            tool === "draw" || tool === "node" || tool === "link"
+              ? "crosshair"
+              : drag
+                ? "grabbing"
+                : "default",
+        }}
         onMouseDown={handleDown}
         onMouseMove={handleMove}
         onMouseUp={handleUp}
@@ -378,8 +551,46 @@ export function PlanCanvas({
           />
         ))}
 
-        {scheme.rooms.map(renderRoom)}
-        {scheme.openings.map(renderOpening)}
+        {/* На инженерных слоях планировка уходит на второй план — она служит подложкой */}
+        <g opacity={layer === "plan" ? 1 : 0.42}>
+          {scheme.rooms.map(renderRoom)}
+          {scheme.openings.map(renderOpening)}
+        </g>
+
+        {layer !== "plan" && (
+          <g>
+            {links.map(renderLink)}
+            {nodes.map(renderNode)}
+            {tool === "link" && linkFromId && cursor && nodeById.get(linkFromId) && (
+              <line
+                x1={toScreen({
+                  x: nodeById.get(linkFromId)!.x,
+                  y: nodeById.get(linkFromId)!.y,
+                }).x}
+                y1={toScreen({
+                  x: nodeById.get(linkFromId)!.x,
+                  y: nodeById.get(linkFromId)!.y,
+                }).y}
+                x2={toScreen(cursor).x}
+                y2={toScreen(cursor).y}
+                stroke={layer === "electric" ? "#E8B23A" : "#7FB5E8"}
+                strokeWidth={2}
+                strokeDasharray="6 4"
+              />
+            )}
+            {tool === "node" && cursor && (
+              <circle
+                cx={toScreen(cursor).x}
+                cy={toScreen(cursor).y}
+                r={11}
+                fill="none"
+                stroke={NODE_PRESETS[nodeKind].color}
+                strokeWidth={2}
+                strokeDasharray="4 3"
+              />
+            )}
+          </g>
+        )}
 
         {draftScreen.length > 0 && (
           <g>

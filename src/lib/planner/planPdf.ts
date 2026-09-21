@@ -7,9 +7,14 @@ import {
   schemeMetrics,
   wallSegments,
 } from "@/lib/planner/geometry"
-import { PlanScheme } from "@/lib/planner/types"
+import { NODE_PRESETS, PlanLayer, PlanScheme } from "@/lib/planner/types"
 
-export function schemeToSvg(scheme: PlanScheme, width = 700, height = 460): string {
+export function schemeToSvg(
+  scheme: PlanScheme,
+  width = 700,
+  height = 460,
+  layer: PlanLayer = "plan",
+): string {
   const b = schemeBounds(scheme)
   const pad = 56
   const scale = Math.min((width - pad * 2) / b.width, (height - pad * 2) / b.height)
@@ -35,11 +40,17 @@ export function schemeToSvg(scheme: PlanScheme, width = 700, height = 460): stri
     )
   }
 
+  // На схемах электрики и сантехники планировка служит бледной подложкой
+  const isEng = layer !== "plan"
+  const wallColor = isEng ? "#b0b0b0" : "#161616"
+  const dimColor = isEng ? "#aaaaaa" : "#555555"
+  const nameColor = isEng ? "#999999" : "#161616"
+
   scheme.rooms.forEach((room) => {
     if (room.points.length < 2) return
     const d =
       room.points.map((p, i) => `${i === 0 ? "M" : "L"}${sx(p.x)},${sy(p.y)}`).join(" ") + " Z"
-    parts.push(`<path d="${d}" fill="#fafafa" stroke="#161616" stroke-width="2.5" stroke-linejoin="round"/>`)
+    parts.push(`<path d="${d}" fill="#fafafa" stroke="${wallColor}" stroke-width="2.5" stroke-linejoin="round"/>`)
 
     wallSegments(room).forEach((seg) => {
       if (seg.length * scale < 40) return
@@ -48,18 +59,22 @@ export function schemeToSvg(scheme: PlanScheme, width = 700, height = 460): stri
       const angle = (Math.atan2(sy(seg.b.y) - sy(seg.a.y), sx(seg.b.x) - sx(seg.a.x)) * 180) / Math.PI
       const flip = angle > 90 || angle < -90
       parts.push(
-        `<text x="${mx}" y="${my - 5}" text-anchor="middle" font-size="10" fill="#555" font-family="Arial" transform="rotate(${flip ? angle + 180 : angle}, ${mx}, ${my})">${fmtNum(seg.length, 2)}</text>`,
+        `<text x="${mx}" y="${my - 5}" text-anchor="middle" font-size="10" fill="${dimColor}" font-family="Arial" transform="rotate(${flip ? angle + 180 : angle}, ${mx}, ${my})">${fmtNum(seg.length, 2)} м</text>`,
       )
     })
 
     if (room.points.length > 2) {
       const c = polygonCentroid(room.points)
       const metrics = schemeMetrics({ ...scheme, rooms: [room] }).rooms[0]
+      // На схемах инженерии подпись уводим под верхнюю стену,
+      // чтобы она не накладывалась на оборудование в середине комнаты
+      const ys = room.points.map((p) => p.y)
+      const labelY = isEng ? sy(Math.min(...ys)) + 20 : sy(c.y) - 3
       parts.push(
-        `<text x="${sx(c.x)}" y="${sy(c.y) - 3}" text-anchor="middle" font-size="12" font-weight="bold" fill="#161616" font-family="Arial">${escapeXml(room.name)}</text>`,
+        `<text x="${sx(c.x)}" y="${labelY}" text-anchor="middle" font-size="12" font-weight="bold" fill="${nameColor}" font-family="Arial">${escapeXml(room.name)}</text>`,
       )
       parts.push(
-        `<text x="${sx(c.x)}" y="${sy(c.y) + 13}" text-anchor="middle" font-size="10" fill="#666" font-family="Arial">${fmtNum(metrics.area, 2)} м²</text>`,
+        `<text x="${sx(c.x)}" y="${labelY + 14}" text-anchor="middle" font-size="10" fill="${dimColor}" font-family="Arial">${fmtNum(metrics.area, 2)} м²</text>`,
       )
     }
   })
@@ -75,6 +90,48 @@ export function schemeToSvg(scheme: PlanScheme, width = 700, height = 460): stri
       `<line x1="${sx(pos.a.x)}" y1="${sy(pos.a.y)}" x2="${sx(pos.b.x)}" y2="${sy(pos.b.y)}" stroke="${color}" stroke-width="4"/>`,
     )
   })
+
+  if (isEng) {
+    const nodes = (scheme.nodes || []).filter((n) => n.layer === layer)
+    const links = (scheme.links || []).filter((l) => l.layer === layer)
+    const byId = new Map(nodes.map((n) => [n.id, n]))
+    const lineColor = layer === "electric" ? "#B8860B" : "#2f80c9"
+
+    links.forEach((l) => {
+      const a = byId.get(l.fromId)
+      const b = byId.get(l.toId)
+      if (!a || !b) return
+      const x1 = sx(a.x)
+      const y1 = sy(a.y)
+      const x2 = sx(b.x)
+      const y2 = sy(b.y)
+      parts.push(
+        `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${lineColor}" stroke-width="2"${
+          layer === "plumbing" ? ' stroke-dasharray="7 4"' : ""
+        }/>`,
+      )
+      const mx = (x1 + x2) / 2
+      const my = (y1 + y2) / 2
+      const angle = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI
+      const flip = angle > 90 || angle < -90
+      parts.push(
+        `<text x="${mx}" y="${my - 4}" text-anchor="middle" font-size="9" fill="${lineColor}" font-family="Arial" transform="rotate(${flip ? angle + 180 : angle}, ${mx}, ${my})">${escapeXml(l.spec)}</text>`,
+      )
+    })
+
+    nodes.forEach((n) => {
+      const px = sx(n.x)
+      const py = sy(n.y)
+      const preset = NODE_PRESETS[n.kind]
+      parts.push(
+        `<circle cx="${px}" cy="${py}" r="9" fill="#ffffff" stroke="${preset.color}" stroke-width="2"/>`,
+      )
+      parts.push(`<circle cx="${px}" cy="${py}" r="3.5" fill="${preset.color}"/>`)
+      parts.push(
+        `<text x="${px + 12}" y="${py + 3.5}" font-size="9" fill="#333" font-family="Arial">${escapeXml(n.label || preset.label)}</text>`,
+      )
+    })
+  }
 
   parts.push(
     `<g font-family="Arial" font-size="10" fill="#555">
@@ -170,6 +227,7 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
     .plan-doc .card .label { color: #777; font-size: 10px; }
     .plan-doc .card .value { font-size: 15px; font-weight: bold; margin-top: 2px; }
     .plan-doc .plan-img { text-align: center; margin: 8px 0 4px; }
+    .plan-doc .page-break { page-break-before: always; break-before: page; height: 0; }
     .plan-doc .legend { font-size: 10px; color: #666; text-align: center; margin-bottom: 6px; }
   </style>
 
@@ -243,7 +301,110 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
   </table>`
       : ""
   }
+  ${engineerSection(scheme, "electric", meta)}
+  ${engineerSection(scheme, "plumbing", meta)}
 </div>`.trim()
+}
+
+/** Отдельный лист со схемой электрики или сантехники и ведомостью по ней */
+function engineerSection(
+  scheme: PlanScheme,
+  layer: Exclude<PlanLayer, "plan">,
+  meta: PlanPdfMeta,
+): string {
+  const nodes = (scheme.nodes || []).filter((n) => n.layer === layer)
+  const links = (scheme.links || []).filter((l) => l.layer === layer)
+  if (nodes.length === 0 && links.length === 0) return ""
+
+  const title = layer === "electric" ? "Схема электрики" : "Схема сантехники"
+  const specTitle = layer === "electric" ? "Кабель по сечениям" : "Труба по диаметрам"
+  const byId = new Map(nodes.map((n) => [n.id, n]))
+  const roomName = (roomId: string | null) =>
+    scheme.rooms.find((r) => r.id === roomId)?.name || "—"
+
+  const counts = nodes.reduce<Record<string, number>>((acc, n) => {
+    acc[n.kind] = (acc[n.kind] || 0) + 1
+    return acc
+  }, {})
+
+  const specs = links.reduce<Record<string, number>>((acc, l) => {
+    const a = byId.get(l.fromId)
+    const b = byId.get(l.toId)
+    if (!a || !b) return acc
+    acc[l.spec] = (acc[l.spec] || 0) + Math.hypot(b.x - a.x, b.y - a.y)
+    return acc
+  }, {})
+
+  const nodeRows = Object.entries(counts)
+    .map(
+      ([kind, count]) => `
+      <tr>
+        <td>${escapeXml(NODE_PRESETS[kind as keyof typeof NODE_PRESETS].label)}</td>
+        <td class="num">${count}</td>
+        <td class="num">${fmtNum(NODE_PRESETS[kind as keyof typeof NODE_PRESETS].height, 2)}</td>
+      </tr>`,
+    )
+    .join("")
+
+  const specRows = Object.entries(specs)
+    .map(
+      ([spec, len]) => `
+      <tr>
+        <td>${escapeXml(spec)}</td>
+        <td class="num">${fmtNum(len, 2)}</td>
+      </tr>`,
+    )
+    .join("")
+
+  const listRows = nodes
+    .map(
+      (n, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${escapeXml(n.label || NODE_PRESETS[n.kind].label)}</td>
+        <td>${escapeXml(NODE_PRESETS[n.kind].label)}</td>
+        <td>${escapeXml(roomName(n.roomId))}</td>
+        <td class="num">${fmtNum(n.height, 2)}</td>
+      </tr>`,
+    )
+    .join("")
+
+  return `
+  <div class="page-break"></div>
+  <h2>${title} — объект ${escapeXml(meta.objectCode)}</h2>
+  <div class="plan-img">${schemeToSvg(scheme, 700, 460, layer)}</div>
+  <div class="legend">
+    Планировка показана серым как подложка. ${
+      layer === "electric"
+        ? "Линии — кабельные трассы, подпись у линии — сечение."
+        : "Пунктир — трубы, подпись у линии — диаметр."
+    }
+  </div>
+
+  <h3>Ведомость точек</h3>
+  <table>
+    <thead><tr><th>Элемент</th><th>Количество, шт</th><th>Высота от пола, м</th></tr></thead>
+    <tbody>${nodeRows}</tbody>
+  </table>
+
+  ${
+    specRows
+      ? `<h3>${specTitle}</h3>
+  <table>
+    <thead><tr><th>${layer === "electric" ? "Сечение" : "Диаметр"}</th><th>Длина по прямой, м</th></tr></thead>
+    <tbody>${specRows}</tbody>
+  </table>
+  <div class="legend" style="text-align:left">
+    Длина указана по прямой между точками, без запаса на спуски и повороты.
+  </div>`
+      : ""
+  }
+
+  <h3>Список точек по помещениям</h3>
+  <table>
+    <thead><tr><th>№</th><th>Подпись</th><th>Тип</th><th>Помещение</th><th>Высота, м</th></tr></thead>
+    <tbody>${listRows}</tbody>
+  </table>`
 }
 
 export async function downloadPlanPdf(
