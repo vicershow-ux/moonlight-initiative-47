@@ -9,8 +9,9 @@ function detectApiBase() {
     const runtime = (window as unknown as { __FIXKEY_API__?: string }).__FIXKEY_API__
     if (runtime) return runtime.replace(/\/$/, "")
 
-    const host = window.location.hostname
-    if (host.endsWith("fixkey.ru")) return "https://api.fixkey.ru"
+    // Свой сервер временно не используется: работаем через облако платформы.
+    // Чтобы снова включить собственный сервер, задайте VITE_API_BASE
+    // или window.__FIXKEY_API__ = "https://api.fixkey.ru"
   }
 
   return ""
