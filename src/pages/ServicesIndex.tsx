@@ -4,6 +4,7 @@ import { Footer } from "@/components/Footer"
 import { HighlightedText } from "@/components/HighlightedText"
 import { useSiteContent } from "@/hooks/useSiteContent"
 import { useServiceLandings } from "@/hooks/useServiceLandings"
+import { usePageSeo } from "@/hooks/usePageSeo"
 import Icon from "@/components/ui/icon"
 import { reachGoal } from "@/lib/metrika"
 
@@ -21,9 +22,10 @@ export default function ServicesIndex() {
   const phoneHref = `tel:${phone.replace(/[^\d+]/g, "")}`
 
   const { landings, statsByCategory, loading } = useServiceLandings()
+  const customSeo = usePageSeo("/uslugi")
 
   useEffect(() => {
-    document.title = META_TITLE
+    document.title = customSeo?.meta_title || META_TITLE
 
     const params = new URLSearchParams(window.location.search)
     let junk = false
@@ -38,7 +40,17 @@ export default function ServicesIndex() {
       desc.setAttribute("name", "description")
       document.head.appendChild(desc)
     }
-    desc.setAttribute("content", META_DESCRIPTION)
+    desc.setAttribute("content", customSeo?.meta_description || META_DESCRIPTION)
+
+    if (customSeo?.meta_keywords) {
+      let kw = document.querySelector('meta[name="keywords"]')
+      if (!kw) {
+        kw = document.createElement("meta")
+        kw.setAttribute("name", "keywords")
+        document.head.appendChild(kw)
+      }
+      kw.setAttribute("content", customSeo.meta_keywords)
+    }
 
     let canonical = document.querySelector('link[rel="canonical"]')
     if (!canonical) {
@@ -49,7 +61,7 @@ export default function ServicesIndex() {
     canonical.setAttribute("href", `${window.location.origin}/uslugi`)
 
     window.scrollTo(0, 0)
-  }, [])
+  }, [customSeo])
 
   return (
     <div className="min-h-screen bg-background">

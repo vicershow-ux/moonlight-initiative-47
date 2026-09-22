@@ -1,5 +1,6 @@
 import Icon from "@/components/ui/icon"
 import { SiteSettings } from "@/lib/api"
+import { PageSeoManager } from "@/components/crm/site/PageSeoManager"
 
 interface SeoTabProps {
   form: SiteSettings
@@ -185,7 +186,7 @@ export function SeoTab({ form, update }: SeoTabProps) {
       </div>
 
       <div className="border-t border-white/10 pt-6">
-        <p className="text-xs text-white/40 mb-3">Как это будет выглядеть в поиске:</p>
+        <p className="text-xs text-white/40 mb-3">Как будет выглядеть главная в поиске:</p>
         <div className="bg-white rounded-lg p-4">
           <p className="text-[#1a0dab] text-base leading-snug mb-1">
             {form.meta_title || "FixKey — Ремонт квартир под ключ"}
@@ -196,6 +197,10 @@ export function SeoTab({ form, update }: SeoTabProps) {
               "Добавьте описание, чтобы увидеть, как сайт выглядит в результатах поиска."}
           </p>
         </div>
+      </div>
+
+      <div className="border-t border-white/10 pt-6">
+        <PageSeoManager />
       </div>
     </div>
   )

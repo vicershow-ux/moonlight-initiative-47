@@ -51,6 +51,43 @@ async function fetchCategories() {
   return (data.categories || []).map((c) => c.category).filter(Boolean)
 }
 
+/** SEO-тексты, заданные владельцем в кабинете. Они главнее шаблонных. */
+async function fetchPageSeo() {
+  try {
+    const res = await fetch(`${API}?resource=public_page_seo`, {
+      signal: AbortSignal.timeout(15000),
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    const map = new Map()
+    for (const p of data.pages || []) {
+      if (p && p.page_path) map.set(p.page_path, p)
+    }
+    return map
+  } catch (err) {
+    console.warn(`[prerender] SEO из кабинета недоступен (${err.message}), беру шаблонные тексты`)
+    return new Map()
+  }
+}
+
+/** Накладываем тексты из кабинета поверх шаблонных */
+function applySeo(routes, seo) {
+  if (!seo.size) return routes
+  let applied = 0
+  for (const route of routes) {
+    const custom = seo.get(route.url)
+    if (!custom) continue
+    if (custom.meta_title) route.title = custom.meta_title
+    if (custom.meta_description) route.description = custom.meta_description
+    if (custom.meta_keywords) route.keywords = custom.meta_keywords
+    if (custom.og_image) route.ogImage = custom.og_image
+    if (custom.is_indexed === false) route.index = false
+    applied++
+  }
+  console.log(`[prerender] SEO из кабинета применён к ${applied} страницам`)
+  return routes
+}
+
 function buildRoutes(categories) {
   const routes = [
     { url: "/", title: HOME_TITLE, description: HOME_DESC, index: true },
@@ -114,6 +151,12 @@ function renderHtml(template, route) {
   const head = []
   head.push(`<link rel="canonical" href="${SITE_URL}${route.url}"/>`)
   head.push(`<meta property="og:url" content="${SITE_URL}${route.url}">`)
+  if (route.keywords) {
+    head.push(`<meta name="keywords" content="${esc(route.keywords)}"/>`)
+  }
+  if (route.ogImage) {
+    head.push(`<meta property="og:image" content="${esc(route.ogImage)}">`)
+  }
   if (!route.index) {
     head.push(`<meta name="robots" content="noindex, follow"/>`)
   }
@@ -179,7 +222,8 @@ export function prerenderPlugin() {
         }
       }
 
-      const routes = buildRoutes(categories)
+      const seo = await fetchPageSeo()
+      const routes = applySeo(buildRoutes(categories), seo)
       routes.forEach((route) => {
         writeRoute(outDir, route, renderHtml(template, route))
       })

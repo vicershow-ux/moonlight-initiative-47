@@ -178,6 +178,18 @@ def handler(event: dict, context) -> dict:
             ]
             return response(200, {'categories': cats})
 
+        if method == 'GET' and resource == 'public_page_seo':
+            cur.execute(
+                "SELECT page_path, page_kind, page_label, meta_title, meta_description, "
+                "meta_keywords, h1_title, intro_text, og_image, is_indexed "
+                "FROM site_page_seo WHERE company_id = %s ORDER BY sort_order, id",
+                (LANDING_COMPANY_ID,)
+            )
+            keys = ['page_path', 'page_kind', 'page_label', 'meta_title', 'meta_description',
+                    'meta_keywords', 'h1_title', 'intro_text', 'og_image', 'is_indexed']
+            pages = [dict(zip(keys, r)) for r in cur.fetchall()]
+            return response(200, {'pages': pages})
+
         user = get_current_user(cur, event)
         if not user:
             return response(401, {'error': 'Не авторизован'})
@@ -249,6 +261,66 @@ def handler(event: dict, context) -> dict:
                 cur.execute(f"SELECT {', '.join(SETTINGS_FIELDS)} FROM site_settings WHERE company_id = %s", (company_id,))
                 row = cur.fetchone()
                 return response(200, settings_dict(row))
+
+            return response(405, {'error': 'Метод не поддерживается'})
+
+        if resource == 'page_seo':
+            seo_keys = ['page_path', 'page_kind', 'page_label', 'meta_title', 'meta_description',
+                        'meta_keywords', 'h1_title', 'intro_text', 'og_image', 'is_indexed']
+
+            if method == 'GET':
+                cur.execute(
+                    "SELECT id, page_path, page_kind, page_label, meta_title, meta_description, "
+                    "meta_keywords, h1_title, intro_text, og_image, is_indexed, updated_at "
+                    "FROM site_page_seo WHERE company_id = %s ORDER BY sort_order, id",
+                    (company_id,)
+                )
+                keys = ['id'] + seo_keys + ['updated_at']
+                items = [dict(zip(keys, r)) for r in cur.fetchall()]
+                return response(200, {'items': items})
+
+            if method == 'PUT':
+                body = json.loads(event.get('body') or '{}')
+                page_path = (body.get('page_path') or '').strip()
+                if not page_path:
+                    return response(400, {'error': 'Не указан адрес страницы'})
+
+                editable = ['page_label', 'meta_title', 'meta_description', 'meta_keywords',
+                            'h1_title', 'intro_text', 'og_image']
+                set_clauses = []
+                values = []
+                for field in editable:
+                    if field in body:
+                        set_clauses.append(f'{field} = %s')
+                        values.append(str(body[field] or '').strip())
+
+                if 'is_indexed' in body:
+                    set_clauses.append('is_indexed = %s')
+                    values.append(str(body['is_indexed']).lower() not in ('false', '0', 'none', ''))
+
+                if not set_clauses:
+                    return response(400, {'error': 'Нет данных для обновления'})
+
+                set_clauses.append('updated_at = NOW()')
+                values.extend([company_id, page_path])
+
+                cur.execute(
+                    f"UPDATE site_page_seo SET {', '.join(set_clauses)} "
+                    "WHERE company_id = %s AND page_path = %s",
+                    values
+                )
+                if cur.rowcount == 0:
+                    return response(404, {'error': 'Страница не найдена'})
+                conn.commit()
+
+                cur.execute(
+                    "SELECT id, page_path, page_kind, page_label, meta_title, meta_description, "
+                    "meta_keywords, h1_title, intro_text, og_image, is_indexed, updated_at "
+                    "FROM site_page_seo WHERE company_id = %s AND page_path = %s",
+                    (company_id, page_path)
+                )
+                keys = ['id'] + seo_keys + ['updated_at']
+                return response(200, dict(zip(keys, cur.fetchone())))
 
             return response(405, {'error': 'Метод не поддерживается'})
 

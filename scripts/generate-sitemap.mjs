@@ -36,15 +36,35 @@ async function fetchCategories() {
   return (data.categories || []).map((c) => c.category).filter(Boolean)
 }
 
-function buildXml(categories, today) {
+/** Адреса, которые владелец скрыл от поиска в кабинете */
+async function fetchHiddenPaths() {
+  try {
+    const res = await fetch(`${API}?resource=public_page_seo`, {
+      signal: AbortSignal.timeout(15000),
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    return new Set(
+      (data.pages || []).filter((p) => p.is_indexed === false).map((p) => p.page_path),
+    )
+  } catch (err) {
+    console.warn(`[sitemap] настройки индексации недоступны (${err.message})`)
+    return new Set()
+  }
+}
+
+function buildXml(categories, today, hidden = new Set()) {
   const url = (loc, priority, changefreq, lastmod = today) =>
     `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n` +
     `    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`
 
   const urls = [
-    url(`${SITE_URL}/`, "1.0", "daily"),
-    url(`${SITE_URL}/uslugi`, "0.9", "weekly"),
-    ...categories.map((c) => url(`${SITE_URL}/uslugi/${slugify(c)}`, "0.8", "weekly")),
+    ...(hidden.has("/") ? [] : [url(`${SITE_URL}/`, "1.0", "daily")]),
+    ...(hidden.has("/uslugi") ? [] : [url(`${SITE_URL}/uslugi`, "0.9", "weekly")]),
+    ...categories
+      .map((c) => `/uslugi/${slugify(c)}`)
+      .filter((p) => !hidden.has(p))
+      .map((p) => url(`${SITE_URL}${p}`, "0.8", "weekly")),
   ]
 
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`
@@ -77,7 +97,8 @@ export async function generateSitemap(outDir) {
     return 0
   }
 
-  const xml = buildXml(categories, today)
+  const hidden = await fetchHiddenPaths()
+  const xml = buildXml(categories, today, hidden)
   fs.writeFileSync(path.join(outDir, "sitemap.xml"), xml)
   const publicPath = path.join(process.cwd(), "public", "sitemap.xml")
   fs.writeFileSync(publicPath, xml)

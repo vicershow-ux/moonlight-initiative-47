@@ -1126,6 +1126,21 @@ export interface SiteSettings {
   calc_k_commercial: number
 }
 
+export interface PageSeo {
+  id: number
+  page_path: string
+  page_kind: string
+  page_label: string
+  meta_title: string
+  meta_description: string
+  meta_keywords: string
+  h1_title: string
+  intro_text: string
+  og_image: string
+  is_indexed: boolean
+  updated_at?: string
+}
+
 export interface SitePhilosophyItem {
   id: number
   sort_order: number
@@ -1191,6 +1206,11 @@ export const siteApi = {
     return parseResponse(res) as Promise<SiteSettings>
   },
 
+  async getPublicPageSeo() {
+    const res = await fetch(`${SITE_URL}?resource=public_page_seo`)
+    return parseResponse(res) as Promise<{ pages: PageSeo[] }>
+  },
+
   async getPublicServiceCategories() {
     const res = await fetch(`${SITE_URL}?resource=public_services`)
     return parseResponse(res) as Promise<{ categories: PublicServiceCategory[] }>
@@ -1208,6 +1228,21 @@ export const siteApi = {
       body: JSON.stringify(payload),
     })
     return parseResponse(res) as Promise<SiteSettings>
+  },
+
+  pageSeo: {
+    async list() {
+      const res = await fetch(`${SITE_URL}?resource=page_seo`, { headers: { ...authHeaders() } })
+      return parseResponse(res) as Promise<{ items: PageSeo[] }>
+    },
+    async update(pagePath: string, payload: Partial<PageSeo>) {
+      const res = await fetch(`${SITE_URL}?resource=page_seo`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ ...payload, page_path: pagePath }),
+      })
+      return parseResponse(res) as Promise<PageSeo>
+    },
   },
 
   philosophy: {

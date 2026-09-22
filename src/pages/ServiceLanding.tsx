@@ -8,6 +8,7 @@ import { useSiteContent } from "@/hooks/useSiteContent"
 import { siteApi, PublicServiceItem } from "@/lib/api"
 import { resolveLandingBySlug } from "@/lib/serviceLanding"
 import { useServiceLandings } from "@/hooks/useServiceLandings"
+import { usePageSeo } from "@/hooks/usePageSeo"
 import { getServiceFaq } from "@/lib/serviceFaq"
 import Icon from "@/components/ui/icon"
 import PageNotFound from "@/pages/PageNotFound"
@@ -20,6 +21,8 @@ export default function ServiceLanding() {
   const { slug } = useParams<{ slug: string }>()
   const { landings, categories, loading: catsLoading } = useServiceLandings()
   const meta = resolveLandingBySlug(slug, categories)
+  // Тексты, заданные владельцем в кабинете, важнее шаблонных
+  const customSeo = usePageSeo(slug ? `/uslugi/${slug}` : undefined)
   const { content } = useSiteContent()
   const s = content?.settings
 
@@ -43,7 +46,7 @@ export default function ServiceLanding() {
 
   useEffect(() => {
     if (!meta) return
-    document.title = meta.metaTitle
+    document.title = customSeo?.meta_title || meta.metaTitle
 
     const params = new URLSearchParams(window.location.search)
     let junk = false
@@ -58,7 +61,17 @@ export default function ServiceLanding() {
       desc.setAttribute("name", "description")
       document.head.appendChild(desc)
     }
-    desc.setAttribute("content", meta.metaDescription)
+    desc.setAttribute("content", customSeo?.meta_description || meta.metaDescription)
+
+    if (customSeo?.meta_keywords) {
+      let kw = document.querySelector('meta[name="keywords"]')
+      if (!kw) {
+        kw = document.createElement("meta")
+        kw.setAttribute("name", "keywords")
+        document.head.appendChild(kw)
+      }
+      kw.setAttribute("content", customSeo.meta_keywords)
+    }
 
     let canonical = document.querySelector('link[rel="canonical"]')
     if (!canonical) {
@@ -69,7 +82,7 @@ export default function ServiceLanding() {
     canonical.setAttribute("href", `${window.location.origin}/uslugi/${meta.slug}`)
 
     window.scrollTo(0, 0)
-  }, [meta])
+  }, [meta, customSeo])
 
   useEffect(() => {
     if (!meta || faq.length === 0) return
@@ -254,12 +267,12 @@ export default function ServiceLanding() {
                 </div>
 
                 <h1 className="text-3xl md:text-4xl lg:text-5xl font-medium leading-[1.15] tracking-tight mb-6 text-balance">
-                  {meta.h1.replace(" в Хабаровске", "")}{" "}
+                  {(customSeo?.h1_title || meta.h1).replace(" в Хабаровске", "")}{" "}
                   <HighlightedText>в Хабаровске</HighlightedText>
                 </h1>
 
                 <p className="text-muted-foreground text-lg leading-relaxed mb-8 max-w-2xl">
-                  {meta.intro}
+                  {customSeo?.intro_text || meta.intro}
                 </p>
 
                 <ul className="space-y-3 mb-10">
