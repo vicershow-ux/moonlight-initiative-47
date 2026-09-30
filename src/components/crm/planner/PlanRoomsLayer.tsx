@@ -48,7 +48,9 @@ export function PlanRoomsLayer({
           strokeLinejoin="round"
         />
 
-        {wallSegments(room).map((seg) => {
+        {/* На слое планировки длины показывают размерные линии снаружи контура,
+            поэтому подписи на самих стенах не дублируем */}
+        {layer !== "plan" && wallSegments(room).map((seg) => {
           const a = toScreen(seg.a)
           const b = toScreen(seg.b)
           const mx = (a.x + b.x) / 2

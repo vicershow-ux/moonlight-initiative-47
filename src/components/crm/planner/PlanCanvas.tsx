@@ -21,6 +21,7 @@ import {
   usePlanView,
 } from "./usePlanView"
 import { PlanRoomsLayer } from "./PlanRoomsLayer"
+import { PlanDimensionsLayer } from "./PlanDimensionsLayer"
 import { PlanEngineerLayer } from "./PlanEngineerLayer"
 import { PlanControls, PlanDraftLayer } from "./PlanOverlays"
 
@@ -275,6 +276,10 @@ export function PlanCanvas({
           selectedOpeningId={selectedOpeningId}
           toScreen={toScreen}
         />
+
+        {layer === "plan" && (
+          <PlanDimensionsLayer rooms={scheme.rooms} scale={view.scale} toScreen={toScreen} />
+        )}
 
         {layer !== "plan" && (
           <PlanEngineerLayer

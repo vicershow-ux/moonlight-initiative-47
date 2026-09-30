@@ -219,6 +219,168 @@ export function distToSegment(p: PlanPoint, a: PlanPoint, b: PlanPoint): number 
   return dist(p, { x: a.x + (b.x - a.x) * clamped, y: a.y + (b.y - a.y) * clamped })
 }
 
+export interface WallDimension {
+  id: string
+  a: PlanPoint
+  b: PlanPoint
+  /** Единичная нормаль, направленная наружу контура помещения */
+  nx: number
+  ny: number
+  length: number
+}
+
+/**
+ * Размерные линии по внешнему контуру помещения — по одной на каждую стену.
+ * Нормаль ищем пробной точкой: если она попала внутрь контура, разворачиваем.
+ * Так линии выносятся наружу и на прямоугольных, и на сложных планах.
+ */
+export function roomDimensions(room: PlanRoom): WallDimension[] {
+  const pts = room.points
+  if (pts.length < 3) return []
+
+  const result: WallDimension[] = []
+  for (const seg of wallSegments(room)) {
+    const len = seg.length
+    if (len < 1e-9) continue
+
+    const ux = (seg.b.x - seg.a.x) / len
+    const uy = (seg.b.y - seg.a.y) / len
+    let nx = uy
+    let ny = -ux
+
+    const eps = Math.min(0.05, len * 0.1)
+    const mid = { x: (seg.a.x + seg.b.x) / 2, y: (seg.a.y + seg.b.y) / 2 }
+    if (pointInPolygon({ x: mid.x + nx * eps, y: mid.y + ny * eps }, pts)) {
+      nx = -nx
+      ny = -ny
+    }
+
+    result.push({ id: seg.id, a: seg.a, b: seg.b, nx, ny, length: len })
+  }
+  return result
+}
+
+/**
+ * Размеры только по наружным стенам всей планировки.
+ * Стену считаем внутренней, если сразу за ней начинается соседнее помещение —
+ * такие размеры на чертеже оказались бы внутри контура и мешали бы читать план.
+ */
+export function outerDimensions(rooms: PlanRoom[]): { room: PlanRoom; dims: WallDimension[] }[] {
+  // Две комнаты могут стоять вплотную, и тогда одна и та же линия получила бы
+  // два одинаковых размера друг на друге. Оставляем только первый
+  const seen = new Set<string>()
+  const key = (d: WallDimension) => {
+    const r = (n: number) => Math.round(n * 100) / 100
+    const p1 = `${r(d.a.x)},${r(d.a.y)}`
+    const p2 = `${r(d.b.x)},${r(d.b.y)}`
+    return [p1, p2].sort().join("|")
+  }
+
+  return rooms.map((room) => {
+    const others = rooms.filter((r) => r.id !== room.id && r.points.length > 2)
+    const dims = roomDimensions(room).filter((dim) => {
+      // Пробуем несколько точек вдоль стены: если хотя бы к одной примыкает
+      // соседнее помещение, стена общая. Иначе на планах, где комнаты
+      // совпадают частично, размеры наложились бы друг на друга
+      const out = Math.min(0.12, dim.length * 0.2)
+      for (const t of [0.15, 0.35, 0.5, 0.65, 0.85]) {
+        const probe = {
+          x: dim.a.x + (dim.b.x - dim.a.x) * t + dim.nx * out,
+          y: dim.a.y + (dim.b.y - dim.a.y) * t + dim.ny * out,
+        }
+        if (others.some((r) => pointInPolygon(probe, r.points))) return false
+      }
+      const k = key(dim)
+      if (seen.has(k)) return false
+      seen.add(k)
+      return true
+    })
+    return { room, dims }
+  })
+}
+
+export interface DimensionParts {
+  length: number
+  /** Выносные линии от углов стены к размерной линии */
+  ext1: { x1: number; y1: number; x2: number; y2: number }
+  ext2: { x1: number; y1: number; x2: number; y2: number }
+  line: { x1: number; y1: number; x2: number; y2: number }
+  /** Стрелки на концах — готовые points для polygon */
+  arrows: [string, string]
+  label: { x: number; y: number; cx: number; cy: number; angle: number }
+}
+
+export const DIM_STYLE = {
+  offset: 26,
+  gap: 4,
+  overshoot: 6,
+  arrow: 8,
+  text: 5,
+}
+
+/**
+ * Переводит размер стены в экранные координаты: выноски, линия, стрелки, подпись.
+ * Чистая математика без привязки к React — одинаково работает на холсте и в PDF.
+ */
+export function dimensionParts(
+  dim: WallDimension,
+  toScreen: (p: PlanPoint) => { x: number; y: number },
+  opts: Partial<typeof DIM_STYLE> = {},
+): DimensionParts {
+  const o = { ...DIM_STYLE, ...opts }
+  const sa = toScreen(dim.a)
+  const sb = toScreen(dim.b)
+  const { nx, ny } = dim
+
+  const ax = sa.x + nx * o.offset
+  const ay = sa.y + ny * o.offset
+  const bx = sb.x + nx * o.offset
+  const by = sb.y + ny * o.offset
+
+  const dx = bx - ax
+  const dy = by - ay
+  const len = Math.hypot(dx, dy) || 1
+  const ux = dx / len
+  const uy = dy / len
+  const px = -uy
+  const py = ux
+
+  const head = Math.min(o.arrow, len / 3)
+  const half = head * 0.34
+  const arrow = (tipX: number, tipY: number, dirX: number, dirY: number) => {
+    const baseX = tipX + dirX * head
+    const baseY = tipY + dirY * head
+    return (
+      `${tipX},${tipY} ${baseX + px * half},${baseY + py * half} ` +
+      `${baseX - px * half},${baseY - py * half}`
+    )
+  }
+
+  const mx = (ax + bx) / 2
+  const my = (ay + by) / 2
+  let angle = (Math.atan2(dy, dx) * 180) / Math.PI
+  if (angle > 90 || angle < -90) angle += 180
+
+  return {
+    length: dim.length,
+    ext1: {
+      x1: sa.x + nx * o.gap,
+      y1: sa.y + ny * o.gap,
+      x2: sa.x + nx * (o.offset + o.overshoot),
+      y2: sa.y + ny * (o.offset + o.overshoot),
+    },
+    ext2: {
+      x1: sb.x + nx * o.gap,
+      y1: sb.y + ny * o.gap,
+      x2: sb.x + nx * (o.offset + o.overshoot),
+      y2: sb.y + ny * (o.offset + o.overshoot),
+    },
+    line: { x1: ax, y1: ay, x2: bx, y2: by },
+    arrows: [arrow(ax, ay, ux, uy), arrow(bx, by, -ux, -uy)],
+    label: { x: mx, y: my - o.text, cx: mx, cy: my, angle },
+  }
+}
+
 export function snap(value: number, step: number) {
   return Math.round(value / step) * step
 }

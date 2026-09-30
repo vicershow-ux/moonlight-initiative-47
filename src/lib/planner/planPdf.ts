@@ -1,8 +1,10 @@
 import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
 import {
+  dimensionParts,
   fmtNum,
   openingPosition,
   polygonCentroid,
+  outerDimensions,
   schemeBounds,
   schemeMetrics,
   wallSegments,
@@ -16,7 +18,9 @@ export function schemeToSvg(
   layer: PlanLayer = "plan",
 ): string {
   const b = schemeBounds(scheme)
-  const pad = 56
+  // Запас по краям: размерные линии выносятся наружу контура и не должны
+  // упираться в рамку чертежа
+  const pad = layer === "plan" ? 86 : 56
   const scale = Math.min((width - pad * 2) / b.width, (height - pad * 2) / b.height)
   const tx = (width - b.width * scale) / 2 - b.minX * scale
   const ty = (height - b.height * scale) / 2 - b.minY * scale
@@ -52,16 +56,20 @@ export function schemeToSvg(
       room.points.map((p, i) => `${i === 0 ? "M" : "L"}${sx(p.x)},${sy(p.y)}`).join(" ") + " Z"
     parts.push(`<path d="${d}" fill="#fafafa" stroke="${wallColor}" stroke-width="2.5" stroke-linejoin="round"/>`)
 
-    wallSegments(room).forEach((seg) => {
-      if (seg.length * scale < 40) return
-      const mx = (sx(seg.a.x) + sx(seg.b.x)) / 2
-      const my = (sy(seg.a.y) + sy(seg.b.y)) / 2
-      const angle = (Math.atan2(sy(seg.b.y) - sy(seg.a.y), sx(seg.b.x) - sx(seg.a.x)) * 180) / Math.PI
-      const flip = angle > 90 || angle < -90
-      parts.push(
-        `<text x="${mx}" y="${my - 5}" text-anchor="middle" font-size="10" fill="${dimColor}" font-family="Arial" transform="rotate(${flip ? angle + 180 : angle}, ${mx}, ${my})">${fmtNum(seg.length, 2)} м</text>`,
-      )
-    })
+    // На инженерных схемах длины подписываем прямо на стенах, а на планировке
+    // их показывают размерные линии по внешнему контуру — ниже
+    if (isEng) {
+      wallSegments(room).forEach((seg) => {
+        if (seg.length * scale < 40) return
+        const mx = (sx(seg.a.x) + sx(seg.b.x)) / 2
+        const my = (sy(seg.a.y) + sy(seg.b.y)) / 2
+        const angle = (Math.atan2(sy(seg.b.y) - sy(seg.a.y), sx(seg.b.x) - sx(seg.a.x)) * 180) / Math.PI
+        const flip = angle > 90 || angle < -90
+        parts.push(
+          `<text x="${mx}" y="${my - 5}" text-anchor="middle" font-size="10" fill="${dimColor}" font-family="Arial" transform="rotate(${flip ? angle + 180 : angle}, ${mx}, ${my})">${fmtNum(seg.length, 2)} м</text>`,
+        )
+      })
+    }
 
     if (room.points.length > 2) {
       const c = polygonCentroid(room.points)
@@ -78,6 +86,29 @@ export function schemeToSvg(
       )
     }
   })
+
+  // Размерные линии по внешнему контуру — только на планировке, где они читаются
+  if (!isEng) {
+    const dimLine = "#555555"
+    const dimText = "#161616"
+    const toScreen = (p: { x: number; y: number }) => ({ x: sx(p.x), y: sy(p.y) })
+
+    outerDimensions(scheme.rooms).forEach(({ dims }) => {
+      dims.forEach((dim) => {
+        if (dim.length * scale < 42) return
+        const dp = dimensionParts(dim, toScreen, { offset: 22, arrow: 7, overshoot: 5 })
+
+        parts.push(
+          `<line x1="${dp.ext1.x1}" y1="${dp.ext1.y1}" x2="${dp.ext1.x2}" y2="${dp.ext1.y2}" stroke="${dimLine}" stroke-width="0.7"/>`,
+          `<line x1="${dp.ext2.x1}" y1="${dp.ext2.y1}" x2="${dp.ext2.x2}" y2="${dp.ext2.y2}" stroke="${dimLine}" stroke-width="0.7"/>`,
+          `<line x1="${dp.line.x1}" y1="${dp.line.y1}" x2="${dp.line.x2}" y2="${dp.line.y2}" stroke="${dimLine}" stroke-width="0.7"/>`,
+          `<polygon points="${dp.arrows[0]}" fill="${dimLine}"/>`,
+          `<polygon points="${dp.arrows[1]}" fill="${dimLine}"/>`,
+          `<text x="${dp.label.x}" y="${dp.label.y}" text-anchor="middle" font-size="10" font-weight="bold" fill="${dimText}" font-family="Arial" transform="rotate(${dp.label.angle}, ${dp.label.cx}, ${dp.label.cy})">${fmtNum(dp.length, 2)} м</text>`,
+        )
+      })
+    })
+  }
 
   scheme.openings.forEach((o) => {
     const pos = openingPosition(scheme, o)
