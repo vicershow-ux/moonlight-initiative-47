@@ -70,7 +70,7 @@ function buildXml(categories, today, hidden = new Set()) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`
 }
 
-export async function generateSitemap(outDir) {
+export async function generateSitemap(outDir, rootDir = process.cwd()) {
   const today = new Date().toISOString().slice(0, 10)
   let categories = []
 
@@ -78,7 +78,7 @@ export async function generateSitemap(outDir) {
     categories = await fetchCategories()
   } catch (err) {
     console.warn(`[sitemap] не удалось получить услуги (${err.message}), беру прошлую карту`)
-    const existing = path.join(process.cwd(), "public", "sitemap.xml")
+    const existing = path.join(rootDir, "public", "sitemap.xml")
     if (fs.existsSync(existing)) {
       const prev = fs.readFileSync(existing, "utf8")
       categories = [...prev.matchAll(/\/uslugi\/([a-z0-9-]+)</g)].map((m) => m[1])
@@ -100,19 +100,29 @@ export async function generateSitemap(outDir) {
   const hidden = await fetchHiddenPaths()
   const xml = buildXml(categories, today, hidden)
   fs.writeFileSync(path.join(outDir, "sitemap.xml"), xml)
-  const publicPath = path.join(process.cwd(), "public", "sitemap.xml")
+  const publicPath = path.join(rootDir, "public", "sitemap.xml")
   fs.writeFileSync(publicPath, xml)
   return categories.length
 }
 
 export function sitemapPlugin() {
+  // Папку сборки спрашиваем у Vite, а не считаем от текущего каталога —
+  // иначе при публикации из другого места карта сайта не обновляется.
+  let rootDir = process.cwd()
+  let buildDir = path.join(process.cwd(), "dist")
+
   return {
     name: "generate-sitemap",
     apply: "build",
+    configResolved(config) {
+      rootDir = config.root || process.cwd()
+      buildDir = path.resolve(rootDir, config.build?.outDir || "dist")
+    },
     async closeBundle() {
-      const outDir = path.join(process.cwd(), "dist")
-      if (!fs.existsSync(outDir)) return
-      const count = await generateSitemap(outDir)
+      if (!fs.existsSync(buildDir)) {
+        throw new Error(`[sitemap] не найдена папка сборки: ${buildDir}`)
+      }
+      const count = await generateSitemap(buildDir, rootDir)
       console.log(`[sitemap] карта сайта собрана: ${count} направлений`)
     },
   }

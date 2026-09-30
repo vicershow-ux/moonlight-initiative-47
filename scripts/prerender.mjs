@@ -177,11 +177,11 @@ function writeRoute(outDir, route, html) {
   fs.writeFileSync(target, html)
 }
 
-function cleanPublicRoutes() {
+function cleanPublicRoutes(rootDir) {
   // Подчищаем копии страниц, оставшиеся от прежней версии сборщика:
   // пока они лежат в public, они затирают свежие страницы в сборке.
   ;["uslugi", "privacy", "terms", "cookies"].forEach((name) => {
-    const dir = path.join(process.cwd(), "public", name)
+    const dir = path.join(rootDir, "public", name)
     if (fs.existsSync(path.join(dir, "index.html")) || name === "uslugi") {
       fs.rmSync(dir, { recursive: true, force: true })
     }
@@ -189,17 +189,32 @@ function cleanPublicRoutes() {
 }
 
 export function prerenderPlugin() {
+  // Папку сборки берём у самого Vite. Раньше она вычислялась от текущего
+  // каталога, и если публикация запускала сборку из другого места, скрипт
+  // молча выходил: страницы оставались без своих заголовков.
+  let rootDir = process.cwd()
+  let buildDir = path.join(process.cwd(), "dist")
+
   return {
     name: "prerender-routes",
     apply: "build",
+    configResolved(config) {
+      rootDir = config.root || process.cwd()
+      buildDir = path.resolve(rootDir, config.build?.outDir || "dist")
+    },
     async closeBundle() {
-      const outDir = path.join(process.cwd(), "dist")
+      const outDir = buildDir
       const indexPath = path.join(outDir, "index.html")
-      if (!fs.existsSync(indexPath)) return
+      if (!fs.existsSync(indexPath)) {
+        throw new Error(
+          `[prerender] не найдена собранная главная страница: ${indexPath}. ` +
+            "Без неё страницы услуг остались бы без своих заголовков.",
+        )
+      }
 
       const template = fs.readFileSync(indexPath, "utf8")
 
-      cleanPublicRoutes()
+      cleanPublicRoutes(rootDir)
 
       let categories = []
       try {
