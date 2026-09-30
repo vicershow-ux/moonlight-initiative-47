@@ -150,11 +150,43 @@ export function ObjectInfoPanels({ object, rooms, roomsLoading }: ObjectInfoPane
           <div className="flex flex-col gap-2">
             {rooms.map((room) => (
               <div key={room.id} className="bg-[#161616] border border-white/10 rounded-lg p-4">
-                <p className="text-sm font-medium">{room.name}</p>
-                <p className="text-xs text-white/30 mt-1">
-                  {room.room_type && `${room.room_type} · `}
-                  {num2(room.area)} м² · {num2(room.perimeter)} м/п
-                </p>
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                  <p className="text-sm font-medium">{room.name}</p>
+                  {room.room_type && (
+                    <p className="text-xs text-white/30">{room.room_type}</p>
+                  )}
+                </div>
+
+                {/* Показываем все замеры: по ним считается смета,
+                    и прораб должен видеть их не заходя в редактирование */}
+                <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-4">
+                  <div>
+                    <p className="text-[11px] text-white/40">Пол / потолок</p>
+                    <p className="text-sm font-medium">{num2(room.area)} м²</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-white/40">Периметр</p>
+                    <p className="text-sm font-medium">{num2(room.perimeter)} м</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-white/40">Высота</p>
+                    <p className="text-sm font-medium">
+                      {room.ceiling_height ? `${num2(room.ceiling_height)} м` : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-white/40">Стены</p>
+                    <p className="text-sm font-medium">
+                      {room.wall_area ? `${num2(room.wall_area)} м²` : "—"}
+                    </p>
+                  </div>
+                </div>
+
+                {room.notes && (
+                  <p className="mt-3 border-t border-white/5 pt-2 text-xs text-white/40">
+                    {room.notes}
+                  </p>
+                )}
               </div>
             ))}
           </div>

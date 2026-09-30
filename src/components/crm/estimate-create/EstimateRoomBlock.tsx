@@ -140,7 +140,11 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
                       className="w-full flex flex-col items-start px-3 py-2 text-left hover:bg-white/5 transition-colors"
                     >
                       <span className="text-sm">{tpl.name}</span>
-                      <span className="text-xs text-white/30">{num2(tpl.area)} м² · {num2(tpl.perimeter)} м/п</span>
+                      <span className="text-xs text-white/30">
+                        {num2(tpl.area)} м² · {num2(tpl.perimeter)} м/п
+                        {tpl.ceiling_height ? ` · h ${num2(tpl.ceiling_height)} м` : ""}
+                        {tpl.wall_area ? ` · стены ${num2(tpl.wall_area)} м²` : ""}
+                      </span>
                     </button>
                   ))
                 )}
