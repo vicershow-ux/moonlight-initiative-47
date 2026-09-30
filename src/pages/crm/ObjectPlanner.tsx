@@ -1,419 +1,45 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
-import { PlanCanvas, PlanTool } from "@/components/crm/planner/PlanCanvas"
-import { PlanSidebar } from "@/components/crm/planner/PlanSidebar"
-import { EngineerSidebar } from "@/components/crm/planner/EngineerSidebar"
-import { objectsApi, objectPlansApi, ObjectItem } from "@/lib/api"
-import { pointInPolygon, schemeMetrics } from "@/lib/planner/geometry"
-import { downloadPlanPdf } from "@/lib/planner/planPdf"
-import {
-  LAYERS,
-  LINK_SPECS,
-  NODE_PRESETS,
-  NodeKind,
-  OPENING_PRESETS,
-  OpeningKind,
-  PlanLayer,
-  PlanLink,
-  PlanNode,
-  PlanOpening,
-  PlanPoint,
-  PlanRoom,
-  PlanScheme,
-  emptyScheme,
-} from "@/lib/planner/types"
-
-const uid = () => Math.random().toString(36).slice(2, 10)
-
-const goldBtn =
-  "flex items-center justify-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 min-h-[44px] rounded-lg disabled:opacity-40"
-
-const ghostBtn =
-  "flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 transition-colors text-sm px-4 min-h-[44px] rounded-lg disabled:opacity-40"
-
-const TOOLS: { key: PlanTool; label: string; icon: string }[] = [
-  { key: "select", label: "Выбор", icon: "MousePointer2" },
-  { key: "draw", label: "Стены", icon: "PenLine" },
-  { key: "window", label: "Окно", icon: "RectangleHorizontal" },
-  { key: "door", label: "Дверь", icon: "DoorOpen" },
-  { key: "arch", label: "Проём", icon: "Frame" },
-]
-
-const ENGINEER_TOOLS: { key: PlanTool; label: string; icon: string }[] = [
-  { key: "select", label: "Выбор", icon: "MousePointer2" },
-  { key: "node", label: "Поставить точку", icon: "CirclePlus" },
-  { key: "link", label: "Соединить", icon: "Spline" },
-]
+import { usePlannerState } from "./planner/usePlannerState"
+import { PlannerLayerBar, PlannerToolbar } from "./planner/PlannerToolbar"
+import { PlannerEngineerPicker, PlannerSettingsBar } from "./planner/PlannerPanels"
+import { PlannerWorkspace } from "./planner/PlannerWorkspace"
 
 export default function ObjectPlanner() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
-  const [object, setObject] = useState<ObjectItem | null>(null)
-  const [scheme, setScheme] = useState<PlanScheme>(emptyScheme())
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [exporting, setExporting] = useState(false)
-  const [message, setMessage] = useState("")
-  const [error, setError] = useState("")
-
-  const [tool, setTool] = useState<PlanTool>("draw")
-  const [layer, setLayer] = useState<PlanLayer>("plan")
-  const [nodeKind, setNodeKind] = useState<NodeKind>("socket")
-  const [linkSpec, setLinkSpec] = useState("2.5 мм²")
-  const [linkFromId, setLinkFromId] = useState<string | null>(null)
-  const [draft, setDraft] = useState<PlanPoint[]>([])
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null)
-  const [selectedOpeningId, setSelectedOpeningId] = useState<string | null>(null)
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
-  const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null)
-  const [fileUrl, setFileUrl] = useState<string | null>(null)
-  const [dirty, setDirty] = useState(false)
-  const [syncRooms, setSyncRooms] = useState(true)
-
-  useEffect(() => {
-    if (!id) return
-    setLoading(true)
-    Promise.all([objectsApi.get(Number(id)), objectPlansApi.get(Number(id))])
-      .then(([objData, planData]) => {
-        setObject(objData)
-        if (planData.plan?.scheme) {
-          const raw = planData.plan.scheme as unknown as PlanScheme
-          if (raw && Array.isArray(raw.rooms)) {
-            setScheme({
-              version: 1,
-              rooms: raw.rooms || [],
-              openings: raw.openings || [],
-              defaultHeight: Number(planData.plan.default_height) || 2.7,
-              nodes: raw.nodes || [],
-              links: raw.links || [],
-            })
-          }
-          setFileUrl(planData.plan.file_url || null)
-        }
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : "Не удалось загрузить"))
-      .finally(() => setLoading(false))
-  }, [id])
-
-  const { totals } = useMemo(() => schemeMetrics(scheme), [scheme])
-
-  const selectedRoom = useMemo(
-    () => scheme.rooms.find((r) => r.id === selectedRoomId) || null,
-    [scheme.rooms, selectedRoomId],
-  )
-  const selectedOpening = useMemo(
-    () => scheme.openings.find((o) => o.id === selectedOpeningId) || null,
-    [scheme.openings, selectedOpeningId],
-  )
-
-  const touch = () => {
-    setDirty(true)
-    setMessage("")
-  }
-
-  const finishRoom = useCallback(
-    (points: PlanPoint[]) => {
-      if (points.length < 3) return
-      const room: PlanRoom = {
-        id: uid(),
-        name: `Помещение ${scheme.rooms.length + 1}`,
-        room_type: "",
-        points,
-        height: scheme.defaultHeight,
-        notes: "",
-      }
-      setScheme((s) => ({ ...s, rooms: [...s.rooms, room] }))
-      setDraft([])
-      setSelectedRoomId(room.id)
-      setSelectedOpeningId(null)
-      setTool("select")
-      touch()
-    },
-    [scheme.rooms.length, scheme.defaultHeight],
-  )
-
-  const addOpening = (wallId: string, offset: number) => {
-    if (tool === "select" || tool === "draw") return
-    const preset = OPENING_PRESETS[tool as OpeningKind]
-    const opening: PlanOpening = {
-      id: uid(),
-      kind: tool as OpeningKind,
-      wallId,
-      offset: Math.max(offset - preset.width / 2, 0),
-      width: preset.width,
-      height: preset.height,
-      sill: preset.sill,
-    }
-    setScheme((s) => ({ ...s, openings: [...s.openings, opening] }))
-    setSelectedOpeningId(opening.id)
-    setSelectedRoomId(null)
-    touch()
-  }
-
-  const updateRoom = (roomId: string, patch: Partial<PlanRoom>) => {
-    setScheme((s) => ({
-      ...s,
-      rooms: s.rooms.map((r) => (r.id === roomId ? { ...r, ...patch } : r)),
-    }))
-    touch()
-  }
-
-  const deleteRoom = (roomId: string) => {
-    setScheme((s) => {
-      const room = s.rooms.find((r) => r.id === roomId)
-      const wallPrefix = room ? `${room.id}:` : ""
-      return {
-        ...s,
-        rooms: s.rooms.filter((r) => r.id !== roomId),
-        openings: s.openings.filter((o) => !o.wallId.startsWith(wallPrefix)),
-      }
-    })
-    setSelectedRoomId(null)
-    touch()
-  }
-
-  const updateOpening = (openingId: string, patch: Partial<PlanOpening>) => {
-    setScheme((s) => ({
-      ...s,
-      openings: s.openings.map((o) => (o.id === openingId ? { ...o, ...patch } : o)),
-    }))
-    touch()
-  }
-
-  const deleteOpening = (openingId: string) => {
-    setScheme((s) => ({ ...s, openings: s.openings.filter((o) => o.id !== openingId) }))
-    setSelectedOpeningId(null)
-    touch()
-  }
-
-  const moveVertex = (roomId: string, index: number, point: PlanPoint) => {
-    setScheme((s) => ({
-      ...s,
-      rooms: s.rooms.map((r) =>
-        r.id === roomId
-          ? { ...r, points: r.points.map((p, i) => (i === index ? point : p)) }
-          : r,
-      ),
-    }))
-    setDirty(true)
-  }
-
-  const selectedNode = useMemo(
-    () => (scheme.nodes || []).find((n) => n.id === selectedNodeId) || null,
-    [scheme.nodes, selectedNodeId],
-  )
-  const selectedLink = useMemo(
-    () => (scheme.links || []).find((l) => l.id === selectedLinkId) || null,
-    [scheme.links, selectedLinkId],
-  )
-
-  /** Ставим точку (розетку, щит, вывод воды) в том помещении, куда кликнули */
-  const addNode = (point: PlanPoint) => {
-    if (layer === "plan") return
-    const preset = NODE_PRESETS[nodeKind]
-    const room = [...scheme.rooms].reverse().find((r) => pointInPolygon(point, r.points))
-    const node: PlanNode = {
-      id: uid(),
-      layer,
-      kind: nodeKind,
-      x: point.x,
-      y: point.y,
-      height: preset.height,
-      label: "",
-      roomId: room ? room.id : null,
-    }
-    setScheme((s) => ({ ...s, nodes: [...(s.nodes || []), node] }))
-    setSelectedNodeId(node.id)
-    setSelectedLinkId(null)
-    touch()
-  }
-
-  const updateNode = (nodeId: string, patch: Partial<PlanNode>) => {
-    setScheme((s) => ({
-      ...s,
-      nodes: (s.nodes || []).map((n) => (n.id === nodeId ? { ...n, ...patch } : n)),
-    }))
-    touch()
-  }
-
-  const deleteNode = (nodeId: string) => {
-    setScheme((s) => ({
-      ...s,
-      nodes: (s.nodes || []).filter((n) => n.id !== nodeId),
-      links: (s.links || []).filter((l) => l.fromId !== nodeId && l.toId !== nodeId),
-    }))
-    setSelectedNodeId(null)
-    touch()
-  }
-
-  const moveNode = (nodeId: string, point: PlanPoint) => {
-    setScheme((s) => ({
-      ...s,
-      nodes: (s.nodes || []).map((n) =>
-        n.id === nodeId
-          ? {
-              ...n,
-              x: point.x,
-              y: point.y,
-              roomId:
-                [...s.rooms].reverse().find((r) => pointInPolygon(point, r.points))?.id ?? null,
-            }
-          : n,
-      ),
-    }))
-    setDirty(true)
-  }
-
-  /** Первый клик — откуда тянем, второй — куда. Линия получает текущее сечение */
-  const handleLinkClick = (nodeId: string) => {
-    if (layer === "plan") return
-    if (!linkFromId) {
-      setLinkFromId(nodeId)
-      setSelectedNodeId(nodeId)
-      return
-    }
-    if (linkFromId === nodeId) {
-      setLinkFromId(null)
-      return
-    }
-
-    const exists = (scheme.links || []).some(
-      (l) =>
-        (l.fromId === linkFromId && l.toId === nodeId) ||
-        (l.fromId === nodeId && l.toId === linkFromId),
-    )
-    if (!exists) {
-      const link: PlanLink = {
-        id: uid(),
-        layer,
-        fromId: linkFromId,
-        toId: nodeId,
-        spec: linkSpec,
-        points: [],
-      }
-      setScheme((s) => ({ ...s, links: [...(s.links || []), link] }))
-      setSelectedLinkId(link.id)
-      touch()
-    }
-    setLinkFromId(nodeId)
-  }
-
-  const updateLink = (linkId: string, patch: Partial<PlanLink>) => {
-    setScheme((s) => ({
-      ...s,
-      links: (s.links || []).map((l) => (l.id === linkId ? { ...l, ...patch } : l)),
-    }))
-    touch()
-  }
-
-  const deleteLink = (linkId: string) => {
-    setScheme((s) => ({ ...s, links: (s.links || []).filter((l) => l.id !== linkId) }))
-    setSelectedLinkId(null)
-    touch()
-  }
-
-  /** Смена слоя сбрасывает инструмент и выделение — чтобы не рисовать стены поверх электрики */
-  const changeLayer = (next: PlanLayer) => {
-    setLayer(next)
-    setTool("select")
-    setLinkFromId(null)
-    setSelectedNodeId(null)
-    setSelectedLinkId(null)
-    setDraft([])
-    if (next === "electric") {
-      setNodeKind("socket")
-      setLinkSpec(LINK_SPECS.electric[1])
-    } else if (next === "plumbing") {
-      setNodeKind("water_cold")
-      setLinkSpec(LINK_SPECS.plumbing[1])
-    }
-  }
-
-  const setAllHeights = (height: number) => {
-    setScheme((s) => ({
-      ...s,
-      defaultHeight: height,
-      rooms: s.rooms.map((r) => ({ ...r, height })),
-    }))
-    touch()
-  }
-
-  const meta = {
-    objectCode: object?.object_code || "",
-    clientName: object?.client_name,
-    address: object?.address,
-  }
-
-  const save = async () => {
-    if (!id || !object) return
-    if (scheme.rooms.length === 0) {
-      setError("Нарисуйте хотя бы одно помещение")
-      return
-    }
-
-    setSaving(true)
-    setError("")
-    try {
-      const blob = (await downloadPlanPdf(scheme, meta, "blob")) as Blob
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(String(reader.result).split(",")[1] || "")
-        reader.onerror = reject
-        reader.readAsDataURL(blob)
-      })
-
-      const res = await objectPlansApi.save({
-        object_id: Number(id),
-        scheme: {
-          ...scheme,
-          rooms: scheme.rooms.map((r) => {
-            const m = schemeMetrics({ ...scheme, rooms: [r] }).rooms[0]
-            return {
-              ...r,
-              area: m.area,
-              perimeter: m.perimeter,
-              wall_area: m.wallAreaGross,
-              wall_area_net: m.wallAreaNet,
-            }
-          }),
-        },
-        default_height: scheme.defaultHeight,
-        totals: { floor: totals.floor, wall: totals.wallNet, perimeter: totals.perimeter },
-        pdf_data: base64,
-        file_name: `План помещений ${object.object_code}.pdf`,
-        sync_rooms: syncRooms,
-      })
-
-      setFileUrl(res.file_url || fileUrl)
-      setDirty(false)
-      setMessage(
-        res.synced_rooms > 0
-          ? `План сохранён, PDF в файлах объекта. Помещений обновлено: ${res.synced_rooms}`
-          : "План сохранён, PDF обновлён в файлах объекта",
-      )
-      setTimeout(() => setMessage(""), 4000)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось сохранить")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const exportPdf = async () => {
-    if (scheme.rooms.length === 0) {
-      setError("Нарисуйте хотя бы одно помещение")
-      return
-    }
-    setExporting(true)
-    try {
-      await downloadPlanPdf(scheme, meta, "save")
-    } finally {
-      setExporting(false)
-    }
-  }
+  const state = usePlannerState(id)
+  const {
+    object,
+    scheme,
+    loading,
+    saving,
+    exporting,
+    message,
+    error,
+    tool,
+    setTool,
+    layer,
+    nodeKind,
+    setNodeKind,
+    linkSpec,
+    setLinkSpec,
+    linkFromId,
+    setLinkFromId,
+    draft,
+    setDraft,
+    fileUrl,
+    dirty,
+    syncRooms,
+    setSyncRooms,
+    finishRoom,
+    changeLayer,
+    setAllHeights,
+    save,
+    exportPdf,
+  } = state
 
   if (loading) {
     return (
@@ -452,251 +78,45 @@ export default function ObjectPlanner() {
         </div>
       )}
 
-      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-[#1f1f1f] p-2">
-        <span className="px-2 text-xs uppercase text-white/40">Слой</span>
-        {LAYERS.map((l) => (
-          <button
-            key={l.value}
-            onClick={() => changeLayer(l.value)}
-            className={`flex min-h-[40px] items-center gap-2 rounded-lg px-4 text-sm transition-colors ${
-              layer === l.value
-                ? "bg-[#D4AF37] text-[#161616]"
-                : "bg-white/5 text-white/60 hover:bg-white/10"
-            }`}
-          >
-            <Icon name={l.icon} size={16} />
-            {l.label}
-          </button>
-        ))}
-        {layer !== "plan" && (
-          <span className="ml-auto pr-2 text-xs text-white/40">
-            Планировка показана подложкой — менять её можно на слое «Планировка»
-          </span>
-        )}
-      </div>
+      <PlannerLayerBar layer={layer} changeLayer={changeLayer} />
 
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-wrap gap-2">
-          {(layer === "plan" ? TOOLS : ENGINEER_TOOLS).map((t) => (
-            <button
-              key={t.key}
-              onClick={() => {
-                setTool(t.key)
-                if (t.key !== "draw") setDraft([])
-                if (t.key !== "link") setLinkFromId(null)
-              }}
-              className={`flex min-h-[42px] items-center gap-2 rounded-lg px-3 text-sm transition-colors ${
-                tool === t.key
-                  ? "bg-[#D4AF37] text-[#161616]"
-                  : "bg-white/5 text-white/60 hover:bg-white/10"
-              }`}
-            >
-              <Icon name={t.icon} size={16} />
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {draft.length > 0 && (
-            <>
-              <button className={ghostBtn} onClick={() => setDraft(draft.slice(0, -1))}>
-                <Icon name="Undo2" size={16} />
-                Отменить точку
-              </button>
-              {draft.length >= 3 && (
-                <button className={goldBtn} onClick={() => finishRoom(draft)}>
-                  <Icon name="Check" size={16} />
-                  Замкнуть
-                </button>
-              )}
-            </>
-          )}
-          <button className={ghostBtn} onClick={exportPdf} disabled={exporting}>
-            <Icon
-              name={exporting ? "Loader2" : "Download"}
-              size={16}
-              className={exporting ? "animate-spin" : ""}
-            />
-            Скачать PDF
-          </button>
-          <button className={goldBtn} onClick={save} disabled={saving}>
-            <Icon
-              name={saving ? "Loader2" : "Save"}
-              size={16}
-              className={saving ? "animate-spin" : ""}
-            />
-            Сохранить
-          </button>
-        </div>
-      </div>
+      <PlannerToolbar
+        layer={layer}
+        tool={tool}
+        setTool={setTool}
+        draft={draft}
+        setDraft={setDraft}
+        setLinkFromId={setLinkFromId}
+        finishRoom={finishRoom}
+        exportPdf={exportPdf}
+        save={save}
+        exporting={exporting}
+        saving={saving}
+      />
 
       {layer !== "plan" && (
-        <div className="mb-4 rounded-xl border border-white/10 bg-[#1f1f1f] p-3">
-          <div className="mb-2 text-xs uppercase text-white/40">
-            {tool === "link" ? "Сечение / диаметр новой линии" : "Что ставим на план"}
-          </div>
-
-          {tool === "link" ? (
-            <div className="flex flex-wrap gap-2">
-              {LINK_SPECS[layer].map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setLinkSpec(s)}
-                  className={`min-h-[38px] rounded-lg px-3 text-sm transition-colors ${
-                    linkSpec === s
-                      ? "bg-[#D4AF37] text-[#161616]"
-                      : "bg-white/5 text-white/60 hover:bg-white/10"
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-              <span className="flex items-center pl-2 text-xs text-white/40">
-                {linkFromId
-                  ? "Кликните по второй точке — линия соединит их"
-                  : "Кликните по первой точке, затем по второй"}
-              </span>
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {(Object.keys(NODE_PRESETS) as NodeKind[])
-                .filter((k) => NODE_PRESETS[k].layer === layer)
-                .map((k) => (
-                  <button
-                    key={k}
-                    onClick={() => {
-                      setNodeKind(k)
-                      setTool("node")
-                    }}
-                    className={`flex min-h-[38px] items-center gap-2 rounded-lg px-3 text-sm transition-colors ${
-                      nodeKind === k && tool === "node"
-                        ? "bg-[#D4AF37] text-[#161616]"
-                        : "bg-white/5 text-white/60 hover:bg-white/10"
-                    }`}
-                  >
-                    <Icon name={NODE_PRESETS[k].icon} size={15} />
-                    {NODE_PRESETS[k].label}
-                  </button>
-                ))}
-            </div>
-          )}
-        </div>
+        <PlannerEngineerPicker
+          layer={layer}
+          tool={tool}
+          setTool={setTool}
+          nodeKind={nodeKind}
+          setNodeKind={setNodeKind}
+          linkSpec={linkSpec}
+          setLinkSpec={setLinkSpec}
+          linkFromId={linkFromId}
+        />
       )}
 
-      <div className="mb-4 flex flex-wrap items-center gap-4 rounded-xl border border-white/10 bg-[#1f1f1f] p-3">
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-white/50">Высота стен, м</span>
-          <input
-            className="w-24 rounded-lg border border-white/10 bg-[#161616] px-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50"
-            type="number"
-            min="1"
-            step="0.05"
-            value={scheme.defaultHeight}
-            onChange={(e) => setAllHeights(Number(e.target.value))}
-          />
-        </div>
-        <label className="flex cursor-pointer items-center gap-2 text-sm text-white/60">
-          <input
-            type="checkbox"
-            checked={syncRooms}
-            onChange={(e) => setSyncRooms(e.target.checked)}
-            className="h-4 w-4 accent-[#D4AF37]"
-          />
-          Переносить метраж в помещения объекта
-        </label>
-        {fileUrl && (
-          <a
-            href={fileUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1.5 text-sm text-[#D4AF37] hover:text-[#B8860B]"
-          >
-            <Icon name="FileText" size={15} />
-            Открыть сохранённый PDF
-          </a>
-        )}
-        {dirty && (
-          <span className="flex items-center gap-1.5 text-xs text-amber-400">
-            <Icon name="CircleAlert" size={13} />
-            Есть несохранённые изменения
-          </span>
-        )}
-      </div>
+      <PlannerSettingsBar
+        scheme={scheme}
+        setAllHeights={setAllHeights}
+        syncRooms={syncRooms}
+        setSyncRooms={setSyncRooms}
+        fileUrl={fileUrl}
+        dirty={dirty}
+      />
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-        <div className="overflow-hidden rounded-xl border border-white/10 bg-[#141414]">
-          <PlanCanvas
-            scheme={scheme}
-            tool={tool}
-            layer={layer}
-            nodeKind={nodeKind}
-            linkFromId={linkFromId}
-            draft={draft}
-            selectedRoomId={selectedRoomId}
-            selectedOpeningId={selectedOpeningId}
-            selectedNodeId={selectedNodeId}
-            selectedLinkId={selectedLinkId}
-            onDraftChange={setDraft}
-            onFinishRoom={finishRoom}
-            onSelectRoom={(rid) => {
-              setSelectedRoomId(rid)
-              if (rid) setSelectedOpeningId(null)
-            }}
-            onSelectOpening={(oid) => {
-              setSelectedOpeningId(oid)
-              if (oid) setSelectedRoomId(null)
-            }}
-            onSelectNode={(nid) => {
-              setSelectedNodeId(nid)
-              if (nid) setSelectedLinkId(null)
-            }}
-            onSelectLink={(lid) => {
-              setSelectedLinkId(lid)
-              if (lid) setSelectedNodeId(null)
-            }}
-            onAddOpening={addOpening}
-            onMoveVertex={moveVertex}
-            onAddNode={addNode}
-            onMoveNode={moveNode}
-            onLinkClick={handleLinkClick}
-          />
-        </div>
-
-        {layer === "plan" ? (
-          <PlanSidebar
-            scheme={scheme}
-            totals={totals}
-            selectedRoom={selectedRoom}
-            selectedOpening={selectedOpening}
-            onUpdateRoom={updateRoom}
-            onDeleteRoom={deleteRoom}
-            onUpdateOpening={updateOpening}
-            onDeleteOpening={deleteOpening}
-            onSelectRoom={(rid) => {
-              setSelectedRoomId(rid)
-              setSelectedOpeningId(null)
-              setTool("select")
-            }}
-          />
-        ) : (
-          <EngineerSidebar
-            scheme={scheme}
-            layer={layer}
-            selectedNode={selectedNode}
-            selectedLink={selectedLink}
-            onUpdateNode={updateNode}
-            onDeleteNode={deleteNode}
-            onUpdateLink={updateLink}
-            onDeleteLink={deleteLink}
-            onSelectNode={(nid) => {
-              setSelectedNodeId(nid)
-              setSelectedLinkId(null)
-              setTool("select")
-            }}
-          />
-        )}
-      </div>
+      <PlannerWorkspace state={state} />
     </CrmLayout>
   )
 }
