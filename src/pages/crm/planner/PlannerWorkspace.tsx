@@ -49,6 +49,7 @@ export function PlannerWorkspace({ state }: Props) {
     updateGroup,
     deleteGroup,
     updateCable,
+    updatePanel,
     updateLink,
     deleteLink,
   } = state
@@ -126,6 +127,7 @@ export function PlannerWorkspace({ state }: Props) {
           onUpdateGroup={updateGroup}
           onDeleteGroup={deleteGroup}
           onUpdateCable={updateCable}
+          onUpdatePanel={updatePanel}
           onSelectNode={(nid) => {
             setSelectedNodeId(nid)
             setSelectedLinkId(null)

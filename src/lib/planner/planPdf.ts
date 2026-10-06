@@ -22,6 +22,7 @@ import {
   groupColor,
 } from "@/lib/planner/types"
 import { describeNodes, groupSummaries } from "@/lib/planner/groups"
+import { panelDiagramSvg, panelSettings, panelWarnings } from "@/lib/planner/panelDiagram"
 import {
   CableTotals,
   addCable,
@@ -296,6 +297,7 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
     .plan-doc .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
     .plan-doc .warn { color: #b45309; font-size: 10px; margin-top: 3px; }
     .plan-doc tr.muted-row td { color: #888; }
+    .plan-doc .warn-box { margin-top: 10px; padding: 8px 10px; border: 1px solid #f0c78a; background: #fff8ec; color: #92400e; font-size: 11px; line-height: 1.5; }
     .plan-doc td.sym svg { display: block; margin: 0 auto; }
     .plan-doc .muted { color: #888; font-size: 10px; }
     .plan-doc .totals { background: #fbf6e6; }
@@ -380,6 +382,7 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
       : ""
   }
   ${engineerSection(scheme, "electric", meta)}
+  ${panelSection(scheme, meta)}
   ${engineerSection(scheme, "plumbing", meta)}
 </div>`.trim()
 }
@@ -596,6 +599,27 @@ function groupsTable(scheme: PlanScheme): string {
     «С запасом» — по плану плюс спуски от потолка к каждой точке и запас на разделку концов.
     Подбор автомата под сечение проверен по типовым значениям для медного кабеля; итоговое решение — за электриком.
   </div>`
+}
+
+/** Отдельный лист: однолинейная схема электрощита */
+function panelSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
+  const svg = panelDiagramSvg(scheme, 700)
+  if (!svg) return ""
+  const panel = panelSettings(scheme.panel)
+  const warnings = panelWarnings(scheme)
+  return `
+  <div class="page-break"></div>
+  <h2>Однолинейная схема щита ${escapeXml(panel.name)} — объект ${escapeXml(meta.objectCode)}</h2>
+  <div class="plan-img">${svg}</div>
+  <div class="legend" style="text-align:left">
+    QF — автоматический выключатель, QD — УЗО, QFD — дифавтомат. Под каждой линией: номер группы,
+    сечение отходящего кабеля, длина с запасом и назначение. Группы с одинаковым УЗО объединены под общим аппаратом.
+  </div>
+  ${
+    warnings.length
+      ? `<div class="warn-box">${warnings.map((w) => `<div>⚠ ${escapeXml(w)}</div>`).join("")}</div>`
+      : ""
+  }`
 }
 
 export async function downloadPlanPdf(

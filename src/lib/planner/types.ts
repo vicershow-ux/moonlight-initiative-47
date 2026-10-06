@@ -105,6 +105,29 @@ export interface CableSettings {
   endReserve: number
 }
 
+/** Вводная часть щита — для однолинейной схемы */
+export interface PanelSettings {
+  /** Обозначение щита на схеме, например «ЩР-1» */
+  name: string
+  /** Номинал вводного автомата */
+  inputBreaker: string
+  phases: 1 | 3
+  /** Сечение вводного кабеля */
+  inputCable: string
+  /** Противопожарное УЗО на вводе, мА; 0 — нет */
+  mainRcd: 0 | 100 | 300
+}
+
+export const DEFAULT_PANEL: PanelSettings = {
+  name: "ЩР-1",
+  inputBreaker: "C40",
+  phases: 1,
+  inputCable: "10 мм²",
+  mainRcd: 0,
+}
+
+export const INPUT_CABLES = ["6 мм²", "10 мм²", "16 мм²", "25 мм²"]
+
 export interface PlanScheme {
   version: 1
   rooms: PlanRoom[]
@@ -114,6 +137,7 @@ export interface PlanScheme {
   links?: PlanLink[]
   groups?: PlanGroup[]
   cable?: CableSettings
+  panel?: PanelSettings
 }
 
 export const LAYERS: { value: PlanLayer; label: string; icon: string }[] = [

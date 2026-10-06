@@ -13,10 +13,13 @@ import {
   PlanLink,
   PlanNode,
   CableSettings,
+  INPUT_CABLES,
+  PanelSettings,
   PlanScheme,
   groupColor,
 } from "@/lib/planner/types"
 import { describeNodes, groupSummaries } from "@/lib/planner/groups"
+import { panelSettings, panelWarnings } from "@/lib/planner/panelDiagram"
 import {
   CableTotals,
   addCable,
@@ -44,6 +47,7 @@ interface Props {
   onUpdateGroup: (id: string, patch: Partial<PlanGroup>) => void
   onDeleteGroup: (id: string) => void
   onUpdateCable: (patch: Partial<CableSettings>) => void
+  onUpdatePanel: (patch: Partial<PanelSettings>) => void
 }
 
 export function EngineerSidebar({
@@ -60,7 +64,10 @@ export function EngineerSidebar({
   onUpdateGroup,
   onDeleteGroup,
   onUpdateCable,
+  onUpdatePanel,
 }: Props) {
+  const panel = panelSettings(scheme.panel)
+  const panelIssues = layer === "electric" ? panelWarnings(scheme) : []
   const groups = [...(scheme.groups || [])].sort((a, b) => a.num - b.num)
   const summaries = layer === "electric" ? groupSummaries(scheme) : []
   const nodes = (scheme.nodes || []).filter((n) => n.layer === layer)
@@ -286,6 +293,71 @@ export function EngineerSidebar({
               <Icon name="Plus" size={14} />
               Группа
             </button>
+          </div>
+
+          {/* Ввод щита — шапка однолинейной схемы в PDF */}
+          <div className="mb-3 rounded-lg border border-white/10 bg-[#161616] p-3">
+            <div className="mb-2 text-xs text-white/50">Ввод щита</div>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                className={inputCls}
+                value={panel.name}
+                placeholder="ЩР-1"
+                title="Обозначение щита"
+                onChange={(e) => onUpdatePanel({ name: e.target.value })}
+              />
+              <select
+                className={inputCls}
+                value={panel.inputBreaker}
+                title="Вводной автомат"
+                onChange={(e) => onUpdatePanel({ inputBreaker: e.target.value })}
+              >
+                {BREAKERS.map((b) => (
+                  <option key={b} value={b}>
+                    Ввод {b}
+                  </option>
+                ))}
+              </select>
+              <select
+                className={inputCls}
+                value={panel.phases}
+                onChange={(e) => onUpdatePanel({ phases: Number(e.target.value) as 1 | 3 })}
+              >
+                <option value={1}>1 фаза, 220 В</option>
+                <option value={3}>3 фазы, 380 В</option>
+              </select>
+              <select
+                className={inputCls}
+                value={panel.inputCable}
+                title="Вводной кабель"
+                onChange={(e) => onUpdatePanel({ inputCable: e.target.value })}
+              >
+                {INPUT_CABLES.map((c) => (
+                  <option key={c} value={c}>
+                    Кабель {c}
+                  </option>
+                ))}
+              </select>
+              <select
+                className={`${inputCls} col-span-2`}
+                value={panel.mainRcd}
+                onChange={(e) => onUpdatePanel({ mainRcd: Number(e.target.value) as 0 | 100 | 300 })}
+              >
+                <option value={0}>Без противопожарного УЗО</option>
+                <option value={100}>Противопожарное УЗО 100 мА</option>
+                <option value={300}>Противопожарное УЗО 300 мА</option>
+              </select>
+            </div>
+            {panelIssues.length > 0 && (
+              <div className="mt-2 space-y-1 text-xs text-amber-400">
+                {panelIssues.map((w) => (
+                  <div key={w} className="flex items-start gap-1.5">
+                    <Icon name="TriangleAlert" size={12} className="mt-0.5 shrink-0" />
+                    {w}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {groups.length === 0 ? (

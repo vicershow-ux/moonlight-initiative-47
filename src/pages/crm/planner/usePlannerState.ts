@@ -11,6 +11,8 @@ import {
   OPENING_PRESETS,
   OpeningKind,
   CableSettings,
+  DEFAULT_PANEL,
+  PanelSettings,
   PlanGroup,
   PlanLayer,
   PlanLink,
@@ -71,6 +73,7 @@ export function usePlannerState(id: string | undefined) {
               links: raw.links || [],
               groups: raw.groups || [],
               cable: raw.cable,
+              panel: raw.panel,
             })
           }
           setFileUrl(planData.plan.file_url || null)
@@ -363,6 +366,11 @@ export function usePlannerState(id: string | undefined) {
     touch()
   }
 
+  const updatePanel = (patch: Partial<PanelSettings>) => {
+    setScheme((s) => ({ ...s, panel: { ...DEFAULT_PANEL, ...(s.panel || {}), ...patch } }))
+    touch()
+  }
+
   const setAllHeights = (height: number) => {
     setScheme((s) => ({
       ...s,
@@ -505,6 +513,7 @@ export function usePlannerState(id: string | undefined) {
     changeLayer,
     setAllHeights,
     updateCable,
+    updatePanel,
     save,
     exportPdf,
   }
