@@ -26,18 +26,18 @@ export const panelSettings = (p?: Partial<PanelSettings> | null): PanelSettings 
 })
 
 /** Номинал УЗО — ближайший стандартный не меньше автомата группы */
-const rcdRating = (amps: number) => [16, 25, 40, 63, 80, 100].find((x) => x >= amps) ?? 100
+export const rcdRating = (amps: number) => [16, 25, 40, 63, 80, 100].find((x) => x >= amps) ?? 100
 
 /**
  * Блоки щита слева направо. Группы с «Автомат + УЗО» и одинаковой утечкой
  * садятся под одно общее УЗО — так обычно и собирают квартирный щит.
  * Номинал общего УЗО — не меньше суммы автоматов под ним, но не больше вводного
  */
-type Block =
+export type Block =
   | { kind: "single"; sum: GroupSummary }
   | { kind: "rcd"; leakage: number; rating: number; sums: GroupSummary[] }
 
-function buildBlocks(sums: GroupSummary[], inputAmps: number): Block[] {
+export function buildBlocks(sums: GroupSummary[], inputAmps: number): Block[] {
   const blocks: Block[] = []
   const rcdByLeak = new Map<number, Extract<Block, { kind: "rcd" }>>()
   for (const sum of sums) {

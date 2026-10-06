@@ -23,6 +23,7 @@ import {
 } from "@/lib/planner/types"
 import { describeNodes, groupSummaries } from "@/lib/planner/groups"
 import { panelDiagramSvg, panelSettings, panelWarnings } from "@/lib/planner/panelDiagram"
+import { PanelSize, SPARE_SHARE, panelSize, panelSpecification } from "@/lib/planner/panelSize"
 import {
   CableTotals,
   addCable,
@@ -297,6 +298,7 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
     .plan-doc .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
     .plan-doc .warn { color: #b45309; font-size: 10px; margin-top: 3px; }
     .plan-doc tr.muted-row td { color: #888; }
+    .plan-doc .panel-verdict { margin: 8px 0 10px; padding: 9px 12px; border-left: 3px solid #D4AF37; background: #fbf7ea; font-size: 12px; }
     .plan-doc .warn-box { margin-top: 10px; padding: 8px 10px; border: 1px solid #f0c78a; background: #fff8ec; color: #92400e; font-size: 11px; line-height: 1.5; }
     .plan-doc td.sym svg { display: block; margin: 0 auto; }
     .plan-doc .muted { color: #888; font-size: 10px; }
@@ -619,7 +621,116 @@ function panelSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
     warnings.length
       ? `<div class="warn-box">${warnings.map((w) => `<div>⚠ ${escapeXml(w)}</div>`).join("")}</div>`
       : ""
-  }`
+  }
+  ${panelSizeBlock(scheme)}`
+}
+
+const plural = (n: number, one: string, few: string, many: string) => {
+  const m10 = n % 10
+  const m100 = n % 100
+  if (m10 === 1 && m100 !== 11) return one
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few
+  return many
+}
+
+/** Раскладка аппаратов по DIN-рейкам корпуса — чтобы было видно заполнение */
+function railsSvg(size: PanelSize, width = 700): string {
+  const enc = size.enclosure
+  if (!enc) return ""
+  const perRow = Math.ceil(enc.modules / enc.rows)
+  const mod = Math.min(26, (width - 40) / perRow)
+  const railW = perRow * mod
+  const x0 = (width - railW) / 2
+  const rowH = 46
+  const height = enc.rows * rowH + 16
+  const parts: string[] = [
+    `<rect x="${x0 - 10}" y="2" width="${railW + 20}" height="${height - 4}" rx="4" fill="#fafafa" stroke="#bbbbbb"/>`,
+  ]
+
+  // Аппараты ставим по рейкам слева направо, не разрывая аппарат между рейками
+  let row = 0
+  let col = 0
+  const placed: { row: number; col: number; w: number; pos: string; kind: string }[] = []
+  for (const it of size.items) {
+    if (col + it.modulesEach > perRow) {
+      row++
+      col = 0
+    }
+    placed.push({ row, col, w: it.modulesEach, pos: it.pos, kind: it.name })
+    col += it.modulesEach
+  }
+
+  for (let r = 0; r < enc.rows; r++) {
+    const y = 10 + r * rowH
+    parts.push(`<rect x="${x0}" y="${y + 15}" width="${railW}" height="6" fill="#d9d9d9"/>`)
+    for (let c = 0; c < perRow; c++) {
+      parts.push(
+        `<rect x="${x0 + c * mod + 1}" y="${y + 1}" width="${mod - 2}" height="34" rx="2" fill="none" stroke="#e2e2e2" stroke-dasharray="2 2"/>`,
+      )
+    }
+  }
+  for (const p of placed) {
+    const y = 10 + p.row * rowH
+    const fill = p.kind.startsWith("УЗО") ? "#e8f1fb" : p.kind === "Дифавтомат" ? "#eef7ea" : p.pos === "QF0" ? "#fdf1d8" : "#ffffff"
+    const x = x0 + p.col * mod + 1
+    const w = p.w * mod - 2
+    parts.push(
+      `<rect x="${x}" y="${y + 1}" width="${w}" height="34" rx="2" fill="${fill}" stroke="#161616" stroke-width="1"/>`,
+      `<text x="${x + w / 2}" y="${y + 21}" text-anchor="middle" font-size="${mod < 20 ? 6.5 : 8}" font-weight="bold" fill="#161616" font-family="Arial">${escapeXml(p.pos)}</text>`,
+    )
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${parts.join("")}</svg>`
+}
+
+/** Спецификация аппаратов, подсчёт модулей и подобранный корпус щита */
+function panelSizeBlock(scheme: PlanScheme): string {
+  const size = panelSize(scheme)
+  if (!size) return ""
+  const panel = panelSettings(scheme.panel)
+  const rows = panelSpecification(size)
+    .map(
+      (r) => `
+      <tr>
+        <td>${escapeXml(r.pos.join(", "))}</td>
+        <td>${escapeXml(r.name)}</td>
+        <td>${escapeXml(r.spec)}</td>
+        <td class="num">${r.qty}</td>
+        <td class="num">${r.modules / r.qty}</td>
+        <td class="num strong">${r.modules}</td>
+      </tr>`,
+    )
+    .join("")
+
+  const enc = size.enclosure
+  const verdict = enc
+    ? `Щит на <b>${enc.modules} ${plural(enc.modules, "модуль", "модуля", "модулей")}</b> (${enc.rows} ${plural(enc.rows, "ряд", "ряда", "рядов")}): занято ${size.used}, свободно ${size.free} — заполнение ${size.fillPercent}%.`
+    : `Аппараты занимают ${size.used} ${plural(size.used, "модуль", "модуля", "модулей")} — это больше типовых корпусов до 72 модулей. Нужен разнесённый щит или два корпуса.`
+
+  return `
+  <h3>Состав щита ${escapeXml(panel.name)} и размер корпуса</h3>
+  <table>
+    <thead>
+      <tr><th>Поз.</th><th>Аппарат</th><th>Характеристика</th><th>Кол-во</th><th>Модулей на шт</th><th>Модулей всего</th></tr>
+    </thead>
+    <tbody>
+      ${rows}
+      <tr class="totals">
+        <td colspan="5">Занято модулей</td>
+        <td class="num">${size.used}</td>
+      </tr>
+      <tr>
+        <td colspan="5">С запасом ${Math.round(SPARE_SHARE * 100)}% под новые группы</td>
+        <td class="num strong">${size.needed}</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="panel-verdict">${verdict}</div>
+  ${enc ? `<div class="plan-img">${railsSvg(size)}</div>` : ""}
+  <div class="legend" style="text-align:left">
+    1 модуль = 17,5 мм по DIN-рейке. Ширина аппаратов — типовая: автомат 1P — 1 модуль, 2P — 2, 3P — 3;
+    УЗО однофазное — 2, трёхфазное — 4; дифавтомат 1P+N — 2. У конкретного производителя ширина может отличаться —
+    сверьте по каталогу. Клеммники N и PE в расчёт не входят: в большинстве корпусов они идут в комплекте отдельно от рейки.
+  </div>`
 }
 
 export async function downloadPlanPdf(
