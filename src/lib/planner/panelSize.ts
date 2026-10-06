@@ -1,6 +1,13 @@
 import { groupSummaries } from "./groups"
-import { buildBlocks, panelSettings, rcdRating } from "./panelDiagram"
-import { PlanGroup, PlanScheme, breakerAmps } from "./types"
+import { buildBlocks } from "./panelDiagram"
+import {
+  inputDeviceModules,
+  inputDevicePositions,
+  inputDeviceSpec,
+  inputLimitAmps,
+  panelSettings,
+} from "./panelInput"
+import { INPUT_DEVICE_INFO, PlanGroup, PlanScheme } from "./types"
 
 /**
  * Ширина аппаратов в DIN-модулях (1 модуль = 17,5 мм).
@@ -67,25 +74,20 @@ export function panelSize(scheme: PlanScheme, spare = SPARE_SHARE): PanelSize | 
   if (sums.length === 0) return null
 
   const panel = panelSettings(scheme.panel)
-  const three = panel.phases === 3
-  const inputAmps = breakerAmps(panel.inputBreaker)
+  const inputAmps = inputLimitAmps(panel.devices)
   const items: PanelItem[] = []
   const add = (pos: string, name: string, spec: string, modulesEach: number) =>
     items.push({ pos, name, spec, qty: 1, modulesEach, modules: modulesEach })
 
-  // Ввод: в однофазной сети вводной автомат обычно двухполюсный, в трёхфазной — трёхполюсный
-  add(
-    "QF0",
-    "Автомат вводной",
-    `${panel.inputBreaker}, ${three ? "3P" : "2P"}`,
-    three ? MODULES.breaker3p : MODULES.breaker2p,
-  )
-  if (panel.mainRcd) {
+  // Ввод — ровно та цепочка, что задана в настройках щита.
+  // Навесной счётчик места на рейке не занимает, но в спецификацию попадает
+  const pos = inputDevicePositions(panel.devices)
+  for (const d of panel.devices) {
     add(
-      "QD0",
-      "УЗО противопожарное",
-      `${rcdRating(inputAmps)} А, ${panel.mainRcd} мА, ${three ? "4P" : "2P"}`,
-      three ? MODULES.rcd4p : MODULES.rcd2p,
+      pos.get(d.id) || "",
+      INPUT_DEVICE_INFO[d.kind].label,
+      inputDeviceSpec(d, panel.phases),
+      inputDeviceModules(d, panel.phases),
     )
   }
 

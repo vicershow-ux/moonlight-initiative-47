@@ -105,25 +105,69 @@ export interface CableSettings {
   endReserve: number
 }
 
+/** Аппараты, которые можно поставить на вводе щита — до шины групп */
+export type InputDeviceKind =
+  | "switch"
+  | "breaker"
+  | "meter"
+  | "relay"
+  | "rcd"
+  | "rcbo"
+  | "spd"
+
+/**
+ * Один аппарат на вводе. Порядок в списке — порядок по линии питания сверху вниз.
+ * rating — номинальный ток, А; leakage — ток утечки, мА (для УЗО и дифавтомата)
+ */
+export interface InputDevice {
+  id: string
+  kind: InputDeviceKind
+  rating: number
+  /** Для автомата — характеристика B/C/D */
+  curve?: "B" | "C" | "D"
+  leakage?: number
+  /** Счётчик: прямого включения или на DIN-рейку (у части моделей своё место) */
+  meterType?: "din" | "panel"
+  /** Своя ширина в модулях — если у выбранной модели она отличается от типовой */
+  modules?: number
+}
+
+export const INPUT_DEVICE_INFO: Record<
+  InputDeviceKind,
+  { label: string; pos: string; ratings: number[] }
+> = {
+  switch: { label: "Выключатель нагрузки", pos: "QS", ratings: [25, 32, 40, 63, 80, 100] },
+  breaker: { label: "Автомат вводной", pos: "QF", ratings: [16, 20, 25, 32, 40, 50, 63] },
+  meter: { label: "Электросчётчик", pos: "PI", ratings: [60, 80, 100] },
+  relay: { label: "Реле напряжения", pos: "KV", ratings: [32, 40, 50, 63, 80] },
+  rcd: { label: "УЗО", pos: "QD", ratings: [25, 40, 63, 80, 100] },
+  rcbo: { label: "Дифавтомат", pos: "QFD", ratings: [16, 20, 25, 32, 40] },
+  spd: { label: "УЗИП (защита от перенапряжения)", pos: "FV", ratings: [0] },
+}
+
 /** Вводная часть щита — для однолинейной схемы */
 export interface PanelSettings {
   /** Обозначение щита на схеме, например «ЩР-1» */
   name: string
-  /** Номинал вводного автомата */
-  inputBreaker: string
   phases: 1 | 3
   /** Сечение вводного кабеля */
   inputCable: string
-  /** Противопожарное УЗО на вводе, мА; 0 — нет */
-  mainRcd: 0 | 100 | 300
+  /** Аппараты ввода сверху вниз */
+  devices: InputDevice[]
+  /** Устарело: раньше ввод задавался этими полями, сейчас — списком devices */
+  inputBreaker?: string
+  mainRcd?: 0 | 100 | 300
 }
 
 export const DEFAULT_PANEL: PanelSettings = {
   name: "ЩР-1",
-  inputBreaker: "C40",
   phases: 1,
   inputCable: "10 мм²",
-  mainRcd: 0,
+  devices: [
+    { id: "in-meter", kind: "meter", rating: 80, meterType: "din" },
+    { id: "in-qf", kind: "breaker", rating: 40, curve: "C" },
+    { id: "in-relay", kind: "relay", rating: 63 },
+  ],
 }
 
 export const INPUT_CABLES = ["6 мм²", "10 мм²", "16 мм²", "25 мм²"]

@@ -4,6 +4,7 @@ import { objectsApi, objectPlansApi, ObjectItem } from "@/lib/api"
 import { pointInPolygon, schemeMetrics } from "@/lib/planner/geometry"
 import { downloadPlanPdf } from "@/lib/planner/planPdf"
 import { cableSettings } from "@/lib/planner/cable"
+import { panelSettings } from "@/lib/planner/panelInput"
 import {
   LINK_SPECS,
   NODE_PRESETS,
@@ -11,7 +12,6 @@ import {
   OPENING_PRESETS,
   OpeningKind,
   CableSettings,
-  DEFAULT_PANEL,
   PanelSettings,
   PlanGroup,
   PlanLayer,
@@ -366,8 +366,12 @@ export function usePlannerState(id: string | undefined) {
     touch()
   }
 
+  // panelSettings переводит старый формат ввода в список аппаратов — правим уже его
   const updatePanel = (patch: Partial<PanelSettings>) => {
-    setScheme((s) => ({ ...s, panel: { ...DEFAULT_PANEL, ...(s.panel || {}), ...patch } }))
+    setScheme((s) => {
+      const { inputBreaker: _a, mainRcd: _b, ...rest } = { ...panelSettings(s.panel), ...patch }
+      return { ...s, panel: rest }
+    })
     touch()
   }
 

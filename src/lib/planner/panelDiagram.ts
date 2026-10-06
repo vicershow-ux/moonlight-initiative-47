@@ -1,13 +1,16 @@
 import { fmtNum } from "./geometry"
 import { GroupSummary, describeNodes, groupSummaries } from "./groups"
+import { InputDevice, PlanGroup, PlanScheme, breakerAmps, sectionOf } from "./types"
 import {
-  DEFAULT_PANEL,
-  PanelSettings,
-  PlanGroup,
-  PlanScheme,
-  breakerAmps,
-  sectionOf,
-} from "./types"
+  inputDevicePositions,
+  inputDeviceSpec,
+  inputLimitAmps,
+  inputWarnings,
+  panelSettings,
+  rcdRating,
+} from "./panelInput"
+
+export { panelSettings, rcdRating }
 
 const esc = (s: string) =>
   String(s || "")
@@ -20,13 +23,6 @@ const INK = "#161616"
 const MUTED = "#666666"
 const FONT = 'font-family="Arial"'
 
-export const panelSettings = (p?: Partial<PanelSettings> | null): PanelSettings => ({
-  ...DEFAULT_PANEL,
-  ...(p || {}),
-})
-
-/** Номинал УЗО — ближайший стандартный не меньше автомата группы */
-export const rcdRating = (amps: number) => [16, 25, 40, 63, 80, 100].find((x) => x >= amps) ?? 100
 
 /**
  * Блоки щита слева направо. Группы с «Автомат + УЗО» и одинаковой утечкой
@@ -99,6 +95,94 @@ function rcdSym(x: number, y: number, h: number): string {
   ].join("")
 }
 
+/** Выключатель нагрузки: контакт без расцепителя */
+function switchSym(x: number, y: number, h: number): string {
+  const top = y + h * 0.3
+  const bot = y + h * 0.7
+  return [
+    `<line x1="${x}" y1="${y}" x2="${x}" y2="${top}" stroke="${INK}" stroke-width="1.2"/>`,
+    `<line x1="${x}" y1="${bot}" x2="${x - h * 0.22}" y2="${top + 2}" stroke="${INK}" stroke-width="1.2"/>`,
+    `<line x1="${x - 4}" y1="${top}" x2="${x + 4}" y2="${top}" stroke="${INK}" stroke-width="1.2"/>`,
+    `<line x1="${x}" y1="${bot}" x2="${x}" y2="${y + h}" stroke="${INK}" stroke-width="1.2"/>`,
+  ].join("")
+}
+
+/** Счётчик: прямоугольник с буквами Wh на линии */
+function meterSym(x: number, y: number, h: number): string {
+  const bh = h * 0.5
+  const by = y + (h - bh) / 2
+  return [
+    `<line x1="${x}" y1="${y}" x2="${x}" y2="${by}" stroke="${INK}" stroke-width="1.2"/>`,
+    `<rect x="${x - 13}" y="${by}" width="26" height="${bh}" fill="#ffffff" stroke="${INK}" stroke-width="1.2"/>`,
+    `<text x="${x}" y="${by + bh / 2 + 3.5}" text-anchor="middle" font-size="9" font-weight="bold" fill="${INK}" ${FONT}>Wh</text>`,
+    `<line x1="${x}" y1="${by + bh}" x2="${x}" y2="${y + h}" stroke="${INK}" stroke-width="1.2"/>`,
+  ].join("")
+}
+
+/** Реле напряжения: катушка (прямоугольник с косой чертой) и управляемый контакт */
+function relaySym(x: number, y: number, h: number): string {
+  const top = y + h * 0.28
+  const bot = y + h * 0.68
+  return [
+    `<line x1="${x}" y1="${y}" x2="${x}" y2="${top}" stroke="${INK}" stroke-width="1.2"/>`,
+    `<line x1="${x}" y1="${bot}" x2="${x - h * 0.2}" y2="${top + 2}" stroke="${INK}" stroke-width="1.2"/>`,
+    `<line x1="${x}" y1="${bot}" x2="${x}" y2="${y + h}" stroke="${INK}" stroke-width="1.2"/>`,
+    `<rect x="${x - 26}" y="${top - 2}" width="12" height="${bot - top + 4}" fill="#ffffff" stroke="${INK}" stroke-width="1.1"/>`,
+    `<line x1="${x - 26}" y1="${bot + 2}" x2="${x - 14}" y2="${top - 2}" stroke="${INK}" stroke-width="1"/>`,
+    `<line x1="${x - 14}" y1="${(top + bot) / 2}" x2="${x - h * 0.1}" y2="${(top + bot) / 2}" stroke="${INK}" stroke-width="1" stroke-dasharray="2 1.5"/>`,
+  ].join("")
+}
+
+/** УЗИП: отвод от линии на землю через разрядник */
+function spdSym(x: number, y: number, h: number): string {
+  const mid = y + h * 0.4
+  const bx = x - 22
+  return [
+    `<line x1="${x}" y1="${y}" x2="${x}" y2="${y + h}" stroke="${INK}" stroke-width="1.2"/>`,
+    `<circle cx="${x}" cy="${mid}" r="1.8" fill="${INK}"/>`,
+    `<line x1="${x}" y1="${mid}" x2="${bx}" y2="${mid}" stroke="${INK}" stroke-width="1.2"/>`,
+    `<rect x="${bx - 5}" y="${mid}" width="10" height="16" fill="#ffffff" stroke="${INK}" stroke-width="1.1"/>`,
+    `<polyline points="${bx - 3},${mid + 4} ${bx + 1},${mid + 8} ${bx - 1},${mid + 9} ${bx + 3},${mid + 13}" fill="none" stroke="${INK}" stroke-width="1"/>`,
+    `<line x1="${bx}" y1="${mid + 16}" x2="${bx}" y2="${mid + 22}" stroke="${INK}" stroke-width="1.2"/>`,
+    `<line x1="${bx - 6}" y1="${mid + 22}" x2="${bx + 6}" y2="${mid + 22}" stroke="${INK}" stroke-width="1.2"/>`,
+    `<line x1="${bx - 4}" y1="${mid + 25}" x2="${bx + 4}" y2="${mid + 25}" stroke="${INK}" stroke-width="1.2"/>`,
+    `<line x1="${bx - 2}" y1="${mid + 28}" x2="${bx + 2}" y2="${mid + 28}" stroke="${INK}" stroke-width="1.2"/>`,
+  ].join("")
+}
+
+/** Аппарат ввода нужного вида — всё рисуется на одной вертикали по линии питания */
+function inputSym(d: InputDevice, x: number, y: number, h: number): string {
+  switch (d.kind) {
+    case "breaker":
+      return breakerSym(x, y, h)
+    case "switch":
+      return switchSym(x, y, h)
+    case "meter":
+      return meterSym(x, y, h)
+    case "relay":
+      return relaySym(x, y, h)
+    case "rcd":
+      return rcdSym(x, y, h)
+    case "rcbo":
+      return (
+        breakerSym(x, y, h) +
+        `<ellipse cx="${x}" cy="${y + h * 0.86}" rx="6" ry="2.8" fill="none" stroke="${INK}" stroke-width="1.1"/>`
+      )
+    case "spd":
+      return spdSym(x, y, h)
+  }
+}
+
+const INPUT_NAMES: Record<InputDevice["kind"], string> = {
+  breaker: "вводной автомат",
+  switch: "выключатель нагрузки",
+  meter: "электросчётчик",
+  relay: "реле напряжения",
+  rcd: "УЗО",
+  rcbo: "дифавтомат",
+  spd: "УЗИП",
+}
+
 const label = (x: number, y: number, text: string, opts = "") =>
   `<text x="${x}" y="${y}" font-size="9" fill="${INK}" ${FONT} ${opts}>${esc(text)}</text>`
 
@@ -113,9 +197,13 @@ export function panelDiagramSvg(scheme: PlanScheme, width = 700): string | null 
   if (sums.length === 0) return null
 
   const panel = panelSettings(scheme.panel)
-  const inputAmps = breakerAmps(panel.inputBreaker)
+  const inputAmps = inputLimitAmps(panel.devices)
   const blocks = buildBlocks(sums, inputAmps)
   const lines = sums.length
+
+  // Высота ввода зависит от числа аппаратов в цепочке
+  const devH = 52
+  const busY = 40 + panel.devices.length * devH + 24
 
   // Колонки отходящих линий: ширина подстраивается под лист,
   // при большом числе групп схема переносится на вторую строку
@@ -125,31 +213,26 @@ export function panelDiagramSvg(scheme: PlanScheme, width = 700): string | null 
   const colW = usable / perRow
 
   const parts: string[] = []
-  const busY = 150
   const rowH = 310
   const rcdH = 50
   const brH = 48
   const textTop = 22
 
-  // ——— Ввод ———
-  const inX = left + 10
+  // ——— Ввод: аппараты в том порядке, как их поставил электрик ———
+  const inX = left + 40
+  const pos = inputDevicePositions(panel.devices)
   parts.push(
     label(inX + 14, 18, `Ввод: ${panel.phases === 3 ? "~380 В, 3ф" : "~220 В, 1ф"}, кабель ${panel.inputCable}`),
-    `<line x1="${inX}" y1="8" x2="${inX}" y2="30" stroke="${INK}" stroke-width="1.6"/>`,
+    `<line x1="${inX}" y1="8" x2="${inX}" y2="40" stroke="${INK}" stroke-width="1.6"/>`,
   )
-  parts.push(breakerSym(inX, 30, 50))
-  parts.push(
-    label(inX + 14, 52, `QF0 ${panel.inputBreaker}`, 'font-weight="bold"'),
-    label(inX + 14, 64, panel.phases === 3 ? "3P, вводной" : "2P, вводной", `fill="${MUTED}"`),
-  )
-  let y = 80
-  if (panel.mainRcd) {
-    parts.push(rcdSym(inX, y, 50))
+  let y = 40
+  for (const d of panel.devices) {
+    parts.push(inputSym(d, inX, y, devH))
     parts.push(
-      label(inX + 22, y + 22, `QD0 ${rcdRating(inputAmps)} А / ${panel.mainRcd} мА`, 'font-weight="bold"'),
-      label(inX + 22, y + 34, "УЗО противопожарное", `fill="${MUTED}"`),
+      label(inX + 18, y + devH * 0.45, `${pos.get(d.id)} ${inputDeviceSpec(d, panel.phases)}`, 'font-weight="bold"'),
+      label(inX + 18, y + devH * 0.45 + 12, INPUT_NAMES[d.kind], `fill="${MUTED}"`),
     )
-    y += 50
+    y += devH
   }
   parts.push(`<line x1="${inX}" y1="${y}" x2="${inX}" y2="${busY}" stroke="${INK}" stroke-width="1.6"/>`)
 
@@ -264,15 +347,8 @@ export function panelDiagramSvg(scheme: PlanScheme, width = 700): string | null 
 export function panelWarnings(scheme: PlanScheme): string[] {
   const sums = groupSummaries(scheme).filter((s) => s.group)
   const panel = panelSettings(scheme.panel)
-  const inputAmps = breakerAmps(panel.inputBreaker)
-  const out: string[] = []
-
   const maxGroup = Math.max(0, ...sums.map((s) => breakerAmps((s.group as PlanGroup).breaker)))
-  if (inputAmps && maxGroup >= inputAmps) {
-    out.push(
-      `Вводной автомат ${panel.inputBreaker} не больше самого мощного автомата группы — селективность не обеспечена.`,
-    )
-  }
+  const out: string[] = [...inputWarnings(panel.devices, maxGroup)]
   for (const s of sums) if (s.warning) out.push(`Группа ${(s.group as PlanGroup).num}: ${s.warning}.`)
 
   const nums = sums.map((s) => (s.group as PlanGroup).num)

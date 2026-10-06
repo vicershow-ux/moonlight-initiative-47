@@ -614,7 +614,8 @@ function panelSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
   <h2>Однолинейная схема щита ${escapeXml(panel.name)} — объект ${escapeXml(meta.objectCode)}</h2>
   <div class="plan-img">${svg}</div>
   <div class="legend" style="text-align:left">
-    QF — автоматический выключатель, QD — УЗО, QFD — дифавтомат. Под каждой линией: номер группы,
+    QF — автоматический выключатель, QS — выключатель нагрузки, QD — УЗО, QFD — дифавтомат,
+    PI — электросчётчик, KV — реле напряжения, FV — УЗИП. Ввод показан сверху вниз в порядке установки. Под каждой линией: номер группы,
     сечение отходящего кабеля, длина с запасом и назначение. Группы с одинаковым УЗО объединены под общим аппаратом.
   </div>
   ${
@@ -652,6 +653,7 @@ function railsSvg(size: PanelSize, width = 700): string {
   let col = 0
   const placed: { row: number; col: number; w: number; pos: string; kind: string }[] = []
   for (const it of size.items) {
+    if (it.modulesEach === 0) continue
     if (col + it.modulesEach > perRow) {
       row++
       col = 0
@@ -671,7 +673,18 @@ function railsSvg(size: PanelSize, width = 700): string {
   }
   for (const p of placed) {
     const y = 10 + p.row * rowH
-    const fill = p.kind.startsWith("УЗО") ? "#e8f1fb" : p.kind === "Дифавтомат" ? "#eef7ea" : p.pos === "QF0" ? "#fdf1d8" : "#ffffff"
+    const isInput = /^[A-Z]+0/.test(p.pos)
+    const fill = p.kind === "Электросчётчик"
+      ? "#f1ecfb"
+      : p.kind === "Реле напряжения"
+        ? "#fdecea"
+        : isInput
+          ? "#fdf1d8"
+          : p.kind.startsWith("УЗО")
+            ? "#e8f1fb"
+            : p.kind === "Дифавтомат"
+              ? "#eef7ea"
+              : "#ffffff"
     const x = x0 + p.col * mod + 1
     const w = p.w * mod - 2
     parts.push(
@@ -728,7 +741,9 @@ function panelSizeBlock(scheme: PlanScheme): string {
   ${enc ? `<div class="plan-img">${railsSvg(size)}</div>` : ""}
   <div class="legend" style="text-align:left">
     1 модуль = 17,5 мм по DIN-рейке. Ширина аппаратов — типовая: автомат 1P — 1 модуль, 2P — 2, 3P — 3;
-    УЗО однофазное — 2, трёхфазное — 4; дифавтомат 1P+N — 2. У конкретного производителя ширина может отличаться —
+    УЗО однофазное — 2, трёхфазное — 4; дифавтомат 1P+N — 2; реле напряжения 1ф — 2, 3ф — 4;
+    счётчик на DIN-рейку 1ф — 6, 3ф — 8 (навесной счётчик места на рейке не занимает). Если у выбранной модели
+    другая ширина — она задаётся в настройках ввода щита. У конкретного производителя ширина может отличаться —
     сверьте по каталогу. Клеммники N и PE в расчёт не входят: в большинстве корпусов они идут в комплекте отдельно от рейки.
   </div>`
 }
