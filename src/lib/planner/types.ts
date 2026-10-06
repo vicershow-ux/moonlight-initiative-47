@@ -97,6 +97,14 @@ export interface PlanGroup {
   leakage: number
 }
 
+/** Как считать кабель: трасса под потолком, спуски к точкам и запас на концы */
+export interface CableSettings {
+  /** Отступ трассы от потолка, м */
+  traceFromCeiling: number
+  /** Запас на разделку на каждом конце кабеля, м */
+  endReserve: number
+}
+
 export interface PlanScheme {
   version: 1
   rooms: PlanRoom[]
@@ -105,6 +113,7 @@ export interface PlanScheme {
   nodes?: PlanNode[]
   links?: PlanLink[]
   groups?: PlanGroup[]
+  cable?: CableSettings
 }
 
 export const LAYERS: { value: PlanLayer; label: string; icon: string }[] = [

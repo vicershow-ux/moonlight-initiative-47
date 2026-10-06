@@ -23,6 +23,13 @@ import {
 } from "@/lib/planner/types"
 import { describeNodes, groupSummaries } from "@/lib/planner/groups"
 import {
+  CableTotals,
+  addCable,
+  cableLength,
+  cableSettings,
+  emptyTotals,
+} from "@/lib/planner/cable"
+import {
   WALL_MOUNTED,
   gostSymbol,
   placeSymbol,
@@ -398,12 +405,22 @@ function engineerSection(
     return acc
   }, {})
 
-  const specs = links.reduce<Record<string, number>>((acc, l) => {
-    const g = linkGeometry(l, byId)
-    if (!g) return acc
-    acc[l.spec] = (acc[l.spec] || 0) + g.length
+  // Электрика: по плану + спуски + запас. Трубы сантехники — только по плану
+  const isElectric = layer === "electric"
+  const specs = links.reduce<Record<string, CableTotals>>((acc, l) => {
+    let c: CableTotals | null
+    if (isElectric) {
+      c = cableLength(l, byId, scheme.rooms, scheme.defaultHeight, scheme.cable)
+    } else {
+      const g = linkGeometry(l, byId)
+      c = g ? { plan: g.length, drops: 0, reserve: 0, total: g.length } : null
+    }
+    if (!c) return acc
+    acc[l.spec] = addCable(acc[l.spec] || emptyTotals(), c)
     return acc
   }, {})
+  const specTotal = Object.values(specs).reduce((acc, c) => addCable(acc, c), emptyTotals())
+  const cfg = cableSettings(scheme.cable)
 
   const nodeRows = Object.entries(counts)
     .map(
@@ -419,10 +436,17 @@ function engineerSection(
 
   const specRows = Object.entries(specs)
     .map(
-      ([spec, len]) => `
+      ([spec, c]) => `
       <tr>
         <td>${escapeXml(spec)}</td>
-        <td class="num">${fmtNum(len, 2)}</td>
+        <td class="num">${fmtNum(c.plan, 2)}</td>${
+          isElectric
+            ? `
+        <td class="num">${fmtNum(c.drops, 2)}</td>
+        <td class="num">${fmtNum(c.reserve, 2)}</td>
+        <td class="num strong">${fmtNum(c.total, 2)}</td>`
+            : ""
+        }
       </tr>`,
     )
     .join("")
@@ -462,12 +486,29 @@ function engineerSection(
     specRows
       ? `<h3>${specTitle}</h3>
   <table>
-    <thead><tr><th>${layer === "electric" ? "Сечение" : "Диаметр"}</th><th>Длина по трассе, м</th></tr></thead>
-    <tbody>${specRows}</tbody>
+    <thead><tr>${
+      isElectric
+        ? "<th>Сечение</th><th>По плану, м</th><th>Спуски, м</th><th>Запас на концы, м</th><th>Итого с запасом, м</th>"
+        : "<th>Диаметр</th><th>Длина по трассе, м</th>"
+    }</tr></thead>
+    <tbody>${specRows}${
+      isElectric
+        ? `
+      <tr class="totals">
+        <td>Всего</td>
+        <td class="num">${fmtNum(specTotal.plan, 2)}</td>
+        <td class="num">${fmtNum(specTotal.drops, 2)}</td>
+        <td class="num">${fmtNum(specTotal.reserve, 2)}</td>
+        <td class="num">${fmtNum(specTotal.total, 2)}</td>
+      </tr>`
+        : ""
+    }</tbody>
   </table>
-  <div class="legend" style="text-align:left">
-    Длина посчитана по трассе с поворотами, без запаса на спуски к точкам и разделку концов.
-  </div>`
+  <div class="legend" style="text-align:left">${
+    isElectric
+      ? `По плану — длина трассы с поворотами. Спуски — от трассы, проложенной на ${toMm(cfg.traceFromCeiling)} мм ниже потолка, до высоты каждой точки. Запас — ${toMm(cfg.endReserve)} мм на разделку каждого конца кабеля.`
+      : "Длина посчитана по трассе с поворотами."
+  }</div>`
       : ""
   }
 
@@ -485,20 +526,23 @@ function groupsTable(scheme: PlanScheme): string {
   const sums = groupSummaries(scheme)
   if (sums.length === 0) return ""
 
-  let grand = 0
+  const grand = emptyTotals()
   const rows = sums
     .map((sum) => {
       const g = sum.group
       const specs = Object.entries(sum.bySpec)
-      grand += sum.total
+      addCable(grand, sum.cable)
       const protection = g
         ? `${PROTECTION_LABELS[g.protection]}${g.protection !== "mcb" ? `, ${g.leakage} мА` : ""}`
         : "—"
       const specCell = specs.length
         ? specs.map(([spec]) => escapeXml(spec)).join("<br>")
         : "—"
-      const lenCell = specs.length
-        ? specs.map(([, len]) => fmtNum(len, 2)).join("<br>")
+      const planCell = specs.length
+        ? specs.map(([, c]) => fmtNum(c.plan, 2)).join("<br>")
+        : "0"
+      const totalCell = specs.length
+        ? specs.map(([, c]) => fmtNum(c.total, 2)).join("<br>")
         : "0"
       return `
       <tr${g ? "" : ' class="muted-row"'}>
@@ -511,7 +555,8 @@ function groupsTable(scheme: PlanScheme): string {
         <td class="num strong">${g ? escapeXml(g.breaker) : "—"}</td>
         <td>${protection}</td>
         <td class="num">${specCell}</td>
-        <td class="num">${lenCell}</td>
+        <td class="num">${planCell}</td>
+        <td class="num">${totalCell}</td>
         <td class="num strong">${fmtNum(sum.total, 2)}</td>
         <td>${escapeXml(describeNodes(sum.nodeCounts)) || "—"}${
           sum.warning ? `<div class="warn">${escapeXml(sum.warning)}</div>` : ""
@@ -530,22 +575,25 @@ function groupsTable(scheme: PlanScheme): string {
         <th>Автомат</th>
         <th>Защита</th>
         <th>Сечение</th>
-        <th>Длина, м</th>
-        <th>Итого, м</th>
+        <th>По плану, м</th>
+        <th>С запасом, м</th>
+        <th>Итого группы, м</th>
         <th>Потребители</th>
       </tr>
     </thead>
     <tbody>
       ${rows}
       <tr class="totals">
-        <td colspan="6">Итого кабеля</td>
-        <td class="num">${fmtNum(grand, 2)}</td>
+        <td colspan="5">Итого кабеля</td>
+        <td class="num">${fmtNum(grand.plan, 2)}</td>
+        <td class="num">${fmtNum(grand.total, 2)}</td>
+        <td class="num">${fmtNum(grand.total, 2)}</td>
         <td></td>
       </tr>
     </tbody>
   </table>
   <div class="legend" style="text-align:left">
-    Длина — по трассе с поворотами, без запаса на спуски к точкам и разделку концов.
+    «С запасом» — по плану плюс спуски от потолка к каждой точке и запас на разделку концов.
     Подбор автомата под сечение проверен по типовым значениям для медного кабеля; итоговое решение — за электриком.
   </div>`
 }

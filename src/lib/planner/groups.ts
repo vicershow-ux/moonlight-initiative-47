@@ -1,4 +1,4 @@
-import { linkGeometry } from "./geometry"
+import { CableTotals, addCable, cableLength, emptyTotals } from "./cable"
 import {
   MIN_SECTION,
   NODE_PRESETS,
@@ -10,8 +10,11 @@ import {
 
 export interface GroupSummary {
   group: PlanGroup | null
-  /** Длина кабеля по сечениям, м */
-  bySpec: Record<string, number>
+  /** Длина кабеля по сечениям: по плану, спуски, запас и итог, м */
+  bySpec: Record<string, CableTotals>
+  /** Сумма по группе */
+  cable: CableTotals
+  /** Итоговая длина с запасом — для закупки */
   total: number
   linkCount: number
   /** Сколько каких точек подключено к трассам группы */
@@ -33,14 +36,14 @@ export function groupSummaries(scheme: PlanScheme): GroupSummary[] {
 
   const build = (group: PlanGroup | null): GroupSummary => {
     const own = links.filter((l) => (l.groupId ?? null) === (group ? group.id : null))
-    const bySpec: Record<string, number> = {}
+    const bySpec: Record<string, CableTotals> = {}
     const nodeIds = new Set<string>()
-    let total = 0
+    const cable = emptyTotals()
     for (const l of own) {
-      const g = linkGeometry(l, nodeById)
-      if (!g) continue
-      bySpec[l.spec] = (bySpec[l.spec] || 0) + g.length
-      total += g.length
+      const c = cableLength(l, nodeById, scheme.rooms, scheme.defaultHeight, scheme.cable)
+      if (!c) continue
+      bySpec[l.spec] = addCable(bySpec[l.spec] || emptyTotals(), c)
+      addCable(cable, c)
       nodeIds.add(l.fromId)
       nodeIds.add(l.toId)
     }
@@ -61,7 +64,16 @@ export function groupSummaries(scheme: PlanScheme): GroupSummary[] {
         ? `Под ${group.breaker} нужен кабель от ${String(need).replace(".", ",")} мм², в группе есть ${String(minSection).replace(".", ",")} мм²`
         : null
 
-    return { group, bySpec, total, linkCount: own.length, nodeCounts, minSection, warning }
+    return {
+      group,
+      bySpec,
+      cable,
+      total: cable.total,
+      linkCount: own.length,
+      nodeCounts,
+      minSection,
+      warning,
+    }
   }
 
   const result = groups.map(build)

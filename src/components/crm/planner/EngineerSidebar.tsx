@@ -12,10 +12,18 @@ import {
   PlanLayer,
   PlanLink,
   PlanNode,
+  CableSettings,
   PlanScheme,
   groupColor,
 } from "@/lib/planner/types"
 import { describeNodes, groupSummaries } from "@/lib/planner/groups"
+import {
+  CableTotals,
+  addCable,
+  cableLength,
+  cableSettings,
+  emptyTotals,
+} from "@/lib/planner/cable"
 
 const inputCls =
   "w-full bg-[#161616] border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50"
@@ -35,6 +43,7 @@ interface Props {
   onAddGroup: () => string
   onUpdateGroup: (id: string, patch: Partial<PlanGroup>) => void
   onDeleteGroup: (id: string) => void
+  onUpdateCable: (patch: Partial<CableSettings>) => void
 }
 
 export function EngineerSidebar({
@@ -50,6 +59,7 @@ export function EngineerSidebar({
   onAddGroup,
   onUpdateGroup,
   onDeleteGroup,
+  onUpdateCable,
 }: Props) {
   const groups = [...(scheme.groups || [])].sort((a, b) => a.num - b.num)
   const summaries = layer === "electric" ? groupSummaries(scheme) : []
@@ -57,14 +67,25 @@ export function EngineerSidebar({
   const links = (scheme.links || []).filter((l) => l.layer === layer)
   const nodeById = new Map(nodes.map((n) => [n.id, n]))
 
-  // Длина по трассе со всеми поворотами — именно столько кабеля уйдёт в стену
-  const linkLength = (l: PlanLink) => linkGeometry(l, nodeById)?.length ?? 0
+  const isElectric = layer === "electric"
+  const cfg = cableSettings(scheme.cable)
+
+  // Кабель: по плану + спуски от потолка к точкам + запас на концы.
+  // Трубы сантехники идут по полу, у них считаем только длину по плану
+  const linkCable = (l: PlanLink): CableTotals => {
+    if (isElectric) {
+      return cableLength(l, nodeById, scheme.rooms, scheme.defaultHeight, scheme.cable) ?? emptyTotals()
+    }
+    const plan = linkGeometry(l, nodeById)?.length ?? 0
+    return { plan, drops: 0, reserve: 0, total: plan }
+  }
 
   // Итог по сечениям — сразу видно, сколько кабеля или трубы каждого типа
-  const totalsBySpec = links.reduce<Record<string, number>>((acc, l) => {
-    acc[l.spec] = (acc[l.spec] || 0) + linkLength(l)
+  const totalsBySpec = links.reduce<Record<string, CableTotals>>((acc, l) => {
+    acc[l.spec] = addCable(acc[l.spec] || emptyTotals(), linkCable(l))
     return acc
   }, {})
+  const layerTotal = Object.values(totalsBySpec).reduce((acc, c) => addCable(acc, c), emptyTotals())
 
   const countsByKind = nodes.reduce<Record<string, number>>((acc, n) => {
     acc[n.kind] = (acc[n.kind] || 0) + 1
@@ -205,11 +226,34 @@ export function EngineerSidebar({
           </label>
 
           <div className="mb-3 space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span className="text-white/40">Длина по трассе</span>
-              <span className="text-[#D4AF37]">{fmtNum(toMm(linkLength(selectedLink)), 0)} мм</span>
-            </div>
-            <div className="flex justify-between">
+            {(() => {
+              const c = linkCable(selectedLink)
+              return (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-white/40">По плану</span>
+                    <span>{fmtNum(toMm(c.plan), 0)} мм</span>
+                  </div>
+                  {isElectric && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-white/40">Спуски к точкам</span>
+                        <span>+{fmtNum(toMm(c.drops), 0)} мм</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-white/40">Запас на концы</span>
+                        <span>+{fmtNum(toMm(c.reserve), 0)} мм</span>
+                      </div>
+                    </>
+                  )}
+                  <div className="flex justify-between border-t border-white/10 pt-1">
+                    <span className="text-white/60">{isElectric ? "С запасом" : "Длина"}</span>
+                    <span className="font-medium text-[#D4AF37]">{fmtNum(toMm(c.total), 0)} мм</span>
+                  </div>
+                </>
+              )
+            })()}
+            <div className="flex justify-between pt-1">
               <span className="text-white/40">Поворотов задано</span>
               <span>{(selectedLink.points || []).length}</span>
             </div>
@@ -320,10 +364,18 @@ export function EngineerSidebar({
                     <div className="space-y-0.5 text-xs">
                       {sum && sum.linkCount > 0 ? (
                         <>
-                          {Object.entries(sum.bySpec).map(([spec, len]) => (
+                          <div className="flex justify-between text-white/30">
+                            <span>Сечение</span>
+                            <span>по плану → с запасом</span>
+                          </div>
+                          {Object.entries(sum.bySpec).map(([spec, c]) => (
                             <div key={spec} className="flex justify-between">
                               <span className="text-white/50">{spec}</span>
-                              <span className="text-[#D4AF37]">{fmtNum(len, 2)} м</span>
+                              <span>
+                                <span className="text-white/50">{fmtNum(c.plan, 2)}</span>
+                                <span className="text-white/30"> → </span>
+                                <span className="text-[#D4AF37]">{fmtNum(c.total, 2)} м</span>
+                              </span>
                             </div>
                           ))}
                           {describeNodes(sum.nodeCounts) && (
@@ -387,15 +439,87 @@ export function EngineerSidebar({
             {links.length > 0 && (
               <div className="border-t border-white/10 pt-3">
                 <div className="mb-1.5 text-xs text-white/50">
-                  {layer === "electric" ? "Кабель по сечениям" : "Труба по диаметрам"}
+                  {isElectric ? "Кабель по сечениям" : "Труба по диаметрам"}
                 </div>
-                <div className="space-y-1">
-                  {Object.entries(totalsBySpec).map(([spec, len]) => (
-                    <div key={spec} className="flex justify-between text-sm">
-                      <span className="text-white/60">{spec}</span>
-                      <span className="text-[#D4AF37]">{fmtNum(len, 2)} м</span>
-                    </div>
-                  ))}
+                {isElectric ? (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-xs text-white/30">
+                        <th className="pb-1 text-left font-normal">Сечение</th>
+                        <th className="pb-1 text-right font-normal">По плану</th>
+                        <th className="pb-1 text-right font-normal">С запасом</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(totalsBySpec).map(([spec, c]) => (
+                        <tr key={spec}>
+                          <td className="py-0.5 text-white/60">{spec}</td>
+                          <td className="py-0.5 text-right text-white/60">{fmtNum(c.plan, 2)} м</td>
+                          <td className="py-0.5 text-right text-[#D4AF37]">{fmtNum(c.total, 2)} м</td>
+                        </tr>
+                      ))}
+                      <tr className="border-t border-white/10">
+                        <td className="pt-1 text-white/60">Всего</td>
+                        <td className="pt-1 text-right">{fmtNum(layerTotal.plan, 2)} м</td>
+                        <td className="pt-1 text-right font-medium text-[#D4AF37]">
+                          {fmtNum(layerTotal.total, 2)} м
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="space-y-1">
+                    {Object.entries(totalsBySpec).map(([spec, c]) => (
+                      <div key={spec} className="flex justify-between text-sm">
+                        <span className="text-white/60">{spec}</span>
+                        <span className="text-[#D4AF37]">{fmtNum(c.plan, 2)} м</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {isElectric && (
+                  <div className="mt-2 text-xs text-white/40">
+                    Из них спуски к точкам {fmtNum(layerTotal.drops, 2)} м, запас на концы{" "}
+                    {fmtNum(layerTotal.reserve, 2)} м
+                  </div>
+                )}
+              </div>
+            )}
+
+            {isElectric && (
+              <div className="border-t border-white/10 pt-3">
+                <div className="mb-1.5 text-xs text-white/50">Как считать запас</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className={labelCls}>Трасса ниже потолка, мм</label>
+                    <input
+                      className={inputCls}
+                      type="number"
+                      min="0"
+                      step="10"
+                      value={toMm(cfg.traceFromCeiling)}
+                      onChange={(e) =>
+                        onUpdateCable({ traceFromCeiling: Math.max(fromMm(Number(e.target.value)), 0) })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Запас на конец, мм</label>
+                    <input
+                      className={inputCls}
+                      type="number"
+                      min="0"
+                      step="10"
+                      value={toMm(cfg.endReserve)}
+                      onChange={(e) =>
+                        onUpdateCable({ endReserve: Math.max(fromMm(Number(e.target.value)), 0) })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="mt-1.5 text-xs text-white/40">
+                  Кабель идёт под потолком и спускается к каждой точке на её высоту. Потолок берётся из
+                  высоты помещения.
                 </div>
               </div>
             )}

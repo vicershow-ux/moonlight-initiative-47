@@ -3,12 +3,14 @@ import { PlanTool } from "@/components/crm/planner/PlanCanvas"
 import { objectsApi, objectPlansApi, ObjectItem } from "@/lib/api"
 import { pointInPolygon, schemeMetrics } from "@/lib/planner/geometry"
 import { downloadPlanPdf } from "@/lib/planner/planPdf"
+import { cableSettings } from "@/lib/planner/cable"
 import {
   LINK_SPECS,
   NODE_PRESETS,
   NodeKind,
   OPENING_PRESETS,
   OpeningKind,
+  CableSettings,
   PlanGroup,
   PlanLayer,
   PlanLink,
@@ -68,6 +70,7 @@ export function usePlannerState(id: string | undefined) {
               nodes: raw.nodes || [],
               links: raw.links || [],
               groups: raw.groups || [],
+              cable: raw.cable,
             })
           }
           setFileUrl(planData.plan.file_url || null)
@@ -355,6 +358,11 @@ export function usePlannerState(id: string | undefined) {
     }
   }
 
+  const updateCable = (patch: Partial<CableSettings>) => {
+    setScheme((s) => ({ ...s, cable: { ...cableSettings(s.cable), ...patch } }))
+    touch()
+  }
+
   const setAllHeights = (height: number) => {
     setScheme((s) => ({
       ...s,
@@ -496,6 +504,7 @@ export function usePlannerState(id: string | undefined) {
     deleteLink,
     changeLayer,
     setAllHeights,
+    updateCable,
     save,
     exportPdf,
   }
