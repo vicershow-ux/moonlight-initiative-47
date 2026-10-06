@@ -6,7 +6,9 @@ import {
   PlanLink,
   PlanNode,
   PlanPoint,
+  PlanGroup,
   PlanRoom,
+  groupColor,
 } from "@/lib/planner/types"
 import { WALL_MOUNTED, gostSymbol, placeSymbol, wallDirection } from "@/lib/planner/symbols"
 import { ToScreen } from "./usePlanView"
@@ -21,6 +23,9 @@ interface Props {
   nodes: PlanNode[]
   links: PlanLink[]
   rooms: PlanRoom[]
+  groups: PlanGroup[]
+  /** Группа, в которую уйдёт прокладываемая трасса */
+  linkGroupId: string | null
   nodeById: Map<string, PlanNode>
   linkFromId: string | null
   selectedNodeId: string | null
@@ -50,6 +55,8 @@ export function PlanEngineerLayer({
   nodes,
   links,
   rooms,
+  groups,
+  linkGroupId,
   nodeById,
   linkFromId,
   selectedNodeId,
@@ -60,12 +67,20 @@ export function PlanEngineerLayer({
   toScreen,
 }: Props) {
   const color = layer === "electric" ? "#E8B23A" : "#7FB5E8"
+  const groupById = new Map(groups.map((g) => [g.id, g]))
+  // На электрике трасса окрашивается в цвет своей группы
+  const colorOf = (groupId?: string | null) => {
+    const g = groupId ? groupById.get(groupId) : null
+    return layer === "electric" && g ? groupColor(g.num) : color
+  }
 
   const renderLink = (l: PlanLink) => {
     const g = linkGeometry(l, nodeById)
     if (!g) return null
     const selected = l.id === selectedLinkId
     const seg = longestSegment(g.route)
+    const lc = colorOf(l.groupId)
+    const grp = l.groupId ? groupById.get(l.groupId) : null
 
     let label: React.ReactNode = null
     if (seg && dist(seg.a, seg.b) * scale > 60) {
@@ -81,9 +96,10 @@ export function PlanEngineerLayer({
           y={my - 5}
           textAnchor="middle"
           fontSize="10"
-          fill={color}
+          fill={lc}
           transform={`rotate(${angle}, ${mx}, ${my})`}
         >
+          {grp ? `Гр.${grp.num} · ` : ""}
           {l.spec} · {fmtMmText(g.length)}
         </text>
       )
@@ -94,7 +110,7 @@ export function PlanEngineerLayer({
         <polyline
           points={polyPoints(g.route, toScreen)}
           fill="none"
-          stroke={color}
+          stroke={lc}
           strokeWidth={selected ? 4 : 2.5}
           strokeDasharray={layer === "plumbing" ? "8 4" : undefined}
           strokeLinecap="round"
@@ -114,7 +130,7 @@ export function PlanEngineerLayer({
                 width={10}
                 height={10}
                 fill="#161616"
-                stroke={color}
+                stroke={lc}
                 strokeWidth={2}
                 style={{ cursor: "move" }}
               />
@@ -197,14 +213,14 @@ export function PlanEngineerLayer({
           <polyline
             points={polyPoints(draftRoute, toScreen)}
             fill="none"
-            stroke={color}
+            stroke={colorOf(linkGroupId)}
             strokeWidth={2}
             strokeDasharray="6 4"
             strokeLinejoin="round"
           />
           {bends.map((p, i) => {
             const s = toScreen(p)
-            return <rect key={i} x={s.x - 4} y={s.y - 4} width={8} height={8} fill={color} />
+            return <rect key={i} x={s.x - 4} y={s.y - 4} width={8} height={8} fill={colorOf(linkGroupId)} />
           })}
         </>
       )}

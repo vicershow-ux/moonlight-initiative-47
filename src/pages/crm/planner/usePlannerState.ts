@@ -9,6 +9,7 @@ import {
   NodeKind,
   OPENING_PRESETS,
   OpeningKind,
+  PlanGroup,
   PlanLayer,
   PlanLink,
   PlanNode,
@@ -39,6 +40,8 @@ export function usePlannerState(id: string | undefined) {
   const [nodeKind, setNodeKind] = useState<NodeKind>("socket")
   const [linkSpec, setLinkSpec] = useState("2.5 мм²")
   const [linkFromId, setLinkFromId] = useState<string | null>(null)
+  /** Группа, в которую попадают новые трассы электрики */
+  const [linkGroupId, setLinkGroupId] = useState<string | null>(null)
   const [draft, setDraft] = useState<PlanPoint[]>([])
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null)
   const [selectedOpeningId, setSelectedOpeningId] = useState<string | null>(null)
@@ -64,6 +67,7 @@ export function usePlannerState(id: string | undefined) {
               defaultHeight: Number(planData.plan.default_height) || 2.7,
               nodes: raw.nodes || [],
               links: raw.links || [],
+              groups: raw.groups || [],
             })
           }
           setFileUrl(planData.plan.file_url || null)
@@ -272,6 +276,7 @@ export function usePlannerState(id: string | undefined) {
         spec: linkSpec,
         points: bends,
         ortho: true,
+        groupId: layer === "electric" ? linkGroupId : null,
       }
       setScheme((s) => ({ ...s, links: [...(s.links || []), link] }))
       setSelectedLinkId(link.id)
@@ -281,6 +286,43 @@ export function usePlannerState(id: string | undefined) {
   }
 
   const cancelLink = useCallback(() => setLinkFromId(null), [])
+
+  /** Новая группа получает следующий свободный номер и автомат C16 */
+  const addGroup = () => {
+    const groups = scheme.groups || []
+    const num = groups.reduce((m, g) => Math.max(m, g.num), 0) + 1
+    const group: PlanGroup = {
+      id: uid(),
+      num,
+      name: "",
+      breaker: "C16",
+      protection: "mcb",
+      leakage: 30,
+    }
+    setScheme((s) => ({ ...s, groups: [...(s.groups || []), group] }))
+    setLinkGroupId(group.id)
+    touch()
+    return group.id
+  }
+
+  const updateGroup = (groupId: string, patch: Partial<PlanGroup>) => {
+    setScheme((s) => ({
+      ...s,
+      groups: (s.groups || []).map((g) => (g.id === groupId ? { ...g, ...patch } : g)),
+    }))
+    touch()
+  }
+
+  /** Трассы удалённой группы остаются на плане, просто без группы */
+  const deleteGroup = (groupId: string) => {
+    setScheme((s) => ({
+      ...s,
+      groups: (s.groups || []).filter((g) => g.id !== groupId),
+      links: (s.links || []).map((l) => (l.groupId === groupId ? { ...l, groupId: null } : l)),
+    }))
+    if (linkGroupId === groupId) setLinkGroupId(null)
+    touch()
+  }
 
   const updateLink = (linkId: string, patch: Partial<PlanLink>) => {
     setScheme((s) => ({
@@ -413,6 +455,8 @@ export function usePlannerState(id: string | undefined) {
     setLinkSpec,
     linkFromId,
     setLinkFromId,
+    linkGroupId,
+    setLinkGroupId,
     draft,
     setDraft,
     selectedRoomId,
@@ -445,6 +489,9 @@ export function usePlannerState(id: string | undefined) {
     moveNode,
     handleLinkClick,
     cancelLink,
+    addGroup,
+    updateGroup,
+    deleteGroup,
     updateLink,
     deleteLink,
     changeLayer,

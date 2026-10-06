@@ -40,6 +40,8 @@ export type NodeKind =
   | "socket_power"
   | "switch"
   | "switch_double"
+  | "switch_pass"
+  | "switch_pass_double"
   | "light"
   | "spot"
   | "water_in"
@@ -77,6 +79,22 @@ export interface PlanLink {
   spec: string
   points: PlanPoint[]
   ortho?: boolean
+  /** Группа щита, к которой относится кабель (только на слое электрики) */
+  groupId?: string | null
+}
+
+/** Группа электрощита: номер на схеме, автомат и назначение */
+export interface PlanGroup {
+  id: string
+  /** Номер группы — как подписан на щите: 1, 2, 3… */
+  num: number
+  name: string
+  /** Номинал автомата, например «C16» */
+  breaker: string
+  /** Защита от утечки: обычный автомат, УЗО или дифавтомат */
+  protection: "mcb" | "rcd" | "rcbo"
+  /** Ток утечки для УЗО/дифавтомата, мА */
+  leakage: number
 }
 
 export interface PlanScheme {
@@ -86,6 +104,7 @@ export interface PlanScheme {
   defaultHeight: number
   nodes?: PlanNode[]
   links?: PlanLink[]
+  groups?: PlanGroup[]
 }
 
 export const LAYERS: { value: PlanLayer; label: string; icon: string }[] = [
@@ -104,6 +123,8 @@ export const NODE_PRESETS: Record<
   socket_power: { label: "Розетка силовая", layer: "electric", height: 0.3, color: "#5E93D6", icon: "PlugZap" },
   switch: { label: "Выключатель", layer: "electric", height: 0.9, color: "#8BD48B", icon: "ToggleRight" },
   switch_double: { label: "Выключатель двойной", layer: "electric", height: 0.9, color: "#6DBF6D", icon: "ToggleRight" },
+  switch_pass: { label: "Выключатель проходной", layer: "electric", height: 0.9, color: "#A6E07A", icon: "ToggleRight" },
+  switch_pass_double: { label: "Проходной двойной", layer: "electric", height: 0.9, color: "#8FCF5C", icon: "ToggleRight" },
   light: { label: "Светильник", layer: "electric", height: 2.7, color: "#F2DC7E", icon: "Lightbulb" },
   spot: { label: "Точечный светильник", layer: "electric", height: 2.7, color: "#F2DC7E", icon: "Circle" },
 
@@ -123,6 +144,34 @@ export const LINK_SPECS: Record<Exclude<PlanLayer, "plan">, string[]> = {
   electric: ["1.5 мм²", "2.5 мм²", "4 мм²", "6 мм²", "10 мм²"],
   plumbing: ["16 мм", "20 мм", "25 мм", "32 мм", "40 мм", "50 мм", "110 мм"],
 }
+
+/** Номиналы автоматов, которые чаще всего ставят в квартирный щит */
+export const BREAKERS = ["B6", "B10", "C6", "C10", "C16", "C20", "C25", "C32", "C40", "C50", "C63"]
+
+export const PROTECTION_LABELS: Record<PlanGroup["protection"], string> = {
+  mcb: "Автомат",
+  rcd: "Автомат + УЗО",
+  rcbo: "Дифавтомат",
+}
+
+/**
+ * Какое минимальное сечение медного кабеля нужно под автомат.
+ * Используется только для подсказки, решение остаётся за электриком
+ */
+export const MIN_SECTION: Record<string, number> = {
+  B6: 1.5, B10: 1.5, C6: 1.5, C10: 1.5,
+  C16: 2.5, C20: 2.5, C25: 4, C32: 6, C40: 10, C50: 10, C63: 16,
+}
+
+export const breakerAmps = (b: string) => Number(String(b).replace(/[^0-9.]/g, "")) || 0
+export const sectionOf = (spec: string) => Number(String(spec).replace(",", ".").replace(/[^0-9.]/g, "")) || 0
+
+/** Цвета групп на схеме — чтобы трассы разных групп различались на глаз */
+export const GROUP_COLORS = [
+  "#E8B23A", "#5EB8F0", "#7BD47B", "#F07E7E", "#C08BF0",
+  "#F0A35E", "#4FD1C5", "#E87FC0", "#B8C94A", "#9AA5FF",
+]
+export const groupColor = (num: number) => GROUP_COLORS[(Math.max(num, 1) - 1) % GROUP_COLORS.length]
 
 export interface RoomMetrics {
   id: string
@@ -181,4 +230,5 @@ export const emptyScheme = (): PlanScheme => ({
   defaultHeight: 2.7,
   nodes: [],
   links: [],
+  groups: [],
 })

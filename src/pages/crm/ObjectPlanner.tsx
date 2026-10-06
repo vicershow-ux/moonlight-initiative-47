@@ -28,6 +28,9 @@ export default function ObjectPlanner() {
     setLinkSpec,
     linkFromId,
     setLinkFromId,
+    linkGroupId,
+    setLinkGroupId,
+    addGroup,
     draft,
     setDraft,
     fileUrl,
@@ -104,6 +107,10 @@ export default function ObjectPlanner() {
           linkSpec={linkSpec}
           setLinkSpec={setLinkSpec}
           linkFromId={linkFromId}
+          groups={scheme.groups || []}
+          linkGroupId={linkGroupId}
+          setLinkGroupId={setLinkGroupId}
+          addGroup={addGroup}
         />
       )}
 

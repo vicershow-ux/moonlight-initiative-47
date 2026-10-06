@@ -55,6 +55,7 @@ interface Props {
   onLinkClick: (nodeId: string, bends: PlanPoint[]) => void
   onCancelLink: () => void
   onUpdateLink: (id: string, patch: Partial<PlanLink>) => void
+  linkGroupId?: string | null
 }
 
 export function PlanCanvas({
@@ -81,6 +82,7 @@ export function PlanCanvas({
   onLinkClick,
   onCancelLink,
   onUpdateLink,
+  linkGroupId = null,
 }: Props) {
   const { wrapRef, size, view, setView, toScreen, toWorld, gridLines, gridStep, zoomBy, fitView } =
     usePlanView(scheme.rooms)
@@ -358,6 +360,8 @@ export function PlanCanvas({
             nodes={nodes}
             links={links}
             rooms={scheme.rooms}
+            groups={scheme.groups || []}
+            linkGroupId={linkGroupId}
             nodeById={nodeById}
             linkFromId={linkFromId}
             selectedNodeId={selectedNodeId}

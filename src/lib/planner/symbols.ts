@@ -21,7 +21,7 @@ const arc = (cx: number, cy: number, r: number, a0: number, a1: number, n = 14):
  * Выключатель: кружок, наклонная черта и штрихи на конце.
  * Число штрихов — число клавиш
  */
-const switchSymbol = (ticks: number): SymbolPrim[] => {
+const switchSymbol = (ticks: number, pass = false): SymbolPrim[] => {
   const c: V = [0, 0.55]
   const r = 0.4
   const d: V = [Math.SQRT1_2, Math.SQRT1_2]
@@ -35,8 +35,24 @@ const switchSymbol = (ticks: number): SymbolPrim[] => {
     const q = at(1.75 - i * 0.35)
     prims.push({ kind: "poly", pts: [q, [q[0] + p[0] * 0.5, q[1] + p[1] * 0.5]] })
   }
+  // Проходной: черта продолжается через кружок в обратную сторону со своими штрихами —
+  // так на схемах показывают переключатель на две линии
+  if (pass) {
+    prims.push({ kind: "poly", pts: [at(-r), at(-1.75)] })
+    for (let i = 0; i < ticks; i++) {
+      const q = at(-1.75 + i * 0.35)
+      prims.push({ kind: "poly", pts: [q, [q[0] - p[0] * 0.5, q[1] - p[1] * 0.5]] })
+    }
+  }
   return prims
 }
+
+const rect = (x0: number, y0: number, x1: number, y1: number, fill = false): SymbolPrim => ({
+  kind: "poly",
+  pts: [[x0, y0], [x1, y0], [x1, y1], [x0, y1]],
+  closed: true,
+  fill,
+})
 
 /**
  * Значки нарисованы в своей системе координат: стена — линия y = 0,
@@ -64,6 +80,8 @@ const SYMBOLS: Partial<Record<NodeKind, SymbolPrim[]>> = {
   ],
   switch: switchSymbol(1),
   switch_double: switchSymbol(2),
+  switch_pass: switchSymbol(1, true),
+  switch_pass_double: switchSymbol(2, true),
   // Щит: прямоугольник у стены, наполовину залитый по диагонали
   panel: [
     { kind: "poly", pts: [[-1.3, 0], [1.3, 0], [1.3, 1.1], [-1.3, 1.1]], closed: true },
@@ -85,6 +103,58 @@ const SYMBOLS: Partial<Record<NodeKind, SymbolPrim[]>> = {
     { kind: "circle", c: [0, 0], r: 0.65 },
     { kind: "circle", c: [0, 0], r: 0.26, fill: true },
   ],
+
+  // ——— Сантехника ———
+  // Ввод воды: круг со стрелкой внутрь помещения
+  water_in: [
+    { kind: "circle", c: [0, 0.9], r: 0.8 },
+    { kind: "poly", pts: [[0, 0.3], [0, 1.4]] },
+    { kind: "poly", pts: [[-0.35, 1.05], [0, 1.4], [0.35, 1.05]] },
+  ],
+  // Выводы воды: залитый круг — горячая, пустой — холодная; у стены черта отвода
+  water_hot: [
+    { kind: "poly", pts: [[0, 0], [0, 0.45]] },
+    { kind: "circle", c: [0, 0.85], r: 0.4, fill: true },
+  ],
+  water_cold: [
+    { kind: "poly", pts: [[0, 0], [0, 0.45]] },
+    { kind: "circle", c: [0, 0.85], r: 0.4 },
+  ],
+  // Канализационный выпуск: круг с крестом-трапом
+  sewer: [
+    { kind: "circle", c: [0, 0.9], r: 0.75 },
+    { kind: "poly", pts: [[-0.75, 0.9], [0.75, 0.9]] },
+    { kind: "poly", pts: [[0, 0.15], [0, 1.65]] },
+  ],
+  // Смеситель: точка подключения и излив
+  mixer: [
+    rect(-0.6, 0, 0.6, 0.35),
+    { kind: "poly", pts: [[0, 0.35], [0, 0.95], [0.55, 0.95]] },
+    { kind: "circle", c: [0, 0.35], r: 0.14, fill: true },
+  ],
+  // Унитаз в плане: бачок у стены и чаша
+  toilet: [
+    rect(-0.7, 0, 0.7, 0.45),
+    { kind: "poly", pts: [[-0.5, 0.45], [0.5, 0.45], ...arc(0, 0.95, 0.55, 0, Math.PI, 14)], closed: true },
+    { kind: "poly", pts: [[-0.45, 0.45], [-0.55, 0.85]] },
+    { kind: "poly", pts: [[0.45, 0.45], [0.55, 0.85]] },
+  ],
+  // Раковина: прямоугольник с полукруглой чашей и сливом
+  sink: [
+    rect(-0.9, 0, 0.9, 1.1),
+    { kind: "poly", pts: [[-0.6, 0.2], ...arc(0, 0.2, 0.6, Math.PI, 0, 12), [0.6, 0.2]] },
+    { kind: "circle", c: [0, 0.55], r: 0.1, fill: true },
+  ],
+  // Водонагреватель: круг с залитой половиной
+  boiler: [
+    { kind: "circle", c: [0, 0.95], r: 0.85 },
+    { kind: "poly", pts: arc(0, 0.95, 0.85, 0, Math.PI, 12), closed: true, fill: true },
+  ],
+  // Радиатор: вытянутый прямоугольник с секциями
+  radiator: [
+    rect(-1.3, 0.1, 1.3, 0.6),
+    ...[-0.65, 0, 0.65].map((x): SymbolPrim => ({ kind: "poly", pts: [[x, 0.1], [x, 0.6]] })),
+  ],
 }
 
 /** Что ставится на стену и должно смотреть в помещение */
@@ -93,7 +163,18 @@ export const WALL_MOUNTED = new Set<NodeKind>([
   "socket_power",
   "switch",
   "switch_double",
+  "switch_pass",
+  "switch_pass_double",
   "panel",
+  "water_in",
+  "water_hot",
+  "water_cold",
+  "sewer",
+  "mixer",
+  "toilet",
+  "sink",
+  "boiler",
+  "radiator",
 ])
 
 export const gostSymbol = (kind: NodeKind): SymbolPrim[] | null => SYMBOLS[kind] ?? null

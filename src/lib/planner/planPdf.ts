@@ -13,7 +13,15 @@ import {
   schemeMetrics,
   wallSegments,
 } from "@/lib/planner/geometry"
-import { NODE_PRESETS, NodeKind, PlanLayer, PlanScheme } from "@/lib/planner/types"
+import {
+  NODE_PRESETS,
+  NodeKind,
+  PROTECTION_LABELS,
+  PlanLayer,
+  PlanScheme,
+  groupColor,
+} from "@/lib/planner/types"
+import { describeNodes, groupSummaries } from "@/lib/planner/groups"
 import {
   WALL_MOUNTED,
   gostSymbol,
@@ -138,11 +146,14 @@ export function schemeToSvg(
     const nodes = (scheme.nodes || []).filter((n) => n.layer === layer)
     const links = (scheme.links || []).filter((l) => l.layer === layer)
     const byId = new Map(nodes.map((n) => [n.id, n]))
-    const lineColor = layer === "electric" ? "#B8860B" : "#2f80c9"
+    const defaultColor = layer === "electric" ? "#B8860B" : "#2f80c9"
+    const groupById = new Map((scheme.groups || []).map((g) => [g.id, g]))
 
     links.forEach((l) => {
       const g = linkGeometry(l, byId)
       if (!g) return
+      const grp = layer === "electric" && l.groupId ? groupById.get(l.groupId) : null
+      const lineColor = grp ? groupColor(grp.num) : defaultColor
       const pts = g.route.map((p) => `${sx(p.x)},${sy(p.y)}`).join(" ")
       parts.push(
         `<polyline points="${pts}" fill="none" stroke="${lineColor}" stroke-width="2" stroke-linejoin="miter"${
@@ -160,7 +171,7 @@ export function schemeToSvg(
       const angle = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI
       const flip = angle > 90 || angle < -90
       parts.push(
-        `<text x="${mx}" y="${my - 4}" text-anchor="middle" font-size="9" fill="${lineColor}" font-family="Arial" transform="rotate(${flip ? angle + 180 : angle}, ${mx}, ${my})">${escapeXml(l.spec)} · L=${toMm(g.length)}</text>`,
+        `<text x="${mx}" y="${my - 4}" text-anchor="middle" font-size="9" fill="${lineColor}" font-family="Arial" transform="rotate(${flip ? angle + 180 : angle}, ${mx}, ${my})">${grp ? `Гр.${grp.num} · ` : ""}${escapeXml(l.spec)} · L=${toMm(g.length)}</text>`,
       )
     })
 
@@ -179,8 +190,11 @@ export function schemeToSvg(
         )
         parts.push(`<circle cx="${px}" cy="${py}" r="3.5" fill="${preset.color}"/>`)
       }
+      // У правого края листа подпись ставим слева от значка, иначе она обрежется
+      const text = escapeXml(n.label || preset.label)
+      const nearRight = px + 12 + text.length * 5 > width - 8
       parts.push(
-        `<text x="${px + 12}" y="${py + 3.5}" font-size="9" fill="#333" font-family="Arial">${escapeXml(n.label || preset.label)}</text>`,
+        `<text x="${nearRight ? px - 12 : px + 12}" y="${py + 3.5}" text-anchor="${nearRight ? "end" : "start"}" font-size="9" fill="#333" font-family="Arial">${text}</text>`,
       )
     })
   }
@@ -272,6 +286,9 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
     .plan-doc td.num { text-align: right; white-space: nowrap; }
     .plan-doc td.strong { font-weight: bold; }
     .plan-doc td.sym { width: 46px; text-align: center; padding: 2px 4px; }
+    .plan-doc .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+    .plan-doc .warn { color: #b45309; font-size: 10px; margin-top: 3px; }
+    .plan-doc tr.muted-row td { color: #888; }
     .plan-doc td.sym svg { display: block; margin: 0 auto; }
     .plan-doc .muted { color: #888; font-size: 10px; }
     .plan-doc .totals { background: #fbf6e6; }
@@ -454,11 +471,83 @@ function engineerSection(
       : ""
   }
 
+  ${layer === "electric" ? groupsTable(scheme) : ""}
+
   <h3>Список точек по помещениям</h3>
   <table>
     <thead><tr><th>№</th><th>Подпись</th><th>Тип</th><th>Помещение</th><th>Высота, мм</th></tr></thead>
     <tbody>${listRows}</tbody>
   </table>`
+}
+
+/** Таблица групп щита: автомат, защита, сечение, длина кабеля и состав */
+function groupsTable(scheme: PlanScheme): string {
+  const sums = groupSummaries(scheme)
+  if (sums.length === 0) return ""
+
+  let grand = 0
+  const rows = sums
+    .map((sum) => {
+      const g = sum.group
+      const specs = Object.entries(sum.bySpec)
+      grand += sum.total
+      const protection = g
+        ? `${PROTECTION_LABELS[g.protection]}${g.protection !== "mcb" ? `, ${g.leakage} мА` : ""}`
+        : "—"
+      const specCell = specs.length
+        ? specs.map(([spec]) => escapeXml(spec)).join("<br>")
+        : "—"
+      const lenCell = specs.length
+        ? specs.map(([, len]) => fmtNum(len, 2)).join("<br>")
+        : "0"
+      return `
+      <tr${g ? "" : ' class="muted-row"'}>
+        <td class="num">${
+          g
+            ? `<span class="dot" style="background:${groupColor(g.num)}"></span>${g.num}`
+            : "—"
+        }</td>
+        <td>${g ? escapeXml(g.name || "—") : "Без группы"}</td>
+        <td class="num strong">${g ? escapeXml(g.breaker) : "—"}</td>
+        <td>${protection}</td>
+        <td class="num">${specCell}</td>
+        <td class="num">${lenCell}</td>
+        <td class="num strong">${fmtNum(sum.total, 2)}</td>
+        <td>${escapeXml(describeNodes(sum.nodeCounts)) || "—"}${
+          sum.warning ? `<div class="warn">${escapeXml(sum.warning)}</div>` : ""
+        }</td>
+      </tr>`
+    })
+    .join("")
+
+  return `
+  <h3>Группы электрощита</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>№</th>
+        <th>Назначение</th>
+        <th>Автомат</th>
+        <th>Защита</th>
+        <th>Сечение</th>
+        <th>Длина, м</th>
+        <th>Итого, м</th>
+        <th>Потребители</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows}
+      <tr class="totals">
+        <td colspan="6">Итого кабеля</td>
+        <td class="num">${fmtNum(grand, 2)}</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="legend" style="text-align:left">
+    Длина — по трассе с поворотами, без запаса на спуски к точкам и разделку концов.
+    Подбор автомата под сечение проверен по типовым значениям для медного кабеля; итоговое решение — за электриком.
+  </div>`
 }
 
 export async function downloadPlanPdf(

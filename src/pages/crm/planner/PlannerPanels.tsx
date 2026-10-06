@@ -7,8 +7,10 @@ import {
   LINK_SPECS,
   NODE_PRESETS,
   NodeKind,
+  PlanGroup,
   PlanLayer,
   PlanScheme,
+  groupColor,
 } from "@/lib/planner/types"
 
 interface PickerProps {
@@ -20,6 +22,10 @@ interface PickerProps {
   linkSpec: string
   setLinkSpec: (s: string) => void
   linkFromId: string | null
+  groups: PlanGroup[]
+  linkGroupId: string | null
+  setLinkGroupId: (id: string | null) => void
+  addGroup: () => string
 }
 
 /** Выбор элемента для установки на план либо сечения новой линии */
@@ -32,7 +38,12 @@ export function PlannerEngineerPicker({
   linkSpec,
   setLinkSpec,
   linkFromId,
+  groups,
+  linkGroupId,
+  setLinkGroupId,
+  addGroup,
 }: PickerProps) {
+  const sorted = [...groups].sort((a, b) => a.num - b.num)
   return (
     <div className="mb-4 rounded-xl border border-white/10 bg-[#1f1f1f] p-3">
       <div className="mb-2 text-xs uppercase text-white/40">
@@ -59,6 +70,45 @@ export function PlannerEngineerPicker({
               ? "Щелчки по пустому месту — повороты трассы под 90°, щелчок по точке — конец. Backspace — убрать поворот, Esc — отмена"
               : "Щёлкните по точке, откуда идёт кабель"}
           </span>
+
+          {/* Группа щита, в которую уйдут новые трассы */}
+          {layer === "electric" && (
+            <div className="flex w-full flex-wrap items-center gap-2 border-t border-white/10 pt-2">
+              <span className="text-xs uppercase text-white/40">Группа</span>
+              <button
+                onClick={() => setLinkGroupId(null)}
+                className={`min-h-[34px] rounded-lg px-3 text-sm transition-colors ${
+                  linkGroupId === null
+                    ? "bg-white/20 text-white"
+                    : "bg-white/5 text-white/50 hover:bg-white/10"
+                }`}
+              >
+                Без группы
+              </button>
+              {sorted.map((g) => (
+                <button
+                  key={g.id}
+                  onClick={() => setLinkGroupId(g.id)}
+                  className={`flex min-h-[34px] items-center gap-2 rounded-lg px-3 text-sm transition-colors ${
+                    linkGroupId === g.id
+                      ? "bg-white/20 text-white"
+                      : "bg-white/5 text-white/60 hover:bg-white/10"
+                  }`}
+                >
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: groupColor(g.num) }} />
+                  Гр. {g.num}
+                  <span className="text-xs text-white/40">{g.breaker}</span>
+                </button>
+              ))}
+              <button
+                onClick={() => addGroup()}
+                className="flex min-h-[34px] items-center gap-1.5 rounded-lg bg-white/5 px-3 text-sm text-[#D4AF37] transition-colors hover:bg-white/10"
+              >
+                <Icon name="Plus" size={14} />
+                Новая группа
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">

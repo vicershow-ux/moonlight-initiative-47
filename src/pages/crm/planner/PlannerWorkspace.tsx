@@ -44,6 +44,10 @@ export function PlannerWorkspace({ state }: Props) {
     moveNode,
     handleLinkClick,
     cancelLink,
+    linkGroupId,
+    addGroup,
+    updateGroup,
+    deleteGroup,
     updateLink,
     deleteLink,
   } = state
@@ -87,6 +91,7 @@ export function PlannerWorkspace({ state }: Props) {
           onLinkClick={handleLinkClick}
           onCancelLink={cancelLink}
           onUpdateLink={updateLink}
+          linkGroupId={linkGroupId}
         />
       </div>
 
@@ -116,6 +121,9 @@ export function PlannerWorkspace({ state }: Props) {
           onDeleteNode={deleteNode}
           onUpdateLink={updateLink}
           onDeleteLink={deleteLink}
+          onAddGroup={addGroup}
+          onUpdateGroup={updateGroup}
+          onDeleteGroup={deleteGroup}
           onSelectNode={(nid) => {
             setSelectedNodeId(nid)
             setSelectedLinkId(null)
