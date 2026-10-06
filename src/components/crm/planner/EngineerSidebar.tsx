@@ -1,6 +1,8 @@
 import Icon from "@/components/ui/icon"
 import { DeleteButton } from "@/components/ui/delete-button"
 import { fmtNum, fromMm, linkGeometry, toMm } from "@/lib/planner/geometry"
+import { gostSymbol } from "@/lib/planner/symbols"
+import { NodeSymbolIcon } from "./NodeSymbol"
 import {
   LINK_SPECS,
   NODE_PRESETS,
@@ -65,7 +67,11 @@ export function EngineerSidebar({
         <div className="rounded-xl border border-[#D4AF37]/30 bg-[#1f1f1f] p-4">
           <div className="mb-3 flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm font-medium">
-              <Icon name={NODE_PRESETS[selectedNode.kind].icon} size={15} />
+              {gostSymbol(selectedNode.kind) ? (
+                <NodeSymbolIcon kind={selectedNode.kind} />
+              ) : (
+                <Icon name={NODE_PRESETS[selectedNode.kind].icon} size={15} />
+              )}
               {NODE_PRESETS[selectedNode.kind].label}
             </div>
             <DeleteButton onConfirm={() => onDeleteNode(selectedNode.id)} title="Удалить точку?" />
@@ -202,7 +208,10 @@ export function EngineerSidebar({
               <div className="space-y-1">
                 {Object.entries(countsByKind).map(([kind, count]) => (
                   <div key={kind} className="flex justify-between text-sm">
-                    <span className="text-white/60">
+                    <span className="flex items-center gap-2 text-white/60">
+                      {gostSymbol(kind as keyof typeof NODE_PRESETS) && (
+                        <NodeSymbolIcon kind={kind as keyof typeof NODE_PRESETS} height={16} />
+                      )}
                       {NODE_PRESETS[kind as keyof typeof NODE_PRESETS].label}
                     </span>
                     <span>{count} шт</span>
@@ -243,7 +252,11 @@ export function EngineerSidebar({
                 }`}
               >
                 <span className="flex items-center gap-2 truncate">
-                  <Icon name={NODE_PRESETS[n.kind].icon} size={14} />
+                  {gostSymbol(n.kind) ? (
+                    <NodeSymbolIcon kind={n.kind} height={16} />
+                  ) : (
+                    <Icon name={NODE_PRESETS[n.kind].icon} size={14} />
+                  )}
                   <span className="truncate">{n.label || NODE_PRESETS[n.kind].label}</span>
                 </span>
                 <span className="shrink-0 text-xs text-white/40">{roomName(n.roomId)}</span>

@@ -1,6 +1,8 @@
 import Icon from "@/components/ui/icon"
 import { fromMm, toMm } from "@/lib/planner/geometry"
 import { PlanTool } from "@/components/crm/planner/PlanCanvas"
+import { NodeSymbolIcon } from "@/components/crm/planner/NodeSymbol"
+import { gostSymbol } from "@/lib/planner/symbols"
 import {
   LINK_SPECS,
   NODE_PRESETS,
@@ -75,7 +77,11 @@ export function PlannerEngineerPicker({
                     : "bg-white/5 text-white/60 hover:bg-white/10"
                 }`}
               >
-                <Icon name={NODE_PRESETS[k].icon} size={15} />
+                {gostSymbol(k) ? (
+                  <NodeSymbolIcon kind={k} />
+                ) : (
+                  <Icon name={NODE_PRESETS[k].icon} size={15} />
+                )}
                 {NODE_PRESETS[k].label}
               </button>
             ))}

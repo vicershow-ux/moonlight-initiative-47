@@ -357,6 +357,7 @@ export function PlanCanvas({
             scale={view.scale}
             nodes={nodes}
             links={links}
+            rooms={scheme.rooms}
             nodeById={nodeById}
             linkFromId={linkFromId}
             selectedNodeId={selectedNodeId}

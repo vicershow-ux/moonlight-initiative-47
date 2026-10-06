@@ -6,8 +6,11 @@ import {
   PlanLink,
   PlanNode,
   PlanPoint,
+  PlanRoom,
 } from "@/lib/planner/types"
+import { WALL_MOUNTED, gostSymbol, placeSymbol, wallDirection } from "@/lib/planner/symbols"
 import { ToScreen } from "./usePlanView"
+import { SymbolShapes } from "./NodeSymbol"
 import type { PlanTool } from "./PlanCanvas"
 
 interface Props {
@@ -17,6 +20,7 @@ interface Props {
   scale: number
   nodes: PlanNode[]
   links: PlanLink[]
+  rooms: PlanRoom[]
   nodeById: Map<string, PlanNode>
   linkFromId: string | null
   selectedNodeId: string | null
@@ -45,6 +49,7 @@ export function PlanEngineerLayer({
   scale,
   nodes,
   links,
+  rooms,
   nodeById,
   linkFromId,
   selectedNodeId,
@@ -125,21 +130,45 @@ export function PlanEngineerLayer({
     const selected = n.id === selectedNodeId
     const isFrom = n.id === linkFromId
     const r = 11
+    const prims = gostSymbol(n.kind)
+    // Настенные значки разворачиваем от ближайшей стены внутрь комнаты
+    const dir = WALL_MOUNTED.has(n.kind) ? wallDirection(n, rooms) : null
 
     return (
       <g key={n.id} style={{ cursor: tool === "select" ? "grab" : "pointer" }}>
+        {/* Прозрачный круг — чтобы в маленький значок было легко попасть мышью */}
+        <circle cx={p.x} cy={p.y} r={r + 3} fill="transparent" />
         {(selected || isFrom) && (
-          <circle cx={p.x} cy={p.y} r={r + 5} fill="none" stroke={isFrom ? "#fff" : preset.color} strokeWidth={2} />
+          <circle
+            cx={p.x}
+            cy={p.y}
+            r={r + 6}
+            fill="none"
+            stroke={isFrom ? "#fff" : preset.color}
+            strokeWidth={1.5}
+            strokeDasharray="3 3"
+          />
         )}
-        <circle
-          cx={p.x}
-          cy={p.y}
-          r={r}
-          fill="#161616"
-          stroke={preset.color}
-          strokeWidth={selected ? 3 : 2}
-        />
-        <circle cx={p.x} cy={p.y} r={4} fill={preset.color} />
+        {prims ? (
+          <SymbolShapes
+            prims={placeSymbol(prims, p, 9, dir)}
+            color={preset.color}
+            bg="#161616"
+            strokeWidth={selected ? 2.2 : 1.6}
+          />
+        ) : (
+          <>
+            <circle
+              cx={p.x}
+              cy={p.y}
+              r={r}
+              fill="#161616"
+              stroke={preset.color}
+              strokeWidth={selected ? 3 : 2}
+            />
+            <circle cx={p.x} cy={p.y} r={4} fill={preset.color} />
+          </>
+        )}
         {scale > 26 && (
           <text x={p.x + r + 4} y={p.y + 4} fontSize="10" fill="rgba(255,255,255,0.75)">
             {n.label || preset.label}
@@ -179,17 +208,34 @@ export function PlanEngineerLayer({
           })}
         </>
       )}
-      {tool === "node" && cursor && (
-        <circle
-          cx={toScreen(cursor).x}
-          cy={toScreen(cursor).y}
-          r={11}
-          fill="none"
-          stroke={NODE_PRESETS[nodeKind].color}
-          strokeWidth={2}
-          strokeDasharray="4 3"
-        />
-      )}
+      {tool === "node" && cursor && (() => {
+        const prims = gostSymbol(nodeKind)
+        const c = toScreen(cursor)
+        if (!prims) {
+          return (
+            <circle
+              cx={c.x}
+              cy={c.y}
+              r={11}
+              fill="none"
+              stroke={NODE_PRESETS[nodeKind].color}
+              strokeWidth={2}
+              strokeDasharray="4 3"
+            />
+          )
+        }
+        // Призрак значка под курсором — уже развёрнутый, как встанет
+        const dir = WALL_MOUNTED.has(nodeKind) ? wallDirection(cursor, rooms) : null
+        return (
+          <SymbolShapes
+            prims={placeSymbol(prims, c, 9, dir)}
+            color={NODE_PRESETS[nodeKind].color}
+            bg="transparent"
+            strokeWidth={1.5}
+            opacity={0.6}
+          />
+        )
+      })()}
     </g>
   )
 }

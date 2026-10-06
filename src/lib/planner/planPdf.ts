@@ -13,7 +13,15 @@ import {
   schemeMetrics,
   wallSegments,
 } from "@/lib/planner/geometry"
-import { NODE_PRESETS, PlanLayer, PlanScheme } from "@/lib/planner/types"
+import { NODE_PRESETS, NodeKind, PlanLayer, PlanScheme } from "@/lib/planner/types"
+import {
+  WALL_MOUNTED,
+  gostSymbol,
+  placeSymbol,
+  symbolIconSvg,
+  symbolToSvg,
+  wallDirection,
+} from "@/lib/planner/symbols"
 
 export function schemeToSvg(
   scheme: PlanScheme,
@@ -160,10 +168,17 @@ export function schemeToSvg(
       const px = sx(n.x)
       const py = sy(n.y)
       const preset = NODE_PRESETS[n.kind]
-      parts.push(
-        `<circle cx="${px}" cy="${py}" r="9" fill="#ffffff" stroke="${preset.color}" stroke-width="2"/>`,
-      )
-      parts.push(`<circle cx="${px}" cy="${py}" r="3.5" fill="${preset.color}"/>`)
+      const prims = gostSymbol(n.kind)
+      if (prims) {
+        // Условные обозначения печатаем чёрным — как в проектной документации
+        const dir = WALL_MOUNTED.has(n.kind) ? wallDirection(n, scheme.rooms) : null
+        parts.push(symbolToSvg(placeSymbol(prims, { x: px, y: py }, 7, dir), "#161616", "#ffffff", 1.2))
+      } else {
+        parts.push(
+          `<circle cx="${px}" cy="${py}" r="9" fill="#ffffff" stroke="${preset.color}" stroke-width="2"/>`,
+        )
+        parts.push(`<circle cx="${px}" cy="${py}" r="3.5" fill="${preset.color}"/>`)
+      }
       parts.push(
         `<text x="${px + 12}" y="${py + 3.5}" font-size="9" fill="#333" font-family="Arial">${escapeXml(n.label || preset.label)}</text>`,
       )
@@ -256,6 +271,8 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
     .plan-doc td { padding: 6px 5px; border: 1px solid #e2e2e2; font-size: 11px; }
     .plan-doc td.num { text-align: right; white-space: nowrap; }
     .plan-doc td.strong { font-weight: bold; }
+    .plan-doc td.sym { width: 46px; text-align: center; padding: 2px 4px; }
+    .plan-doc td.sym svg { display: block; margin: 0 auto; }
     .plan-doc .muted { color: #888; font-size: 10px; }
     .plan-doc .totals { background: #fbf6e6; }
     .plan-doc .totals td { font-weight: bold; }
@@ -375,6 +392,7 @@ function engineerSection(
     .map(
       ([kind, count]) => `
       <tr>
+        <td class="sym">${symbolIconSvg(kind as NodeKind, 36, 22, 7, "#161616", "#ffffff") ?? ""}</td>
         <td>${escapeXml(NODE_PRESETS[kind as keyof typeof NODE_PRESETS].label)}</td>
         <td class="num">${count}</td>
         <td class="num">${toMm(NODE_PRESETS[kind as keyof typeof NODE_PRESETS].height)}</td>
@@ -412,14 +430,14 @@ function engineerSection(
   <div class="legend">
     Планировка показана серым как подложка. ${
       layer === "electric"
-        ? "Линии — кабельные трассы с поворотами под 90°, подпись — сечение и длина L в мм."
+        ? "Линии — кабельные трассы с поворотами под 90°, подпись — сечение и длина L в мм. Настенные элементы развёрнуты от стены в помещение."
         : "Пунктир — трубы, подпись у линии — диаметр."
     }
   </div>
 
-  <h3>Ведомость точек</h3>
+  <h3>Условные обозначения и ведомость точек</h3>
   <table>
-    <thead><tr><th>Элемент</th><th>Количество, шт</th><th>Высота от пола, мм</th></tr></thead>
+    <thead><tr><th>Обозначение</th><th>Элемент</th><th>Количество, шт</th><th>Высота от пола, мм</th></tr></thead>
     <tbody>${nodeRows}</tbody>
   </table>
 
