@@ -1,4 +1,5 @@
 import Icon from "@/components/ui/icon"
+import { fromMm, toMm } from "@/lib/planner/geometry"
 import { PlanTool } from "@/components/crm/planner/PlanCanvas"
 import {
   LINK_SPECS,
@@ -53,8 +54,8 @@ export function PlannerEngineerPicker({
           ))}
           <span className="flex items-center pl-2 text-xs text-white/40">
             {linkFromId
-              ? "Кликните по второй точке — линия соединит их"
-              : "Кликните по первой точке, затем по второй"}
+              ? "Щелчки по пустому месту — повороты трассы под 90°, щелчок по точке — конец. Backspace — убрать поворот, Esc — отмена"
+              : "Щёлкните по точке, откуда идёт кабель"}
           </span>
         </div>
       ) : (
@@ -105,14 +106,14 @@ export function PlannerSettingsBar({
   return (
     <div className="mb-4 flex flex-wrap items-center gap-4 rounded-xl border border-white/10 bg-[#1f1f1f] p-3">
       <div className="flex items-center gap-2 text-sm">
-        <span className="text-white/50">Высота стен, м</span>
+        <span className="text-white/50">Высота стен, мм</span>
         <input
-          className="w-24 rounded-lg border border-white/10 bg-[#161616] px-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50"
+          className="w-28 rounded-lg border border-white/10 bg-[#161616] px-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50"
           type="number"
-          min="1"
-          step="0.05"
-          value={scheme.defaultHeight}
-          onChange={(e) => setAllHeights(Number(e.target.value))}
+          min="1000"
+          step="10"
+          value={toMm(scheme.defaultHeight)}
+          onChange={(e) => setAllHeights(fromMm(Number(e.target.value)))}
         />
       </div>
       <label className="flex cursor-pointer items-center gap-2 text-sm text-white/60">

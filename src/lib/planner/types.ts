@@ -64,7 +64,11 @@ export interface PlanNode {
   roomId: string | null
 }
 
-/** Линия между точками: кабель с сечением или труба с диаметром */
+/**
+ * Линия между точками: кабель с сечением или труба с диаметром.
+ * points — изломы трассы, которые расставил монтажник.
+ * ortho — трасса идёт только по горизонталям и вертикалям (по умолчанию да)
+ */
 export interface PlanLink {
   id: string
   layer: Exclude<PlanLayer, "plan">
@@ -72,6 +76,7 @@ export interface PlanLink {
   toId: string
   spec: string
   points: PlanPoint[]
+  ortho?: boolean
 }
 
 export interface PlanScheme {

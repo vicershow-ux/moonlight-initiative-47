@@ -1,4 +1,5 @@
 import {
+  fmtMm,
   fmtNum,
   openingPosition,
   polygonArea,
@@ -68,7 +69,7 @@ export function PlanRoomsLayer({
               fill="rgba(255,255,255,0.75)"
               transform={`rotate(${flip ? angle + 180 : angle}, ${mx}, ${my})`}
             >
-              {fmtNum(seg.length, 2)} м
+              {fmtMm(seg.length)}
             </text>
           )
         })}

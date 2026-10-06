@@ -1,4 +1,4 @@
-import { dimensionParts, fmtNum, outerDimensions } from "@/lib/planner/geometry"
+import { dimensionParts, fmtMm, outerDimensions } from "@/lib/planner/geometry"
 import { PlanRoom } from "@/lib/planner/types"
 import { ToScreen } from "./usePlanView"
 
@@ -58,7 +58,7 @@ export function PlanDimensionsLayer({ rooms, scale, toScreen }: Props) {
                 fill={TEXT}
                 transform={`rotate(${d.label.angle}, ${d.label.cx}, ${d.label.cy})`}
               >
-                {fmtNum(d.length, 2)} м
+                {fmtMm(d.length)}
               </text>
             </g>
           )

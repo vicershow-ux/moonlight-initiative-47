@@ -1,4 +1,4 @@
-import { dist, fmtNum } from "@/lib/planner/geometry"
+import { dist, fmtMmText, fmtNum, toMm } from "@/lib/planner/geometry"
 import { PlanPoint } from "@/lib/planner/types"
 import { ToScreen } from "./usePlanView"
 import type { PlanTool } from "./PlanCanvas"
@@ -45,7 +45,7 @@ export function PlanDraftLayer({ draft, tool, cursor, toScreen }: DraftProps) {
           fontSize="12"
           fill="#D4AF37"
         >
-          {fmtNum(dist(draft[draft.length - 1], cursor), 2)} м
+          {fmtMmText(dist(draft[draft.length - 1], cursor))}
         </text>
       )}
     </g>
@@ -54,12 +54,13 @@ export function PlanDraftLayer({ draft, tool, cursor, toScreen }: DraftProps) {
 
 interface ControlsProps {
   cursor: PlanPoint | null
+  gridStep: number
   zoomBy: (factor: number) => void
   fitView: () => void
 }
 
 /** Кнопки масштаба и подсказка с координатами курсора */
-export function PlanControls({ cursor, zoomBy, fitView }: ControlsProps) {
+export function PlanControls({ cursor, gridStep, zoomBy, fitView }: ControlsProps) {
   return (
     <>
       <div className="absolute bottom-3 right-3 flex flex-col gap-1.5">
@@ -86,7 +87,7 @@ export function PlanControls({ cursor, zoomBy, fitView }: ControlsProps) {
 
       {cursor && (
         <div className="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-[#1f1f1f]/90 px-2.5 py-1.5 text-xs text-white/50">
-          {fmtNum(cursor.x, 1)} : {fmtNum(cursor.y, 1)} м · масштаб 1 кл = 0,5 м
+          X {fmtNum(toMm(cursor.x), 0)} · Y {fmtNum(toMm(cursor.y), 0)} мм · клетка {fmtNum(toMm(gridStep), 0)} мм
         </div>
       )}
     </>

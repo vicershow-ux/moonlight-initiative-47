@@ -43,6 +43,7 @@ export function PlannerWorkspace({ state }: Props) {
     deleteNode,
     moveNode,
     handleLinkClick,
+    cancelLink,
     updateLink,
     deleteLink,
   } = state
@@ -84,6 +85,8 @@ export function PlannerWorkspace({ state }: Props) {
           onAddNode={addNode}
           onMoveNode={moveNode}
           onLinkClick={handleLinkClick}
+          onCancelLink={cancelLink}
+          onUpdateLink={updateLink}
         />
       </div>
 

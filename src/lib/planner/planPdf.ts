@@ -1,7 +1,11 @@
 import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
 import {
   dimensionParts,
+  fmtMm,
   fmtNum,
+  linkGeometry,
+  longestSegment,
+  toMm,
   openingPosition,
   polygonCentroid,
   outerDimensions,
@@ -66,7 +70,7 @@ export function schemeToSvg(
         const angle = (Math.atan2(sy(seg.b.y) - sy(seg.a.y), sx(seg.b.x) - sx(seg.a.x)) * 180) / Math.PI
         const flip = angle > 90 || angle < -90
         parts.push(
-          `<text x="${mx}" y="${my - 5}" text-anchor="middle" font-size="10" fill="${dimColor}" font-family="Arial" transform="rotate(${flip ? angle + 180 : angle}, ${mx}, ${my})">${fmtNum(seg.length, 2)} м</text>`,
+          `<text x="${mx}" y="${my - 5}" text-anchor="middle" font-size="10" fill="${dimColor}" font-family="Arial" transform="rotate(${flip ? angle + 180 : angle}, ${mx}, ${my})">${fmtMm(seg.length)}</text>`,
         )
       })
     }
@@ -104,7 +108,7 @@ export function schemeToSvg(
           `<line x1="${dp.line.x1}" y1="${dp.line.y1}" x2="${dp.line.x2}" y2="${dp.line.y2}" stroke="${dimLine}" stroke-width="0.7"/>`,
           `<polygon points="${dp.arrows[0]}" fill="${dimLine}"/>`,
           `<polygon points="${dp.arrows[1]}" fill="${dimLine}"/>`,
-          `<text x="${dp.label.x}" y="${dp.label.y}" text-anchor="middle" font-size="10" font-weight="bold" fill="${dimText}" font-family="Arial" transform="rotate(${dp.label.angle}, ${dp.label.cx}, ${dp.label.cy})">${fmtNum(dp.length, 2)} м</text>`,
+          `<text x="${dp.label.x}" y="${dp.label.y}" text-anchor="middle" font-size="10" font-weight="bold" fill="${dimText}" font-family="Arial" transform="rotate(${dp.label.angle}, ${dp.label.cx}, ${dp.label.cy})">${fmtMm(dp.length)}</text>`,
         )
       })
     })
@@ -129,24 +133,26 @@ export function schemeToSvg(
     const lineColor = layer === "electric" ? "#B8860B" : "#2f80c9"
 
     links.forEach((l) => {
-      const a = byId.get(l.fromId)
-      const b = byId.get(l.toId)
-      if (!a || !b) return
-      const x1 = sx(a.x)
-      const y1 = sy(a.y)
-      const x2 = sx(b.x)
-      const y2 = sy(b.y)
+      const g = linkGeometry(l, byId)
+      if (!g) return
+      const pts = g.route.map((p) => `${sx(p.x)},${sy(p.y)}`).join(" ")
       parts.push(
-        `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${lineColor}" stroke-width="2"${
+        `<polyline points="${pts}" fill="none" stroke="${lineColor}" stroke-width="2" stroke-linejoin="miter"${
           layer === "plumbing" ? ' stroke-dasharray="7 4"' : ""
         }/>`,
       )
+      const seg = longestSegment(g.route)
+      if (!seg) return
+      const x1 = sx(seg.a.x)
+      const y1 = sy(seg.a.y)
+      const x2 = sx(seg.b.x)
+      const y2 = sy(seg.b.y)
       const mx = (x1 + x2) / 2
       const my = (y1 + y2) / 2
       const angle = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI
       const flip = angle > 90 || angle < -90
       parts.push(
-        `<text x="${mx}" y="${my - 4}" text-anchor="middle" font-size="9" fill="${lineColor}" font-family="Arial" transform="rotate(${flip ? angle + 180 : angle}, ${mx}, ${my})">${escapeXml(l.spec)}</text>`,
+        `<text x="${mx}" y="${my - 4}" text-anchor="middle" font-size="9" fill="${lineColor}" font-family="Arial" transform="rotate(${flip ? angle + 180 : angle}, ${mx}, ${my})">${escapeXml(l.spec)} · L=${toMm(g.length)}</text>`,
       )
     })
 
@@ -169,7 +175,7 @@ export function schemeToSvg(
       <line x1="24" y1="${height - 20}" x2="${24 + scale}" y2="${height - 20}" stroke="#161616" stroke-width="2"/>
       <line x1="24" y1="${height - 25}" x2="24" y2="${height - 15}" stroke="#161616" stroke-width="2"/>
       <line x1="${24 + scale}" y1="${height - 25}" x2="${24 + scale}" y2="${height - 15}" stroke="#161616" stroke-width="2"/>
-      <text x="${24 + scale / 2}" y="${height - 27}" text-anchor="middle">1 м</text>
+      <text x="${24 + scale / 2}" y="${height - 27}" text-anchor="middle">1000 мм</text>
     </g>`,
   )
 
@@ -210,7 +216,7 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
         }</td>
         <td class="num">${fmtNum(r.area, 2)}</td>
         <td class="num">${fmtNum(r.perimeter, 2)}</td>
-        <td class="num">${fmtNum(r.height, 2)}</td>
+        <td class="num">${toMm(r.height)}</td>
         <td class="num">${fmtNum(r.wallAreaGross, 2)}</td>
         <td class="num">${fmtNum(r.openingsArea, 2)}</td>
         <td class="num strong">${fmtNum(r.wallAreaNet, 2)}</td>
@@ -229,9 +235,9 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
         <tr>
           <td>${kind}</td>
           <td>${escapeXml(room?.name || "—")}</td>
-          <td class="num">${fmtNum(o.width, 2)}</td>
-          <td class="num">${fmtNum(o.height, 2)}</td>
-          <td class="num">${fmtNum(o.sill, 2)}</td>
+          <td class="num">${toMm(o.width)}</td>
+          <td class="num">${toMm(o.height)}</td>
+          <td class="num">${toMm(o.sill)}</td>
           <td class="num">${fmtNum(o.width * o.height, 2)}</td>
         </tr>`
     })
@@ -271,7 +277,7 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
 
   <div class="plan-img">${svg}</div>
   <div class="legend">
-    Синим отмечены окна, зелёным — двери, фиолетовым — проёмы. Размеры стен указаны в метрах.
+    Синим отмечены окна, зелёным — двери, фиолетовым — проёмы. Размеры на чертеже указаны в миллиметрах.
   </div>
 
   <h3>Сводка по объекту</h3>
@@ -292,7 +298,7 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
         <th>Помещение</th>
         <th>Пол, м²</th>
         <th>Периметр, м</th>
-        <th>Высота, м</th>
+        <th>Высота, мм</th>
         <th>Стены, м²</th>
         <th>Проёмы, м²</th>
         <th>Стены чисто, м²</th>
@@ -322,9 +328,9 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
       <tr>
         <th>Тип</th>
         <th>Помещение</th>
-        <th>Ширина, м</th>
-        <th>Высота, м</th>
-        <th>От пола, м</th>
+        <th>Ширина, мм</th>
+        <th>Высота, мм</th>
+        <th>От пола, мм</th>
         <th>Площадь, м²</th>
       </tr>
     </thead>
@@ -359,10 +365,9 @@ function engineerSection(
   }, {})
 
   const specs = links.reduce<Record<string, number>>((acc, l) => {
-    const a = byId.get(l.fromId)
-    const b = byId.get(l.toId)
-    if (!a || !b) return acc
-    acc[l.spec] = (acc[l.spec] || 0) + Math.hypot(b.x - a.x, b.y - a.y)
+    const g = linkGeometry(l, byId)
+    if (!g) return acc
+    acc[l.spec] = (acc[l.spec] || 0) + g.length
     return acc
   }, {})
 
@@ -372,7 +377,7 @@ function engineerSection(
       <tr>
         <td>${escapeXml(NODE_PRESETS[kind as keyof typeof NODE_PRESETS].label)}</td>
         <td class="num">${count}</td>
-        <td class="num">${fmtNum(NODE_PRESETS[kind as keyof typeof NODE_PRESETS].height, 2)}</td>
+        <td class="num">${toMm(NODE_PRESETS[kind as keyof typeof NODE_PRESETS].height)}</td>
       </tr>`,
     )
     .join("")
@@ -395,7 +400,7 @@ function engineerSection(
         <td>${escapeXml(n.label || NODE_PRESETS[n.kind].label)}</td>
         <td>${escapeXml(NODE_PRESETS[n.kind].label)}</td>
         <td>${escapeXml(roomName(n.roomId))}</td>
-        <td class="num">${fmtNum(n.height, 2)}</td>
+        <td class="num">${toMm(n.height)}</td>
       </tr>`,
     )
     .join("")
@@ -407,14 +412,14 @@ function engineerSection(
   <div class="legend">
     Планировка показана серым как подложка. ${
       layer === "electric"
-        ? "Линии — кабельные трассы, подпись у линии — сечение."
+        ? "Линии — кабельные трассы с поворотами под 90°, подпись — сечение и длина L в мм."
         : "Пунктир — трубы, подпись у линии — диаметр."
     }
   </div>
 
   <h3>Ведомость точек</h3>
   <table>
-    <thead><tr><th>Элемент</th><th>Количество, шт</th><th>Высота от пола, м</th></tr></thead>
+    <thead><tr><th>Элемент</th><th>Количество, шт</th><th>Высота от пола, мм</th></tr></thead>
     <tbody>${nodeRows}</tbody>
   </table>
 
@@ -422,18 +427,18 @@ function engineerSection(
     specRows
       ? `<h3>${specTitle}</h3>
   <table>
-    <thead><tr><th>${layer === "electric" ? "Сечение" : "Диаметр"}</th><th>Длина по прямой, м</th></tr></thead>
+    <thead><tr><th>${layer === "electric" ? "Сечение" : "Диаметр"}</th><th>Длина по трассе, м</th></tr></thead>
     <tbody>${specRows}</tbody>
   </table>
   <div class="legend" style="text-align:left">
-    Длина указана по прямой между точками, без запаса на спуски и повороты.
+    Длина посчитана по трассе с поворотами, без запаса на спуски к точкам и разделку концов.
   </div>`
       : ""
   }
 
   <h3>Список точек по помещениям</h3>
   <table>
-    <thead><tr><th>№</th><th>Подпись</th><th>Тип</th><th>Помещение</th><th>Высота, м</th></tr></thead>
+    <thead><tr><th>№</th><th>Подпись</th><th>Тип</th><th>Помещение</th><th>Высота, мм</th></tr></thead>
     <tbody>${listRows}</tbody>
   </table>`
 }

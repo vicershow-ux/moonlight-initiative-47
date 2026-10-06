@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   dist,
-  distToSegment,
+  distToPolyline,
+  linkGeometry,
   openingPosition,
+  orthoPoint,
   pointInPolygon,
   snap,
   wallSegments,
@@ -10,12 +12,14 @@ import {
 import {
   NodeKind,
   PlanLayer,
+  PlanLink,
   PlanNode,
   PlanPoint,
   PlanScheme,
 } from "@/lib/planner/types"
 import {
-  CLOSE_DISTANCE,
+  MAX_SCALE,
+  MIN_SCALE,
   SNAP_STEP,
   eventPoint,
   usePlanView,
@@ -48,7 +52,9 @@ interface Props {
   onMoveVertex: (roomId: string, index: number, point: PlanPoint) => void
   onAddNode: (point: PlanPoint) => void
   onMoveNode: (id: string, point: PlanPoint) => void
-  onLinkClick: (nodeId: string) => void
+  onLinkClick: (nodeId: string, bends: PlanPoint[]) => void
+  onCancelLink: () => void
+  onUpdateLink: (id: string, patch: Partial<PlanLink>) => void
 }
 
 export function PlanCanvas({
@@ -73,8 +79,10 @@ export function PlanCanvas({
   onAddNode,
   onMoveNode,
   onLinkClick,
+  onCancelLink,
+  onUpdateLink,
 }: Props) {
-  const { wrapRef, size, view, setView, toScreen, toWorld, gridLines, zoomBy, fitView } =
+  const { wrapRef, size, view, setView, toScreen, toWorld, gridLines, gridStep, zoomBy, fitView } =
     usePlanView(scheme.rooms)
 
   const [cursor, setCursor] = useState<PlanPoint | null>(null)
@@ -82,8 +90,11 @@ export function PlanCanvas({
     | { type: "pan"; startX: number; startY: number; tx: number; ty: number }
     | { type: "vertex"; roomId: string; index: number }
     | { type: "node"; nodeId: string }
+    | { type: "bend"; linkId: string; index: number }
     | null
   >(null)
+  /** Изломы трассы, которую сейчас прокладывают */
+  const [bends, setBends] = useState<PlanPoint[]>([])
 
   const nodes = useMemo(
     () => (scheme.nodes || []).filter((n) => n.layer === layer),
@@ -98,6 +109,45 @@ export function PlanCanvas({
     for (const n of scheme.nodes || []) map.set(n.id, n)
     return map
   }, [scheme.nodes])
+
+  // Начали новую трассу или закончили — изломы предыдущей больше не нужны
+  useEffect(() => {
+    setBends([])
+  }, [linkFromId, tool, layer])
+
+  // Backspace убирает последний излом, Esc отменяет прокладку трассы
+  useEffect(() => {
+    if (tool !== "link" || !linkFromId) return
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return
+      if (e.key === "Escape") {
+        setBends([])
+        onCancelLink()
+      } else if (e.key === "Backspace") {
+        e.preventDefault()
+        setBends((b) => b.slice(0, -1))
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [tool, linkFromId, onCancelLink])
+
+  const snapPoint = (p: PlanPoint) => ({ x: snap(p.x, SNAP_STEP), y: snap(p.y, SNAP_STEP) })
+
+  /** Последняя точка прокладываемой трассы: излом либо начальная точка */
+  const routeTail = (): PlanPoint | null => {
+    if (bends.length > 0) return bends[bends.length - 1]
+    const from = linkFromId ? nodeById.get(linkFromId) : null
+    return from ? { x: from.x, y: from.y } : null
+  }
+
+  /** Излом всегда ставится строго по горизонтали или вертикали от предыдущего */
+  const nextBend = (world: PlanPoint, free: boolean): PlanPoint => {
+    const p = snapPoint(world)
+    const tail = routeTail()
+    return tail && !free ? orthoPoint(tail, p) : p
+  }
 
   const handleDown = (e: React.MouseEvent) => {
     const { sx, sy } = eventPoint(e)
@@ -118,7 +168,12 @@ export function PlanCanvas({
 
     if (tool === "link") {
       const n = hitNode()
-      if (n) onLinkClick(n.id)
+      if (n) {
+        onLinkClick(n.id, linkFromId && n.id !== linkFromId ? bends : [])
+        return
+      }
+      // Щелчок по пустому месту — ещё один поворот трассы
+      if (linkFromId) setBends((b) => [...b, nextBend(world, e.altKey)])
       return
     }
 
@@ -132,11 +187,19 @@ export function PlanCanvas({
           return
         }
 
+        // Изломы выбранной трассы можно таскать мышью
+        const sel = links.find((l) => l.id === selectedLinkId)
+        if (sel) {
+          const idx = (sel.points || []).findIndex((p) => dist(p, world) * view.scale < 9)
+          if (idx >= 0) {
+            setDrag({ type: "bend", linkId: sel.id, index: idx })
+            return
+          }
+        }
+
         const link = links.find((l) => {
-          const a = nodeById.get(l.fromId)
-          const b = nodeById.get(l.toId)
-          if (!a || !b) return false
-          return distToSegment(world, { x: a.x, y: a.y }, { x: b.x, y: b.y }) * view.scale < 10
+          const g = linkGeometry(l, nodeById)
+          return g ? distToPolyline(world, g.route) * view.scale < 8 : false
         })
         if (link) {
           onSelectLink(link.id)
@@ -172,8 +235,9 @@ export function PlanCanvas({
     }
 
     if (tool === "draw") {
-      const snapped = { x: snap(world.x, SNAP_STEP), y: snap(world.y, SNAP_STEP) }
-      if (draft.length >= 3 && dist(snapped, draft[0]) < CLOSE_DISTANCE) {
+      const snapped = snapPoint(world)
+      // Замыкаем контур, если щёлкнули рядом с первой точкой (12 пикселей на экране)
+      if (draft.length >= 3 && dist(snapped, draft[0]) * view.scale < 12) {
         onFinishRoom(draft)
         return
       }
@@ -203,7 +267,7 @@ export function PlanCanvas({
   const handleMove = (e: React.MouseEvent) => {
     const { sx, sy } = eventPoint(e)
     const world = toWorld(sx, sy)
-    setCursor({ x: snap(world.x, SNAP_STEP), y: snap(world.y, SNAP_STEP) })
+    setCursor(snapPoint(world))
 
     if (!drag) return
     if (drag.type === "pan") {
@@ -211,10 +275,14 @@ export function PlanCanvas({
       return
     }
     if (drag.type === "node") {
-      onMoveNode(drag.nodeId, {
-        x: snap(world.x, SNAP_STEP),
-        y: snap(world.y, SNAP_STEP),
-      })
+      onMoveNode(drag.nodeId, snapPoint(world))
+      return
+    }
+    if (drag.type === "bend") {
+      const link = links.find((l) => l.id === drag.linkId)
+      if (!link) return
+      const pts = (link.points || []).map((p, i) => (i === drag.index ? snapPoint(world) : p))
+      onUpdateLink(link.id, { points: pts })
       return
     }
     onMoveVertex(drag.roomId, drag.index, {
@@ -229,7 +297,7 @@ export function PlanCanvas({
     const { sx, sy } = eventPoint(e)
     const before = toWorld(sx, sy)
     const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12
-    const scale = Math.min(Math.max(view.scale * factor, 8), 200)
+    const scale = Math.min(Math.max(view.scale * factor, MIN_SCALE), MAX_SCALE)
     const tx = sx - before.x * scale
     const ty = sy - before.y * scale
     setView({ scale, tx, ty })
@@ -294,6 +362,8 @@ export function PlanCanvas({
             selectedNodeId={selectedNodeId}
             selectedLinkId={selectedLinkId}
             cursor={cursor}
+            bends={bends}
+            previewBend={tool === "link" && linkFromId && cursor ? nextBend(cursor, false) : null}
             toScreen={toScreen}
           />
         )}
@@ -301,7 +371,7 @@ export function PlanCanvas({
         <PlanDraftLayer draft={draft} tool={tool} cursor={cursor} toScreen={toScreen} />
       </svg>
 
-      <PlanControls cursor={cursor} zoomBy={zoomBy} fitView={fitView} />
+      <PlanControls cursor={cursor} gridStep={gridStep} zoomBy={zoomBy} fitView={fitView} />
     </div>
   )
 }

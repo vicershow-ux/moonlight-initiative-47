@@ -1,6 +1,6 @@
 import Icon from "@/components/ui/icon"
 import { DeleteButton } from "@/components/ui/delete-button"
-import { fmtNum, roomMetrics } from "@/lib/planner/geometry"
+import { fmtNum, fromMm, roomMetrics, setWallLength, toMm, wallSegments } from "@/lib/planner/geometry"
 import {
   OPENING_PRESETS,
   PlanOpening,
@@ -78,54 +78,54 @@ export function PlanSidebar({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs text-white/50">Ширина, м</label>
+              <label className="mb-1 block text-xs text-white/50">Ширина, мм</label>
               <input
                 className={inputCls}
                 type="number"
-                min="0.1"
-                step="0.05"
-                value={selectedOpening.width}
+                min="100"
+                step="10"
+                value={toMm(selectedOpening.width)}
                 onChange={(e) =>
-                  onUpdateOpening(selectedOpening.id, { width: Number(e.target.value) })
+                  onUpdateOpening(selectedOpening.id, { width: fromMm(Number(e.target.value)) })
                 }
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-white/50">Высота, м</label>
+              <label className="mb-1 block text-xs text-white/50">Высота, мм</label>
               <input
                 className={inputCls}
                 type="number"
-                min="0.1"
-                step="0.05"
-                value={selectedOpening.height}
+                min="100"
+                step="10"
+                value={toMm(selectedOpening.height)}
                 onChange={(e) =>
-                  onUpdateOpening(selectedOpening.id, { height: Number(e.target.value) })
+                  onUpdateOpening(selectedOpening.id, { height: fromMm(Number(e.target.value)) })
                 }
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-white/50">От пола, м</label>
+              <label className="mb-1 block text-xs text-white/50">От пола, мм</label>
               <input
                 className={inputCls}
                 type="number"
                 min="0"
-                step="0.05"
-                value={selectedOpening.sill}
+                step="10"
+                value={toMm(selectedOpening.sill)}
                 onChange={(e) =>
-                  onUpdateOpening(selectedOpening.id, { sill: Number(e.target.value) })
+                  onUpdateOpening(selectedOpening.id, { sill: fromMm(Number(e.target.value)) })
                 }
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-white/50">Сдвиг по стене, м</label>
+              <label className="mb-1 block text-xs text-white/50">От угла, мм</label>
               <input
                 className={inputCls}
                 type="number"
                 min="0"
-                step="0.05"
-                value={Number(selectedOpening.offset.toFixed(2))}
+                step="10"
+                value={toMm(selectedOpening.offset)}
                 onChange={(e) =>
-                  onUpdateOpening(selectedOpening.id, { offset: Number(e.target.value) })
+                  onUpdateOpening(selectedOpening.id, { offset: fromMm(Number(e.target.value)) })
                 }
               />
             </div>
@@ -170,17 +170,44 @@ export function PlanSidebar({
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs text-white/50">Высота, м</label>
+                <label className="mb-1 block text-xs text-white/50">Высота, мм</label>
                 <input
                   className={inputCls}
                   type="number"
-                  min="1"
-                  step="0.05"
-                  value={selectedRoom.height}
+                  min="1000"
+                  step="10"
+                  value={toMm(selectedRoom.height)}
                   onChange={(e) =>
-                    onUpdateRoom(selectedRoom.id, { height: Number(e.target.value) })
+                    onUpdateRoom(selectedRoom.id, { height: fromMm(Number(e.target.value)) })
                   }
                 />
+              </div>
+            </div>
+
+            {/* Точный размер каждой стены. Соседняя стена под прямым углом
+                сдвигается вместе с концом, поэтому углы комнаты не ломаются */}
+            <div>
+              <div className="mb-1.5 text-xs text-white/50">Стены, мм</div>
+              <div className="grid grid-cols-2 gap-2">
+                {wallSegments(selectedRoom).map((seg, i) => (
+                  <label key={seg.id} className="flex items-center gap-2">
+                    <span className="w-6 shrink-0 text-xs text-white/40">{i + 1}</span>
+                    <input
+                      className={inputCls}
+                      type="number"
+                      min="10"
+                      step="10"
+                      value={toMm(seg.length)}
+                      onChange={(e) => {
+                        const mm = Number(e.target.value)
+                        if (!mm || mm <= 0) return
+                        onUpdateRoom(selectedRoom.id, {
+                          points: setWallLength(selectedRoom.points, i, fromMm(mm)),
+                        })
+                      }}
+                    />
+                  </label>
+                ))}
               </div>
             </div>
           </div>
@@ -251,7 +278,7 @@ export function PlanSidebar({
           <li>Инструмент «Стены»: щёлкайте по углам комнаты</li>
           <li>Чтобы замкнуть — щёлкните по первой точке</li>
           <li>«Окно» и «Дверь»: щёлкните по нужной стене</li>
-          <li>«Выбор»: тащите углы, чтобы менять размер</li>
+          <li>«Выбор»: тащите углы или введите длину стены в мм</li>
           <li>Колесо мыши — масштаб, правая кнопка — сдвиг</li>
         </ul>
       </div>

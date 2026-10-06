@@ -1,6 +1,6 @@
 import Icon from "@/components/ui/icon"
 import { DeleteButton } from "@/components/ui/delete-button"
-import { dist, fmtNum } from "@/lib/planner/geometry"
+import { fmtNum, fromMm, linkGeometry, toMm } from "@/lib/planner/geometry"
 import {
   LINK_SPECS,
   NODE_PRESETS,
@@ -42,12 +42,8 @@ export function EngineerSidebar({
   const links = (scheme.links || []).filter((l) => l.layer === layer)
   const nodeById = new Map(nodes.map((n) => [n.id, n]))
 
-  const linkLength = (l: PlanLink) => {
-    const a = nodeById.get(l.fromId)
-    const b = nodeById.get(l.toId)
-    if (!a || !b) return 0
-    return dist({ x: a.x, y: a.y }, { x: b.x, y: b.y })
-  }
+  // Длина по трассе со всеми поворотами — именно столько кабеля уйдёт в стену
+  const linkLength = (l: PlanLink) => linkGeometry(l, nodeById)?.length ?? 0
 
   // Итог по сечениям — сразу видно, сколько кабеля или трубы каждого типа
   const totalsBySpec = links.reduce<Record<string, number>>((acc, l) => {
@@ -86,21 +82,43 @@ export function EngineerSidebar({
           </div>
 
           <div className="mb-3">
-            <label className={labelCls}>Высота от пола, м</label>
+            <label className={labelCls}>Высота от пола, мм</label>
             <input
               className={inputCls}
               type="number"
               min="0"
-              step="0.05"
-              value={selectedNode.height}
-              onChange={(e) => onUpdateNode(selectedNode.id, { height: Number(e.target.value) })}
+              step="10"
+              value={toMm(selectedNode.height)}
+              onChange={(e) =>
+                onUpdateNode(selectedNode.id, { height: fromMm(Number(e.target.value)) })
+              }
             />
           </div>
 
-          <div className="text-xs text-white/40">
-            Помещение: {roomName(selectedNode.roomId)} · координаты{" "}
-            {fmtNum(selectedNode.x, 2)} : {fmtNum(selectedNode.y, 2)} м
+          <div className="mb-3 grid grid-cols-2 gap-2">
+            <div>
+              <label className={labelCls}>X, мм</label>
+              <input
+                className={inputCls}
+                type="number"
+                step="10"
+                value={toMm(selectedNode.x)}
+                onChange={(e) => onUpdateNode(selectedNode.id, { x: fromMm(Number(e.target.value)) })}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Y, мм</label>
+              <input
+                className={inputCls}
+                type="number"
+                step="10"
+                value={toMm(selectedNode.y)}
+                onChange={(e) => onUpdateNode(selectedNode.id, { y: fromMm(Number(e.target.value)) })}
+              />
+            </div>
           </div>
+
+          <div className="text-xs text-white/40">Помещение: {roomName(selectedNode.roomId)}</div>
         </div>
       )}
 
@@ -131,8 +149,39 @@ export function EngineerSidebar({
             </select>
           </div>
 
-          <div className="text-xs text-white/40">
-            Длина по прямой: {fmtNum(linkLength(selectedLink), 2)} м
+          <label className="mb-3 flex cursor-pointer items-center gap-2 text-sm text-white/70">
+            <input
+              type="checkbox"
+              checked={selectedLink.ortho !== false}
+              onChange={(e) => onUpdateLink(selectedLink.id, { ortho: e.target.checked })}
+              className="h-4 w-4 accent-[#D4AF37]"
+            />
+            Только прямые углы (по ГОСТ)
+          </label>
+
+          <div className="mb-3 space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span className="text-white/40">Длина по трассе</span>
+              <span className="text-[#D4AF37]">{fmtNum(toMm(linkLength(selectedLink)), 0)} мм</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white/40">Поворотов задано</span>
+              <span>{(selectedLink.points || []).length}</span>
+            </div>
+          </div>
+
+          {(selectedLink.points || []).length > 0 && (
+            <button
+              onClick={() => onUpdateLink(selectedLink.id, { points: [] })}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm text-white/70 transition-colors hover:bg-white/10"
+            >
+              <Icon name="RotateCcw" size={14} />
+              Сбросить повороты
+            </button>
+          )}
+
+          <div className="mt-2 text-xs text-white/40">
+            Квадратики на трассе — повороты, их можно перетаскивать мышью
           </div>
         </div>
       )}

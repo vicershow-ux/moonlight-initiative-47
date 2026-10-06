@@ -385,6 +385,151 @@ export function snap(value: number, step: number) {
   return Math.round(value / step) * step
 }
 
+/** Внутри план хранится в метрах, а показывается и вводится в миллиметрах */
+export const toMm = (m: number) => Math.round((m || 0) * 1000)
+export const fromMm = (mm: number) => (Number(mm) || 0) / 1000
+
+/** Размер на чертеже по ГОСТ: целые миллиметры без единицы измерения */
+export const fmtMm = (m: number) => String(toMm(m))
+
+/** Размер в тексте и таблицах: с разрядами и подписью «мм» */
+export const fmtMmText = (m: number) => `${fmtNum(toMm(m), 0)} мм`
+
+/**
+ * Притягивает точку к горизонтали или вертикали относительно предыдущей —
+ * стены и трассы идут под прямым углом, а не как попало
+ */
+export function orthoPoint(prev: PlanPoint, p: PlanPoint): PlanPoint {
+  return Math.abs(p.x - prev.x) >= Math.abs(p.y - prev.y)
+    ? { x: p.x, y: prev.y }
+    : { x: prev.x, y: p.y }
+}
+
+/**
+ * Полная трасса линии: от точки через изломы к точке.
+ * В режиме прямых углов недостающие повороты добавляются сами: если отрезок
+ * идёт наискосок, он превращается в «уголок». Поворот выбирается так, чтобы
+ * трасса не возвращалась по тому же направлению, что и предыдущий участок
+ */
+export function linkRoute(
+  from: PlanPoint,
+  bends: PlanPoint[],
+  to: PlanPoint,
+  ortho = true,
+): PlanPoint[] {
+  const raw = [from, ...bends, to]
+  if (!ortho) return raw
+
+  const eps = 1e-6
+  const out: PlanPoint[] = [raw[0]]
+  let prevDir: "h" | "v" | null = null
+
+  for (let i = 1; i < raw.length; i++) {
+    const p = out[out.length - 1]
+    const q = raw[i]
+    const dx = Math.abs(q.x - p.x)
+    const dy = Math.abs(q.y - p.y)
+
+    if (dx > eps && dy > eps) {
+      const verticalFirst: boolean = prevDir === "h"
+      out.push(verticalFirst ? { x: p.x, y: q.y } : { x: q.x, y: p.y })
+      prevDir = verticalFirst ? "h" : "v"
+    } else if (dx > eps) {
+      prevDir = "h"
+    } else if (dy > eps) {
+      prevDir = "v"
+    }
+    out.push(q)
+  }
+
+  // Убираем точки, лежащие на одной прямой с соседями, — лишние изломы
+  return out.filter((p, i) => {
+    if (i === 0 || i === out.length - 1) return true
+    const a = out[i - 1]
+    const b = out[i + 1]
+    const sameX = Math.abs(a.x - p.x) < eps && Math.abs(b.x - p.x) < eps
+    const sameY = Math.abs(a.y - p.y) < eps && Math.abs(b.y - p.y) < eps
+    const dup = dist(a, p) < eps
+    return !(sameX || sameY || dup)
+  })
+}
+
+export function polylineLength(points: PlanPoint[]): number {
+  let sum = 0
+  for (let i = 1; i < points.length; i++) sum += dist(points[i - 1], points[i])
+  return sum
+}
+
+export function distToPolyline(p: PlanPoint, points: PlanPoint[]): number {
+  let best = Infinity
+  for (let i = 1; i < points.length; i++) {
+    best = Math.min(best, distToSegment(p, points[i - 1], points[i]))
+  }
+  return best
+}
+
+/** Трасса и длина линии схемы — общий расчёт для холста, панели и PDF */
+export function linkGeometry(
+  link: { fromId: string; toId: string; points?: PlanPoint[]; ortho?: boolean },
+  nodeById: Map<string, { x: number; y: number }>,
+): { route: PlanPoint[]; length: number } | null {
+  const a = nodeById.get(link.fromId)
+  const b = nodeById.get(link.toId)
+  if (!a || !b) return null
+  const route = linkRoute(
+    { x: a.x, y: a.y },
+    link.points || [],
+    { x: b.x, y: b.y },
+    link.ortho !== false,
+  )
+  return { route, length: polylineLength(route) }
+}
+
+/** Самый длинный участок трассы — на нём удобнее всего разместить подпись */
+export function longestSegment(route: PlanPoint[]): { a: PlanPoint; b: PlanPoint } | null {
+  let best: { a: PlanPoint; b: PlanPoint; len: number } | null = null
+  for (let i = 1; i < route.length; i++) {
+    const len = dist(route[i - 1], route[i])
+    if (!best || len > best.len) best = { a: route[i - 1], b: route[i], len }
+  }
+  return best ? { a: best.a, b: best.b } : null
+}
+
+/**
+ * Меняет длину стены, сдвигая её конец вдоль стены.
+ * Если следующая стена стоит под прямым углом, она переезжает целиком —
+ * так у прямоугольной комнаты меняется ширина, а углы остаются прямыми
+ */
+export function setWallLength(points: PlanPoint[], index: number, length: number): PlanPoint[] {
+  const n = points.length
+  if (n < 2 || length <= 0) return points
+  const ia = index
+  const ib = (index + 1) % n
+  const ic = (index + 2) % n
+  const a = points[ia]
+  const b = points[ib]
+  const cur = dist(a, b)
+  if (cur < 1e-9) return points
+
+  const ux = (b.x - a.x) / cur
+  const uy = (b.y - a.y) / cur
+  const dx = ux * (length - cur)
+  const dy = uy * (length - cur)
+
+  const next = points.map((p) => ({ ...p }))
+  next[ib] = { x: b.x + dx, y: b.y + dy }
+
+  if (n > 3 && ic !== ia) {
+    const c = points[ic]
+    const len2 = dist(b, c)
+    if (len2 > 1e-9) {
+      const dot = (ux * (c.x - b.x) + uy * (c.y - b.y)) / len2
+      if (Math.abs(dot) < 0.02) next[ic] = { x: c.x + dx, y: c.y + dy }
+    }
+  }
+  return next
+}
+
 export const fmtNum = (n: number, digits = 2) =>
   new Intl.NumberFormat("ru-RU", {
     minimumFractionDigits: 0,

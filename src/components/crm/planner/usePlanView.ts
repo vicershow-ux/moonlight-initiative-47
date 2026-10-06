@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { PlanPoint, PlanRoom } from "@/lib/planner/types"
 
-export const GRID_STEP = 0.5
-export const SNAP_STEP = 0.1
-export const CLOSE_DISTANCE = 0.45
+/** Привязка курсора — 10 мм. Точные размеры вводятся числом в панели справа */
+export const SNAP_STEP = 0.01
+export const MIN_SCALE = 8
+/** До 3 пикселей на миллиметр — можно разглядеть детали узлов */
+export const MAX_SCALE = 3000
+
+/** Шаг сетки подбирается под масштаб: 10 мм, 100 мм, 500 мм или 1 м */
+const GRID_STEPS = [0.01, 0.1, 0.5, 1]
+export const gridStepFor = (scale: number) =>
+  GRID_STEPS.find((s) => s * scale >= 10) ?? 1
 
 export type ToScreen = (p: PlanPoint) => { x: number; y: number }
 
@@ -46,32 +53,36 @@ export function usePlanView(rooms: PlanRoom[]) {
     [view],
   )
 
+  const gridStep = gridStepFor(view.scale)
+
   const gridLines = useMemo(() => {
     const lines: { x1: number; y1: number; x2: number; y2: number; major: boolean }[] = []
-    const stepPx = GRID_STEP * view.scale
-    if (stepPx < 6) return lines
+    const step = gridStep
+    // Жирная линия — каждые 100 мм на мелкой сетке и каждый метр на крупной
+    const majorEvery = Math.round((step < 0.1 ? 0.1 : 1) / step)
 
     const startX = -view.tx / view.scale
     const endX = (size.w - view.tx) / view.scale
     const startY = -view.ty / view.scale
     const endY = (size.h - view.ty) / view.scale
 
-    for (let x = Math.floor(startX / GRID_STEP) * GRID_STEP; x < endX; x += GRID_STEP) {
-      const px = x * view.scale + view.tx
-      lines.push({ x1: px, y1: 0, x2: px, y2: size.h, major: Math.abs(x % 1) < 1e-6 })
+    // Считаем по целому номеру линии, чтобы не копилась погрешность дробей
+    for (let i = Math.floor(startX / step); i * step < endX; i++) {
+      const px = i * step * view.scale + view.tx
+      lines.push({ x1: px, y1: 0, x2: px, y2: size.h, major: i % majorEvery === 0 })
     }
-    for (let y = Math.floor(startY / GRID_STEP) * GRID_STEP; y < endY; y += GRID_STEP) {
-      const py = y * view.scale + view.ty
-      lines.push({ x1: 0, y1: py, x2: size.w, y2: py, major: Math.abs(y % 1) < 1e-6 })
+    for (let i = Math.floor(startY / step); i * step < endY; i++) {
+      const py = i * step * view.scale + view.ty
+      lines.push({ x1: 0, y1: py, x2: size.w, y2: py, major: i % majorEvery === 0 })
     }
     return lines
-  }, [view, size])
+  }, [view, size, gridStep])
 
   const zoomBy = (factor: number) => {
     const cx = size.w / 2
     const cy = size.h / 2
     const before = toWorld(cx, cy)
-    const scale = Math.min(Math.max(view.scale * factor, 8), 200)
+    const scale = Math.min(Math.max(view.scale * factor, MIN_SCALE), MAX_SCALE)
     setView({ scale, tx: cx - before.x * scale, ty: cy - before.y * scale })
   }
 
@@ -90,7 +101,7 @@ export function usePlanView(rooms: PlanRoom[]) {
     const w = Math.max(maxX - minX, 1)
     const h = Math.max(maxY - minY, 1)
     const scale = Math.min((size.w - 100) / w, (size.h - 100) / h)
-    const clamped = Math.min(Math.max(scale, 8), 200)
+    const clamped = Math.min(Math.max(scale, MIN_SCALE), MAX_SCALE)
     setView({
       scale: clamped,
       tx: (size.w - w * clamped) / 2 - minX * clamped,
@@ -103,5 +114,5 @@ export function usePlanView(rooms: PlanRoom[]) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rooms.length])
 
-  return { wrapRef, size, view, setView, toScreen, toWorld, gridLines, zoomBy, fitView }
+  return { wrapRef, size, view, setView, toScreen, toWorld, gridLines, gridStep, zoomBy, fitView }
 }

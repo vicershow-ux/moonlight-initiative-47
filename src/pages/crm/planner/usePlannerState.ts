@@ -242,8 +242,11 @@ export function usePlannerState(id: string | undefined) {
     setDirty(true)
   }
 
-  /** Первый клик — откуда тянем, второй — куда. Линия получает текущее сечение */
-  const handleLinkClick = (nodeId: string) => {
+  /**
+   * Первый клик — откуда тянем, второй — куда. Между ними монтажник ставит
+   * изломы трассы. Линия получает текущее сечение и идёт под прямыми углами
+   */
+  const handleLinkClick = (nodeId: string, bends: PlanPoint[] = []) => {
     if (layer === "plan") return
     if (!linkFromId) {
       setLinkFromId(nodeId)
@@ -267,7 +270,8 @@ export function usePlannerState(id: string | undefined) {
         fromId: linkFromId,
         toId: nodeId,
         spec: linkSpec,
-        points: [],
+        points: bends,
+        ortho: true,
       }
       setScheme((s) => ({ ...s, links: [...(s.links || []), link] }))
       setSelectedLinkId(link.id)
@@ -275,6 +279,8 @@ export function usePlannerState(id: string | undefined) {
     }
     setLinkFromId(nodeId)
   }
+
+  const cancelLink = useCallback(() => setLinkFromId(null), [])
 
   const updateLink = (linkId: string, patch: Partial<PlanLink>) => {
     setScheme((s) => ({
@@ -438,6 +444,7 @@ export function usePlannerState(id: string | undefined) {
     deleteNode,
     moveNode,
     handleLinkClick,
+    cancelLink,
     updateLink,
     deleteLink,
     changeLayer,
