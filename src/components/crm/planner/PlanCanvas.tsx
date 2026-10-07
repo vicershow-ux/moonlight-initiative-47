@@ -25,6 +25,7 @@ import {
   usePlanView,
 } from "./usePlanView"
 import { PlanRoomsLayer } from "./PlanRoomsLayer"
+import { schemeWalls } from "@/lib/planner/walls"
 import { PlanDimensionsLayer } from "./PlanDimensionsLayer"
 import { PlanEngineerLayer } from "./PlanEngineerLayer"
 import { PlanControls, PlanDraftLayer } from "./PlanOverlays"
@@ -49,6 +50,7 @@ interface Props {
   onSelectNode: (id: string | null) => void
   onSelectLink: (id: string | null) => void
   onAddOpening: (wallId: string, offset: number) => void
+  selectedWallId?: string | null
   onMoveVertex: (roomId: string, index: number, point: PlanPoint) => void
   onAddNode: (point: PlanPoint) => void
   onMoveNode: (id: string, point: PlanPoint) => void
@@ -76,6 +78,7 @@ export function PlanCanvas({
   onSelectNode,
   onSelectLink,
   onAddOpening,
+  selectedWallId = null,
   onMoveVertex,
   onAddNode,
   onMoveNode,
@@ -134,6 +137,8 @@ export function PlanCanvas({
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [tool, linkFromId, onCancelLink])
+
+  const wallById = new Map(schemeWalls(scheme).all.map((w) => [w.id, w]))
 
   const snapPoint = (p: PlanPoint) => ({ x: snap(p.x, SNAP_STEP), y: snap(p.y, SNAP_STEP) })
 
@@ -345,10 +350,19 @@ export function PlanCanvas({
           selectedRoomId={selectedRoomId}
           selectedOpeningId={selectedOpeningId}
           toScreen={toScreen}
+          selectedWallId={selectedWallId}
         />
 
         {layer === "plan" && (
-          <PlanDimensionsLayer rooms={scheme.rooms} scale={view.scale} toScreen={toScreen} />
+          <PlanDimensionsLayer
+            rooms={scheme.rooms}
+            scale={view.scale}
+            toScreen={toScreen}
+            wallOut={(id) => {
+              const w = wallById.get(id)
+              return w ? w.thickness - w.inner : 0
+            }}
+          />
         )}
 
         {layer !== "plan" && (
@@ -370,6 +384,7 @@ export function PlanCanvas({
             bends={bends}
             previewBend={tool === "link" && linkFromId && cursor ? nextBend(cursor, false) : null}
             toScreen={toScreen}
+            scheme={scheme}
           />
         )}
 

@@ -5,6 +5,7 @@ import { pointInPolygon, schemeMetrics } from "@/lib/planner/geometry"
 import { downloadPlanPdf } from "@/lib/planner/planPdf"
 import { cableSettings } from "@/lib/planner/cable"
 import { panelSettings } from "@/lib/planner/panelInput"
+import { FORCE_WALL, applyMounts, mountPosition, snapToWall } from "@/lib/planner/walls"
 import {
   LINK_SPECS,
   NODE_PRESETS,
@@ -21,6 +22,8 @@ import {
   PlanPoint,
   PlanRoom,
   PlanScheme,
+  WallProps,
+  DEFAULT_WALL,
   emptyScheme,
 } from "@/lib/planner/types"
 
@@ -74,6 +77,7 @@ export function usePlannerState(id: string | undefined) {
               groups: raw.groups || [],
               cable: raw.cable,
               panel: raw.panel,
+              walls: raw.walls || {},
             })
           }
           setFileUrl(planData.plan.file_url || null)
@@ -139,10 +143,12 @@ export function usePlannerState(id: string | undefined) {
   }
 
   const updateRoom = (roomId: string, patch: Partial<PlanRoom>) => {
-    setScheme((s) => ({
-      ...s,
-      rooms: s.rooms.map((r) => (r.id === roomId ? { ...r, ...patch } : r)),
-    }))
+    setScheme((s) =>
+      applyMounts({
+        ...s,
+        rooms: s.rooms.map((r) => (r.id === roomId ? { ...r, ...patch } : r)),
+      }),
+    )
     touch()
   }
 
@@ -154,6 +160,9 @@ export function usePlannerState(id: string | undefined) {
         ...s,
         rooms: s.rooms.filter((r) => r.id !== roomId),
         openings: s.openings.filter((o) => !o.wallId.startsWith(wallPrefix)),
+        nodes: (s.nodes || []).map((n) =>
+          n.mount?.wallId.startsWith(wallPrefix) ? { ...n, mount: null } : n,
+        ),
       }
     })
     setSelectedRoomId(null)
@@ -161,28 +170,32 @@ export function usePlannerState(id: string | undefined) {
   }
 
   const updateOpening = (openingId: string, patch: Partial<PlanOpening>) => {
-    setScheme((s) => ({
-      ...s,
-      openings: s.openings.map((o) => (o.id === openingId ? { ...o, ...patch } : o)),
-    }))
+    setScheme((s) =>
+      applyMounts({
+        ...s,
+        openings: s.openings.map((o) => (o.id === openingId ? { ...o, ...patch } : o)),
+      }),
+    )
     touch()
   }
 
   const deleteOpening = (openingId: string) => {
-    setScheme((s) => ({ ...s, openings: s.openings.filter((o) => o.id !== openingId) }))
+    setScheme((s) => applyMounts({ ...s, openings: s.openings.filter((o) => o.id !== openingId) }))
     setSelectedOpeningId(null)
     touch()
   }
 
   const moveVertex = (roomId: string, index: number, point: PlanPoint) => {
-    setScheme((s) => ({
-      ...s,
-      rooms: s.rooms.map((r) =>
-        r.id === roomId
-          ? { ...r, points: r.points.map((p, i) => (i === index ? point : p)) }
-          : r,
-      ),
-    }))
+    setScheme((s) =>
+      applyMounts({
+        ...s,
+        rooms: s.rooms.map((r) =>
+          r.id === roomId
+            ? { ...r, points: r.points.map((p, i) => (i === index ? point : p)) }
+            : r,
+        ),
+      }),
+    )
     setDirty(true)
   }
 
@@ -200,15 +213,19 @@ export function usePlannerState(id: string | undefined) {
     if (layer === "plan") return
     const preset = NODE_PRESETS[nodeKind]
     const room = [...scheme.rooms].reverse().find((r) => pointInPolygon(point, r.points))
+    // Розетки, выключатели и щит садятся на ближайшую стену или в откос проёма
+    const mount = FORCE_WALL.has(nodeKind) ? snapToWall(scheme, point) : null
+    const pos = mount ? mountPosition(scheme, mount) : null
     const node: PlanNode = {
       id: uid(),
       layer,
       kind: nodeKind,
-      x: point.x,
-      y: point.y,
+      x: pos ? pos.p.x : point.x,
+      y: pos ? pos.p.y : point.y,
       height: preset.height,
       label: "",
-      roomId: room ? room.id : null,
+      roomId: pos ? pos.wall.roomId : room ? room.id : null,
+      mount: pos ? mount : null,
     }
     setScheme((s) => ({ ...s, nodes: [...(s.nodes || []), node] }))
     setSelectedNodeId(node.id)
@@ -216,10 +233,26 @@ export function usePlannerState(id: string | undefined) {
     touch()
   }
 
+  /**
+   * Правка точки. Новая привязка — пересчитываем координаты по стене.
+   * Ручные X/Y у настенной точки — снова сажаем её на ближайшую стену
+   */
   const updateNode = (nodeId: string, patch: Partial<PlanNode>) => {
     setScheme((s) => ({
       ...s,
-      nodes: (s.nodes || []).map((n) => (n.id === nodeId ? { ...n, ...patch } : n)),
+      nodes: (s.nodes || []).map((n) => {
+        if (n.id !== nodeId) return n
+        const next = { ...n, ...patch }
+        if (patch.mount) {
+          const pos = mountPosition(s, patch.mount)
+          if (pos) return { ...next, x: pos.p.x, y: pos.p.y, roomId: pos.wall.roomId }
+        } else if ((patch.x !== undefined || patch.y !== undefined) && FORCE_WALL.has(n.kind)) {
+          const mount = snapToWall(s, { x: next.x, y: next.y })
+          const pos = mount ? mountPosition(s, mount) : null
+          if (pos) return { ...next, mount, x: pos.p.x, y: pos.p.y, roomId: pos.wall.roomId }
+        }
+        return next
+      }),
     }))
     touch()
   }
@@ -237,19 +270,40 @@ export function usePlannerState(id: string | undefined) {
   const moveNode = (nodeId: string, point: PlanPoint) => {
     setScheme((s) => ({
       ...s,
-      nodes: (s.nodes || []).map((n) =>
-        n.id === nodeId
+      nodes: (s.nodes || []).map((n) => {
+        if (n.id !== nodeId) return n
+        // Настенные точки скользят по стенам и откосам, со стены не уходят
+        if (FORCE_WALL.has(n.kind)) {
+          const mount = snapToWall(s, point)
+          const pos = mount ? mountPosition(s, mount) : null
+          if (pos) return { ...n, mount, x: pos.p.x, y: pos.p.y, roomId: pos.wall.roomId }
+        }
+        return n.id === nodeId
           ? {
               ...n,
               x: point.x,
               y: point.y,
               roomId:
                 [...s.rooms].reverse().find((r) => pointInPolygon(point, r.points))?.id ?? null,
+              mount: null,
             }
-          : n,
-      ),
+          : n
+      }),
     }))
     setDirty(true)
+  }
+
+  /** Толщина и материал стены. applyToRoom — сразу на все стены помещения */
+  const updateWall = (wallId: string, patch: Partial<WallProps>, applyToRoom = false) => {
+    setScheme((s) => {
+      const walls = { ...(s.walls || {}) }
+      const roomId = wallId.split(":")[0]
+      const room = s.rooms.find((r) => r.id === roomId)
+      const ids = applyToRoom && room ? room.points.map((_, i) => `${roomId}:${i}`) : [wallId]
+      for (const id of ids) walls[id] = { ...DEFAULT_WALL, ...(walls[id] || {}), ...patch }
+      return applyMounts({ ...s, walls })
+    })
+    touch()
   }
 
   /**
@@ -507,6 +561,7 @@ export function usePlannerState(id: string | undefined) {
     updateNode,
     deleteNode,
     moveNode,
+    updateWall,
     handleLinkClick,
     cancelLink,
     addGroup,

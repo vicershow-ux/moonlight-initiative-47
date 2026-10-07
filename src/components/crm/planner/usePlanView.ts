@@ -100,7 +100,7 @@ export function usePlanView(rooms: PlanRoom[]) {
     const maxY = Math.max(...ys)
     const w = Math.max(maxX - minX, 1)
     const h = Math.max(maxY - minY, 1)
-    const scale = Math.min((size.w - 100) / w, (size.h - 100) / h)
+    const scale = Math.min((size.w - 100) / (w + 0.8), (size.h - 100) / (h + 0.8))
     const clamped = Math.min(Math.max(scale, MIN_SCALE), MAX_SCALE)
     setView({
       scale: clamped,

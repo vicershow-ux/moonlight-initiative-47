@@ -64,7 +64,54 @@ export interface PlanNode {
   height: number
   label: string
   roomId: string | null
+  /** Привязка к стене или откосу проёма; x/y пересчитываются из неё */
+  mount?: NodeMount | null
 }
+
+/**
+ * Где закреплена точка: на внутренней грани стены или в откосе проёма.
+ * offset — расстояние вдоль стены от её начала, м.
+ * В откосе: side — у какого края проёма (начало/конец по ходу стены),
+ * depth — глубина от внутренней грани стены, м
+ */
+export interface NodeMount {
+  wallId: string
+  offset: number
+  place: "wall" | "reveal"
+  openingId?: string
+  side?: "start" | "end"
+  depth?: number
+}
+
+export type WallMaterial =
+  | "brick"
+  | "concrete"
+  | "aerated"
+  | "block"
+  | "pgp"
+  | "gkl"
+  | "wood"
+
+export interface WallProps {
+  /** Толщина, м */
+  thickness: number
+  material: WallMaterial
+}
+
+export const WALL_MATERIALS: Record<
+  WallMaterial,
+  { label: string; thicknesses: number[]; color: string }
+> = {
+  brick: { label: "Кирпич", thicknesses: [0.12, 0.25, 0.38, 0.51, 0.64], color: "#C8664A" },
+  concrete: { label: "Бетон / монолит", thicknesses: [0.16, 0.18, 0.2, 0.25, 0.3], color: "#8E9AA6" },
+  aerated: { label: "Газобетон", thicknesses: [0.1, 0.15, 0.2, 0.3, 0.375, 0.4], color: "#D9C9A3" },
+  block: { label: "Керамзито- / шлакоблок", thicknesses: [0.09, 0.19, 0.39], color: "#A88F72" },
+  pgp: { label: "Пазогребневые плиты", thicknesses: [0.08, 0.1], color: "#E5E1D8" },
+  gkl: { label: "Гипсокартон на каркасе", thicknesses: [0.075, 0.1, 0.125, 0.15], color: "#CFD8E3" },
+  wood: { label: "Дерево / брус", thicknesses: [0.1, 0.15, 0.2], color: "#B98A55" },
+}
+
+export const DEFAULT_WALL: WallProps = { thickness: 0.25, material: "brick" }
 
 /**
  * Линия между точками: кабель с сечением или труба с диаметром.
@@ -247,6 +294,8 @@ export interface PlanScheme {
   groups?: PlanGroup[]
   cable?: CableSettings
   panel?: PanelSettings
+  /** Толщина и материал стен по id стены «помещение:номер» */
+  walls?: Record<string, WallProps>
 }
 
 export const LAYERS: { value: PlanLayer; label: string; icon: string }[] = [

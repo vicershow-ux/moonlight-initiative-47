@@ -25,7 +25,15 @@ import { describeNodes, groupSummaries } from "@/lib/planner/groups"
 import { panelDiagramSvg, panelSettings, panelWarnings } from "@/lib/planner/panelDiagram"
 import { PanelSize, SPARE_SHARE, panelSize, panelSpecification } from "@/lib/planner/panelSize"
 import { groupPower, kwToAmps, phaseBalance } from "@/lib/planner/phases"
-import { PHASE_COLORS } from "@/lib/planner/types"
+import { PHASE_COLORS, WALL_MATERIALS, WallMaterial } from "@/lib/planner/types"
+import {
+  findWall,
+  mountLabel,
+  nodeDirection,
+  openingBand,
+  schemeWalls,
+  wallPieces,
+} from "@/lib/planner/walls"
 import {
   CableTotals,
   addCable,
@@ -48,10 +56,21 @@ export function schemeToSvg(
   height = 460,
   layer: PlanLayer = "plan",
 ): string {
-  const b = schemeBounds(scheme)
+  const b0 = schemeBounds(scheme)
+  // Стены растут наружу контура — расширяем рамку на их толщину
+  const wallsAll = schemeWalls(scheme)
+  const grow = Math.max(0, ...wallsAll.all.map((w) => w.thickness - w.inner))
+  const b = {
+    minX: b0.minX - grow,
+    minY: b0.minY - grow,
+    maxX: b0.maxX + grow,
+    maxY: b0.maxY + grow,
+    width: b0.width + grow * 2,
+    height: b0.height + grow * 2,
+  }
   // Запас по краям: размерные линии выносятся наружу контура и не должны
   // упираться в рамку чертежа
-  const pad = layer === "plan" ? 86 : 56
+  const pad = layer === "plan" ? 70 : 46
   const scale = Math.min((width - pad * 2) / b.width, (height - pad * 2) / b.height)
   const tx = (width - b.width * scale) / 2 - b.minX * scale
   const ty = (height - b.height * scale) / 2 - b.minY * scale
@@ -85,7 +104,7 @@ export function schemeToSvg(
     if (room.points.length < 2) return
     const d =
       room.points.map((p, i) => `${i === 0 ? "M" : "L"}${sx(p.x)},${sy(p.y)}`).join(" ") + " Z"
-    parts.push(`<path d="${d}" fill="#fafafa" stroke="${wallColor}" stroke-width="2.5" stroke-linejoin="round"/>`)
+    parts.push(`<path d="${d}" fill="#fafafa" stroke="${wallColor}" stroke-width="0.6" stroke-linejoin="round"/>`)
 
     // На инженерных схемах длины подписываем прямо на стенах, а на планировке
     // их показывают размерные линии по внешнему контуру — ниже
@@ -118,6 +137,38 @@ export function schemeToSvg(
     }
   })
 
+  // Стены в толщину: штриховка по материалу (ГОСТ 2.306), на инженерных схемах — бледно
+  const hatchIds = new Set<WallMaterial>()
+  const pts = (arr: { x: number; y: number }[]) => arr.map((p) => `${sx(p.x)},${sy(p.y)}`).join(" ")
+  for (const w of wallsAll.draw) {
+    hatchIds.add(w.material)
+    for (const pc of wallPieces(w, scheme.openings)) {
+      parts.push(
+        `<polygon points="${pts(pc)}" fill="${isEng ? "#ececec" : `url(#hatch-${w.material})`}" stroke="${wallColor}" stroke-width="${isEng ? 0.8 : 1.3}" stroke-linejoin="miter"/>`,
+      )
+    }
+  }
+  const hatchDefs = [...hatchIds]
+    .map((m) => {
+      const c = "#161616"
+      // Кирпич — частая косая, бетон — косая с точками, газобетон/блок — редкая косая,
+      // перегородки (ПГП, ГКЛ) — перекрёстная, дерево — волокна вдоль
+      const body =
+        m === "brick"
+          ? `<line x1="0" y1="0" x2="0" y2="6" stroke="${c}" stroke-width="0.7"/>`
+          : m === "concrete"
+            ? `<line x1="0" y1="0" x2="0" y2="8" stroke="${c}" stroke-width="0.7"/><circle cx="4" cy="2" r="0.7" fill="${c}"/><circle cx="5" cy="6" r="0.5" fill="${c}"/>`
+            : m === "aerated" || m === "block"
+              ? `<line x1="0" y1="0" x2="0" y2="10" stroke="${c}" stroke-width="0.6"/>`
+              : m === "wood"
+                ? `<path d="M0 3 Q 2.5 1.5 5 3 T 10 3" fill="none" stroke="${c}" stroke-width="0.5"/>`
+                : `<line x1="0" y1="0" x2="0" y2="7" stroke="${c}" stroke-width="0.5"/><line x1="0" y1="0" x2="7" y2="0" stroke="${c}" stroke-width="0.5"/>`
+      const size = m === "brick" ? 6 : m === "concrete" ? 8 : m === "aerated" || m === "block" ? 10 : m === "wood" ? 10 : 7
+      return `<pattern id="hatch-${m}" patternUnits="userSpaceOnUse" width="${size}" height="${size}" patternTransform="rotate(${m === "wood" ? 0 : 45})"><rect width="${size}" height="${size}" fill="${WALL_MATERIALS[m].color}" fill-opacity="0.28"/>${body}</pattern>`
+    })
+    .join("")
+  parts.unshift(`<defs>${hatchDefs}</defs>`)
+
   // Размерные линии по внешнему контуру — только на планировке, где они читаются
   if (!isEng) {
     const dimLine = "#555555"
@@ -127,7 +178,9 @@ export function schemeToSvg(
     outerDimensions(scheme.rooms).forEach(({ dims }) => {
       dims.forEach((dim) => {
         if (dim.length * scale < 42) return
-        const dp = dimensionParts(dim, toScreen, { offset: 22, arrow: 7, overshoot: 5 })
+        const wi = findWall(scheme, dim.id)
+        const out = wi ? (wi.thickness - wi.inner) * scale : 0
+        const dp = dimensionParts(dim, toScreen, { offset: 18 + out, gap: 4 + out, arrow: 7, overshoot: 5 })
 
         parts.push(
           `<line x1="${dp.ext1.x1}" y1="${dp.ext1.y1}" x2="${dp.ext1.x2}" y2="${dp.ext1.y2}" stroke="${dimLine}" stroke-width="0.7"/>`,
@@ -145,6 +198,37 @@ export function schemeToSvg(
     const pos = openingPosition(scheme, o)
     if (!pos) return
     const color = o.kind === "window" ? "#2f80c9" : o.kind === "door" ? "#2f9d55" : "#8b5cc9"
+    const w = findWall(scheme, o.wallId)
+    if (w) {
+      // Проём в толще стены: откосы по краям, у окна — переплёт посередине
+      const band = openingBand(w, o)
+      const [a, bb, c, d] = band.map((p) => ({ x: sx(p.x), y: sy(p.y) }))
+      const col = isEng ? "#9a9a9a" : color
+      parts.push(
+        `<polygon points="${pts(band)}" fill="#ffffff" stroke="none"/>`,
+        `<line x1="${a.x}" y1="${a.y}" x2="${d.x}" y2="${d.y}" stroke="${wallColor}" stroke-width="1.3"/>`,
+        `<line x1="${bb.x}" y1="${bb.y}" x2="${c.x}" y2="${c.y}" stroke="${wallColor}" stroke-width="1.3"/>`,
+      )
+      if (o.kind === "window") {
+        parts.push(
+          `<line x1="${(a.x + d.x) / 2}" y1="${(a.y + d.y) / 2}" x2="${(bb.x + c.x) / 2}" y2="${(bb.y + c.y) / 2}" stroke="${col}" stroke-width="2"/>`,
+          `<line x1="${a.x}" y1="${a.y}" x2="${bb.x}" y2="${bb.y}" stroke="${col}" stroke-width="0.7"/>`,
+          `<line x1="${d.x}" y1="${d.y}" x2="${c.x}" y2="${c.y}" stroke="${col}" stroke-width="0.7"/>`,
+        )
+      } else if (o.kind === "door") {
+        // Полотно и дуга открывания внутрь помещения
+        const len = Math.hypot(bb.x - a.x, bb.y - a.y)
+        const nx = -w.nx
+        const ny = -w.ny
+        const tip = { x: a.x + nx * len, y: a.y + ny * len }
+        const cross = (bb.x - a.x) * (tip.y - a.y) - (bb.y - a.y) * (tip.x - a.x)
+        parts.push(
+          `<line x1="${a.x}" y1="${a.y}" x2="${tip.x}" y2="${tip.y}" stroke="${col}" stroke-width="1.4"/>`,
+          `<path d="M ${tip.x} ${tip.y} A ${len} ${len} 0 0 ${cross > 0 ? 0 : 1} ${bb.x} ${bb.y}" fill="none" stroke="${col}" stroke-width="0.7" stroke-dasharray="3 2"/>`,
+        )
+      }
+      return
+    }
     parts.push(
       `<line x1="${sx(pos.a.x)}" y1="${sy(pos.a.y)}" x2="${sx(pos.b.x)}" y2="${sy(pos.b.y)}" stroke="#ffffff" stroke-width="7"/>`,
     )
@@ -193,7 +277,8 @@ export function schemeToSvg(
       const prims = gostSymbol(n.kind)
       if (prims) {
         // Условные обозначения печатаем чёрным — как в проектной документации
-        const dir = WALL_MOUNTED.has(n.kind) ? wallDirection(n, scheme.rooms) : null
+        const dir =
+          nodeDirection(scheme, n) ?? (WALL_MOUNTED.has(n.kind) ? wallDirection(n, scheme.rooms) : null)
         parts.push(symbolToSvg(placeSymbol(prims, { x: px, y: py }, 7, dir), "#161616", "#ffffff", 1.2))
       } else {
         parts.push(
@@ -220,6 +305,44 @@ export function schemeToSvg(
   )
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${parts.join("")}</svg>`
+}
+
+/** Стены по помещениям: длина, толщина и материал */
+function wallsTable(scheme: PlanScheme): string {
+  const all = schemeWalls(scheme).all
+  if (all.length === 0) return ""
+  const rows = scheme.rooms
+    .map((r) => {
+      const ws = all.filter((w) => w.roomId === r.id)
+      if (!ws.length) return ""
+      return ws
+        .map(
+          (w, i) => `
+      <tr>
+        ${i === 0 ? `<td rowspan="${ws.length}">${escapeXml(r.name)}</td>` : ""}
+        <td class="num">${w.index + 1}${w.shared ? "*" : ""}</td>
+        <td class="num">${toMm(w.length)}</td>
+        <td class="num">${toMm(w.thickness)}</td>
+        <td>${escapeXml(WALL_MATERIALS[w.material].label)}</td>
+      </tr>`,
+        )
+        .join("")
+    })
+    .join("")
+  const used = [...new Set(all.map((w) => w.material))]
+  const sw = (m: WallMaterial) =>
+    `<svg width="26" height="12" style="vertical-align:middle"><rect width="26" height="12" fill="${WALL_MATERIALS[m].color}" fill-opacity="0.45" stroke="#161616" stroke-width="0.8"/></svg>`
+  return `
+  <h3>Стены</h3>
+  <table>
+    <thead><tr><th>Помещение</th><th>№</th><th>Длина, мм</th><th>Толщина, мм</th><th>Материал</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="legend" style="text-align:left">
+    ${used.map((m) => `${sw(m)} ${escapeXml(WALL_MATERIALS[m].label)}`).join(" &nbsp; ")}<br>
+    Длина — по внутренней стороне помещения. «*» — общая стена с соседним помещением, на плане её толщина делится
+    пополам. Штриховка на плане — по материалу стены.
+  </div>`
 }
 
 const escapeXml = (s: string) =>
@@ -271,10 +394,12 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
         wallSegments(r).some((s) => s.id === o.wallId),
       )
       const kind = o.kind === "window" ? "Окно" : o.kind === "door" ? "Дверь" : "Проём"
+      const ow = findWall(scheme, o.wallId)
       return `
         <tr>
           <td>${kind}</td>
           <td>${escapeXml(room?.name || "—")}</td>
+          <td class="num">${ow ? toMm(ow.thickness) : "—"}</td>
           <td class="num">${toMm(o.width)}</td>
           <td class="num">${toMm(o.height)}</td>
           <td class="num">${toMm(o.sill)}</td>
@@ -375,6 +500,7 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
       <tr>
         <th>Тип</th>
         <th>Помещение</th>
+        <th>Глубина откоса, мм</th>
         <th>Ширина, мм</th>
         <th>Высота, мм</th>
         <th>От пола, мм</th>
@@ -385,6 +511,8 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
   </table>`
       : ""
   }
+
+  ${wallsTable(scheme)}
   ${engineerSection(scheme, "electric", meta)}
   ${panelSection(scheme, meta)}
   ${engineerSection(scheme, "plumbing", meta)}
@@ -466,6 +594,7 @@ function engineerSection(
         <td>${escapeXml(n.label || NODE_PRESETS[n.kind].label)}</td>
         <td>${escapeXml(NODE_PRESETS[n.kind].label)}</td>
         <td>${escapeXml(roomName(n.roomId))}</td>
+        <td>${escapeXml(mountLabel(scheme, n))}</td>
         <td class="num">${toMm(n.height)}</td>
       </tr>`,
     )
@@ -523,7 +652,7 @@ function engineerSection(
 
   <h3>Список точек по помещениям</h3>
   <table>
-    <thead><tr><th>№</th><th>Подпись</th><th>Тип</th><th>Помещение</th><th>Высота, мм</th></tr></thead>
+    <thead><tr><th>№</th><th>Подпись</th><th>Тип</th><th>Помещение</th><th>Место</th><th>Высота, мм</th></tr></thead>
     <tbody>${listRows}</tbody>
   </table>`
 }

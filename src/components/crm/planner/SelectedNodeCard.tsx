@@ -3,7 +3,8 @@ import { DeleteButton } from "@/components/ui/delete-button"
 import { fromMm, toMm } from "@/lib/planner/geometry"
 import { gostSymbol } from "@/lib/planner/symbols"
 import { NodeSymbolIcon } from "./NodeSymbol"
-import { NODE_PRESETS, PlanNode } from "@/lib/planner/types"
+import { NODE_PRESETS, PlanNode, PlanScheme } from "@/lib/planner/types"
+import { NodeMountEditor } from "./NodeMountEditor"
 
 const inputCls =
   "w-full bg-[#161616] border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50"
@@ -15,9 +16,18 @@ interface Props {
   roomName: (roomId: string | null) => string
   onUpdateNode: (id: string, patch: Partial<PlanNode>) => void
   onDeleteNode: (id: string) => void
+  scheme?: PlanScheme
+  onHoverWall?: (wallId: string | null) => void
 }
 
-export function SelectedNodeCard({ selectedNode, roomName, onUpdateNode, onDeleteNode }: Props) {
+export function SelectedNodeCard({
+  selectedNode,
+  roomName,
+  onUpdateNode,
+  onDeleteNode,
+  scheme,
+  onHoverWall,
+}: Props) {
   return (
     <div className="rounded-xl border border-[#D4AF37]/30 bg-[#1f1f1f] p-4">
       <div className="mb-3 flex items-center justify-between">
@@ -41,6 +51,10 @@ export function SelectedNodeCard({ selectedNode, roomName, onUpdateNode, onDelet
           onChange={(e) => onUpdateNode(selectedNode.id, { label: e.target.value })}
         />
       </div>
+
+      {scheme && (
+        <NodeMountEditor node={selectedNode} scheme={scheme} onUpdateNode={onUpdateNode} onHoverWall={onHoverWall} />
+      )}
 
       <div className="mb-3">
         <label className={labelCls}>Высота от пола, мм</label>

@@ -1,4 +1,4 @@
-import { dimensionParts, fmtMm, outerDimensions } from "@/lib/planner/geometry"
+import { DIM_STYLE, dimensionParts, fmtMm, outerDimensions } from "@/lib/planner/geometry"
 import { PlanRoom } from "@/lib/planner/types"
 import { ToScreen } from "./usePlanView"
 
@@ -6,20 +6,23 @@ interface Props {
   rooms: PlanRoom[]
   scale: number
   toScreen: ToScreen
+  /** Насколько стена выступает наружу контура, м — размеры выносим дальше неё */
+  wallOut?: (wallId: string) => number
 }
 
 const COLOR = "rgba(255,255,255,0.55)"
 const TEXT = "#D4AF37"
 
 /** Размерные линии по внешнему контуру — как на строительных чертежах */
-export function PlanDimensionsLayer({ rooms, scale, toScreen }: Props) {
+export function PlanDimensionsLayer({ rooms, scale, toScreen, wallOut }: Props) {
   return (
     <g>
       {outerDimensions(rooms).map(({ room, dims }) =>
         dims.map((dim) => {
           // Короткие стены пропускаем: подпись не поместится и превратится в кашу
           if (dim.length * scale < 38) return null
-          const d = dimensionParts(dim, toScreen)
+          const out = (wallOut?.(dim.id) ?? 0) * scale
+          const d = dimensionParts(dim, toScreen, { offset: DIM_STYLE.offset + out, gap: DIM_STYLE.gap + out })
 
           return (
             <g key={`${room.id}-${dim.id}`}>

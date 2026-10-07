@@ -1,6 +1,7 @@
 import Icon from "@/components/ui/icon"
 import { DeleteButton } from "@/components/ui/delete-button"
-import { fmtNum, fromMm, roomMetrics, setWallLength, toMm, wallSegments } from "@/lib/planner/geometry"
+import { fmtNum, fromMm, roomMetrics, toMm } from "@/lib/planner/geometry"
+import { RoomWallsEditor } from "./RoomWallsEditor"
 import {
   OPENING_PRESETS,
   PlanOpening,
@@ -8,6 +9,7 @@ import {
   PlanScheme,
   PlanTotals,
   ROOM_TYPES,
+  WallProps,
 } from "@/lib/planner/types"
 
 const inputCls =
@@ -23,6 +25,8 @@ interface Props {
   onUpdateOpening: (id: string, patch: Partial<PlanOpening>) => void
   onDeleteOpening: (id: string) => void
   onSelectRoom: (id: string) => void
+  onUpdateWall: (wallId: string, patch: Partial<WallProps>, applyToRoom?: boolean) => void
+  onHoverWall?: (wallId: string | null) => void
 }
 
 export function PlanSidebar({
@@ -35,6 +39,8 @@ export function PlanSidebar({
   onUpdateOpening,
   onDeleteOpening,
   onSelectRoom,
+  onUpdateWall,
+  onHoverWall,
 }: Props) {
   const metrics = selectedRoom ? roomMetrics(selectedRoom, scheme.openings) : null
 
@@ -184,32 +190,15 @@ export function PlanSidebar({
               </div>
             </div>
 
-            {/* Точный размер каждой стены. Соседняя стена под прямым углом
+            {/* Длина, толщина и материал каждой стены. Соседняя стена под прямым углом
                 сдвигается вместе с концом, поэтому углы комнаты не ломаются */}
-            <div>
-              <div className="mb-1.5 text-xs text-white/50">Стены, мм</div>
-              <div className="grid grid-cols-2 gap-2">
-                {wallSegments(selectedRoom).map((seg, i) => (
-                  <label key={seg.id} className="flex items-center gap-2">
-                    <span className="w-6 shrink-0 text-xs text-white/40">{i + 1}</span>
-                    <input
-                      className={inputCls}
-                      type="number"
-                      min="10"
-                      step="10"
-                      value={toMm(seg.length)}
-                      onChange={(e) => {
-                        const mm = Number(e.target.value)
-                        if (!mm || mm <= 0) return
-                        onUpdateRoom(selectedRoom.id, {
-                          points: setWallLength(selectedRoom.points, i, fromMm(mm)),
-                        })
-                      }}
-                    />
-                  </label>
-                ))}
-              </div>
-            </div>
+            <RoomWallsEditor
+              room={selectedRoom}
+              scheme={scheme}
+              onUpdateRoom={onUpdateRoom}
+              onUpdateWall={onUpdateWall}
+              onHoverWall={onHoverWall}
+            />
           </div>
 
           <div className="mt-3 space-y-1.5 border-t border-white/10 pt-3 text-sm">

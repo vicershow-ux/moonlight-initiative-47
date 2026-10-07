@@ -6,7 +6,8 @@ import {
   polygonCentroid,
   wallSegments,
 } from "@/lib/planner/geometry"
-import { PlanLayer, PlanOpening, PlanScheme } from "@/lib/planner/types"
+import { PlanLayer, PlanOpening, PlanScheme, WALL_MATERIALS } from "@/lib/planner/types"
+import { findWall, openingBand, schemeWalls, wallPieces } from "@/lib/planner/walls"
 import { ToScreen } from "./usePlanView"
 
 interface Props {
@@ -16,6 +17,8 @@ interface Props {
   selectedRoomId: string | null
   selectedOpeningId: string | null
   toScreen: ToScreen
+  /** Выбранная стена — подсвечивается */
+  selectedWallId?: string | null
 }
 
 /** Помещения с размерами стен и подписью площади, а также окна, двери и проёмы */
@@ -26,7 +29,15 @@ export function PlanRoomsLayer({
   selectedRoomId,
   selectedOpeningId,
   toScreen,
+  selectedWallId = null,
 }: Props) {
+  const walls = schemeWalls(scheme)
+  const poly = (pts: { x: number; y: number }[]) =>
+    pts.map((p) => {
+      const s = toScreen(p)
+      return `${s.x},${s.y}`
+    }).join(" ")
+
   const renderRoom = (room: PlanScheme["rooms"][number]) => {
     const pts = room.points.map(toScreen)
     if (pts.length < 2) return null
@@ -44,8 +55,8 @@ export function PlanRoomsLayer({
         <path
           d={d}
           fill={selected ? "rgba(212,175,55,0.16)" : "rgba(255,255,255,0.06)"}
-          stroke={selected ? "#D4AF37" : "rgba(255,255,255,0.55)"}
-          strokeWidth={selected ? 3 : 2.5}
+          stroke={selected ? "#D4AF37" : "rgba(255,255,255,0.35)"}
+          strokeWidth={selected ? 2 : 1}
           strokeLinejoin="round"
         />
 
@@ -122,6 +133,33 @@ export function PlanRoomsLayer({
     const b = toScreen(pos.b)
     const selected = o.id === selectedOpeningId
     const color = o.kind === "window" ? "#7FB5E8" : o.kind === "door" ? "#8BD48B" : "#C9A0E8"
+    const w = findWall(scheme, o.wallId)
+
+    // Проём в толще стены: видно откосы на всю глубину
+    if (w) {
+      const band = openingBand(w, o)
+      const s0 = toScreen(band[0])
+      const s1 = toScreen(band[1])
+      const s2 = toScreen(band[2])
+      const s3 = toScreen(band[3])
+      const mid = (p: { x: number; y: number }, q: { x: number; y: number }) => ({ x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 })
+      const m1 = mid(s0, s3)
+      const m2 = mid(s1, s2)
+      return (
+        <g key={o.id}>
+          <polygon points={poly(band)} fill="#141414" stroke={color} strokeWidth={selected ? 2 : 1} opacity={selected ? 1 : 0.9} />
+          {/* Откосы — короткие стороны выреза */}
+          <line x1={s0.x} y1={s0.y} x2={s3.x} y2={s3.y} stroke={color} strokeWidth={selected ? 3 : 2} />
+          <line x1={s1.x} y1={s1.y} x2={s2.x} y2={s2.y} stroke={color} strokeWidth={selected ? 3 : 2} />
+          {o.kind === "window" ? (
+            <line x1={m1.x} y1={m1.y} x2={m2.x} y2={m2.y} stroke={color} strokeWidth={selected ? 3 : 2} />
+          ) : o.kind === "door" ? (
+            <line x1={s0.x} y1={s0.y} x2={s1.x} y2={s1.y} stroke={color} strokeWidth={selected ? 3 : 2} strokeDasharray="5 3" />
+          ) : null}
+          {selected && <circle cx={(a.x + b.x) / 2} cy={(a.y + b.y) / 2} r={5} fill="#fff" />}
+        </g>
+      )
+    }
 
     return (
       <g key={o.id}>
@@ -155,6 +193,22 @@ export function PlanRoomsLayer({
       {/* На инженерных слоях планировка уходит на второй план — она служит подложкой */}
       <g opacity={layer === "plan" ? 1 : 0.42}>
         {scheme.rooms.map(renderRoom)}
+        {/* Стены в толщину, цвет — по материалу */}
+        {walls.draw.map((w) => {
+          const mat = WALL_MATERIALS[w.material]
+          const sel = w.id === selectedWallId
+          return wallPieces(w, scheme.openings).map((pc, i) => (
+            <polygon
+              key={`${w.id}-${i}`}
+              points={poly(pc)}
+              fill={mat.color}
+              fillOpacity={0.55}
+              stroke={sel ? "#D4AF37" : "rgba(255,255,255,0.8)"}
+              strokeWidth={sel ? 2.5 : 1}
+              strokeLinejoin="miter"
+            />
+          ))
+        })}
         {scheme.openings.map(renderOpening)}
       </g>
     </>

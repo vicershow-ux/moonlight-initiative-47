@@ -8,8 +8,10 @@ import {
   PlanPoint,
   PlanGroup,
   PlanRoom,
+  PlanScheme,
   groupColor,
 } from "@/lib/planner/types"
+import { FORCE_WALL, mountPosition, nodeDirection, snapToWall } from "@/lib/planner/walls"
 import { WALL_MOUNTED, gostSymbol, placeSymbol, wallDirection } from "@/lib/planner/symbols"
 import { ToScreen } from "./usePlanView"
 import { SymbolShapes } from "./NodeSymbol"
@@ -36,6 +38,8 @@ interface Props {
   /** Где встанет следующий излом, если щёлкнуть сейчас */
   previewBend: PlanPoint | null
   toScreen: ToScreen
+  /** Весь план — нужен для привязки к стенам и откосам */
+  scheme?: PlanScheme
 }
 
 const polyPoints = (pts: PlanPoint[], toScreen: ToScreen) =>
@@ -65,6 +69,7 @@ export function PlanEngineerLayer({
   bends,
   previewBend,
   toScreen,
+  scheme,
 }: Props) {
   const color = layer === "electric" ? "#E8B23A" : "#7FB5E8"
   const groupById = new Map(groups.map((g) => [g.id, g]))
@@ -148,7 +153,10 @@ export function PlanEngineerLayer({
     const r = 11
     const prims = gostSymbol(n.kind)
     // Настенные значки разворачиваем от ближайшей стены внутрь комнаты
-    const dir = WALL_MOUNTED.has(n.kind) ? wallDirection(n, rooms) : null
+    const dir =
+      (scheme ? nodeDirection(scheme, n) : null) ??
+      (WALL_MOUNTED.has(n.kind) ? wallDirection(n, rooms) : null)
+    const inReveal = n.mount?.place === "reveal"
 
     return (
       <g key={n.id} style={{ cursor: tool === "select" ? "grab" : "pointer" }}>
@@ -188,6 +196,7 @@ export function PlanEngineerLayer({
         {scale > 26 && (
           <text x={p.x + r + 4} y={p.y + 4} fontSize="10" fill="rgba(255,255,255,0.75)">
             {n.label || preset.label}
+            {inReveal ? " · откос" : ""}
           </text>
         )}
       </g>
@@ -240,11 +249,19 @@ export function PlanEngineerLayer({
             />
           )
         }
-        // Призрак значка под курсором — уже развёрнутый, как встанет
-        const dir = WALL_MOUNTED.has(nodeKind) ? wallDirection(cursor, rooms) : null
+        // Призрак значка под курсором — уже на стене или в откосе и развёрнутый, как встанет
+        const snapped =
+          scheme && FORCE_WALL.has(nodeKind)
+            ? (() => {
+                const m = snapToWall(scheme, cursor)
+                return m ? mountPosition(scheme, m) : null
+              })()
+            : null
+        const dir = snapped ? snapped.dir : WALL_MOUNTED.has(nodeKind) ? wallDirection(cursor, rooms) : null
+        const at = snapped ? toScreen(snapped.p) : c
         return (
           <SymbolShapes
-            prims={placeSymbol(prims, c, 9, dir)}
+            prims={placeSymbol(prims, at, 9, dir)}
             color={NODE_PRESETS[nodeKind].color}
             bg="transparent"
             strokeWidth={1.5}

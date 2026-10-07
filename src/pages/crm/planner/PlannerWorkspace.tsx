@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { PlanCanvas } from "@/components/crm/planner/PlanCanvas"
 import { PlanSidebar } from "@/components/crm/planner/PlanSidebar"
 import { EngineerSidebar } from "@/components/crm/planner/EngineerSidebar"
@@ -52,7 +53,9 @@ export function PlannerWorkspace({ state }: Props) {
     updatePanel,
     updateLink,
     deleteLink,
+    updateWall,
   } = state
+  const [hoverWallId, setHoverWallId] = useState<string | null>(null)
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
@@ -94,6 +97,7 @@ export function PlannerWorkspace({ state }: Props) {
           onCancelLink={cancelLink}
           onUpdateLink={updateLink}
           linkGroupId={linkGroupId}
+          selectedWallId={hoverWallId}
         />
       </div>
 
@@ -112,6 +116,8 @@ export function PlannerWorkspace({ state }: Props) {
             setSelectedOpeningId(null)
             setTool("select")
           }}
+          onUpdateWall={updateWall}
+          onHoverWall={setHoverWallId}
         />
       ) : (
         <EngineerSidebar
@@ -133,6 +139,7 @@ export function PlannerWorkspace({ state }: Props) {
             setSelectedLinkId(null)
             setTool("select")
           }}
+          onHoverWall={setHoverWallId}
         />
       )}
     </div>
