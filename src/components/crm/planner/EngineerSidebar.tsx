@@ -1,13 +1,5 @@
-import Icon from "@/components/ui/icon"
-import { DeleteButton } from "@/components/ui/delete-button"
-import { fmtNum, fromMm, linkGeometry, toMm } from "@/lib/planner/geometry"
-import { gostSymbol } from "@/lib/planner/symbols"
-import { NodeSymbolIcon } from "./NodeSymbol"
+import { linkGeometry } from "@/lib/planner/geometry"
 import {
-  BREAKERS,
-  LINK_SPECS,
-  NODE_PRESETS,
-  PROTECTION_LABELS,
   PlanGroup,
   PlanLayer,
   PlanLink,
@@ -15,12 +7,9 @@ import {
   CableSettings,
   PanelSettings,
   PlanScheme,
-  groupColor,
 } from "@/lib/planner/types"
-import { describeNodes, groupSummaries } from "@/lib/planner/groups"
+import { groupSummaries } from "@/lib/planner/groups"
 import { panelSettings, panelWarnings } from "@/lib/planner/panelDiagram"
-import { PanelInputEditor } from "./PanelInputEditor"
-import { LineDevicesEditor } from "./LineDevicesEditor"
 import {
   CableTotals,
   addCable,
@@ -28,11 +17,10 @@ import {
   cableSettings,
   emptyTotals,
 } from "@/lib/planner/cable"
-
-const inputCls =
-  "w-full bg-[#161616] border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50"
-
-const labelCls = "mb-1.5 block text-xs text-white/50"
+import { SelectedNodeCard } from "./SelectedNodeCard"
+import { SelectedLinkCard } from "./SelectedLinkCard"
+import { PanelGroupsCard } from "./PanelGroupsCard"
+import { LayerSummaryCard } from "./LayerSummaryCard"
 
 interface Props {
   scheme: PlanScheme
@@ -106,466 +94,54 @@ export function EngineerSidebar({
   return (
     <div className="flex flex-col gap-4">
       {selectedNode && (
-        <div className="rounded-xl border border-[#D4AF37]/30 bg-[#1f1f1f] p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              {gostSymbol(selectedNode.kind) ? (
-                <NodeSymbolIcon kind={selectedNode.kind} />
-              ) : (
-                <Icon name={NODE_PRESETS[selectedNode.kind].icon} size={15} />
-              )}
-              {NODE_PRESETS[selectedNode.kind].label}
-            </div>
-            <DeleteButton onConfirm={() => onDeleteNode(selectedNode.id)} title="Удалить точку?" />
-          </div>
-
-          <div className="mb-3">
-            <label className={labelCls}>Подпись на плане</label>
-            <input
-              className={inputCls}
-              placeholder={NODE_PRESETS[selectedNode.kind].label}
-              value={selectedNode.label}
-              onChange={(e) => onUpdateNode(selectedNode.id, { label: e.target.value })}
-            />
-          </div>
-
-          <div className="mb-3">
-            <label className={labelCls}>Высота от пола, мм</label>
-            <input
-              className={inputCls}
-              type="number"
-              min="0"
-              step="10"
-              value={toMm(selectedNode.height)}
-              onChange={(e) =>
-                onUpdateNode(selectedNode.id, { height: fromMm(Number(e.target.value)) })
-              }
-            />
-          </div>
-
-          <div className="mb-3 grid grid-cols-2 gap-2">
-            <div>
-              <label className={labelCls}>X, мм</label>
-              <input
-                className={inputCls}
-                type="number"
-                step="10"
-                value={toMm(selectedNode.x)}
-                onChange={(e) => onUpdateNode(selectedNode.id, { x: fromMm(Number(e.target.value)) })}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Y, мм</label>
-              <input
-                className={inputCls}
-                type="number"
-                step="10"
-                value={toMm(selectedNode.y)}
-                onChange={(e) => onUpdateNode(selectedNode.id, { y: fromMm(Number(e.target.value)) })}
-              />
-            </div>
-          </div>
-
-          <div className="text-xs text-white/40">Помещение: {roomName(selectedNode.roomId)}</div>
-        </div>
+        <SelectedNodeCard
+          selectedNode={selectedNode}
+          roomName={roomName}
+          onUpdateNode={onUpdateNode}
+          onDeleteNode={onDeleteNode}
+        />
       )}
 
       {selectedLink && (
-        <div className="rounded-xl border border-[#D4AF37]/30 bg-[#1f1f1f] p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Icon name="Spline" size={15} />
-              {layer === "electric" ? "Кабель" : "Труба"}
-            </div>
-            <DeleteButton onConfirm={() => onDeleteLink(selectedLink.id)} title="Удалить линию?" />
-          </div>
-
-          <div className="mb-3">
-            <label className={labelCls}>
-              {layer === "electric" ? "Сечение" : "Диаметр"}
-            </label>
-            <select
-              className={inputCls}
-              value={selectedLink.spec}
-              onChange={(e) => onUpdateLink(selectedLink.id, { spec: e.target.value })}
-            >
-              {LINK_SPECS[layer].map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {layer === "electric" && (
-            <div className="mb-3">
-              <label className={labelCls}>Группа щита</label>
-              <select
-                className={inputCls}
-                value={selectedLink.groupId || ""}
-                onChange={(e) => {
-                  if (e.target.value === "__new") {
-                    onUpdateLink(selectedLink.id, { groupId: onAddGroup() })
-                    return
-                  }
-                  onUpdateLink(selectedLink.id, { groupId: e.target.value || null })
-                }}
-              >
-                <option value="">Без группы</option>
-                {groups.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    Гр. {g.num} · {g.breaker}
-                    {g.name ? ` · ${g.name}` : ""}
-                  </option>
-                ))}
-                <option value="__new">+ Новая группа</option>
-              </select>
-            </div>
-          )}
-
-          <label className="mb-3 flex cursor-pointer items-center gap-2 text-sm text-white/70">
-            <input
-              type="checkbox"
-              checked={selectedLink.ortho !== false}
-              onChange={(e) => onUpdateLink(selectedLink.id, { ortho: e.target.checked })}
-              className="h-4 w-4 accent-[#D4AF37]"
-            />
-            Только прямые углы (по ГОСТ)
-          </label>
-
-          <div className="mb-3 space-y-1 text-sm">
-            {(() => {
-              const c = linkCable(selectedLink)
-              return (
-                <>
-                  <div className="flex justify-between">
-                    <span className="text-white/40">По плану</span>
-                    <span>{fmtNum(toMm(c.plan), 0)} мм</span>
-                  </div>
-                  {isElectric && (
-                    <>
-                      <div className="flex justify-between">
-                        <span className="text-white/40">Спуски к точкам</span>
-                        <span>+{fmtNum(toMm(c.drops), 0)} мм</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-white/40">Запас на концы</span>
-                        <span>+{fmtNum(toMm(c.reserve), 0)} мм</span>
-                      </div>
-                    </>
-                  )}
-                  <div className="flex justify-between border-t border-white/10 pt-1">
-                    <span className="text-white/60">{isElectric ? "С запасом" : "Длина"}</span>
-                    <span className="font-medium text-[#D4AF37]">{fmtNum(toMm(c.total), 0)} мм</span>
-                  </div>
-                </>
-              )
-            })()}
-            <div className="flex justify-between pt-1">
-              <span className="text-white/40">Поворотов задано</span>
-              <span>{(selectedLink.points || []).length}</span>
-            </div>
-          </div>
-
-          {(selectedLink.points || []).length > 0 && (
-            <button
-              onClick={() => onUpdateLink(selectedLink.id, { points: [] })}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm text-white/70 transition-colors hover:bg-white/10"
-            >
-              <Icon name="RotateCcw" size={14} />
-              Сбросить повороты
-            </button>
-          )}
-
-          <div className="mt-2 text-xs text-white/40">
-            Квадратики на трассе — повороты, их можно перетаскивать мышью
-          </div>
-        </div>
+        <SelectedLinkCard
+          selectedLink={selectedLink}
+          layer={layer}
+          isElectric={isElectric}
+          groups={groups}
+          linkCable={linkCable}
+          onUpdateLink={onUpdateLink}
+          onDeleteLink={onDeleteLink}
+          onAddGroup={onAddGroup}
+        />
       )}
 
       {layer === "electric" && (
-        <div className="rounded-xl border border-white/10 bg-[#1f1f1f] p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="text-xs uppercase text-white/40">Группы щита</div>
-            <button
-              onClick={() => onAddGroup()}
-              className="flex items-center gap-1 text-sm text-[#D4AF37] hover:text-[#B8860B]"
-            >
-              <Icon name="Plus" size={14} />
-              Группа
-            </button>
-          </div>
-
-          {/* Ввод щита — шапка однолинейной схемы в PDF */}
-          <PanelInputEditor panel={panel} issues={panelIssues} onUpdate={onUpdatePanel} />
-
-          {groups.length === 0 ? (
-            <div className="text-sm text-white/40">
-              Создайте группу и выберите её перед прокладкой — кабель сразу попадёт в неё.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {groups.map((g) => {
-                const sum = summaries.find((x) => x.group?.id === g.id)
-                return (
-                  <div key={g.id} className="rounded-lg border border-white/10 bg-[#161616] p-3">
-                    <div className="mb-2 flex items-center gap-2">
-                      <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: groupColor(g.num) }} />
-                      <input
-                        className="w-12 rounded border border-white/10 bg-transparent px-1.5 py-1 text-center text-sm outline-none focus:border-[#D4AF37]/50"
-                        type="number"
-                        min="1"
-                        value={g.num}
-                        title="Номер группы"
-                        onChange={(e) => onUpdateGroup(g.id, { num: Math.max(1, Number(e.target.value) || 1) })}
-                      />
-                      <input
-                        className="min-w-0 flex-1 rounded border border-white/10 bg-transparent px-2 py-1 text-sm outline-none focus:border-[#D4AF37]/50"
-                        placeholder="Розетки кухни"
-                        value={g.name}
-                        onChange={(e) => onUpdateGroup(g.id, { name: e.target.value })}
-                      />
-                      <DeleteButton onConfirm={() => onDeleteGroup(g.id)} title="Удалить группу? Трассы останутся без группы" />
-                    </div>
-
-                    <div className="mb-2 grid grid-cols-2 gap-2">
-                      <select
-                        className={inputCls}
-                        value={g.breaker}
-                        onChange={(e) => onUpdateGroup(g.id, { breaker: e.target.value })}
-                      >
-                        {BREAKERS.map((b) => (
-                          <option key={b} value={b}>
-                            {b}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        className={inputCls}
-                        value={g.protection}
-                        onChange={(e) =>
-                          onUpdateGroup(g.id, { protection: e.target.value as PlanGroup["protection"] })
-                        }
-                      >
-                        {Object.entries(PROTECTION_LABELS).map(([v, label]) => (
-                          <option key={v} value={v}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {g.protection !== "mcb" && (
-                      <div className="mb-2 flex items-center gap-2 text-xs text-white/50">
-                        Утечка
-                        {[10, 30, 100].map((mA) => (
-                          <button
-                            key={mA}
-                            onClick={() => onUpdateGroup(g.id, { leakage: mA })}
-                            className={`rounded px-2 py-1 transition-colors ${
-                              g.leakage === mA ? "bg-white/20 text-white" : "bg-white/5 hover:bg-white/10"
-                            }`}
-                          >
-                            {mA} мА
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    <LineDevicesEditor group={g} onChange={(devices) => onUpdateGroup(g.id, { devices })} />
-
-                    <div className="space-y-0.5 text-xs">
-                      {sum && sum.linkCount > 0 ? (
-                        <>
-                          <div className="flex justify-between text-white/30">
-                            <span>Сечение</span>
-                            <span>по плану → с запасом</span>
-                          </div>
-                          {Object.entries(sum.bySpec).map(([spec, c]) => (
-                            <div key={spec} className="flex justify-between">
-                              <span className="text-white/50">{spec}</span>
-                              <span>
-                                <span className="text-white/50">{fmtNum(c.plan, 2)}</span>
-                                <span className="text-white/30"> → </span>
-                                <span className="text-[#D4AF37]">{fmtNum(c.total, 2)} м</span>
-                              </span>
-                            </div>
-                          ))}
-                          {describeNodes(sum.nodeCounts) && (
-                            <div className="pt-1 text-white/40">{describeNodes(sum.nodeCounts)}</div>
-                          )}
-                          {sum.warning && (
-                            <div className="flex items-start gap-1.5 pt-1 text-amber-400">
-                              <Icon name="TriangleAlert" size={12} className="mt-0.5 shrink-0" />
-                              {sum.warning}
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <div className="text-white/30">Трасс пока нет</div>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-
-              {summaries.some((x) => !x.group) && (
-                <div className="flex items-center gap-1.5 text-xs text-amber-400">
-                  <Icon name="CircleAlert" size={12} />
-                  Без группы: {summaries.find((x) => !x.group)?.linkCount} трасс,{" "}
-                  {fmtNum(summaries.find((x) => !x.group)?.total || 0, 2)} м
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <PanelGroupsCard
+          panel={panel}
+          panelIssues={panelIssues}
+          groups={groups}
+          summaries={summaries}
+          onAddGroup={onAddGroup}
+          onUpdateGroup={onUpdateGroup}
+          onDeleteGroup={onDeleteGroup}
+          onUpdatePanel={onUpdatePanel}
+        />
       )}
 
-      <div className="rounded-xl border border-white/10 bg-[#1f1f1f] p-4">
-        <div className="mb-3 text-xs uppercase text-white/40">
-          Итого по слою «{layer === "electric" ? "Электрика" : "Сантехника"}»
-        </div>
-
-        {nodes.length === 0 && links.length === 0 ? (
-          <div className="text-sm text-white/40">
-            Пока пусто. Выберите, что поставить, и кликните по плану.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div>
-              <div className="mb-1.5 text-xs text-white/50">Точки</div>
-              <div className="space-y-1">
-                {Object.entries(countsByKind).map(([kind, count]) => (
-                  <div key={kind} className="flex justify-between text-sm">
-                    <span className="flex items-center gap-2 text-white/60">
-                      {gostSymbol(kind as keyof typeof NODE_PRESETS) && (
-                        <NodeSymbolIcon kind={kind as keyof typeof NODE_PRESETS} height={16} />
-                      )}
-                      {NODE_PRESETS[kind as keyof typeof NODE_PRESETS].label}
-                    </span>
-                    <span>{count} шт</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {links.length > 0 && (
-              <div className="border-t border-white/10 pt-3">
-                <div className="mb-1.5 text-xs text-white/50">
-                  {isElectric ? "Кабель по сечениям" : "Труба по диаметрам"}
-                </div>
-                {isElectric ? (
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-xs text-white/30">
-                        <th className="pb-1 text-left font-normal">Сечение</th>
-                        <th className="pb-1 text-right font-normal">По плану</th>
-                        <th className="pb-1 text-right font-normal">С запасом</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.entries(totalsBySpec).map(([spec, c]) => (
-                        <tr key={spec}>
-                          <td className="py-0.5 text-white/60">{spec}</td>
-                          <td className="py-0.5 text-right text-white/60">{fmtNum(c.plan, 2)} м</td>
-                          <td className="py-0.5 text-right text-[#D4AF37]">{fmtNum(c.total, 2)} м</td>
-                        </tr>
-                      ))}
-                      <tr className="border-t border-white/10">
-                        <td className="pt-1 text-white/60">Всего</td>
-                        <td className="pt-1 text-right">{fmtNum(layerTotal.plan, 2)} м</td>
-                        <td className="pt-1 text-right font-medium text-[#D4AF37]">
-                          {fmtNum(layerTotal.total, 2)} м
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                ) : (
-                  <div className="space-y-1">
-                    {Object.entries(totalsBySpec).map(([spec, c]) => (
-                      <div key={spec} className="flex justify-between text-sm">
-                        <span className="text-white/60">{spec}</span>
-                        <span className="text-[#D4AF37]">{fmtNum(c.plan, 2)} м</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {isElectric && (
-                  <div className="mt-2 text-xs text-white/40">
-                    Из них спуски к точкам {fmtNum(layerTotal.drops, 2)} м, запас на концы{" "}
-                    {fmtNum(layerTotal.reserve, 2)} м
-                  </div>
-                )}
-              </div>
-            )}
-
-            {isElectric && (
-              <div className="border-t border-white/10 pt-3">
-                <div className="mb-1.5 text-xs text-white/50">Как считать запас</div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className={labelCls}>Трасса ниже потолка, мм</label>
-                    <input
-                      className={inputCls}
-                      type="number"
-                      min="0"
-                      step="10"
-                      value={toMm(cfg.traceFromCeiling)}
-                      onChange={(e) =>
-                        onUpdateCable({ traceFromCeiling: Math.max(fromMm(Number(e.target.value)), 0) })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Запас на конец, мм</label>
-                    <input
-                      className={inputCls}
-                      type="number"
-                      min="0"
-                      step="10"
-                      value={toMm(cfg.endReserve)}
-                      onChange={(e) =>
-                        onUpdateCable({ endReserve: Math.max(fromMm(Number(e.target.value)), 0) })
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="mt-1.5 text-xs text-white/40">
-                  Кабель идёт под потолком и спускается к каждой точке на её высоту. Потолок берётся из
-                  высоты помещения.
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {nodes.length > 0 && (
-        <div className="rounded-xl border border-white/10 bg-[#1f1f1f] p-4">
-          <div className="mb-3 text-xs uppercase text-white/40">Список точек</div>
-          <div className="max-h-64 space-y-1 overflow-y-auto">
-            {nodes.map((n) => (
-              <button
-                key={n.id}
-                onClick={() => onSelectNode(n.id)}
-                className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors ${
-                  n.id === selectedNode?.id ? "bg-[#D4AF37]/15 text-white" : "hover:bg-white/5"
-                }`}
-              >
-                <span className="flex items-center gap-2 truncate">
-                  {gostSymbol(n.kind) ? (
-                    <NodeSymbolIcon kind={n.kind} height={16} />
-                  ) : (
-                    <Icon name={NODE_PRESETS[n.kind].icon} size={14} />
-                  )}
-                  <span className="truncate">{n.label || NODE_PRESETS[n.kind].label}</span>
-                </span>
-                <span className="shrink-0 text-xs text-white/40">{roomName(n.roomId)}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      <LayerSummaryCard
+        layer={layer}
+        isElectric={isElectric}
+        nodes={nodes}
+        links={links}
+        countsByKind={countsByKind}
+        totalsBySpec={totalsBySpec}
+        layerTotal={layerTotal}
+        cfg={cfg}
+        selectedNode={selectedNode}
+        roomName={roomName}
+        onUpdateCable={onUpdateCable}
+        onSelectNode={onSelectNode}
+      />
     </div>
   )
 }
