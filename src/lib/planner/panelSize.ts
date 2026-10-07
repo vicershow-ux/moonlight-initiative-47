@@ -1,5 +1,5 @@
 import { groupSummaries } from "./groups"
-import { buildBlocks } from "./panelDiagram"
+import { buildBlocks, lineDeviceModules, lineDevicePositions } from "./panelDiagram"
 import {
   inputDeviceModules,
   inputDevicePositions,
@@ -7,7 +7,7 @@ import {
   inputLimitAmps,
   panelSettings,
 } from "./panelInput"
-import { INPUT_DEVICE_INFO, PlanGroup, PlanScheme } from "./types"
+import { INPUT_DEVICE_INFO, LINE_DEVICE_INFO, PlanGroup, PlanScheme } from "./types"
 
 /**
  * Ширина аппаратов в DIN-модулях (1 модуль = 17,5 мм).
@@ -91,6 +91,15 @@ export function panelSize(scheme: PlanScheme, spare = SPARE_SHARE): PanelSize | 
     )
   }
 
+  // Аппараты линии стоят на рейке сразу за автоматом своей группы
+  const addLine = (g: PlanGroup) => {
+    const lpos = lineDevicePositions(g)
+    for (const d of g.devices || []) {
+      const info = LINE_DEVICE_INFO[d.kind]
+      add(lpos.get(d.id) || "", info.label, info.ratings[0] ? `${d.rating} А` : "—", lineDeviceModules(d))
+    }
+  }
+
   let qd = 1
   for (const b of buildBlocks(sums, inputAmps)) {
     if (b.kind === "rcd") {
@@ -98,6 +107,7 @@ export function panelSize(scheme: PlanScheme, spare = SPARE_SHARE): PanelSize | 
       for (const s of b.sums) {
         const g = s.group as PlanGroup
         add(`QF${g.num}`, "Автомат", `${g.breaker}, 1P`, MODULES.breaker1p)
+        addLine(g)
       }
     } else {
       const g = b.sum.group as PlanGroup
@@ -106,9 +116,9 @@ export function panelSize(scheme: PlanScheme, spare = SPARE_SHARE): PanelSize | 
       } else {
         add(`QF${g.num}`, "Автомат", `${g.breaker}, 1P`, MODULES.breaker1p)
       }
+      addLine(g)
     }
   }
-
   const used = items.reduce((s, i) => s + i.modules, 0)
   const needed = Math.ceil(used * (1 + spare))
   const enclosure = ENCLOSURES.find((e) => e.modules >= needed) ?? null

@@ -95,7 +95,58 @@ export interface PlanGroup {
   protection: "mcb" | "rcd" | "rcbo"
   /** Ток утечки для УЗО/дифавтомата, мА */
   leakage: number
+  /** Дополнительные аппараты на линии после защиты — сверху вниз */
+  devices?: LineDevice[]
 }
+
+/** Аппараты, которые можно поставить на линию группы после автомата */
+export type LineDeviceKind =
+  | "contactor"
+  | "timer"
+  | "impulse"
+  | "switch"
+  | "dimmer"
+  | "thermostat"
+  | "socket"
+  | "lamp"
+
+export interface LineDevice {
+  id: string
+  kind: LineDeviceKind
+  /** Номинальный ток, А */
+  rating: number
+  /** Своя ширина в модулях, если у модели не типовая */
+  modules?: number
+}
+
+export const LINE_DEVICE_INFO: Record<
+  LineDeviceKind,
+  { label: string; short: string; pos: string; ratings: number[]; modules: number }
+> = {
+  contactor: { label: "Контактор модульный", short: "контактор", pos: "KM", ratings: [16, 20, 25, 40, 63], modules: 1 },
+  timer: { label: "Реле времени", short: "реле времени", pos: "KT", ratings: [16], modules: 1 },
+  impulse: { label: "Импульсное реле", short: "импульсное реле", pos: "KI", ratings: [16], modules: 1 },
+  switch: { label: "Выключатель модульный", short: "выключатель", pos: "SA", ratings: [16, 20, 32, 63], modules: 1 },
+  dimmer: { label: "Диммер модульный", short: "диммер", pos: "UD", ratings: [2], modules: 2 },
+  thermostat: { label: "Терморегулятор на DIN", short: "терморегулятор", pos: "SK", ratings: [16], modules: 2 },
+  socket: { label: "Розетка на DIN-рейку", short: "розетка", pos: "XS", ratings: [16], modules: 3 },
+  lamp: { label: "Индикатор наличия фазы", short: "индикатор", pos: "HL", ratings: [0], modules: 1 },
+}
+
+/**
+ * Цвета сечений кабеля на однолинейной схеме — чтобы линии различались без подписей.
+ * Насыщенные, хорошо различимые на белом листе и при чёрно-белой печати по толщине
+ */
+export const SECTION_STYLE: Record<string, { color: string; width: number }> = {
+  "1.5 мм²": { color: "#1f77d0", width: 1.4 },
+  "2.5 мм²": { color: "#2a9d3a", width: 1.8 },
+  "4 мм²": { color: "#e08a00", width: 2.3 },
+  "6 мм²": { color: "#d62f2f", width: 2.8 },
+  "10 мм²": { color: "#7b3fc4", width: 3.3 },
+}
+
+export const sectionStyle = (spec: string) =>
+  SECTION_STYLE[spec] || { color: "#161616", width: 1.4 }
 
 /** Как считать кабель: трасса под потолком, спуски к точкам и запас на концы */
 export interface CableSettings {

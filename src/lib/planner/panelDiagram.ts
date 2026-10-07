@@ -1,6 +1,14 @@
-import { fmtNum } from "./geometry"
 import { GroupSummary, describeNodes, groupSummaries } from "./groups"
-import { InputDevice, PlanGroup, PlanScheme, breakerAmps, sectionOf } from "./types"
+import {
+  InputDevice,
+  LINE_DEVICE_INFO,
+  LineDevice,
+  PlanGroup,
+  PlanScheme,
+  breakerAmps,
+  sectionOf,
+  sectionStyle,
+} from "./types"
 import {
   inputDevicePositions,
   inputDeviceSpec,
@@ -58,7 +66,7 @@ export function buildBlocks(sums: GroupSummary[], inputAmps: number): Block[] {
 }
 
 /** Сечение отходящей линии: самое толстое в группе, по нему кабель идёт от щита */
-const lineSection = (sum: GroupSummary) => {
+export const lineSection = (sum: GroupSummary) => {
   const specs = Object.keys(sum.bySpec)
   if (specs.length === 0) return "—"
   return specs.sort((a, b) => sectionOf(b) - sectionOf(a))[0]
@@ -173,6 +181,98 @@ function inputSym(d: InputDevice, x: number, y: number, h: number): string {
   }
 }
 
+/** Контакт, которым управляет катушка (контактор, реле): прямоугольник катушки слева */
+function coilContactSym(x: number, y: number, h: number, mark: string): string {
+  const top = y + h * 0.28
+  const bot = y + h * 0.7
+  const cx = x - 24
+  return [
+    `<line x1="${x}" y1="${y}" x2="${x}" y2="${top}" stroke="${INK}" stroke-width="1.2"/>`,
+    `<line x1="${x}" y1="${bot}" x2="${x - h * 0.2}" y2="${top + 2}" stroke="${INK}" stroke-width="1.2"/>`,
+    `<line x1="${x}" y1="${bot}" x2="${x}" y2="${y + h}" stroke="${INK}" stroke-width="1.2"/>`,
+    `<circle cx="${x}" cy="${top}" r="1.6" fill="${INK}"/>`,
+    `<rect x="${cx - 6}" y="${top - 3}" width="12" height="${bot - top + 6}" fill="#ffffff" stroke="${INK}" stroke-width="1.1"/>`,
+    mark
+      ? `<text x="${cx}" y="${(top + bot) / 2 + 3}" text-anchor="middle" font-size="7" font-weight="bold" fill="${INK}" ${FONT}>${mark}</text>`
+      : "",
+    `<line x1="${cx + 6}" y1="${(top + bot) / 2}" x2="${x - h * 0.1}" y2="${(top + bot) / 2}" stroke="${INK}" stroke-width="1" stroke-dasharray="2 1.5"/>`,
+  ].join("")
+}
+
+/** Прямоугольник с буквенной меткой на линии — для диммера, терморегулятора */
+function boxSym(x: number, y: number, h: number, mark: string): string {
+  const bh = h * 0.46
+  const by = y + (h - bh) / 2
+  return [
+    `<line x1="${x}" y1="${y}" x2="${x}" y2="${by}" stroke="${INK}" stroke-width="1.2"/>`,
+    `<rect x="${x - 10}" y="${by}" width="20" height="${bh}" fill="#ffffff" stroke="${INK}" stroke-width="1.2"/>`,
+    `<text x="${x}" y="${by + bh / 2 + 3}" text-anchor="middle" font-size="7.5" font-weight="bold" fill="${INK}" ${FONT}>${mark}</text>`,
+    `<line x1="${x}" y1="${by + bh}" x2="${x}" y2="${y + h}" stroke="${INK}" stroke-width="1.2"/>`,
+  ].join("")
+}
+
+/** Розетка на DIN: полукруг с выводом */
+function socketSym(x: number, y: number, h: number): string {
+  const cy = y + h * 0.55
+  return [
+    `<line x1="${x}" y1="${y}" x2="${x}" y2="${cy - 7}" stroke="${INK}" stroke-width="1.2"/>`,
+    `<path d="M ${x - 8} ${cy} A 8 8 0 0 1 ${x + 8} ${cy}" fill="none" stroke="${INK}" stroke-width="1.2"/>`,
+    `<line x1="${x - 10}" y1="${cy}" x2="${x + 10}" y2="${cy}" stroke="${INK}" stroke-width="1.2"/>`,
+    `<line x1="${x}" y1="${cy - 8}" x2="${x}" y2="${cy - 7}" stroke="${INK}" stroke-width="1.2"/>`,
+  ].join("")
+}
+
+/** Индикатор: круг с крестом */
+function lampSym(x: number, y: number, h: number): string {
+  const cy = y + h / 2
+  const r = 7
+  const d = r * 0.7
+  return [
+    `<line x1="${x}" y1="${y}" x2="${x}" y2="${cy - r}" stroke="${INK}" stroke-width="1.2"/>`,
+    `<circle cx="${x}" cy="${cy}" r="${r}" fill="#ffffff" stroke="${INK}" stroke-width="1.2"/>`,
+    `<line x1="${x - d}" y1="${cy - d}" x2="${x + d}" y2="${cy + d}" stroke="${INK}" stroke-width="1"/>`,
+    `<line x1="${x + d}" y1="${cy - d}" x2="${x - d}" y2="${cy + d}" stroke="${INK}" stroke-width="1"/>`,
+    `<line x1="${x}" y1="${cy + r}" x2="${x}" y2="${y + h}" stroke="${INK}" stroke-width="1.2"/>`,
+  ].join("")
+}
+
+/** Аппарат на линии группы */
+function lineSym(d: LineDevice, x: number, y: number, h: number): string {
+  switch (d.kind) {
+    case "contactor":
+      return coilContactSym(x, y, h, "")
+    case "timer":
+      return coilContactSym(x, y, h, "T")
+    case "impulse":
+      return coilContactSym(x, y, h, "И")
+    case "switch":
+      return switchSym(x, y, h)
+    case "dimmer":
+      return boxSym(x, y, h, "Д")
+    case "thermostat":
+      return boxSym(x, y, h, "t°")
+    case "socket":
+      return socketSym(x, y, h)
+    case "lamp":
+      return lampSym(x, y, h)
+  }
+}
+
+/** Позиционные обозначения аппаратов линии: KM3, KM3.2 — номер группы и порядковый */
+export function lineDevicePositions(g: PlanGroup): Map<string, string> {
+  const counters: Record<string, number> = {}
+  const out = new Map<string, string>()
+  for (const d of g.devices || []) {
+    const prefix = LINE_DEVICE_INFO[d.kind].pos
+    counters[prefix] = (counters[prefix] || 0) + 1
+    out.set(d.id, `${prefix}${g.num}${counters[prefix] > 1 ? `.${counters[prefix]}` : ""}`)
+  }
+  return out
+}
+
+export const lineDeviceModules = (d: LineDevice) =>
+  d.modules && d.modules > 0 ? d.modules : LINE_DEVICE_INFO[d.kind].modules
+
 const INPUT_NAMES: Record<InputDevice["kind"], string> = {
   breaker: "вводной автомат",
   switch: "выключатель нагрузки",
@@ -213,7 +313,9 @@ export function panelDiagramSvg(scheme: PlanScheme, width = 700): string | null 
   const colW = usable / perRow
 
   const parts: string[] = []
-  const rowH = 310
+  const lineDevH = 44
+  const maxLineDevs = Math.max(0, ...sums.map((s) => ((s.group as PlanGroup).devices || []).length))
+  const rowH = 330 + maxLineDevs * lineDevH
   const rcdH = 50
   const brH = 48
   const textTop = 22
@@ -314,24 +416,34 @@ export function panelDiagramSvg(scheme: PlanScheme, width = 700): string | null 
       )
       if (isRcbo) parts.push(label(x + 9, cy + 40, `${g.leakage} мА`, 'font-size="8"'))
 
-      // Отходящая линия и стрелка к потребителю
-      const lineTop = cy + brH
-      const lineBot = lineTop + 40
+      // Аппараты на линии после защиты — в заданном порядке
+      let ly = cy + brH
+      const lpos = lineDevicePositions(g)
+      for (const d of g.devices || []) {
+        parts.push(lineSym(d, x, ly, lineDevH))
+        const info = LINE_DEVICE_INFO[d.kind]
+        parts.push(
+          label(x + 13, ly + lineDevH * 0.42, lpos.get(d.id) || "", 'font-size="8"'),
+          label(x + 13, ly + lineDevH * 0.42 + 10, info.ratings[0] ? `${d.rating} А` : "", 'font-weight="bold" font-size="8.5"'),
+        )
+        ly += lineDevH
+      }
+
+      // Отходящая линия: цвет и толщина — по сечению кабеля, без текстовой подписи
+      const st = sectionStyle(lineSection(c.sum))
+      const lineTop = ly
+      const lineBot = cy + brH + maxLineDevs * lineDevH + 46
       parts.push(
-        `<line x1="${x}" y1="${lineTop}" x2="${x}" y2="${lineBot}" stroke="${INK}" stroke-width="1.2"/>`,
-        `<polygon points="${x - 3.5},${lineBot - 6} ${x + 3.5},${lineBot - 6} ${x},${lineBot}" fill="${INK}"/>`,
+        `<line x1="${x}" y1="${lineTop}" x2="${x}" y2="${lineBot - 5}" stroke="${st.color}" stroke-width="${st.width + 1.2}" stroke-linecap="round"/>`,
+        `<polygon points="${x - 4.5},${lineBot - 7} ${x + 4.5},${lineBot - 7} ${x},${lineBot}" fill="${st.color}"/>`,
       )
 
-      // Подписи линии — повёрнуты вертикально, как на однолинейных схемах
-      const tx = x + 4
-      const ty = lineBot + textTop
-      const len = `${fmtNum(c.sum.total, 1)} м`
+      // Номер группы в рамке цвета кабеля и назначение — вертикально
       const purpose = g.name || describeNodes(c.sum.nodeCounts) || "—"
       parts.push(
-        `<rect x="${x - 11}" y="${lineBot + 4}" width="22" height="14" fill="#ffffff" stroke="${INK}" stroke-width="1"/>`,
+        `<rect x="${x - 11}" y="${lineBot + 4}" width="22" height="14" fill="#ffffff" stroke="${st.color}" stroke-width="1.6"/>`,
         `<text x="${x}" y="${lineBot + 14.5}" text-anchor="middle" font-size="9" font-weight="bold" fill="${INK}" ${FONT}>${g.num}</text>`,
-        `<text transform="translate(${tx}, ${ty}) rotate(90)" font-size="8.5" fill="${INK}" ${FONT}>${esc(lineSection(c.sum))} · ${len}</text>`,
-        `<text transform="translate(${tx - 11}, ${ty}) rotate(90)" font-size="8.5" fill="${MUTED}" ${FONT}>${esc(purpose.length > 26 ? purpose.slice(0, 25) + "…" : purpose)}</text>`,
+        `<text transform="translate(${x - 3}, ${lineBot + textTop}) rotate(90)" font-size="8.5" fill="${MUTED}" ${FONT}>${esc(purpose.length > 30 ? purpose.slice(0, 29) + "…" : purpose)}</text>`,
       )
       if (c.sum.warning) {
         parts.push(`<text x="${x}" y="${cy - 2}" text-anchor="middle" font-size="11" font-weight="bold" fill="#b45309" ${FONT}>!</text>`)
@@ -339,7 +451,22 @@ export function panelDiagramSvg(scheme: PlanScheme, width = 700): string | null 
     })
   }
 
-  const height = busY + rows * rowH - 30
+  // Легенда цветов — только сечения, которые есть в щите
+  const used = [...new Set(sums.map(lineSection))].filter((x) => x !== "—")
+  used.sort((a, b) => sectionOf(a) - sectionOf(b))
+  const legendY = busY + rows * rowH - 22
+  let lx = left + 10
+  parts.push(label(left - 60, legendY + 3.5, "Кабель:", `fill="${MUTED}"`))
+  for (const spec of used) {
+    const st = sectionStyle(spec)
+    parts.push(
+      `<line x1="${lx}" y1="${legendY}" x2="${lx + 26}" y2="${legendY}" stroke="${st.color}" stroke-width="${st.width + 1.2}" stroke-linecap="round"/>`,
+      label(lx + 32, legendY + 3.5, spec),
+    )
+    lx += 92
+  }
+
+  const height = legendY + 16
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="${width}" height="${height}" fill="#ffffff"/>${parts.join("")}</svg>`
 }
 

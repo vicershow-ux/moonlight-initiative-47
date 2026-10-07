@@ -20,6 +20,7 @@ import {
 import { describeNodes, groupSummaries } from "@/lib/planner/groups"
 import { panelSettings, panelWarnings } from "@/lib/planner/panelDiagram"
 import { PanelInputEditor } from "./PanelInputEditor"
+import { LineDevicesEditor } from "./LineDevicesEditor"
 import {
   CableTotals,
   addCable,
@@ -370,6 +371,8 @@ export function EngineerSidebar({
                         ))}
                       </div>
                     )}
+
+                    <LineDevicesEditor group={g} onChange={(devices) => onUpdateGroup(g.id, { devices })} />
 
                     <div className="space-y-0.5 text-xs">
                       {sum && sum.linkCount > 0 ? (
