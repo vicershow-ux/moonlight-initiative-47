@@ -8,7 +8,9 @@ import {
   breakerAmps,
   sectionOf,
   sectionStyle,
+  PHASE_COLORS,
 } from "./types"
+import { phaseBalance } from "./phases"
 import {
   inputDevicePositions,
   inputDeviceSpec,
@@ -300,6 +302,7 @@ export function panelDiagramSvg(scheme: PlanScheme, width = 700): string | null 
   const inputAmps = inputLimitAmps(panel.devices)
   const blocks = buildBlocks(sums, inputAmps)
   const lines = sums.length
+  const balance = phaseBalance(scheme)
 
   // Высота ввода зависит от числа аппаратов в цепочке
   const devH = 52
@@ -438,6 +441,14 @@ export function panelDiagramSvg(scheme: PlanScheme, width = 700): string | null 
         `<polygon points="${x - 4.5},${lineBot - 7} ${x + 4.5},${lineBot - 7} ${x},${lineBot}" fill="${st.color}"/>`,
       )
 
+      // Фаза группы при трёхфазном вводе — цветом по ГОСТ справа от стрелки
+      const ph = balance?.byGroup.get(g.id)
+      if (ph) {
+        parts.push(
+          `<text x="${x + 6}" y="${lineBot - 1}" font-size="8.5" font-weight="bold" fill="${PHASE_COLORS[ph]}" ${FONT}>${ph}</text>`,
+        )
+      }
+
       // Номер группы в рамке цвета кабеля и назначение — вертикально
       const purpose = g.name || describeNodes(c.sum.nodeCounts) || "—"
       parts.push(
@@ -449,6 +460,39 @@ export function panelDiagramSvg(scheme: PlanScheme, width = 700): string | null 
         parts.push(`<text x="${x}" y="${cy - 2}" text-anchor="middle" font-size="11" font-weight="bold" fill="#b45309" ${FONT}>!</text>`)
       }
     })
+  }
+
+  // Нагрузка по фазам — справа от ввода, над шиной
+  if (balance) {
+    const bw = 210
+    const bx = width - bw - 6
+    const byy = 6
+    const rowsH = 15
+    const bh = 22 + rowsH * 3 + 18
+    parts.push(
+      `<rect x="${bx}" y="${byy}" width="${bw}" height="${bh}" rx="3" fill="#fafafa" stroke="#cccccc"/>`,
+      label(bx + 8, byy + 15, "Нагрузка по фазам", 'font-weight="bold"'),
+    )
+    const maxKw = Math.max(...balance.loads.map((l) => l.kw), 0.01)
+    balance.loads.forEach((l, i) => {
+      const ry = byy + 22 + i * rowsH
+      const barW = 60 * (l.kw / maxKw)
+      parts.push(
+        `<text x="${bx + 8}" y="${ry + 10}" font-size="9" font-weight="bold" fill="${PHASE_COLORS[l.phase]}" ${FONT}>${l.phase}</text>`,
+        `<rect x="${bx + 26}" y="${ry + 3}" width="60" height="8" fill="#eeeeee"/>`,
+        `<rect x="${bx + 26}" y="${ry + 3}" width="${barW}" height="8" fill="${PHASE_COLORS[l.phase]}"/>`,
+        label(bx + 92, ry + 10, `${l.kw.toFixed(2).replace(".", ",")} кВт · ${String(l.amps).replace(".", ",")} А`),
+      )
+    })
+    const fy = byy + 22 + rowsH * 3 + 11
+    parts.push(
+      label(
+        bx + 8,
+        fy,
+        `Всего ${balance.totalKw.toFixed(2).replace(".", ",")} кВт, перекос ${balance.imbalance}%`,
+        `fill="${balance.imbalance > 30 ? "#b45309" : MUTED}"`,
+      ),
+    )
   }
 
   // Легенда цветов — только сечения, которые есть в щите
@@ -475,7 +519,7 @@ export function panelWarnings(scheme: PlanScheme): string[] {
   const sums = groupSummaries(scheme).filter((s) => s.group)
   const panel = panelSettings(scheme.panel)
   const maxGroup = Math.max(0, ...sums.map((s) => breakerAmps((s.group as PlanGroup).breaker)))
-  const out: string[] = [...inputWarnings(panel.devices, maxGroup)]
+  const out: string[] = [...inputWarnings(panel.devices, maxGroup), ...(phaseBalance(scheme)?.warnings || [])]
   for (const s of sums) if (s.warning) out.push(`Группа ${(s.group as PlanGroup).num}: ${s.warning}.`)
 
   const nums = sums.map((s) => (s.group as PlanGroup).num)

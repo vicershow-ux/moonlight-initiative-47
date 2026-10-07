@@ -24,6 +24,8 @@ import {
 import { describeNodes, groupSummaries } from "@/lib/planner/groups"
 import { panelDiagramSvg, panelSettings, panelWarnings } from "@/lib/planner/panelDiagram"
 import { PanelSize, SPARE_SHARE, panelSize, panelSpecification } from "@/lib/planner/panelSize"
+import { groupPower, kwToAmps, phaseBalance } from "@/lib/planner/phases"
+import { PHASE_COLORS } from "@/lib/planner/types"
 import {
   CableTotals,
   addCable,
@@ -625,7 +627,64 @@ function panelSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
       ? `<div class="warn-box">${warnings.map((w) => `<div>⚠ ${escapeXml(w)}</div>`).join("")}</div>`
       : ""
   }
+  ${phaseBlock(scheme)}
   ${panelSizeBlock(scheme)}`
+}
+
+/** Таблица распределения групп по фазам — только для трёхфазного ввода */
+function phaseBlock(scheme: PlanScheme): string {
+  const bal = phaseBalance(scheme)
+  if (!bal) return ""
+  const sums = groupSummaries(scheme).filter((x) => x.group)
+  const groupRows = sums
+    .map((sum) => {
+      const g = sum.group!
+      const ph = bal.byGroup.get(g.id)!
+      const p = groupPower(sum)
+      return `
+      <tr>
+        <td class="num"><span class="dot" style="background:${groupColor(g.num)}"></span>${g.num}</td>
+        <td>${escapeXml(g.name || describeNodes(sum.nodeCounts) || "—")}</td>
+        <td class="num strong" style="color:${PHASE_COLORS[ph]}">${ph}${bal.manual.has(g.id) ? "" : " *"}</td>
+        <td class="num">${fmtNum(p.kw, 2)}${p.estimated ? " ≈" : ""}</td>
+        <td class="num">${fmtNum(kwToAmps(p.kw), 1)}</td>
+      </tr>`
+    })
+    .join("")
+  const loadRows = bal.loads
+    .map(
+      (l) => `
+      <tr>
+        <td class="strong" style="color:${PHASE_COLORS[l.phase]}">${l.phase}</td>
+        <td>${l.groups.length ? l.groups.join(", ") : "—"}</td>
+        <td class="num strong">${fmtNum(l.kw, 2)}</td>
+        <td class="num strong">${fmtNum(l.amps, 1)}</td>
+      </tr>`,
+    )
+    .join("")
+  return `
+  <h3>Распределение групп по фазам</h3>
+  <table>
+    <thead><tr><th>Фаза</th><th>Группы</th><th>Нагрузка, кВт</th><th>Ток, А</th></tr></thead>
+    <tbody>
+      ${loadRows}
+      <tr class="totals">
+        <td colspan="2">Всего, перекос фаз ${bal.imbalance}%</td>
+        <td class="num">${fmtNum(bal.totalKw, 2)}</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <table style="margin-top:8px">
+    <thead><tr><th>№</th><th>Группа</th><th>Фаза</th><th>Мощность, кВт</th><th>Ток, А</th></tr></thead>
+    <tbody>${groupRows}</tbody>
+  </table>
+  <div class="legend" style="text-align:left">
+    Ток посчитан при 230 В на фазу. «≈» — мощность оценена по точкам группы с учётом одновременности
+    (розетка 0,3 кВт, силовая розетка 2,5 кВт, светильник 0,1 кВт), не больше номинала автомата; точную мощность
+    лучше задать в группе. «*» — фаза выбрана автоматически для наименьшего перекоса. Перекос — разница
+    между самой нагруженной и самой свободной фазой; желательно не больше 30%.
+  </div>`
 }
 
 const plural = (n: number, one: string, few: string, many: string) => {

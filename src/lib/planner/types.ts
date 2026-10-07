@@ -97,6 +97,20 @@ export interface PlanGroup {
   leakage: number
   /** Дополнительные аппараты на линии после защиты — сверху вниз */
   devices?: LineDevice[]
+  /** Расчётная мощность группы, кВт; не задана — оценивается по точкам */
+  power?: number
+  /** Фаза при трёхфазном вводе; не задана — распределяется автоматически */
+  phase?: Phase | null
+}
+
+export type Phase = "L1" | "L2" | "L3"
+export const PHASES: Phase[] = ["L1", "L2", "L3"]
+
+/** Цвета фаз по ГОСТ: L1 коричневый, L2 чёрный, L3 серый */
+export const PHASE_COLORS: Record<Phase, string> = {
+  L1: "#8B4A1C",
+  L2: "#161616",
+  L3: "#8A8A8A",
 }
 
 /** Аппараты, которые можно поставить на линию группы после автомата */

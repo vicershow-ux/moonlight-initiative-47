@@ -9,6 +9,7 @@ import {
   PlanScheme,
 } from "@/lib/planner/types"
 import { groupSummaries } from "@/lib/planner/groups"
+import { phaseBalance } from "@/lib/planner/phases"
 import { panelSettings, panelWarnings } from "@/lib/planner/panelDiagram"
 import {
   CableTotals,
@@ -125,6 +126,7 @@ export function EngineerSidebar({
           onUpdateGroup={onUpdateGroup}
           onDeleteGroup={onDeleteGroup}
           onUpdatePanel={onUpdatePanel}
+          balance={phaseBalance(scheme)}
         />
       )}
 

@@ -6,8 +6,11 @@ import {
   PROTECTION_LABELS,
   PlanGroup,
   PanelSettings,
+  PHASES,
+  PHASE_COLORS,
   groupColor,
 } from "@/lib/planner/types"
+import { PhaseBalance, groupPower, kwToAmps } from "@/lib/planner/phases"
 import { GroupSummary, describeNodes } from "@/lib/planner/groups"
 import { PanelInputEditor } from "./PanelInputEditor"
 import { LineDevicesEditor } from "./LineDevicesEditor"
@@ -24,6 +27,7 @@ interface Props {
   onUpdateGroup: (id: string, patch: Partial<PlanGroup>) => void
   onDeleteGroup: (id: string) => void
   onUpdatePanel: (patch: Partial<PanelSettings>) => void
+  balance?: PhaseBalance | null
 }
 
 export function PanelGroupsCard({
@@ -35,6 +39,7 @@ export function PanelGroupsCard({
   onUpdateGroup,
   onDeleteGroup,
   onUpdatePanel,
+  balance = null,
 }: Props) {
   return (
     <div className="rounded-xl border border-white/10 bg-[#1f1f1f] p-4">
@@ -51,6 +56,42 @@ export function PanelGroupsCard({
 
       {/* Ввод щита — шапка однолинейной схемы в PDF */}
       <PanelInputEditor panel={panel} issues={panelIssues} onUpdate={onUpdatePanel} />
+
+      {balance && (
+        <div className="mb-3 rounded-lg border border-white/10 bg-[#161616] p-3">
+          <div className="mb-2 flex items-center justify-between text-xs">
+            <span className="text-white/50">Нагрузка по фазам</span>
+            <span className={balance.imbalance > 30 ? "text-amber-400" : "text-white/40"}>
+              перекос {balance.imbalance}%
+            </span>
+          </div>
+          {(() => {
+            const max = Math.max(...balance.loads.map((l) => l.kw), 0.01)
+            return balance.loads.map((l) => (
+              <div key={l.phase} className="mb-1 flex items-center gap-2 text-xs">
+                <span className="w-5 font-semibold" style={{ color: l.phase === "L2" ? "#e5e5e5" : PHASE_COLORS[l.phase] }}>
+                  {l.phase}
+                </span>
+                <div className="h-2 flex-1 overflow-hidden rounded bg-white/10">
+                  <div
+                    className="h-full rounded"
+                    style={{
+                      width: `${(l.kw / max) * 100}%`,
+                      background: l.phase === "L2" ? "#e5e5e5" : PHASE_COLORS[l.phase],
+                    }}
+                  />
+                </div>
+                <span className="w-24 text-right text-white/70">
+                  {fmtNum(l.kw, 2)} кВт · {fmtNum(l.amps, 1)} А
+                </span>
+              </div>
+            ))
+          })()}
+          <div className="mt-1 text-[11px] text-white/40">
+            Всего {fmtNum(balance.totalKw, 2)} кВт. Фазу «Авто» программа подбирает для наименьшего перекоса.
+          </div>
+        </div>
+      )}
 
       {groups.length === 0 ? (
         <div className="text-sm text-white/40">
@@ -122,6 +163,51 @@ export function PanelGroupsCard({
                         {mA} мА
                       </button>
                     ))}
+                  </div>
+                )}
+
+                <div className="mb-2 flex items-center gap-2 text-xs text-white/50">
+                  <span className="shrink-0">Мощность</span>
+                  <input
+                    className="w-16 rounded border border-white/10 bg-transparent px-1.5 py-1 text-center text-xs outline-none focus:border-[#D4AF37]/50"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    placeholder={sum ? fmtNum(groupPower(sum).kw, 2) : "0"}
+                    value={g.power ?? ""}
+                    title="Расчётная мощность группы, кВт. Пусто — оценка по точкам"
+                    onChange={(e) => {
+                      const v = Number(e.target.value.replace(",", "."))
+                      onUpdateGroup(g.id, { power: e.target.value === "" || !(v > 0) ? undefined : v })
+                    }}
+                  />
+                  <span className="shrink-0">кВт</span>
+                  {sum && (
+                    <span className="truncate text-white/30">
+                      {g.power ? "" : "≈ "}
+                      {fmtNum(kwToAmps(groupPower(sum).kw), 1)} А
+                    </span>
+                  )}
+                </div>
+
+                {balance && (
+                  <div className="mb-2 flex items-center gap-1 text-xs text-white/50">
+                    <span className="mr-1">Фаза</span>
+                    {[null, ...PHASES].map((ph) => {
+                      const active = (g.phase ?? null) === ph
+                      const auto = balance.byGroup.get(g.id)
+                      return (
+                        <button
+                          key={ph ?? "auto"}
+                          onClick={() => onUpdateGroup(g.id, { phase: ph })}
+                          className={`rounded px-2 py-1 transition-colors ${
+                            active ? "bg-white/20 text-white" : "bg-white/5 hover:bg-white/10"
+                          }`}
+                        >
+                          {ph ?? `Авто${!g.phase && auto ? ` · ${auto}` : ""}`}
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
 
