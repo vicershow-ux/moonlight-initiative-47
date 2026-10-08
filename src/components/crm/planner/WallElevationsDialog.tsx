@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import Icon from "@/components/ui/icon"
-import { elevationRows, elevationSvg, roomElevations } from "@/lib/planner/elevation"
+import { chaseTotals, elevationRows, elevationSvg, roomElevations } from "@/lib/planner/elevation"
 import { toMm } from "@/lib/planner/geometry"
 import { PlanScheme } from "@/lib/planner/types"
 
@@ -24,6 +24,7 @@ export function WallElevationsDialog({ open, onOpenChange, scheme, roomId, wallI
 
   if (!room || !e) return null
   const rows = elevationRows(e)
+  const ch = chaseTotals(e)
 
   return (
     <Dialog
@@ -99,9 +100,19 @@ export function WallElevationsDialog({ open, onOpenChange, scheme, roomId, wallI
           </div>
         )}
 
+        {ch.total > 0 && (
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+            <span className="text-white/50">Штробы на стене:</span>
+            <span>вертикальные {toMm(ch.vertical)} мм</span>
+            <span>горизонтальные {toMm(ch.horizontal)} мм</span>
+            <span className="font-semibold text-[#D4AF37]">всего {(ch.total).toFixed(2).replace(".", ",")} м</span>
+          </div>
+        )}
+
         <div className="text-xs leading-relaxed text-white/40">
           Вид на стену изнутри помещения, размеры в мм — до центра коробки, от чистого пола и от углов по
-          внутренней стороне стены. Правьте высоту и место точки на слое «Электрика» — развёртка обновится сама.
+          внутренней стороне стены. Штробы — только вертикально и горизонтально: от верхней коробки к трассе под
+          потолком, между коробками на одной высоте — шлейфом. Мимо проёмов штроба обходит их сбоку. Правьте высоту и место точки на слое «Электрика» — развёртка обновится сама.
           Все развёртки попадают в PDF.
         </div>
       </DialogContent>

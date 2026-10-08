@@ -25,7 +25,8 @@ import { describeNodes, groupSummaries } from "@/lib/planner/groups"
 import { panelDiagramSvg, panelSettings, panelWarnings } from "@/lib/planner/panelDiagram"
 import { PanelSize, SPARE_SHARE, panelSize, panelSpecification } from "@/lib/planner/panelSize"
 import { groupPower, kwToAmps, phaseBalance } from "@/lib/planner/phases"
-import { elevationRows, elevationSvg, roomElevations } from "@/lib/planner/elevation"
+import { chaseTotals, elevationRows, elevationSvg, roomElevations } from "@/lib/planner/elevation"
+import { CABLE_BUY_SHARE, electricMaterials } from "@/lib/planner/materials"
 import { PHASE_COLORS, WALL_MATERIALS, WallMaterial } from "@/lib/planner/types"
 import {
   findWall,
@@ -308,6 +309,44 @@ export function schemeToSvg(
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${parts.join("")}</svg>`
 }
 
+/** Смета материалов электрики — список для закупки */
+function materialsSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
+  const sections = electricMaterials(scheme)
+  if (sections.length === 0) return ""
+  let n = 0
+  const body = sections
+    .map(
+      (sec) => `
+      <tr class="sec-row"><td colspan="5">${escapeXml(sec.title)}</td></tr>${sec.rows
+        .map(
+          (r) => `
+      <tr>
+        <td class="num">${++n}</td>
+        <td>${escapeXml(r.name)}${r.note ? `<div class="muted">${escapeXml(r.note)}</div>` : ""}</td>
+        <td>${escapeXml(r.spec)}</td>
+        <td>${r.unit}</td>
+        <td class="num strong">${r.qty > 0 ? fmtNum(r.qty, Number.isInteger(r.qty) ? 0 : 1) : "—"}</td>
+      </tr>`,
+        )
+        .join("")}`,
+    )
+    .join("")
+  return `
+  <div class="page-break"></div>
+  <h2>Смета материалов электрики — объект ${escapeXml(meta.objectCode)}</h2>
+  <div class="meta">Список для закупки по проекту. Количество посчитано по плану, схемам и составу щита.</div>
+  <table>
+    <thead><tr><th>№</th><th>Наименование</th><th>Характеристика</th><th>Ед.</th><th>Кол-во</th></tr></thead>
+    <tbody>${body}</tbody>
+  </table>
+  <div class="legend" style="text-align:left">
+    Кабель — длина по трассам со спусками, заходом в откосы и запасом на разделку, плюс ${Math.round(CABLE_BUY_SHARE * 100)}%
+    на обрезки, округлено вверх до 5 м. Подрозетник — по одному на каждую розетку и выключатель; для стен из
+    гипсокартона — с лапками. Аппараты щита — по однолинейной схеме. Расходные материалы посчитаны по типовым
+    нормам и уточняются на объекте. Цены не указаны — их добавляют в смете.
+  </div>`
+}
+
 /**
  * Развёртки стен для монтажника: только стены, на которых есть розетки,
  * выключатели, щит или коробки. Каждая развёртка — с ведомостью размеров
@@ -330,6 +369,7 @@ function elevationsSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
         </tr>`,
         )
         .join("")
+      const ch = chaseTotals(e)
       blocks.push(`
   <div class="elev">
     <h3>${escapeXml(room.name)} — стена ${e.wall.index + 1}, ${toMm(e.length)} мм</h3>
@@ -338,6 +378,7 @@ function elevationsSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
       <thead><tr><th>№</th><th>Точка</th><th>От левого угла, мм</th><th>От правого угла, мм</th><th>От пола, мм</th><th>До потолка, мм</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
+    ${ch.total > 0 ? `<div class="muted">Штробы: вертикальные ${toMm(ch.vertical)} мм, горизонтальные ${toMm(ch.horizontal)} мм, всего ${fmtNum(ch.total, 2)} м.</div>` : ""}
   </div>`)
     }
   }
@@ -347,8 +388,9 @@ function elevationsSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
   <h2>Развёртки стен — объект ${escapeXml(meta.objectCode)}</h2>
   <div class="meta">
     Вид на каждую стену изнутри помещения: где сверлить под розетки, выключатели, коробки и щит. Размеры в мм —
-    до центра коробки, от чистого пола и от углов по внутренней стороне стены. Справа вверху — мини-план: золотом
-    отмечена развёрнутая стена, стрелка — откуда смотрим.
+    до центра коробки, от чистого пола и от углов по внутренней стороне стены. Коричневые полосы — штробы:
+    вертикально от верхней коробки к трассе под потолком и горизонтально между коробками на одной высоте, с длиной
+    в мм. Справа вверху — мини-план: золотом отмечена развёрнутая стена, стрелка — откуда смотрим.
   </div>
   ${blocks.join("")}`
 }
@@ -483,6 +525,7 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
     .plan-doc .card .value { font-size: 15px; font-weight: bold; margin-top: 2px; }
     .plan-doc .plan-img { text-align: center; margin: 8px 0 4px; }
     .plan-doc .page-break { page-break-before: always; break-before: page; height: 0; }
+    .plan-doc tr.sec-row td { background: #f7f2e2; font-weight: bold; font-size: 11px; }
     .plan-doc .elev { page-break-inside: avoid; break-inside: avoid; margin-bottom: 14px; }
     .plan-doc .legend { font-size: 10px; color: #666; text-align: center; margin-bottom: 6px; }
   </style>
@@ -562,6 +605,7 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
   ${wallsTable(scheme)}
   ${engineerSection(scheme, "electric", meta)}
   ${panelSection(scheme, meta)}
+  ${materialsSection(scheme, meta)}
   ${elevationsSection(scheme, meta)}
   ${engineerSection(scheme, "plumbing", meta)}
 </div>`.trim()

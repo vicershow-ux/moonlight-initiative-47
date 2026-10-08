@@ -44,6 +44,107 @@ export interface WallElevation {
   height: number
   points: ElevPoint[]
   openings: ElevOpening[]
+  chases: Chase[]
+}
+
+/**
+ * Штроба на развёртке. Вертикальная — от верхней коробки столбика до трассы под потолком;
+ * горизонтальная — между соседними коробками на одной высоте (шлейф).
+ * x/z — в метрах на развёртке
+ */
+export interface Chase {
+  kind: "up" | "link"
+  x0: number
+  z0: number
+  x1: number
+  z1: number
+  length: number
+}
+
+/** Расстояние между коробками, при котором ставим их в один блок без штробы, м */
+const BLOCK_GAP = 0.075
+/** Соседние точки на одной высоте соединяем шлейфом, если между ними не больше, м */
+const LINK_MAX = 1.6
+
+/**
+ * Трассы штроб на стене по правилам скрытой проводки: только вертикально и горизонтально.
+ * Точки в одном вертикальном столбике (одна X) поднимаются общей штробой от верхней к потолку,
+ * между ними — короткая вертикаль. Соседние столбики на одной высоте соединяем горизонтальной
+ * штробой, и тогда к потолку идёт только один из них — ближний к углу. Штроба не проходит через проём
+ */
+export function wallChases(
+  points: ElevPoint[],
+  openings: ElevOpening[],
+  height: number,
+  traceZ: number,
+): Chase[] {
+  const chases: Chase[] = []
+  const top = Math.min(traceZ, height)
+
+  // Столбики: точки с одинаковой X (с допуском на блоки рамок)
+  const cols: { x: number; pts: ElevPoint[] }[] = []
+  for (const p of [...points].sort((a, b) => a.x - b.x)) {
+    const c = cols.find((cc) => Math.abs(cc.x - p.x) < 0.02)
+    if (c) c.pts.push(p)
+    else cols.push({ x: p.x, pts: [p] })
+  }
+  for (const c of cols) c.pts.sort((a, b) => a.z - b.z)
+
+  const crossesOpening = (x0: number, x1: number, z0: number, z1: number) =>
+    openings.some((o) => {
+      const lo = Math.min(x0, x1)
+      const hi = Math.max(x0, x1)
+      const zlo = Math.min(z0, z1)
+      const zhi = Math.max(z0, z1)
+      return hi > o.x0 + 1e-3 && lo < o.x1 - 1e-3 && zhi > o.z0 + 1e-3 && zlo < o.z1 - 1e-3
+    })
+
+  // Вертикали внутри столбика: между соседними коробками
+  for (const c of cols) {
+    for (let i = 1; i < c.pts.length; i++) {
+      const a = c.pts[i - 1]
+      const b = c.pts[i]
+      if (b.z - a.z > BLOCK_GAP) chases.push({ kind: "link", x0: c.x, z0: a.z, x1: c.x, z1: b.z, length: b.z - a.z })
+    }
+  }
+
+  // Шлейфы между соседними столбиками на одной высоте нижних коробок
+  const fed = new Set<number>()
+  for (let i = 1; i < cols.length; i++) {
+    const a = cols[i - 1]
+    const b = cols[i]
+    const za = a.pts[0].z
+    const zb = b.pts[0].z
+    const dx = b.x - a.x
+    // Вплотную на одной высоте — блок рамок: одна общая коробка-гнездо, отдельная штроба не нужна
+    if (Math.abs(za - zb) < 0.02 && dx <= BLOCK_GAP + 1e-6) {
+      fed.add(i)
+      continue
+    }
+    if (Math.abs(za - zb) < 0.02 && dx <= LINK_MAX && !crossesOpening(a.x, b.x, za, za)) {
+      chases.push({ kind: "link", x0: a.x, z0: za, x1: b.x, z1: za, length: dx })
+      fed.add(i)
+    }
+  }
+
+  // Подъёмы к потолку: от верхней коробки каждого столбика, кроме подключённых шлейфом.
+  // Точки в откосе к потолку не поднимаем по проёму — штроба идёт по стене рядом с откосом
+  cols.forEach((c, i) => {
+    if (fed.has(i)) return
+    const p = c.pts[c.pts.length - 1]
+    if (p.z >= top) return
+    // Над проёмом или по самому краю откоса штробить нельзя — отходим от проёма на 50 мм
+    let x = c.x
+    const o = openings.find(
+      (op) => x > op.x0 - 0.03 && x < op.x1 + 0.03 && top > op.z0 + 1e-3 && p.z < op.z1 - 1e-3,
+    )
+    if (o) x = Math.abs(x - o.x0) <= Math.abs(x - o.x1) ? o.x0 - 0.05 : o.x1 + 0.05
+    if (Math.abs(x - c.x) > 1e-3) {
+      chases.push({ kind: "link", x0: c.x, z0: p.z, x1: x, z1: p.z, length: Math.abs(x - c.x) })
+    }
+    chases.push({ kind: "up", x0: x, z0: p.z, x1: x, z1: top, length: top - p.z })
+  })
+  return chases
 }
 
 /**
@@ -101,13 +202,16 @@ export function wallElevation(scheme: PlanScheme, wall: WallInfo): WallElevation
   }
 
   raw.sort((a, b) => a.x - b.x || a.z - b.z)
+  const points = raw.map((p, i) => ({ ...p, no: i + 1 }))
+  const traceZ = Math.max(room.height - (scheme.cable?.traceFromCeiling ?? 0.15), 0)
   return {
     wall,
     room,
     length: L,
     height: room.height,
-    points: raw.map((p, i) => ({ ...p, no: i + 1 })),
+    points,
     openings,
+    chases: wallChases(points, openings, room.height, traceZ),
   }
 }
 
@@ -319,9 +423,47 @@ export function elevationSvg(e: WallElevation, width = 700): string {
     }
   }
 
+  // Штробы: широкая серая полоса с пунктиром по оси и размер длины
+  const CH = "#9a6b2f"
+  for (const c of e.chases) {
+    const x0 = sx(c.x0)
+    const y0 = sz(c.z0)
+    const x1 = sx(c.x1)
+    const y1 = sz(c.z1)
+    parts.push(
+      `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="#e9d7bd" stroke-width="7" stroke-linecap="butt"/>`,
+      `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${CH}" stroke-width="1" stroke-dasharray="4 2.5"/>`,
+    )
+    const vertical = Math.abs(x1 - x0) < 0.5
+    const px = Math.abs(vertical ? y1 - y0 : x1 - x0)
+    if (px < 26) continue
+    const txt = String(toMm(c.length))
+    if (vertical) {
+      parts.push(
+        `<text transform="translate(${x0 + 10}, ${(y0 + y1) / 2}) rotate(-90)" text-anchor="middle" font-size="8" fill="${CH}" ${FONT}>${txt}</text>`,
+      )
+    } else {
+      parts.push(
+        `<text x="${(x0 + x1) / 2}" y="${y0 - 6}" text-anchor="middle" font-size="8" fill="${CH}" ${FONT}>${txt}</text>`,
+      )
+    }
+  }
+  // Трасса под потолком, куда выходят штробы
+  if (e.chases.some((c) => c.kind === "up")) {
+    const tz = sz(Math.max(...e.chases.filter((c) => c.kind === "up").map((c) => c.z1)))
+    parts.push(
+      `<line x1="${sx(0)}" y1="${tz}" x2="${sx(L)}" y2="${tz}" stroke="${CH}" stroke-width="0.6" stroke-dasharray="8 3 2 3"/>`,
+      `<text x="${sx(L) - 4}" y="${tz - 4}" text-anchor="end" font-size="8" fill="${CH}" ${FONT}>трасса под потолком ${toMm(e.height - Math.max(...e.chases.filter((c) => c.kind === "up").map((c) => c.z1)))} мм</text>`,
+    )
+  }
+
   // Размеры от пола до центра: у каждой точки своя выносная, при совпадении по X — со сдвигом
   const sameX = new Map<number, number>()
+  const dimmed: ElevPoint[] = []
   for (const p of e.points) {
+    // Соседняя точка той же высоты уже с размером — второй не рисуем, иначе цифры слипаются
+    if (dimmed.some((q) => Math.abs(q.z - p.z) < 0.005 && Math.abs(q.x - p.x) < 0.9)) continue
+    dimmed.push(p)
     const key = Math.round(p.x * 200)
     const idx = sameX.get(key) ?? 0
     sameX.set(key, idx + 1)
@@ -374,6 +516,17 @@ export function elevationSvg(e: WallElevation, width = 700): string {
   parts.push(keyPlan(e, width - 76, 4, 70))
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${parts.join("")}</svg>`
+}
+
+/** Итог штроб по стене: вертикальные и горизонтальные, м */
+export function chaseTotals(e: WallElevation): { vertical: number; horizontal: number; total: number } {
+  let v = 0
+  let h = 0
+  for (const c of e.chases) {
+    if (Math.abs(c.x1 - c.x0) < 1e-6) v += c.length
+    else h += c.length
+  }
+  return { vertical: v, horizontal: h, total: v + h }
 }
 
 /** Строки ведомости точек стены — для таблицы под развёрткой */
