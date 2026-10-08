@@ -25,6 +25,7 @@ import { describeNodes, groupSummaries } from "@/lib/planner/groups"
 import { panelDiagramSvg, panelSettings, panelWarnings } from "@/lib/planner/panelDiagram"
 import { PanelSize, SPARE_SHARE, panelSize, panelSpecification } from "@/lib/planner/panelSize"
 import { groupPower, kwToAmps, phaseBalance } from "@/lib/planner/phases"
+import { elevationRows, elevationSvg, roomElevations } from "@/lib/planner/elevation"
 import { PHASE_COLORS, WALL_MATERIALS, WallMaterial } from "@/lib/planner/types"
 import {
   findWall,
@@ -307,6 +308,51 @@ export function schemeToSvg(
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${parts.join("")}</svg>`
 }
 
+/**
+ * Развёртки стен для монтажника: только стены, на которых есть розетки,
+ * выключатели, щит или коробки. Каждая развёртка — с ведомостью размеров
+ */
+function elevationsSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
+  const blocks: string[] = []
+  for (const room of scheme.rooms) {
+    for (const e of roomElevations(scheme, room)) {
+      if (e.points.length === 0) continue
+      const rows = elevationRows(e)
+        .map(
+          (r) => `
+        <tr>
+          <td class="num strong">${r.no}</td>
+          <td>${escapeXml(r.name)}${r.note ? `<div class="warn">${escapeXml(r.note)}</div>` : ""}</td>
+          <td class="num">${r.fromLeft}</td>
+          <td class="num">${r.fromRight}</td>
+          <td class="num strong">${r.fromFloor}</td>
+          <td class="num">${r.toCeiling}</td>
+        </tr>`,
+        )
+        .join("")
+      blocks.push(`
+  <div class="elev">
+    <h3>${escapeXml(room.name)} — стена ${e.wall.index + 1}, ${toMm(e.length)} мм</h3>
+    <div class="plan-img">${elevationSvg(e, 700)}</div>
+    <table>
+      <thead><tr><th>№</th><th>Точка</th><th>От левого угла, мм</th><th>От правого угла, мм</th><th>От пола, мм</th><th>До потолка, мм</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`)
+    }
+  }
+  if (blocks.length === 0) return ""
+  return `
+  <div class="page-break"></div>
+  <h2>Развёртки стен — объект ${escapeXml(meta.objectCode)}</h2>
+  <div class="meta">
+    Вид на каждую стену изнутри помещения: где сверлить под розетки, выключатели, коробки и щит. Размеры в мм —
+    до центра коробки, от чистого пола и от углов по внутренней стороне стены. Справа вверху — мини-план: золотом
+    отмечена развёрнутая стена, стрелка — откуда смотрим.
+  </div>
+  ${blocks.join("")}`
+}
+
 /** Стены по помещениям: длина, толщина и материал */
 function wallsTable(scheme: PlanScheme): string {
   const all = schemeWalls(scheme).all
@@ -437,6 +483,7 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
     .plan-doc .card .value { font-size: 15px; font-weight: bold; margin-top: 2px; }
     .plan-doc .plan-img { text-align: center; margin: 8px 0 4px; }
     .plan-doc .page-break { page-break-before: always; break-before: page; height: 0; }
+    .plan-doc .elev { page-break-inside: avoid; break-inside: avoid; margin-bottom: 14px; }
     .plan-doc .legend { font-size: 10px; color: #666; text-align: center; margin-bottom: 6px; }
   </style>
 
@@ -515,6 +562,7 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
   ${wallsTable(scheme)}
   ${engineerSection(scheme, "electric", meta)}
   ${panelSection(scheme, meta)}
+  ${elevationsSection(scheme, meta)}
   ${engineerSection(scheme, "plumbing", meta)}
 </div>`.trim()
 }

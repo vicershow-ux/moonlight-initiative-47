@@ -23,10 +23,19 @@ interface Props {
   onUpdateRoom: (id: string, patch: Partial<PlanRoom>) => void
   onSelectRoom: (id: string) => void
   onClose: () => void
+  onShowElevation?: () => void
 }
 
 /** Карточка стены, выбранной щелчком на плане: толщина, материал, длина и проёмы */
-export function SelectedWallCard({ wallId, scheme, onUpdateWall, onUpdateRoom, onSelectRoom, onClose }: Props) {
+export function SelectedWallCard({
+  wallId,
+  scheme,
+  onUpdateWall,
+  onUpdateRoom,
+  onSelectRoom,
+  onClose,
+  onShowElevation,
+}: Props) {
   const w = findWall(scheme, wallId)
   const room = scheme.rooms.find((r) => r.id === wallId.split(":")[0])
   if (!w || !room) return null
@@ -159,6 +168,16 @@ export function SelectedWallCard({ wallId, scheme, onUpdateWall, onUpdateRoom, o
             )
           })}
         </div>
+      )}
+
+      {onShowElevation && (
+        <button
+          onClick={onShowElevation}
+          className="mb-3 flex w-full items-center justify-center gap-2 rounded-lg bg-[#D4AF37]/15 px-3 py-2 text-sm text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/25"
+        >
+          <Icon name="Ruler" size={14} />
+          Развёртка стены — где сверлить
+        </button>
       )}
 
       <div className="flex items-center justify-between border-t border-white/10 pt-3 text-xs text-white/40">

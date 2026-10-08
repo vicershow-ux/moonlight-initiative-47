@@ -3,6 +3,8 @@ import { DeleteButton } from "@/components/ui/delete-button"
 import { fmtNum, fromMm, roomMetrics, toMm } from "@/lib/planner/geometry"
 import { RoomWallsEditor } from "./RoomWallsEditor"
 import { SelectedWallCard } from "./SelectedWallCard"
+import { WallElevationsDialog } from "./WallElevationsDialog"
+import { useState } from "react"
 import {
   OPENING_PRESETS,
   PlanOpening,
@@ -48,6 +50,7 @@ export function PlanSidebar({
   onSelectWall,
 }: Props) {
   const metrics = selectedRoom ? roomMetrics(selectedRoom, scheme.openings) : null
+  const [elev, setElev] = useState<{ roomId: string; wallId: string | null } | null>(null)
 
   return (
     <div className="space-y-4">
@@ -79,6 +82,16 @@ export function PlanSidebar({
         </div>
       </div>
 
+      {elev && (
+        <WallElevationsDialog
+          open
+          onOpenChange={(v) => !v && setElev(null)}
+          scheme={scheme}
+          roomId={elev.roomId}
+          wallId={elev.wallId}
+        />
+      )}
+
       {selectedWallId && (
         <SelectedWallCard
           wallId={selectedWallId}
@@ -87,6 +100,7 @@ export function PlanSidebar({
           onUpdateRoom={onUpdateRoom}
           onSelectRoom={onSelectRoom}
           onClose={() => onSelectWall?.(null)}
+          onShowElevation={() => setElev({ roomId: selectedWallId.split(":")[0], wallId: selectedWallId })}
         />
       )}
 
@@ -164,6 +178,15 @@ export function PlanSidebar({
           <div className="mb-3 flex items-center justify-between">
             <div className="text-xs uppercase text-white/40">Помещение</div>
             <DeleteButton onConfirm={() => onDeleteRoom(selectedRoom.id)} />
+          </div>
+          <div className="mb-3">
+            <button
+              onClick={() => setElev({ roomId: selectedRoom.id, wallId: null })}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#D4AF37]/15 px-3 py-2 text-sm text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/25"
+            >
+              <Icon name="Ruler" size={14} />
+              Развёртки стен — где сверлить
+            </button>
           </div>
 
           <div className="space-y-3">

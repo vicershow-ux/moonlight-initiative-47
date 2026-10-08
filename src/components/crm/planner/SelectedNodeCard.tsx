@@ -5,6 +5,8 @@ import { gostSymbol } from "@/lib/planner/symbols"
 import { NodeSymbolIcon } from "./NodeSymbol"
 import { NODE_PRESETS, PlanNode, PlanScheme } from "@/lib/planner/types"
 import { NodeMountEditor } from "./NodeMountEditor"
+import { WallElevationsDialog } from "./WallElevationsDialog"
+import { useState } from "react"
 
 const inputCls =
   "w-full bg-[#161616] border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50"
@@ -28,8 +30,19 @@ export function SelectedNodeCard({
   scheme,
   onHoverWall,
 }: Props) {
+  const [elevOpen, setElevOpen] = useState(false)
+  const elevRoomId = selectedNode.mount?.wallId.split(":")[0] ?? selectedNode.roomId
   return (
     <div className="rounded-xl border border-[#D4AF37]/30 bg-[#1f1f1f] p-4">
+      {scheme && elevOpen && elevRoomId && (
+        <WallElevationsDialog
+          open
+          onOpenChange={setElevOpen}
+          scheme={scheme}
+          roomId={elevRoomId}
+          wallId={selectedNode.mount?.wallId ?? null}
+        />
+      )}
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-medium">
           {gostSymbol(selectedNode.kind) ? (
@@ -93,7 +106,15 @@ export function SelectedNodeCard({
         </div>
       </div>
 
-      <div className="text-xs text-white/40">Помещение: {roomName(selectedNode.roomId)}</div>
+      <div className="flex items-center justify-between gap-2 text-xs text-white/40">
+        <span>Помещение: {roomName(selectedNode.roomId)}</span>
+        {scheme && elevRoomId && selectedNode.layer === "electric" && (
+          <button onClick={() => setElevOpen(true)} className="flex items-center gap-1 text-[#D4AF37] hover:text-[#B8860B]">
+            <Icon name="Ruler" size={12} />
+            Развёртка стены
+          </button>
+        )}
+      </div>
     </div>
   )
 }
