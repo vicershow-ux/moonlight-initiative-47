@@ -56,6 +56,17 @@ export function PlannerWorkspace({ state }: Props) {
     updateWall,
   } = state
   const [hoverWallId, setHoverWallId] = useState<string | null>(null)
+  // Стена, выбранная щелчком на плане; карточка помещения и проёма при этом скрывается
+  const [selectedWallId, setSelectedWallId] = useState<string | null>(null)
+  const selectWall = (wid: string | null) => {
+    setSelectedWallId(wid)
+    if (wid) {
+      setSelectedRoomId(null)
+      setSelectedOpeningId(null)
+    }
+  }
+  const wallExists = selectedWallId && scheme.rooms.some((r) => r.id === selectedWallId.split(":")[0])
+  const activeWallId = wallExists ? selectedWallId : null
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
@@ -75,11 +86,17 @@ export function PlannerWorkspace({ state }: Props) {
           onFinishRoom={finishRoom}
           onSelectRoom={(rid) => {
             setSelectedRoomId(rid)
-            if (rid) setSelectedOpeningId(null)
+            if (rid) {
+              setSelectedOpeningId(null)
+              setSelectedWallId(null)
+            }
           }}
           onSelectOpening={(oid) => {
             setSelectedOpeningId(oid)
-            if (oid) setSelectedRoomId(null)
+            if (oid) {
+              setSelectedRoomId(null)
+              setSelectedWallId(null)
+            }
           }}
           onSelectNode={(nid) => {
             setSelectedNodeId(nid)
@@ -97,7 +114,8 @@ export function PlannerWorkspace({ state }: Props) {
           onCancelLink={cancelLink}
           onUpdateLink={updateLink}
           linkGroupId={linkGroupId}
-          selectedWallId={hoverWallId}
+          selectedWallId={hoverWallId ?? (layer === "plan" ? activeWallId : null)}
+          onSelectWall={selectWall}
         />
       </div>
 
@@ -114,10 +132,13 @@ export function PlannerWorkspace({ state }: Props) {
           onSelectRoom={(rid) => {
             setSelectedRoomId(rid)
             setSelectedOpeningId(null)
+            setSelectedWallId(null)
             setTool("select")
           }}
           onUpdateWall={updateWall}
           onHoverWall={setHoverWallId}
+          selectedWallId={activeWallId}
+          onSelectWall={selectWall}
         />
       ) : (
         <EngineerSidebar

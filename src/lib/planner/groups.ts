@@ -40,7 +40,7 @@ export function groupSummaries(scheme: PlanScheme): GroupSummary[] {
     const nodeIds = new Set<string>()
     const cable = emptyTotals()
     for (const l of own) {
-      const c = cableLength(l, nodeById, scheme.rooms, scheme.defaultHeight, scheme.cable)
+      const c = cableLength(l, nodeById, scheme.rooms, scheme.defaultHeight, scheme.cable, scheme)
       if (!c) continue
       bySpec[l.spec] = addCable(bySpec[l.spec] || emptyTotals(), c)
       addCable(cable, c)

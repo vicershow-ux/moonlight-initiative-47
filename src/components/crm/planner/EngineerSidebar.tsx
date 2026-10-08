@@ -73,10 +73,10 @@ export function EngineerSidebar({
   // Трубы сантехники идут по полу, у них считаем только длину по плану
   const linkCable = (l: PlanLink): CableTotals => {
     if (isElectric) {
-      return cableLength(l, nodeById, scheme.rooms, scheme.defaultHeight, scheme.cable) ?? emptyTotals()
+      return cableLength(l, nodeById, scheme.rooms, scheme.defaultHeight, scheme.cable, scheme) ?? emptyTotals()
     }
     const plan = linkGeometry(l, nodeById)?.length ?? 0
-    return { plan, drops: 0, reserve: 0, total: plan }
+    return { plan, drops: 0, reserve: 0, wall: 0, total: plan }
   }
 
   // Итог по сечениям — сразу видно, сколько кабеля или трубы каждого типа

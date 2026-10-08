@@ -25,7 +25,7 @@ import {
   usePlanView,
 } from "./usePlanView"
 import { PlanRoomsLayer } from "./PlanRoomsLayer"
-import { schemeWalls } from "@/lib/planner/walls"
+import { hitWall, schemeWalls } from "@/lib/planner/walls"
 import { PlanDimensionsLayer } from "./PlanDimensionsLayer"
 import { PlanEngineerLayer } from "./PlanEngineerLayer"
 import { PlanControls, PlanDraftLayer } from "./PlanOverlays"
@@ -51,6 +51,8 @@ interface Props {
   onSelectLink: (id: string | null) => void
   onAddOpening: (wallId: string, offset: number) => void
   selectedWallId?: string | null
+  /** Щелчок по стене на слое планировки */
+  onSelectWall?: (wallId: string | null) => void
   onMoveVertex: (roomId: string, index: number, point: PlanPoint) => void
   onAddNode: (point: PlanPoint) => void
   onMoveNode: (id: string, point: PlanPoint) => void
@@ -79,6 +81,7 @@ export function PlanCanvas({
   onSelectLink,
   onAddOpening,
   selectedWallId = null,
+  onSelectWall,
   onMoveVertex,
   onAddNode,
   onMoveNode,
@@ -235,9 +238,19 @@ export function PlanCanvas({
         return
       }
 
+      // Стена: щелчок по её полосе на плане. Тонкие перегородки ловим с запасом 6 пикселей
+      if (layer === "plan" && onSelectWall) {
+        const wall = hitWall(scheme, world, 6 / view.scale)
+        if (wall) {
+          onSelectWall(wall.id)
+          return
+        }
+      }
+
       const room = [...scheme.rooms].reverse().find((r) => pointInPolygon(world, r.points))
       onSelectRoom(room ? room.id : null)
       if (!room) onSelectOpening(null)
+      onSelectWall?.(null)
       return
     }
 

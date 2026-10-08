@@ -108,6 +108,12 @@ export function SelectedLinkCard({
                     <span className="text-white/40">Спуски к точкам</span>
                     <span>+{fmtNum(toMm(c.drops), 0)} мм</span>
                   </div>
+                  {c.wall > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-white/40">Заход в откосы</span>
+                      <span>+{fmtNum(toMm(c.wall), 0)} мм</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-white/40">Запас на концы</span>
                     <span>+{fmtNum(toMm(c.reserve), 0)} мм</span>

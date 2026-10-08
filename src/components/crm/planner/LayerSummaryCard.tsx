@@ -113,7 +113,8 @@ export function LayerSummaryCard({
                 )}
                 {isElectric && (
                   <div className="mt-2 text-xs text-white/40">
-                    Из них спуски к точкам {fmtNum(layerTotal.drops, 2)} м, запас на концы{" "}
+                    Из них спуски к точкам {fmtNum(layerTotal.drops, 2)} м,
+                    {layerTotal.wall > 0 ? ` заход в откосы ${fmtNum(layerTotal.wall, 2)} м,` : ""} запас на концы{" "}
                     {fmtNum(layerTotal.reserve, 2)} м
                   </div>
                 )}

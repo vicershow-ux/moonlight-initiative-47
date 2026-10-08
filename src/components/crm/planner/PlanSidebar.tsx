@@ -2,6 +2,7 @@ import Icon from "@/components/ui/icon"
 import { DeleteButton } from "@/components/ui/delete-button"
 import { fmtNum, fromMm, roomMetrics, toMm } from "@/lib/planner/geometry"
 import { RoomWallsEditor } from "./RoomWallsEditor"
+import { SelectedWallCard } from "./SelectedWallCard"
 import {
   OPENING_PRESETS,
   PlanOpening,
@@ -27,6 +28,8 @@ interface Props {
   onSelectRoom: (id: string) => void
   onUpdateWall: (wallId: string, patch: Partial<WallProps>, applyToRoom?: boolean) => void
   onHoverWall?: (wallId: string | null) => void
+  selectedWallId?: string | null
+  onSelectWall?: (wallId: string | null) => void
 }
 
 export function PlanSidebar({
@@ -41,6 +44,8 @@ export function PlanSidebar({
   onSelectRoom,
   onUpdateWall,
   onHoverWall,
+  selectedWallId = null,
+  onSelectWall,
 }: Props) {
   const metrics = selectedRoom ? roomMetrics(selectedRoom, scheme.openings) : null
 
@@ -73,6 +78,17 @@ export function PlanSidebar({
           </div>
         </div>
       </div>
+
+      {selectedWallId && (
+        <SelectedWallCard
+          wallId={selectedWallId}
+          scheme={scheme}
+          onUpdateWall={onUpdateWall}
+          onUpdateRoom={onUpdateRoom}
+          onSelectRoom={onSelectRoom}
+          onClose={() => onSelectWall?.(null)}
+        />
+      )}
 
       {selectedOpening && (
         <div className="rounded-xl border border-[#D4AF37]/30 bg-[#1f1f1f] p-4">

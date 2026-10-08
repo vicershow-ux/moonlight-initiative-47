@@ -545,16 +545,17 @@ function engineerSection(
   const specs = links.reduce<Record<string, CableTotals>>((acc, l) => {
     let c: CableTotals | null
     if (isElectric) {
-      c = cableLength(l, byId, scheme.rooms, scheme.defaultHeight, scheme.cable)
+      c = cableLength(l, byId, scheme.rooms, scheme.defaultHeight, scheme.cable, scheme)
     } else {
       const g = linkGeometry(l, byId)
-      c = g ? { plan: g.length, drops: 0, reserve: 0, total: g.length } : null
+      c = g ? { plan: g.length, drops: 0, reserve: 0, wall: 0, total: g.length } : null
     }
     if (!c) return acc
     acc[l.spec] = addCable(acc[l.spec] || emptyTotals(), c)
     return acc
   }, {})
   const specTotal = Object.values(specs).reduce((acc, c) => addCable(acc, c), emptyTotals())
+  const hasWall = specTotal.wall > 1e-6
   const cfg = cableSettings(scheme.cable)
 
   const nodeRows = Object.entries(counts)
@@ -577,7 +578,8 @@ function engineerSection(
         <td class="num">${fmtNum(c.plan, 2)}</td>${
           isElectric
             ? `
-        <td class="num">${fmtNum(c.drops, 2)}</td>
+        <td class="num">${fmtNum(c.drops, 2)}</td>${hasWall ? `
+        <td class="num">${fmtNum(c.wall, 2)}</td>` : ""}
         <td class="num">${fmtNum(c.reserve, 2)}</td>
         <td class="num strong">${fmtNum(c.total, 2)}</td>`
             : ""
@@ -624,7 +626,7 @@ function engineerSection(
   <table>
     <thead><tr>${
       isElectric
-        ? "<th>Сечение</th><th>По плану, м</th><th>Спуски, м</th><th>Запас на концы, м</th><th>Итого с запасом, м</th>"
+        ? `<th>Сечение</th><th>По плану, м</th><th>Спуски, м</th>${hasWall ? "<th>В откосы, м</th>" : ""}<th>Запас на концы, м</th><th>Итого с запасом, м</th>`
         : "<th>Диаметр</th><th>Длина по трассе, м</th>"
     }</tr></thead>
     <tbody>${specRows}${
@@ -633,7 +635,8 @@ function engineerSection(
       <tr class="totals">
         <td>Всего</td>
         <td class="num">${fmtNum(specTotal.plan, 2)}</td>
-        <td class="num">${fmtNum(specTotal.drops, 2)}</td>
+        <td class="num">${fmtNum(specTotal.drops, 2)}</td>${hasWall ? `
+        <td class="num">${fmtNum(specTotal.wall, 2)}</td>` : ""}
         <td class="num">${fmtNum(specTotal.reserve, 2)}</td>
         <td class="num">${fmtNum(specTotal.total, 2)}</td>
       </tr>`
@@ -642,7 +645,7 @@ function engineerSection(
   </table>
   <div class="legend" style="text-align:left">${
     isElectric
-      ? `По плану — длина трассы с поворотами. Спуски — от трассы, проложенной на ${toMm(cfg.traceFromCeiling)} мм ниже потолка, до высоты каждой точки. Запас — ${toMm(cfg.endReserve)} мм на разделку каждого конца кабеля.`
+      ? `По плану — длина трассы с поворотами. Спуски — от трассы, проложенной на ${toMm(cfg.traceFromCeiling)} мм ниже потолка, до высоты каждой точки.${hasWall ? " В откосы — у точек в откосах окон и дверей трасса идёт по стене до угла проёма и заходит в откос на глубину установки." : ""} Запас — ${toMm(cfg.endReserve)} мм на разделку каждого конца кабеля.`
       : "Длина посчитана по трассе с поворотами."
   }</div>`
       : ""

@@ -158,6 +158,33 @@ export function schemeWalls(scheme: PlanScheme): { all: WallInfo[]; draw: WallIn
   return { all, draw }
 }
 
+/**
+ * Стена под курсором: точка внутри полосы стены (с небольшим допуском в пикселях,
+ * чтобы тонкие перегородки было легко поймать). Проёмы не считаются — там выбирается проём
+ */
+export function hitWall(scheme: PlanScheme, p: PlanPoint, tolerance = 0): WallInfo | null {
+  let best: { w: WallInfo; d: number } | null = null
+  for (const w of schemeWalls(scheme).draw) {
+    const rx = p.x - w.a.x
+    const ry = p.y - w.a.y
+    const s = rx * w.ux + ry * w.uy
+    const across = rx * w.nx + ry * w.ny + w.inner
+    if (s < -tolerance || s > w.length + tolerance) continue
+    const off = across < 0 ? -across : across > w.thickness ? across - w.thickness : 0
+    if (off > tolerance) continue
+    const inOpening = scheme.openings.some((o) => {
+      if (o.wallId !== w.id) return false
+      const sp = openingSpan(o, w)
+      return s > sp.start && s < sp.end
+    })
+    if (inOpening) continue
+    // Ближе к оси стены — выше приоритет (на стыке двух стен)
+    const d = off + Math.abs(across - w.thickness / 2) * 0.01
+    if (!best || d < best.d) best = { w, d }
+  }
+  return best ? best.w : null
+}
+
 export function findWall(scheme: PlanScheme, wallId: string): WallInfo | null {
   const roomId = wallId.split(":")[0]
   const room = scheme.rooms.find((r) => r.id === roomId)
