@@ -1,4 +1,4 @@
-import { dist, fmtMmText, linkGeometry, linkRoute, longestSegment } from "@/lib/planner/geometry"
+import { dist, linkGeometry, linkRoute, longestSegment } from "@/lib/planner/geometry"
 import {
   NODE_PRESETS,
   NodeKind,
@@ -9,7 +9,7 @@ import {
   PlanGroup,
   PlanRoom,
   PlanScheme,
-  groupColor,
+  sectionColor,
 } from "@/lib/planner/types"
 import { FORCE_WALL, mountPosition, nodeDirection, snapToWall } from "@/lib/planner/walls"
 import { WALL_MOUNTED, gostSymbol, placeSymbol, wallDirection } from "@/lib/planner/symbols"
@@ -28,6 +28,8 @@ interface Props {
   groups: PlanGroup[]
   /** Группа, в которую уйдёт прокладываемая трасса */
   linkGroupId: string | null
+  /** Сечение прокладываемой трассы — для цвета черновика */
+  linkSpec?: string | null
   nodeById: Map<string, PlanNode>
   linkFromId: string | null
   selectedNodeId: string | null
@@ -60,7 +62,7 @@ export function PlanEngineerLayer({
   links,
   rooms,
   groups,
-  linkGroupId,
+  linkSpec = null,
   nodeById,
   linkFromId,
   selectedNodeId,
@@ -73,20 +75,18 @@ export function PlanEngineerLayer({
 }: Props) {
   const color = layer === "electric" ? "#E8B23A" : "#7FB5E8"
   const groupById = new Map(groups.map((g) => [g.id, g]))
-  // На электрике трасса окрашивается в цвет своей группы
-  const colorOf = (groupId?: string | null) => {
-    const g = groupId ? groupById.get(groupId) : null
-    return layer === "electric" && g ? groupColor(g.num) : color
-  }
+  // На электрике трасса окрашивается в цвет своего сечения — как в PDF
+  const colorOf = (spec?: string | null) => (layer === "electric" && spec ? sectionColor(spec) : color)
 
   const renderLink = (l: PlanLink) => {
     const g = linkGeometry(l, nodeById)
     if (!g) return null
     const selected = l.id === selectedLinkId
     const seg = longestSegment(g.route)
-    const lc = colorOf(l.groupId)
+    const lc = colorOf(l.spec)
     const grp = l.groupId ? groupById.get(l.groupId) : null
 
+    // Подпись — группа и сечение, без длины: длина есть в карточке трассы и в PDF
     let label: React.ReactNode = null
     if (seg && dist(seg.a, seg.b) * scale > 60) {
       const pa = toScreen(seg.a)
@@ -105,7 +105,7 @@ export function PlanEngineerLayer({
           transform={`rotate(${angle}, ${mx}, ${my})`}
         >
           {grp ? `Гр.${grp.num} · ` : ""}
-          {l.spec} · {fmtMmText(g.length)}
+          {l.spec}
         </text>
       )
     }
@@ -222,14 +222,14 @@ export function PlanEngineerLayer({
           <polyline
             points={polyPoints(draftRoute, toScreen)}
             fill="none"
-            stroke={colorOf(linkGroupId)}
+            stroke={colorOf(linkSpec)}
             strokeWidth={2}
             strokeDasharray="6 4"
             strokeLinejoin="round"
           />
           {bends.map((p, i) => {
             const s = toScreen(p)
-            return <rect key={i} x={s.x - 4} y={s.y - 4} width={8} height={8} fill={colorOf(linkGroupId)} />
+            return <rect key={i} x={s.x - 4} y={s.y - 4} width={8} height={8} fill={colorOf(linkSpec)} />
           })}
         </>
       )}

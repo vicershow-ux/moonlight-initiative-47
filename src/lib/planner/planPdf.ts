@@ -27,8 +27,10 @@ import { PanelSize, SPARE_SHARE, panelSize, panelSpecification } from "@/lib/pla
 import { groupPower, kwToAmps, phaseBalance } from "@/lib/planner/phases"
 import { chaseTotals, elevationRows, elevationSvg, roomElevations } from "@/lib/planner/elevation"
 import { CABLE_BUY_SHARE, electricMaterials } from "@/lib/planner/materials"
-import { PHASE_COLORS, WALL_MATERIALS, WallMaterial } from "@/lib/planner/types"
+import { ceilingPlan, ceilingRows, ceilingSvg } from "@/lib/planner/ceiling"
+import { PHASE_COLORS, SECTION_COLORS, WALL_MATERIALS, WallMaterial, sectionColor, sectionOf } from "@/lib/planner/types"
 import {
+  doorSwing,
   findWall,
   mountLabel,
   nodeDirection,
@@ -218,15 +220,16 @@ export function schemeToSvg(
           `<line x1="${d.x}" y1="${d.y}" x2="${c.x}" y2="${c.y}" stroke="${col}" stroke-width="0.7"/>`,
         )
       } else if (o.kind === "door") {
-        // Полотно и дуга открывания внутрь помещения
-        const len = Math.hypot(bb.x - a.x, bb.y - a.y)
-        const nx = -w.nx
-        const ny = -w.ny
-        const tip = { x: a.x + nx * len, y: a.y + ny * len }
-        const cross = (bb.x - a.x) * (tip.y - a.y) - (bb.y - a.y) * (tip.x - a.x)
+        // Полотно и дуга открывания — по выбранным петлям и стороне
+        const d = doorSwing(w, o)
+        const h = { x: sx(d.hinge.x), y: sy(d.hinge.y) }
+        const le = { x: sx(d.leafEnd.x), y: sy(d.leafEnd.y) }
+        const c = { x: sx(d.closed.x), y: sy(d.closed.y) }
+        const r = d.radius * scale
+        const cross = (le.x - h.x) * (c.y - h.y) - (le.y - h.y) * (c.x - h.x)
         parts.push(
-          `<line x1="${a.x}" y1="${a.y}" x2="${tip.x}" y2="${tip.y}" stroke="${col}" stroke-width="1.4"/>`,
-          `<path d="M ${tip.x} ${tip.y} A ${len} ${len} 0 0 ${cross > 0 ? 0 : 1} ${bb.x} ${bb.y}" fill="none" stroke="${col}" stroke-width="0.7" stroke-dasharray="3 2"/>`,
+          `<line x1="${h.x}" y1="${h.y}" x2="${le.x}" y2="${le.y}" stroke="${col}" stroke-width="1.4"/>`,
+          `<path d="M ${le.x} ${le.y} A ${r} ${r} 0 0 ${cross > 0 ? 1 : 0} ${c.x} ${c.y}" fill="none" stroke="${col}" stroke-width="0.7" stroke-dasharray="3 2"/>`,
         )
       }
       return
@@ -250,7 +253,8 @@ export function schemeToSvg(
       const g = linkGeometry(l, byId)
       if (!g) return
       const grp = layer === "electric" && l.groupId ? groupById.get(l.groupId) : null
-      const lineColor = grp ? groupColor(grp.num) : defaultColor
+      // Цвет — по сечению, как на холсте планировщика
+      const lineColor = layer === "electric" ? sectionColor(l.spec, true) : defaultColor
       const pts = g.route.map((p) => `${sx(p.x)},${sy(p.y)}`).join(" ")
       parts.push(
         `<polyline points="${pts}" fill="none" stroke="${lineColor}" stroke-width="2" stroke-linejoin="miter"${
@@ -268,7 +272,7 @@ export function schemeToSvg(
       const angle = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI
       const flip = angle > 90 || angle < -90
       parts.push(
-        `<text x="${mx}" y="${my - 4}" text-anchor="middle" font-size="9" fill="${lineColor}" font-family="Arial" transform="rotate(${flip ? angle + 180 : angle}, ${mx}, ${my})">${grp ? `Гр.${grp.num} · ` : ""}${escapeXml(l.spec)} · L=${toMm(g.length)}</text>`,
+        `<text x="${mx}" y="${my - 4}" text-anchor="middle" font-size="9" fill="${lineColor}" font-family="Arial" transform="rotate(${flip ? angle + 180 : angle}, ${mx}, ${my})">${grp ? `Гр.${grp.num} · ` : ""}${escapeXml(l.spec)}</text>`,
       )
     })
 
@@ -354,6 +358,34 @@ function materialsSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
 function elevationsSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
   const blocks: string[] = []
   for (const room of scheme.rooms) {
+    // Потолок помещения — светильники, споты и распаячные коробки
+    const c = ceilingPlan(scheme, room)
+    if (c && c.points.length) {
+      const crow = ceilingRows(c)
+        .map(
+          (r) => `
+        <tr>
+          <td class="num strong">${r.no}</td>
+          <td class="sym">${symbolImg(r.kind, 40, 24)}</td>
+          <td>${escapeXml(r.name)}</td>
+          <td class="num strong">${r.fromLeft}</td>
+          <td class="num strong">${r.fromTop}</td>
+          <td class="num">${r.fromRight}</td>
+          <td class="num">${r.fromBottom}</td>
+          <td class="num">${r.height}</td>
+        </tr>`,
+        )
+        .join("")
+      blocks.push(`
+  <div class="elev">
+    <h3>${escapeXml(room.name)} — потолок</h3>
+    <div class="plan-img">${ceilingSvg(scheme, c, 700)}</div>
+    <table>
+      <thead><tr><th>№</th><th>Обозн.</th><th>Точка</th><th>От левой стены, мм</th><th>От верхней стены, мм</th><th>До правой, мм</th><th>До нижней, мм</th><th>Высота, мм</th></tr></thead>
+      <tbody>${crow}</tbody>
+    </table>
+  </div>`)
+    }
     for (const e of roomElevations(scheme, room)) {
       if (e.points.length === 0) continue
       const rows = elevationRows(e)
@@ -385,9 +417,10 @@ function elevationsSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
   if (blocks.length === 0) return ""
   return `
   <div class="page-break"></div>
-  <h2>Развёртки стен — объект ${escapeXml(meta.objectCode)}</h2>
+  <h2>Развёртки потолков и стен — объект ${escapeXml(meta.objectCode)}</h2>
   <div class="meta">
-    Вид на каждую стену изнутри помещения: где сверлить под розетки, выключатели, коробки и щит. Размеры в мм —
+    Потолок — вид снизу, ориентация как на плане: светильники, споты и распаячные коробки с размерами от левой и
+    верхней стены. Стены — вид на каждую стену изнутри помещения: где сверлить под розетки, выключатели, коробки и щит. Размеры в мм —
     до центра коробки, от чистого пола и от углов по внутренней стороне стены. Коричневые полосы — штробы:
     вертикально от верхней коробки к трассе под потолком и горизонтально между коробками на одной высоте, с длиной
     в мм. Справа вверху — мини-план: золотом отмечена развёрнутая стена, стрелка — откуда смотрим.
@@ -431,6 +464,29 @@ function wallsTable(scheme: PlanScheme): string {
     Длина — по внутренней стороне помещения. «*» — общая стена с соседним помещением, на плане её толщина делится
     пополам. Штриховка на плане — по материалу стены.
   </div>`
+}
+
+/**
+ * Значок для таблиц PDF картинкой: встроенный SVG в ячейке html2canvas обрезает,
+ * а data-URI рисует целиком. Кодируем через encodeURIComponent — без проблем с кириллицей
+ */
+/** Расшифровка цветов сечений, которые есть в проекте */
+function sectionLegend(scheme: PlanScheme): string {
+  const used = [...new Set((scheme.links || []).filter((l) => l.layer === "electric").map((l) => String(sectionOf(l.spec))))]
+    .sort((a, b) => Number(a) - Number(b))
+  return used
+    .map((s) => {
+      const c = SECTION_COLORS[s]
+      const col = c ? c.print : "#555555"
+      return `<span style="display:inline-block;width:18px;height:3px;background:${col};vertical-align:middle;margin:0 3px 0 6px"></span>${s.replace(".", ",")} мм²`
+    })
+    .join("")
+}
+
+function symbolImg(kind: NodeKind, w = 48, h = 30): string {
+  const svg = symbolIconSvg(kind, w, h, 9, "#161616", "#ffffff")
+  if (!svg) return ""
+  return `<img src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}" width="${w}" height="${h}" style="display:block;margin:0 auto"/>`
 }
 
 const escapeXml = (s: string) =>
@@ -509,7 +565,7 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
     .plan-doc td { padding: 6px 5px; border: 1px solid #e2e2e2; font-size: 11px; }
     .plan-doc td.num { text-align: right; white-space: nowrap; }
     .plan-doc td.strong { font-weight: bold; }
-    .plan-doc td.sym { width: 46px; text-align: center; padding: 2px 4px; }
+    .plan-doc td.sym { width: 58px; text-align: center; padding: 3px 4px; vertical-align: middle; }
     .plan-doc .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
     .plan-doc .warn { color: #b45309; font-size: 10px; margin-top: 3px; }
     .plan-doc tr.muted-row td { color: #888; }
@@ -654,7 +710,7 @@ function engineerSection(
     .map(
       ([kind, count]) => `
       <tr>
-        <td class="sym">${symbolIconSvg(kind as NodeKind, 36, 22, 7, "#161616", "#ffffff") ?? ""}</td>
+        <td class="sym">${symbolImg(kind as NodeKind)}</td>
         <td>${escapeXml(NODE_PRESETS[kind as keyof typeof NODE_PRESETS].label)}</td>
         <td class="num">${count}</td>
         <td class="num">${toMm(NODE_PRESETS[kind as keyof typeof NODE_PRESETS].height)}</td>
@@ -666,7 +722,7 @@ function engineerSection(
     .map(
       ([spec, c]) => `
       <tr>
-        <td>${escapeXml(spec)}</td>
+        <td>${isElectric ? `<span style="display:inline-block;width:16px;height:4px;background:${sectionColor(spec, true)};vertical-align:middle;margin-right:5px"></span>` : ""}${escapeXml(spec)}</td>
         <td class="num">${fmtNum(c.plan, 2)}</td>${
           isElectric
             ? `
@@ -680,18 +736,36 @@ function engineerSection(
     )
     .join("")
 
-  const listRows = nodes
-    .map(
-      (n, i) => `
+  // Одинаковые точки в одном помещении (тип, подпись, высота) — одной строкой с количеством
+  const grouped = new Map<string, { room: string; name: string; kind: NodeKind; height: number; qty: number; places: string[] }>()
+  for (const n of nodes) {
+    const room = roomName(n.roomId)
+    const name = n.label || NODE_PRESETS[n.kind].label
+    const key = `${room}|${n.kind}|${name}|${toMm(n.height)}`
+    const place = mountLabel(scheme, n)
+    const row = grouped.get(key)
+    if (row) {
+      row.qty += 1
+      if (place !== "—" && !row.places.includes(place)) row.places.push(place)
+    } else {
+      grouped.set(key, { room, name, kind: n.kind, height: n.height, qty: 1, places: place !== "—" ? [place] : [] })
+    }
+  }
+  const listGroups = [...grouped.values()].sort((a, b) => a.room.localeCompare(b.room, "ru") || a.kind.localeCompare(b.kind))
+  let lastRoom = ""
+  const listRows = listGroups
+    .map((r) => {
+      const head = r.room !== lastRoom ? `<tr class="sec-row"><td colspan="5">${escapeXml(r.room)}</td></tr>` : ""
+      lastRoom = r.room
+      return `${head}
       <tr>
-        <td>${i + 1}</td>
-        <td>${escapeXml(n.label || NODE_PRESETS[n.kind].label)}</td>
-        <td>${escapeXml(NODE_PRESETS[n.kind].label)}</td>
-        <td>${escapeXml(roomName(n.roomId))}</td>
-        <td>${escapeXml(mountLabel(scheme, n))}</td>
-        <td class="num">${toMm(n.height)}</td>
-      </tr>`,
-    )
+        <td class="sym">${symbolImg(r.kind, 40, 24)}</td>
+        <td>${escapeXml(r.name)}${r.name !== NODE_PRESETS[r.kind].label ? `<div class="muted">${escapeXml(NODE_PRESETS[r.kind].label)}</div>` : ""}</td>
+        <td>${escapeXml(r.places.join("; ") || "—")}</td>
+        <td class="num">${toMm(r.height)}</td>
+        <td class="num strong">${r.qty}</td>
+      </tr>`
+    })
     .join("")
 
   return `
@@ -701,7 +775,7 @@ function engineerSection(
   <div class="legend">
     Планировка показана серым как подложка. ${
       layer === "electric"
-        ? "Линии — кабельные трассы с поворотами под 90°, подпись — сечение и длина L в мм. Настенные элементы развёрнуты от стены в помещение."
+        ? `Линии — кабельные трассы с поворотами под 90°, цвет — сечение кабеля: ${sectionLegend(scheme)}. Длина трасс — в таблице ниже. Настенные элементы развёрнуты от стены в помещение.`
         : "Пунктир — трубы, подпись у линии — диаметр."
     }
   </div>
@@ -747,7 +821,7 @@ function engineerSection(
 
   <h3>Список точек по помещениям</h3>
   <table>
-    <thead><tr><th>№</th><th>Подпись</th><th>Тип</th><th>Помещение</th><th>Место</th><th>Высота, мм</th></tr></thead>
+    <thead><tr><th>Обозн.</th><th>Точка</th><th>Место</th><th>Высота, мм</th><th>Кол-во, шт</th></tr></thead>
     <tbody>${listRows}</tbody>
   </table>`
 }

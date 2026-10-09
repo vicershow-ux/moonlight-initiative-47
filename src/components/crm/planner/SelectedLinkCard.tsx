@@ -1,7 +1,7 @@
 import Icon from "@/components/ui/icon"
 import { DeleteButton } from "@/components/ui/delete-button"
 import { fmtNum, toMm } from "@/lib/planner/geometry"
-import { LINK_SPECS, PlanGroup, PlanLayer, PlanLink } from "@/lib/planner/types"
+import { LAYING_METHODS, LINK_SPECS, LayingMethod, PlanGroup, PlanLayer, PlanLink } from "@/lib/planner/types"
 import { CableTotals } from "@/lib/planner/cable"
 
 const inputCls =
@@ -18,6 +18,8 @@ interface Props {
   onUpdateLink: (id: string, patch: Partial<PlanLink>) => void
   onDeleteLink: (id: string) => void
   onAddGroup: () => string
+  /** Способ прокладки по умолчанию — из настроек кабеля */
+  defaultLaying?: LayingMethod
 }
 
 export function SelectedLinkCard({
@@ -29,6 +31,7 @@ export function SelectedLinkCard({
   onUpdateLink,
   onDeleteLink,
   onAddGroup,
+  defaultLaying = "chase",
 }: Props) {
   return (
     <div className="rounded-xl border border-[#D4AF37]/30 bg-[#1f1f1f] p-4">
@@ -56,6 +59,27 @@ export function SelectedLinkCard({
           ))}
         </select>
       </div>
+
+      {layer === "electric" && (
+        <div className="mb-3">
+          <label className={labelCls}>Прокладка</label>
+          <select
+            className={inputCls}
+            value={selectedLink.laying || ""}
+            onChange={(e) => onUpdateLink(selectedLink.id, { laying: (e.target.value || undefined) as LayingMethod | undefined })}
+          >
+            <option value="">Как по умолчанию — {LAYING_METHODS[defaultLaying].label.toLowerCase()}</option>
+            {(Object.keys(LAYING_METHODS) as LayingMethod[]).map((m) => (
+              <option key={m} value={m}>
+                {LAYING_METHODS[m].label}
+              </option>
+            ))}
+          </select>
+          <div className="mt-1 text-[11px] text-white/40">
+            В смету: {LAYING_METHODS[selectedLink.laying || defaultLaying].hint}
+          </div>
+        </div>
+      )}
 
       {layer === "electric" && (
         <div className="mb-3">

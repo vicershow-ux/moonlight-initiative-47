@@ -53,7 +53,10 @@ function customerIntro(ctx: ContractContext): string {
 
 function contractorIntro(ctx: ContractContext): string {
   const { options: o } = ctx
-  const name = ctx.company?.name || ctx.company?.contact_full_name || o.contractor_name || ""
+  // ИП и физлицо — человек: ФИО из договора, иначе из компании. Название бренда тут не подходит
+  const person = o.contractor_name || ctx.company?.contact_full_name || ctx.company?.name || ""
+  const name = o.contractor_type === "legal" ? ctx.company?.name || o.contractor_name || "" : person
+  const ogrn = o.contractor_ogrnip || ctx.company?.ogrn || ""
   const gg = g(o, "contractor")
 
   if (o.contractor_type === "individual") {
@@ -68,10 +71,11 @@ function contractorIntro(ctx: ContractContext): string {
   }
   if (o.contractor_type === "entrepreneur") {
     const suffix = o.contractor_gender === "f" ? "ная" : "ный"
-    return `Индивидуальный предприниматель ${esc(name)}, зарегистрирован${suffix} в реестре индивидуальных предпринимателей под № ${esc(o.contractor_ogrnip) || "____________"} (далее — «Подрядчик»), с другой стороны,`
+    return `Индивидуальный предприниматель ${esc(name)}, зарегистрирован${suffix} в реестре индивидуальных предпринимателей под № ${esc(ogrn) || "____________"}${ctx.company?.inn ? `, ИНН ${esc(ctx.company.inn)}` : ""} (далее — «Подрядчик»), с другой стороны,`
   }
   const org = o.contractor_org_name || name
-  return `${esc(org)}, именуемое в дальнейшем «Подрядчик», от имени которого действует ${esc(o.contractor_director_position) || "Директор"} ${esc(o.contractor_director_name) || esc(name)} на основании ${esc(o.contractor_basis) || "Устава"}, с другой стороны,`
+  const reg = [ogrn ? `ОГРН ${esc(ogrn)}` : "", ctx.company?.inn ? `ИНН ${esc(ctx.company.inn)}` : ""].filter(Boolean).join(", ")
+  return `${esc(org)}${reg ? ` (${reg})` : ""}, именуемое в дальнейшем «Подрядчик», от имени которого действует ${esc(o.contractor_director_position) || ctx.company?.director_position || "Директор"} ${esc(o.contractor_director_name) || esc(ctx.company?.director_name || "") || esc(person)} на основании ${esc(o.contractor_basis) || "Устава"}, с другой стороны,`
 }
 
 function partyIntro(ctx: ContractContext): string {

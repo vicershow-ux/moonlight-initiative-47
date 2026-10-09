@@ -13,6 +13,10 @@ export interface PlanOpening {
   width: number
   height: number
   sill: number
+  /** Двери: петли у начала или у конца проёма по ходу стены */
+  hinge?: "start" | "end"
+  /** Двери: открывание в помещение или наружу */
+  swing?: "in" | "out"
 }
 
 export interface PlanWall {
@@ -128,6 +132,18 @@ export interface PlanLink {
   ortho?: boolean
   /** Группа щита, к которой относится кабель (только на слое электрики) */
   groupId?: string | null
+  /** Способ прокладки; не задан — берётся способ по умолчанию из настроек кабеля */
+  laying?: LayingMethod
+}
+
+/** Способ прокладки кабеля — от него зависит крепёж в смете */
+export type LayingMethod = "chase" | "tray" | "duct" | "corrugated"
+
+export const LAYING_METHODS: Record<LayingMethod, { label: string; hint: string }> = {
+  chase: { label: "В штробе", hint: "дюбель-хомуты, стяжки при 2 кабелях в штробе" },
+  tray: { label: "В лотке", hint: "лоток, болты, гайки и пресс-шайбы" },
+  duct: { label: "В кабель-канале", hint: "кабель-канал, дюбель-гвоздь 6 мм и бур 6 мм" },
+  corrugated: { label: "В гофре", hint: "гофра, клипсы, дюбель-гвозди или саморезы, стяжки" },
 }
 
 /** Группа электрощита: номер на схеме, автомат и назначение */
@@ -215,6 +231,10 @@ export interface CableSettings {
   traceFromCeiling: number
   /** Запас на разделку на каждом конце кабеля, м */
   endReserve: number
+  /** Способ прокладки по умолчанию для всех трасс */
+  laying?: LayingMethod
+  /** Для гофры: крепить на дюбель-гвозди (бетон, кирпич) или саморезы (дерево, ГКЛ) */
+  corrugatedFix?: "dowel" | "screw"
 }
 
 /** Аппараты, которые можно поставить на вводе щита — до шины групп */
@@ -362,6 +382,23 @@ export const GROUP_COLORS = [
   "#E8B23A", "#5EB8F0", "#7BD47B", "#F07E7E", "#C08BF0",
   "#F0A35E", "#4FD1C5", "#E87FC0", "#B8C94A", "#9AA5FF",
 ]
+/**
+ * Цвет кабеля по сечению — один и тот же на плане и в PDF.
+ * Тонкий — холодные цвета, толстый — тёплые: так сечение читается на глаз
+ */
+export const SECTION_COLORS: Record<string, { screen: string; print: string; label: string }> = {
+  "1.5": { screen: "#5EB8F0", print: "#1f6fb2", label: "синий" },
+  "2.5": { screen: "#7BD47B", print: "#23893a", label: "зелёный" },
+  "4": { screen: "#F0A35E", print: "#c46a12", label: "оранжевый" },
+  "6": { screen: "#F07E7E", print: "#c62828", label: "красный" },
+  "10": { screen: "#C08BF0", print: "#7b3fb8", label: "фиолетовый" },
+  "16": { screen: "#E87FC0", print: "#a8327a", label: "розовый" },
+}
+export const sectionColor = (spec: string, print = false) => {
+  const c = SECTION_COLORS[String(sectionOf(spec))]
+  return c ? (print ? c.print : c.screen) : print ? "#555555" : "#B0B0B0"
+}
+
 export const groupColor = (num: number) => GROUP_COLORS[(Math.max(num, 1) - 1) % GROUP_COLORS.length]
 
 export interface RoomMetrics {

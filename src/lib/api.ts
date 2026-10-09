@@ -977,6 +977,10 @@ export interface CompanyData {
   currency: string
   unit_system: string
   signature_url: string
+  ogrn?: string
+  kpp?: string
+  director_position?: string
+  director_name?: string
 }
 
 export const companyApi = {

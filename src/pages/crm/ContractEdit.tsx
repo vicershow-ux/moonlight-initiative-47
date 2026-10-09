@@ -19,6 +19,43 @@ import { ContractPaymentSection } from "@/components/crm/contract-edit/ContractP
 import { ContractLegalSection } from "@/components/crm/contract-edit/ContractLegalSection"
 import { defaultOptions } from "@/components/crm/contract-edit/constants"
 
+/** Статус подрядчика по типу компании из раздела «Компания» */
+function contractorTypeOf(comp: CompanyData | null): string | null {
+  switch (comp?.entity_type) {
+    case "Индивидуальный предприниматель":
+      return "entrepreneur"
+    case "Юридическое лицо":
+      return "legal"
+    case "Самозанятый":
+      return "self_employed"
+    case "Физическое лицо":
+      return "individual"
+    default:
+      return null
+  }
+}
+
+/**
+ * Данные подрядчика из компании. ИП и физлицо — это человек: берём ФИО, а не название бренда.
+ * Юрлицо — наименование, руководитель и ОГРН. Пустые поля компании не затирают введённое вручную
+ */
+function contractorFromCompany(comp: CompanyData | null, type: string): Partial<Required<ContractOptions>> {
+  if (!comp) return {}
+  const person = comp.contact_full_name || comp.name || ""
+  const out: Partial<Required<ContractOptions>> = {}
+  if (type === "legal") {
+    if (comp.name) out.contractor_org_name = comp.name
+    if (comp.director_position) out.contractor_director_position = comp.director_position
+    if (comp.director_name || comp.contact_full_name) out.contractor_director_name = comp.director_name || comp.contact_full_name
+    if (comp.ogrn) out.contractor_ogrnip = comp.ogrn
+    out.contractor_name = comp.name || person
+  } else {
+    if (person) out.contractor_name = person
+    if (type === "entrepreneur" && comp.ogrn) out.contractor_ogrnip = comp.ogrn
+  }
+  return out
+}
+
 export default function ContractEdit() {
   const { id, contractId } = useParams()
   const [searchParams] = useSearchParams()
@@ -61,17 +98,32 @@ export default function ContractEdit() {
           setContractDate(contract.contract_date?.slice(0, 10) || new Date().toISOString().slice(0, 10))
           setEstimateId(contract.estimate_id ? String(contract.estimate_id) : "")
           setStatus(contract.status === "signed" ? "signed" : "draft")
-          setOptions({ ...defaultOptions, ...contract.options })
+          const saved = { ...defaultOptions, ...contract.options }
+          // В старых договорах у ИП/физлица в подрядчике стоит название компании — меняем на ФИО,
+          // и подставляем ОГРН(ИП), если он не был заполнен
+          if (contract.status !== "signed" && comp) {
+            if (saved.contractor_type !== "legal" && comp.contact_full_name && saved.contractor_name === comp.name) {
+              saved.contractor_name = comp.contact_full_name
+            }
+            if (!saved.contractor_ogrnip && comp.ogrn && ["entrepreneur", "legal"].includes(saved.contractor_type)) {
+              saved.contractor_ogrnip = comp.ogrn
+            }
+          }
+          setOptions(saved)
         } else {
           const qsEstimate = searchParams.get("estimate_id")
           const initialEstimateId = qsEstimate || (estimatesList[0] ? String(estimatesList[0].id) : "")
           setEstimateId(initialEstimateId)
-          setOptions((prev) => ({
-            ...prev,
-            customer_name: obj.client_name || "",
-            contractor_name: comp?.name || comp?.contact_full_name || "",
-            object_address: obj.address || "",
-          }))
+          setOptions((prev) => {
+            const type = contractorTypeOf(comp) ?? prev.contractor_type
+            return {
+              ...prev,
+              customer_name: obj.client_name || "",
+              ...contractorFromCompany(comp, type),
+              contractor_type: type as Required<ContractOptions>["contractor_type"],
+              object_address: obj.address || "",
+            }
+          })
         }
       })
       .finally(() => setLoading(false))
@@ -79,7 +131,14 @@ export default function ContractEdit() {
   }, [objectId, contractId])
 
   const updateOption = <K extends keyof ContractOptions>(key: K, value: ContractOptions[K]) => {
-    setOptions((prev) => ({ ...prev, [key]: value as Required<ContractOptions>[K] }))
+    setOptions((prev) => {
+      const next = { ...prev, [key]: value as Required<ContractOptions>[K] }
+      // Сменили статус подрядчика — подставляем данные своей компании под этот статус
+      if (key === "contractor_type" && company) {
+        Object.assign(next, contractorFromCompany(company, String(value)))
+      }
+      return next
+    })
   }
 
   const estimate = useMemo(

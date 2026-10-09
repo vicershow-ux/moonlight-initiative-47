@@ -45,6 +45,10 @@ const emptyForm: CompanyData = {
   currency: "RUB",
   unit_system: "Метрика",
   signature_url: "",
+  ogrn: "",
+  kpp: "",
+  director_position: "",
+  director_name: "",
 }
 
 export default function Company() {
@@ -237,15 +241,64 @@ export default function Company() {
             <div className="border border-white/10 rounded-lg p-4 space-y-4">
               <p className="text-sm font-medium text-white/80">Реквизиты</p>
 
-              <div>
-                <label className={labelClass}>ИНН</label>
-                <input
-                  className={inputClass}
-                  value={form.inn}
-                  onChange={(e) => update("inn", e.target.value)}
-                  disabled={!canEdit}
-                />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={labelClass}>ИНН</label>
+                  <input
+                    className={inputClass}
+                    value={form.inn}
+                    onChange={(e) => update("inn", e.target.value)}
+                    disabled={!canEdit}
+                  />
+                </div>
+                {!isIndividual && (
+                  <div>
+                    <label className={labelClass}>
+                      {form.entity_type === "Юридическое лицо" ? "ОГРН" : "ОГРНИП"}
+                    </label>
+                    <input
+                      className={inputClass}
+                      value={form.ogrn || ""}
+                      onChange={(e) => update("ogrn", e.target.value.replace(/\D/g, "").slice(0, 15))}
+                      placeholder={form.entity_type === "Юридическое лицо" ? "13 цифр" : "15 цифр"}
+                      disabled={!canEdit}
+                    />
+                  </div>
+                )}
               </div>
+
+              {form.entity_type === "Юридическое лицо" && (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div>
+                    <label className={labelClass}>КПП</label>
+                    <input
+                      className={inputClass}
+                      value={form.kpp || ""}
+                      onChange={(e) => update("kpp", e.target.value.replace(/\D/g, "").slice(0, 9))}
+                      disabled={!canEdit}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Должность руководителя</label>
+                    <input
+                      className={inputClass}
+                      value={form.director_position || ""}
+                      onChange={(e) => update("director_position", e.target.value)}
+                      placeholder="Генеральный директор"
+                      disabled={!canEdit}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>ФИО руководителя</label>
+                    <input
+                      className={inputClass}
+                      value={form.director_name || ""}
+                      onChange={(e) => update("director_name", e.target.value)}
+                      disabled={!canEdit}
+                    />
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className={labelClass}>Фактический адрес проживания</label>

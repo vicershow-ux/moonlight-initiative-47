@@ -117,6 +117,7 @@ export function EngineerSidebar({
           onUpdateLink={onUpdateLink}
           onDeleteLink={onDeleteLink}
           onAddGroup={onAddGroup}
+          defaultLaying={scheme.cable?.laying || "chase"}
         />
       )}
 

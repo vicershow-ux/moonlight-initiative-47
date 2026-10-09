@@ -30,6 +30,8 @@ export function PageSeoManager() {
   const [openPath, setOpenPath] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [drafts, setDrafts] = useState<Record<string, Partial<PageSeo>>>({})
+  const [onlyHidden, setOnlyHidden] = useState(false)
+  const [bulk, setBulk] = useState(false)
 
   useEffect(() => {
     siteApi.pageSeo
@@ -41,15 +43,16 @@ export function PageSeoManager() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return items
-    return items.filter(
+    const base = onlyHidden ? items.filter((p) => !p.is_indexed) : items
+    if (!q) return base
+    return base.filter(
       (p) =>
         p.page_label.toLowerCase().includes(q) ||
         p.page_path.toLowerCase().includes(q) ||
         p.meta_title.toLowerCase().includes(q) ||
         p.meta_keywords.toLowerCase().includes(q),
     )
-  }, [items, search])
+  }, [items, search, onlyHidden])
 
   const valueOf = (page: PageSeo, field: keyof PageSeo) => {
     const draft = drafts[page.page_path]
@@ -82,6 +85,25 @@ export function PageSeoManager() {
       setError(e instanceof Error ? e.message : "Не удалось сохранить")
     } finally {
       setSavingPath(null)
+    }
+  }
+
+  /** Вернуть в поиск сразу все скрытые страницы — на случай случайных нажатий */
+  const showAll = async () => {
+    const hiddenPages = items.filter((p) => !p.is_indexed)
+    if (!hiddenPages.length) return
+    setBulk(true)
+    setError("")
+    try {
+      for (const page of hiddenPages) {
+        const updated = await siteApi.pageSeo.update(page.page_path, { is_indexed: true })
+        setItems((list) => list.map((p) => (p.page_path === page.page_path ? updated : p)))
+      }
+      setOnlyHidden(false)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось сохранить")
+    } finally {
+      setBulk(false)
     }
   }
 
@@ -141,11 +163,33 @@ export function PageSeoManager() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <span className="text-xs text-white/40">
-          Страниц: {items.length}
-          {hidden > 0 ? ` · скрыто от поиска: ${hidden}` : ""}
-        </span>
+        <span className="text-xs text-white/40">Страниц: {items.length}</span>
+        {hidden > 0 && (
+          <>
+            <button
+              onClick={() => setOnlyHidden((v) => !v)}
+              className={`rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
+                onlyHidden ? "bg-white/20 text-white" : "bg-white/5 text-white/60 hover:bg-white/10"
+              }`}
+            >
+              Скрыто от поиска: {hidden}
+            </button>
+            <button
+              onClick={showAll}
+              disabled={bulk}
+              className="flex items-center gap-1.5 rounded-lg bg-[#D4AF37]/15 px-2.5 py-1.5 text-xs text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/25 disabled:opacity-50"
+            >
+              <Icon name={bulk ? "Loader2" : "Eye"} size={13} className={bulk ? "animate-spin" : ""} />
+              Вернуть все в поиск
+            </button>
+          </>
+        )}
       </div>
+
+      <p className="mb-3 text-[11px] text-white/35">
+        Переключатель справа в строке: включён — страница видна поисковикам, выключен — скрыта. Изменение
+        сохраняется сразу и попадает на сайт после «Опубликовать».
+      </p>
 
       <div className="space-y-2">
         {filtered.map((page) => {
@@ -161,9 +205,10 @@ export function PageSeoManager() {
                 open ? "border-[#D4AF37]/40" : "border-white/10"
               }`}
             >
+              <div className="flex items-center gap-2 pr-3.5">
               <button
                 onClick={() => setOpenPath(open ? null : page.page_path)}
-                className="flex w-full items-center gap-3 px-3.5 py-3 text-left"
+                className="flex min-w-0 flex-1 items-center gap-3 px-3.5 py-3 text-left"
               >
                 <Icon
                   name={open ? "ChevronDown" : "ChevronRight"}
@@ -190,6 +235,30 @@ export function PageSeoManager() {
                   <Icon name="CircleCheck" size={15} className="shrink-0 text-green-400" />
                 )}
               </button>
+              <button
+                role="switch"
+                aria-checked={page.is_indexed}
+                onClick={() => toggleIndexed(page)}
+                disabled={savingPath === page.page_path || bulk}
+                title={page.is_indexed ? "Видна в поиске — нажмите, чтобы скрыть" : "Скрыта от поиска — нажмите, чтобы вернуть"}
+                className="flex shrink-0 items-center gap-2 disabled:opacity-50"
+              >
+                <span className={`hidden text-[11px] sm:inline ${page.is_indexed ? "text-green-400/80" : "text-white/40"}`}>
+                  {page.is_indexed ? "в поиске" : "скрыта"}
+                </span>
+                <span
+                  className={`relative h-5 w-9 rounded-full transition-colors ${
+                    page.is_indexed ? "bg-green-500/70" : "bg-white/15"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${
+                      page.is_indexed ? "left-[18px]" : "left-0.5"
+                    }`}
+                  />
+                </span>
+              </button>
+              </div>
 
               {open && (
                 <div className="space-y-4 border-t border-white/10 px-3.5 py-4">

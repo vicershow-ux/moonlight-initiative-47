@@ -1,5 +1,6 @@
 import { addCable, cableLength, emptyTotals, CableTotals } from "./cable"
-import { NodeKind, PlanScheme, sectionOf } from "./types"
+import { LAYING_METHODS, LayingMethod, NodeKind, PlanLink, PlanPoint, PlanScheme, sectionOf } from "./types"
+import { linkGeometry } from "./geometry"
 import { panelSettings } from "./panelInput"
 import { panelSize, panelSpecification } from "./panelSize"
 import { chaseTotals, roomElevations } from "./elevation"
@@ -48,6 +49,175 @@ const BOXED = new Set<NodeKind>([
   "switch_pass",
   "switch_pass_double",
 ])
+
+/** Шаги крепежа по типовой практике монтажа, м */
+const STEP = {
+  chaseClamp: 0.5,
+  chaseTie: 0.3,
+  trayBracket: 1.2,
+  traySection: 3,
+  ductDowel: 0.5,
+  ductPiece: 2,
+  clip: 0.5,
+  corrTie: 0.5,
+}
+
+interface LayingTotal {
+  /** Метры кабеля этим способом (со спусками и запасом) */
+  cable: number
+  /** Длина трасс по плану — для лотка и кабель-канала, м */
+  route: number
+  /** Длина, где два кабеля и больше идут вместе, м */
+  shared: number
+  lines: number
+}
+
+/** Перекрытие двух ортогональных трасс — где кабели идут рядом по одной линии */
+function overlap(a: PlanPoint[], b: PlanPoint[]): number {
+  let sum = 0
+  for (let i = 1; i < a.length; i++) {
+    for (let j = 1; j < b.length; j++) {
+      const [a0, a1, b0, b1] = [a[i - 1], a[i], b[j - 1], b[j]]
+      const ah = Math.abs(a0.y - a1.y) < 1e-6
+      const bh = Math.abs(b0.y - b1.y) < 1e-6
+      const av = Math.abs(a0.x - a1.x) < 1e-6
+      const bv = Math.abs(b0.x - b1.x) < 1e-6
+      if (ah && bh && Math.abs(a0.y - b0.y) < 0.03) {
+        const lo = Math.max(Math.min(a0.x, a1.x), Math.min(b0.x, b1.x))
+        const hi = Math.min(Math.max(a0.x, a1.x), Math.max(b0.x, b1.x))
+        if (hi > lo) sum += hi - lo
+      } else if (av && bv && Math.abs(a0.x - b0.x) < 0.03) {
+        const lo = Math.max(Math.min(a0.y, a1.y), Math.min(b0.y, b1.y))
+        const hi = Math.min(Math.max(a0.y, a1.y), Math.max(b0.y, b1.y))
+        if (hi > lo) sum += hi - lo
+      }
+    }
+  }
+  return sum
+}
+
+/** Сколько кабеля и трасс каждым способом прокладки */
+export function layingTotals(
+  scheme: PlanScheme,
+  links: PlanLink[],
+  byId: Map<string, import("./types").PlanNode>,
+): Record<LayingMethod, LayingTotal> {
+  const def = scheme.cable?.laying || "chase"
+  const out = Object.fromEntries(
+    (Object.keys(LAYING_METHODS) as LayingMethod[]).map((m) => [m, { cable: 0, route: 0, shared: 0, lines: 0 }]),
+  ) as Record<LayingMethod, LayingTotal>
+  const routes: { m: LayingMethod; r: PlanPoint[] }[] = []
+  for (const l of links) {
+    const m = l.laying || def
+    const c = cableLength(l, byId, scheme.rooms, scheme.defaultHeight, scheme.cable, scheme)
+    const g = linkGeometry(l, byId)
+    if (!c || !g) continue
+    out[m].cable += c.total
+    // Кабель-канал и гофра идут и по спускам, лоток — только под потолком
+    out[m].route += m === "tray" ? g.length : g.length + c.drops + c.wall
+    out[m].lines += 1
+    routes.push({ m, r: g.route })
+  }
+  for (let i = 0; i < routes.length; i++) {
+    for (let j = i + 1; j < routes.length; j++) {
+      if (routes[i].m === routes[j].m) out[routes[i].m].shared += overlap(routes[i].r, routes[j].r)
+    }
+  }
+  // Общий лоток или канал на несколько кабелей — длину не задваиваем
+  for (const m of ["tray", "duct"] as const) out[m].route = Math.max(out[m].route - out[m].shared, 0)
+  return out
+}
+
+/** Крепёж и изделия под каждый способ прокладки */
+function layingFasteners(lay: Record<LayingMethod, LayingTotal>, corrFix: "dowel" | "screw"): MaterialRow[] {
+  const rows: MaterialRow[] = []
+  const up = (v: number) => Math.ceil(v - 1e-9)
+  const m1 = (v: number) => v.toFixed(1).replace(".", ",")
+
+  const ch = lay.chase
+  if (ch.cable > 0) {
+    rows.push({
+      name: "Дюбель-хомут",
+      spec: "для круглого кабеля 5–10 мм",
+      unit: "шт",
+      qty: up(ch.cable / STEP.chaseClamp),
+      note: `штроба: ${m1(ch.cable)} м кабеля, шаг ${toMmText(STEP.chaseClamp)}`,
+    })
+    if (ch.shared > 0) {
+      rows.push({
+        name: "Стяжка кабельная",
+        spec: "нейлон 3,6×200",
+        unit: "шт",
+        qty: up(ch.shared / STEP.chaseTie),
+        note: `2 кабеля в одной штробе на ${m1(ch.shared)} м, шаг ${toMmText(STEP.chaseTie)}`,
+      })
+    }
+  }
+
+  const tr = lay.tray
+  if (tr.route > 0) {
+    const sections = up(tr.route / STEP.traySection)
+    const joints = Math.max(sections - 1, 0)
+    const brackets = up(tr.route / STEP.trayBracket) + 1
+    rows.push(
+      { name: "Лоток кабельный перфорированный", spec: "секция 3 м", unit: "шт", qty: sections, note: `трасса в лотке ${m1(tr.route)} м` },
+      { name: "Пластина соединительная для лотка", spec: "", unit: "шт", qty: joints },
+      { name: "Кронштейн / подвес для лотка", spec: `шаг ${toMmText(STEP.trayBracket)}`, unit: "шт", qty: brackets },
+      { name: "Анкер для кронштейна", spec: "6×40", unit: "шт", qty: brackets },
+      { name: "Болт", spec: "М6×12", unit: "шт", qty: joints * 4 + brackets * 2, note: "4 на стык секций, 2 на кронштейн" },
+      { name: "Гайка", spec: "М6", unit: "шт", qty: joints * 4 + brackets * 2 },
+      { name: "Пресс-шайба", spec: "М6", unit: "шт", qty: joints * 4 + brackets * 2 },
+    )
+  }
+
+  const du = lay.duct
+  if (du.route > 0) {
+    const pieces = up(du.route / STEP.ductPiece)
+    rows.push(
+      { name: "Кабель-канал", spec: "секция 2 м", unit: "шт", qty: pieces, note: `трасса в канале ${m1(du.route)} м` },
+      {
+        name: "Дюбель-гвоздь",
+        spec: "6×40",
+        unit: "шт",
+        qty: up(du.route / STEP.ductDowel) + pieces,
+        note: `шаг ${toMmText(STEP.ductDowel)} + по краям секций`,
+      },
+      { name: "Бур", spec: "Ø6 мм", unit: "шт", qty: 1 },
+    )
+  }
+
+  const co = lay.corrugated
+  if (co.cable > 0) {
+    const clips = up(co.cable / STEP.clip) + co.lines
+    rows.push(
+      { name: "Гофротруба ПВХ", spec: "Ø20", unit: "м", qty: roundCable(co.cable), note: `кабель в гофре ${m1(co.cable)} м` },
+      { name: "Клипса для гофры", spec: "Ø20", unit: "шт", qty: clips, note: `шаг ${toMmText(STEP.clip)}` },
+      corrFix === "screw"
+        ? { name: "Саморез", spec: "3,5×35", unit: "шт", qty: clips, note: "по одному на клипсу" }
+        : { name: "Дюбель-гвоздь", spec: "6×40", unit: "шт", qty: clips, note: "по одному на клипсу" },
+    )
+    if (corrFix === "dowel") rows.push({ name: "Бур", spec: "Ø6 мм", unit: "шт", qty: 1 })
+    const ties = up(co.shared / STEP.corrTie) + co.lines * 2
+    rows.push({ name: "Стяжка кабельная", spec: "нейлон 3,6×200", unit: "шт", qty: ties, note: "на пучки гофры и у коробок" })
+  }
+
+  // Одинаковые позиции (бур, стяжки, дюбель-гвозди) от разных способов — одной строкой
+  const merged = new Map<string, MaterialRow>()
+  for (const r of rows) {
+    if (r.qty <= 0) continue
+    const k = `${r.name}|${r.spec}`
+    const cur = merged.get(k)
+    if (!cur) merged.set(k, { ...r })
+    else if (r.name === "Бур") cur.qty = 1
+    else {
+      cur.qty += r.qty
+      cur.note = [cur.note, r.note].filter(Boolean).join("; ")
+    }
+  }
+  return [...merged.values()]
+}
+
+const toMmText = (m: number) => `${Math.round(m * 1000)} мм`
 
 /** Подрозетник под материал стены: в гипсокартон — с лапками, в остальное — под штукатурку */
 const boxFor = (scheme: PlanScheme, wallId?: string) => {
@@ -165,23 +335,20 @@ export function electricMaterials(scheme: PlanScheme): MaterialSection[] {
     const wago = junctions * 9 + Math.ceil(points * 0.5) * 3
     if (wago) consum.push({ name: "Клеммы соединительные", spec: "рычажные, 3–5 проводов", unit: "шт", qty: wago })
   }
-  if (totalCable > 0) {
+  const lay = layingTotals(scheme, links, byId)
+  if (totalCable > 0 && (points > 0 || lay.chase.cable > 0)) {
     consum.push({
       name: "Гипс монтажный / алебастр",
-      spec: "для крепления подрозетников и заделки штроб",
+      spec: lay.chase.cable > 0 ? "для крепления подрозетников и заделки штроб" : "для крепления подрозетников",
       unit: "уп",
-      qty: Math.max(1, Math.ceil((points * 0.15 + totalCable * 0.03) / 5)),
+      qty: Math.max(1, Math.ceil((points * 0.15 + lay.chase.cable * 0.03) / 5)),
       note: "мешок 5 кг",
-    })
-    consum.push({
-      name: "Гофротруба ПВХ",
-      spec: "Ø20, для участков вне штробы",
-      unit: "м",
-      qty: roundCable(totalCable * 0.15),
-      note: "≈15% длины кабеля",
     })
   }
   if (consum.length) sections.push({ title: "Расходные материалы", rows: consum })
+
+  const fix = layingFasteners(lay, scheme.cable?.corrugatedFix || "dowel")
+  if (fix.length) sections.push({ title: "Прокладка и крепёж кабеля", rows: fix })
 
   // Работы по штробам — по развёрткам стен, чтобы прораб сразу видел объём
   const chase = scheme.rooms.reduce(

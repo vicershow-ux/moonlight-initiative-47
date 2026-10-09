@@ -436,7 +436,8 @@ def handle_team(method, event, conn, cur):
 COMPANY_FIELDS = [
     'entity_type', 'contact_full_name', 'phone', 'email', 'website', 'activity_type',
     'inn', 'legal_address', 'bank_name', 'bik', 'account_number', 'bank_inn', 'bank_kpp',
-    'correspondent_account', 'estimate_mode', 'currency', 'unit_system', 'signature_url'
+    'correspondent_account', 'estimate_mode', 'currency', 'unit_system', 'signature_url',
+    'ogrn', 'kpp', 'director_position', 'director_name'
 ]
 
 

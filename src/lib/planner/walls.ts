@@ -380,4 +380,22 @@ export function openingBand(w: WallInfo, o: PlanOpening): PlanPoint[] {
   return [at(sp.start, kIn), at(sp.end, kIn), at(sp.end, kOut), at(sp.start, kOut)]
 }
 
+/**
+ * Полотно и дуга открывания двери на плане. Петля — у одного края проёма,
+ * полотно открыто на 90° внутрь помещения (против нормали) или наружу
+ */
+export function doorSwing(w: WallInfo, o: PlanOpening): { hinge: PlanPoint; leafEnd: PlanPoint; closed: PlanPoint; radius: number } {
+  const sp = openingSpan(o, w)
+  const atEnd = o.hinge === "end"
+  const out = o.swing === "out"
+  // Внутренняя грань для открывания внутрь, наружная — наружу
+  const k = out ? w.thickness - w.inner : -w.inner
+  const at = (s: number) => ({ x: w.a.x + w.ux * s + w.nx * k, y: w.a.y + w.uy * s + w.ny * k })
+  const hinge = at(atEnd ? sp.end : sp.start)
+  const closed = at(atEnd ? sp.start : sp.end)
+  const r = sp.end - sp.start
+  const dir = out ? 1 : -1
+  return { hinge, closed, leafEnd: { x: hinge.x + w.nx * r * dir, y: hinge.y + w.ny * r * dir }, radius: r }
+}
+
 export { wallSegments }

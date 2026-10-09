@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   dist,
   distToPolyline,
@@ -60,6 +60,7 @@ interface Props {
   onCancelLink: () => void
   onUpdateLink: (id: string, patch: Partial<PlanLink>) => void
   linkGroupId?: string | null
+  linkSpec?: string | null
 }
 
 export function PlanCanvas({
@@ -89,6 +90,7 @@ export function PlanCanvas({
   onCancelLink,
   onUpdateLink,
   linkGroupId = null,
+  linkSpec = null,
 }: Props) {
   const { wrapRef, size, view, setView, toScreen, toWorld, gridLines, gridStep, zoomBy, fitView } =
     usePlanView(scheme.rooms)
@@ -313,19 +315,37 @@ export function PlanCanvas({
 
   const handleUp = () => setDrag(null)
 
-  const handleWheel = (e: React.WheelEvent) => {
-    const { sx, sy } = eventPoint(e)
+  /**
+   * Колёсико масштабирует план и не прокручивает страницу. React вешает onWheel пассивно —
+   * там preventDefault не работает, поэтому слушаем событие напрямую с passive: false
+   */
+  const svgRef = useRef<SVGSVGElement | null>(null)
+  const wheelRef = useRef<(e: WheelEvent) => void>(() => undefined)
+  wheelRef.current = (e: WheelEvent) => {
+    e.preventDefault()
+    const rect = svgRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const sx = e.clientX - rect.left
+    const sy = e.clientY - rect.top
     const before = toWorld(sx, sy)
-    const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12
+    // Тачпад шлёт много мелких шагов — масштабируем плавно, пропорционально прокрутке
+    const step = Math.max(-1, Math.min(1, -e.deltaY / 100))
+    const factor = Math.pow(1.12, step)
     const scale = Math.min(Math.max(view.scale * factor, MIN_SCALE), MAX_SCALE)
-    const tx = sx - before.x * scale
-    const ty = sy - before.y * scale
-    setView({ scale, tx, ty })
+    setView({ scale, tx: sx - before.x * scale, ty: sy - before.y * scale })
   }
+  useEffect(() => {
+    const el = svgRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => wheelRef.current(e)
+    el.addEventListener("wheel", onWheel, { passive: false })
+    return () => el.removeEventListener("wheel", onWheel)
+  }, [])
 
   return (
-    <div ref={wrapRef} className="relative h-[440px] w-full md:h-[620px]">
+    <div ref={wrapRef} className="relative h-[440px] w-full overscroll-contain md:h-[620px]">
       <svg
+        ref={svgRef}
         width={size.w}
         height={size.h}
         className="touch-none rounded-xl bg-[#141414]"
@@ -341,7 +361,6 @@ export function PlanCanvas({
         onMouseMove={handleMove}
         onMouseUp={handleUp}
         onMouseLeave={handleUp}
-        onWheel={handleWheel}
         onContextMenu={(e) => e.preventDefault()}
       >
         {gridLines.map((l, i) => (
@@ -389,6 +408,7 @@ export function PlanCanvas({
             rooms={scheme.rooms}
             groups={scheme.groups || []}
             linkGroupId={linkGroupId}
+            linkSpec={linkSpec}
             nodeById={nodeById}
             linkFromId={linkFromId}
             selectedNodeId={selectedNodeId}

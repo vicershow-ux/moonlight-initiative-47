@@ -7,7 +7,7 @@ import {
   wallSegments,
 } from "@/lib/planner/geometry"
 import { PlanLayer, PlanOpening, PlanScheme, WALL_MATERIALS } from "@/lib/planner/types"
-import { findWall, openingBand, schemeWalls, wallPieces } from "@/lib/planner/walls"
+import { doorSwing, findWall, openingBand, schemeWalls, wallPieces } from "@/lib/planner/walls"
 import { ToScreen } from "./usePlanView"
 
 interface Props {
@@ -154,7 +154,27 @@ export function PlanRoomsLayer({
           {o.kind === "window" ? (
             <line x1={m1.x} y1={m1.y} x2={m2.x} y2={m2.y} stroke={color} strokeWidth={selected ? 3 : 2} />
           ) : o.kind === "door" ? (
-            <line x1={s0.x} y1={s0.y} x2={s1.x} y2={s1.y} stroke={color} strokeWidth={selected ? 3 : 2} strokeDasharray="5 3" />
+            (() => {
+              const d = doorSwing(w, o)
+              const h = toScreen(d.hinge)
+              const le = toScreen(d.leafEnd)
+              const c = toScreen(d.closed)
+              const r = d.radius * scale
+              // Направление дуги — от конца полотна к закрытому положению по короткой стороне
+              const cross = (le.x - h.x) * (c.y - h.y) - (le.y - h.y) * (c.x - h.x)
+              return (
+                <>
+                  <line x1={h.x} y1={h.y} x2={le.x} y2={le.y} stroke={color} strokeWidth={selected ? 3 : 2} />
+                  <path
+                    d={`M ${le.x} ${le.y} A ${r} ${r} 0 0 ${cross > 0 ? 1 : 0} ${c.x} ${c.y}`}
+                    fill="none"
+                    stroke={color}
+                    strokeWidth={1}
+                    strokeDasharray="4 3"
+                  />
+                </>
+              )
+            })()
           ) : null}
           {selected && <circle cx={(a.x + b.x) / 2} cy={(a.y + b.y) / 2} r={5} fill="#fff" />}
         </g>

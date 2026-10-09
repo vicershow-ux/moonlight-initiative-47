@@ -70,7 +70,7 @@ export function PlannerWorkspace({ state }: Props) {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-      <div className="overflow-hidden rounded-xl border border-white/10 bg-[#141414]">
+      <div className="self-start overflow-hidden rounded-xl border border-white/10 bg-[#141414] lg:sticky lg:top-4">
         <PlanCanvas
           scheme={scheme}
           tool={tool}
@@ -114,6 +114,7 @@ export function PlannerWorkspace({ state }: Props) {
           onCancelLink={cancelLink}
           onUpdateLink={updateLink}
           linkGroupId={linkGroupId}
+          linkSpec={state.linkSpec}
           selectedWallId={hoverWallId ?? (layer === "plan" ? activeWallId : null)}
           onSelectWall={selectWall}
         />

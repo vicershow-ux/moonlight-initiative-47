@@ -112,6 +112,46 @@ export function PlanSidebar({
             </div>
             <DeleteButton onConfirm={() => onDeleteOpening(selectedOpening.id)} />
           </div>
+          {selectedOpening.kind === "door" && (
+            <div className="mb-3 grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs text-white/50">Петли</label>
+                <div className="flex gap-1">
+                  {(["start", "end"] as const).map((h) => (
+                    <button
+                      key={h}
+                      onClick={() => onUpdateOpening(selectedOpening.id, { hinge: h })}
+                      className={`flex-1 rounded-lg px-2 py-2 text-xs transition-colors ${
+                        (selectedOpening.hinge ?? "start") === h ? "bg-white/20 text-white" : "bg-white/5 text-white/60 hover:bg-white/10"
+                      }`}
+                    >
+                      {h === "start" ? "С одной стороны" : "С другой"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-white/50">Открывание</label>
+                <div className="flex gap-1">
+                  {(["in", "out"] as const).map((sw) => (
+                    <button
+                      key={sw}
+                      onClick={() => onUpdateOpening(selectedOpening.id, { swing: sw })}
+                      className={`flex-1 rounded-lg px-2 py-2 text-xs transition-colors ${
+                        (selectedOpening.swing ?? "in") === sw ? "bg-white/20 text-white" : "bg-white/5 text-white/60 hover:bg-white/10"
+                      }`}
+                    >
+                      {sw === "in" ? "Внутрь" : "Наружу"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="col-span-2 text-[11px] text-white/40">
+                Петли переставляют полотно к другому краю проёма, «Внутрь» — в это помещение, «Наружу» — в
+                соседнее. Сразу видно на плане.
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-xs text-white/50">Ширина, мм</label>
