@@ -14,13 +14,24 @@ export function printHtml(title: string, body: string, styles = ""): void {
     <title>${title}</title>
     <base href="${window.location.origin}/"/>
     <style>
-      @page { size: A4; margin: 0; }
+      @page {
+        size: A4;
+        margin: 15mm 15mm 16mm 20mm;
+        @top-left { content: ""; }
+        @top-center { content: ""; }
+        @top-right { content: ""; }
+        @bottom-left { content: ""; }
+        @bottom-center { content: ""; }
+        @bottom-right { content: counter(page) " / " counter(pages); font-family: Arial, sans-serif; font-size: 9pt; color: #777; }
+      }
       html, body { margin: 0; }
-      body { font-family: Arial, sans-serif; padding: 15mm 15mm 15mm 20mm; line-height: 1.5; color: #161616; }
+      body { font-family: Arial, sans-serif; padding: 0; line-height: 1.5; color: #161616; orphans: 3; widows: 3; }
+      p, li, tr, img { page-break-inside: avoid; break-inside: avoid; }
       * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       h2, h3 { color: #161616; }
       h2 { margin: 28px 0 12px; }
-      h3 { margin: 24px 0 10px; page-break-after: avoid; }
+      h2, h3 { page-break-after: avoid; break-after: avoid; }
+      h3 { margin: 24px 0 10px; }
       p { margin: 0 0 14px; }
       table { border-collapse: collapse; }
       ${styles}

@@ -122,7 +122,7 @@ function requisitesAndSigns(ctx: ContractContext, companyName: string, address: 
     ? `<img src="${esc(c.signature_url)}" crossorigin="anonymous" alt="" style="position:absolute;left:10px;bottom:4px;height:62px;max-width:200px;object-fit:contain"/>`
     : ""
   const stamp = o.apply_stamp && c?.stamp_url
-    ? `<img src="${esc(c.stamp_url)}" crossorigin="anonymous" alt="" style="position:absolute;left:120px;bottom:-30px;height:118px;width:118px;object-fit:contain;opacity:0.92"/>`
+    ? `<img src="${esc(c.stamp_url)}" crossorigin="anonymous" alt="" style="position:absolute;right:0;top:88px;height:118px;width:118px;object-fit:contain;opacity:0.92"/>`
     : ""
   const box = (overlay: string) =>
     `<div style="position:relative;height:84px;border-bottom:1px solid #555;margin:0 0 4px">${overlay}</div>`
@@ -141,14 +141,14 @@ ${req(object.email, "Email")}
 ${req(address, "Объект")}
 </td>
 </tr>
-<tr style="page-break-inside:avoid">
-<td style="width:50%;vertical-align:bottom;padding:40px 20px 0 0">
+<tr style="page-break-inside:avoid;break-inside:avoid">
+<td style="width:50%;vertical-align:top;padding:40px 20px ${o.apply_stamp && c?.stamp_url ? "80px" : "0"} 0">
 <p style="margin:0 0 6px"><strong>ОТ ИМЕНИ ПОДРЯДЧИКА</strong></p>
 ${box(sig + stamp)}
 <p style="margin:0">${esc(signer)}</p>
-<p style="font-size:11px;color:#666;margin:2px 0 0">(подпись${o.contractor_type === "legal" || o.contractor_type === "entrepreneur" ? ", М.П." : ""})</p>
+<p style="font-size:11px;color:#666;margin:2px 0 0">(подпись)</p>
 </td>
-<td style="width:50%;vertical-align:bottom;padding:40px 0 0 20px">
+<td style="width:50%;vertical-align:top;padding:40px 0 0 20px">
 <p style="margin:0 0 6px"><strong>ОТ ИМЕНИ ЗАКАЗЧИКА</strong></p>
 ${box("")}
 <p style="margin:0">${esc(customer)}</p>

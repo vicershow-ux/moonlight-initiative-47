@@ -196,7 +196,7 @@ export function ContractLegalSection({
             <img src={company.signature_url} alt="Подпись" className="absolute bottom-1 left-2 h-16 max-w-[200px] rounded bg-white/90 object-contain" />
           )}
           {options.apply_stamp && company?.stamp_url && (
-            <img src={company.stamp_url} alt="Печать" className="absolute -bottom-8 left-28 h-28 w-28 object-contain opacity-90" />
+            <img src={company.stamp_url} alt="Печать" className="absolute right-0 top-[100px] z-10 h-28 w-28 object-contain opacity-90" />
           )}
         </div>
         <p className="mt-1 font-semibold text-white text-sm">
@@ -204,7 +204,8 @@ export function ContractLegalSection({
             ? `${options.contractor_director_position || company?.director_position || "Директор"} ${options.contractor_director_name || company?.director_name || ""}`
             : options.contractor_name || company?.contact_full_name || "—"}
         </p>
-        <p className="text-xs text-white/40">(подпись{options.contractor_type === "legal" || options.contractor_type === "entrepreneur" ? ", М.П." : ""})</p>
+        <p className="text-xs text-white/40">(подпись)</p>
+        {options.apply_stamp && company?.stamp_url && <div className="h-16" />}
       </div>
     </div>
     <div className="flex flex-col">
