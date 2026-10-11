@@ -10,6 +10,8 @@ import {
   ObjectItem,
   Estimate,
   CompanyData,
+  servicesApi,
+  siteApi,
   ContractOptions,
 } from "@/lib/api"
 import { buildContractHtml } from "@/lib/buildContractHtml"
@@ -65,6 +67,21 @@ export default function ContractEdit() {
 
   const [object, setObject] = useState<ObjectItem | null>(null)
   const [company, setCompany] = useState<CompanyData | null>(null)
+  const [serviceCategories, setServiceCategories] = useState<string[]>([])
+
+  // Направления услуг: свой прайс, а если он пуст — категории с сайта
+  useEffect(() => {
+    servicesApi
+      .list()
+      .then((d) => [...new Set(d.services.filter((x) => x.is_active && x.category).map((x) => x.category))])
+      .catch(() => [] as string[])
+      .then(async (cats) => {
+        if (cats.length) return cats
+        const pub = await siteApi.getPublicServiceCategories().catch(() => ({ categories: [] as { category: string }[] }))
+        return pub.categories.map((c) => c.category)
+      })
+      .then((cats) => setServiceCategories(cats.sort((a, b) => a.localeCompare(b, "ru"))))
+  }, [])
   const [estimates, setEstimates] = useState<Estimate[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -250,6 +267,7 @@ export default function ContractEdit() {
           setContractDate={setContractDate}
           options={options}
           updateOption={updateOption}
+          serviceCategories={serviceCategories}
         />
 
         <ContractSubjectSection

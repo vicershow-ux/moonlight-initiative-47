@@ -39,14 +39,12 @@ export const docBrandStyles = `
   }
 `
 
+/** Шапка документа: логотип и название. subtitle — мелкая подпись справа; пустая — без неё */
 export function docBrandHeader(subtitle = ""): string {
   const logo = `${window.location.origin}/logo-print.png`
   return `
   <div class="doc-brand-header">
     <div class="doc-brand"><img class="doc-brand-logo" src="${logo}" alt="FixKey"/>Fix<span>Key</span></div>
-    <div class="doc-brand-meta">
-      <strong>FixKey</strong>
-      ${subtitle}
-    </div>
+    ${subtitle ? `<div class="doc-brand-meta"><strong>FixKey</strong>${subtitle}</div>` : ""}
   </div>`
 }

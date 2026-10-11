@@ -5,6 +5,7 @@ import { ContractOptions, Estimate } from "@/lib/api"
 import { durationWordsOnlyRu } from "@/lib/numberToWordsRu"
 import { WorkStages } from "./ContractScheduleParts"
 import { formatMoney, durationUnitOptions } from "./constants"
+import { subjectWorks } from "@/lib/contractSubject"
 
 interface ContractSubjectSectionProps {
   options: Required<ContractOptions>
@@ -30,8 +31,8 @@ export function ContractSubjectSection({
   {/* 1. Предмет договора */}
   <h3 className="text-white font-semibold mt-6 mb-2">1. Предмет договора</h3>
   <p>
-    1.1. Подрядчик обязуется по заданию Заказчика выполнить ремонтно-отделочные работы (далее — «Работы») в квартире по
-    адресу:{" "}
+    1.1. Подрядчик обязуется по заданию Заказчика выполнить {subjectWorks(options.work_subject).works} (далее — «Работы»){" "}
+    {subjectWorks(options.work_subject).place} по адресу:{" "}
     <InlineInput value={options.object_address} onChange={(v) => updateOption("object_address", v)} placeholder="адрес объекта" minWidth={150} />
     {" "}(далее — «Объект»), а Заказчик обязуется принять результат Работ и оплатить его.
   </p>

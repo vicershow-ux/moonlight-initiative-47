@@ -23,7 +23,7 @@ export async function downloadContractPdf(contentHtml: string, contractNumber: s
     .pdf-doc h3 { margin: 20px 0 8px; }
     .pdf-doc h2 { margin: 24px 0 10px; }
     ${docBrandStyles}
-  </style>${docBrandHeader(title)}<div class="pdf-doc">${contentHtml}</div>`
+  </style>${docBrandHeader(contractNumber.startsWith("Акт") ? title : "")}<div class="pdf-doc">${contentHtml}</div>`
 
   container.appendChild(root)
   document.body.appendChild(container)
@@ -35,6 +35,18 @@ export async function downloadContractPdf(contentHtml: string, contractNumber: s
     img.src = `${window.location.origin}/logo-print.png`
     setTimeout(resolve, 3000)
   })
+  // Подпись и печать с CDN — ждём, чтобы попали в PDF
+  await Promise.all(
+    Array.from(root.querySelectorAll("img")).map(
+      (im) =>
+        new Promise<void>((resolve) => {
+          if (im.complete) return resolve()
+          im.addEventListener("load", () => resolve(), { once: true })
+          im.addEventListener("error", () => resolve(), { once: true })
+          setTimeout(resolve, 4000)
+        }),
+    ),
+  )
 
   const html2pdf = (await import("html2pdf.js")).default
   await html2pdf()

@@ -138,22 +138,73 @@ export function ContractLegalSection({
 
   {/* 10. Реквизиты и подписи сторон */}
   <h3 className="text-white font-semibold mt-6 mb-2">10. Реквизиты и подписи сторон</h3>
+  {(company?.signature_url || company?.stamp_url) ? (
+    <div className="mb-3 flex flex-wrap gap-4 rounded-lg border border-white/10 bg-[#161616] px-3 py-2.5 text-sm">
+      <span className="text-white/50">Наложить на договор:</span>
+      <label className={`flex items-center gap-2 ${company?.signature_url ? "cursor-pointer" : "opacity-40"}`}>
+        <input
+          type="checkbox"
+          className="accent-[#D4AF37]"
+          disabled={!company?.signature_url}
+          checked={Boolean(options.apply_signature && company?.signature_url)}
+          onChange={(e) => updateOption("apply_signature", e.target.checked)}
+        />
+        подпись
+      </label>
+      <label className={`flex items-center gap-2 ${company?.stamp_url ? "cursor-pointer" : "opacity-40"}`}>
+        <input
+          type="checkbox"
+          className="accent-[#D4AF37]"
+          disabled={!company?.stamp_url}
+          checked={Boolean(options.apply_stamp && company?.stamp_url)}
+          onChange={(e) => updateOption("apply_stamp", e.target.checked)}
+        />
+        печать{!company?.stamp_url && " (загрузите в «Компании»)"}
+      </label>
+    </div>
+  ) : (
+    <p className="mb-3 text-xs text-white/40">
+      Подпись и печать можно загрузить в разделе «Компания» — тогда здесь появится возможность наложить их на договор.
+    </p>
+  )}
   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-white/10 pt-4 items-stretch">
     <div className="md:border-r md:border-white/10 md:pr-6 flex flex-col">
       <p className="text-xs uppercase tracking-wide text-white/50 mb-2">Подрядчик (Исполнитель)</p>
-      <p className="font-semibold text-white">{company?.name || company?.contact_full_name || options.contractor_name || "—"}</p>
+      <p className="font-semibold text-white">
+        {options.contractor_type === "legal"
+          ? options.contractor_org_name || company?.name
+          : options.contractor_type === "entrepreneur"
+            ? `ИП ${options.contractor_name || company?.contact_full_name || ""}`
+            : options.contractor_name || company?.contact_full_name || company?.name || "—"}
+      </p>
+      {(options.contractor_type === "legal" || options.contractor_type === "entrepreneur") && (options.contractor_ogrnip || company?.ogrn) && (
+        <p className="text-sm text-white/70">{options.contractor_type === "legal" ? "ОГРН" : "ОГРНИП"}: {options.contractor_ogrnip || company?.ogrn}</p>
+      )}
+      {company?.inn && <p className="text-sm text-white/70">ИНН: {company.inn}</p>}
+      {options.contractor_type === "legal" && company?.kpp && <p className="text-sm text-white/70">КПП: {company.kpp}</p>}
+      {company?.legal_address && <p className="text-sm text-white/70">Адрес: {company.legal_address}</p>}
       {company?.phone && <p className="text-sm text-white/70">Тел.: {company.phone}</p>}
       {company?.email && <p className="text-sm text-white/70">Email: {company.email}</p>}
-      {company?.inn && <p className="text-sm text-white/70">ИНН: {company.inn}</p>}
-      {company?.legal_address && <p className="text-sm text-white/70">Юр. адрес: {company.legal_address}</p>}
       {company?.bank_name && <p className="text-sm text-white/70">Банк: {company.bank_name}</p>}
+      {company?.bik && <p className="text-sm text-white/70">БИК: {company.bik}</p>}
       {company?.account_number && <p className="text-sm text-white/70">Р/с: {company.account_number}</p>}
+      {company?.correspondent_account && <p className="text-sm text-white/70">К/с: {company.correspondent_account}</p>}
       <div className="mt-auto pt-10">
-        <p className="text-xs uppercase tracking-wide text-white/50 mb-6">От имени Подрядчика</p>
-        <div className="border-t border-white/30 pt-1 max-w-[240px]">
-          <p className="font-semibold text-white text-sm">{company?.contact_full_name || options.contractor_name || "—"}</p>
-          <p className="text-xs text-white/40">(подпись, М.П.)</p>
+        <p className="text-xs uppercase tracking-wide text-white/50 mb-2">От имени Подрядчика</p>
+        <div className="relative h-24 border-b border-white/30">
+          {options.apply_signature && company?.signature_url && (
+            <img src={company.signature_url} alt="Подпись" className="absolute bottom-1 left-2 h-16 max-w-[200px] rounded bg-white/90 object-contain" />
+          )}
+          {options.apply_stamp && company?.stamp_url && (
+            <img src={company.stamp_url} alt="Печать" className="absolute -bottom-8 left-28 h-28 w-28 object-contain opacity-90" />
+          )}
         </div>
+        <p className="mt-1 font-semibold text-white text-sm">
+          {options.contractor_type === "legal"
+            ? `${options.contractor_director_position || company?.director_position || "Директор"} ${options.contractor_director_name || company?.director_name || ""}`
+            : options.contractor_name || company?.contact_full_name || "—"}
+        </p>
+        <p className="text-xs text-white/40">(подпись{options.contractor_type === "legal" || options.contractor_type === "entrepreneur" ? ", М.П." : ""})</p>
       </div>
     </div>
     <div className="flex flex-col">
@@ -163,11 +214,10 @@ export function ContractLegalSection({
       {object?.email && <p className="text-sm text-white/70">Email: {object.email}</p>}
       {options.object_address && <p className="text-sm text-white/70">Адрес: {options.object_address}</p>}
       <div className="mt-auto pt-10">
-        <p className="text-xs uppercase tracking-wide text-white/50 mb-6">От имени Заказчика</p>
-        <div className="border-t border-white/30 pt-1 max-w-[240px]">
-          <p className="font-semibold text-white text-sm">{options.customer_name || object?.client_name || "—"}</p>
-          <p className="text-xs text-white/40">(подпись)</p>
-        </div>
+        <p className="text-xs uppercase tracking-wide text-white/50 mb-2">От имени Заказчика</p>
+        <div className="h-24 border-b border-white/30" />
+        <p className="mt-1 font-semibold text-white text-sm">{options.customer_name || object?.client_name || "—"}</p>
+        <p className="text-xs text-white/40">(подпись)</p>
       </div>
     </div>
   </div>

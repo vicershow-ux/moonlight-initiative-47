@@ -1,3 +1,4 @@
+import { contractTitle, titleFromHtml } from "@/lib/contractSubject"
 import { Link } from "react-router-dom"
 import Icon from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
@@ -31,7 +32,9 @@ export function DocumentContractRow({
             <span className="text-blue-400 font-medium text-xs">Договор</span>
           </td>
           <td className="py-3 px-4">
-            <p className="font-medium">Договор подряда на ремонт квартиры</p>
+            <p className="font-medium">
+              {c.options?.work_subject ? contractTitle(c.options.work_subject) : titleFromHtml(c.content_html) || contractTitle()}
+            </p>
             <p className="text-xs text-white/30">№ {c.contract_number}</p>
           </td>
           <td className="py-3 px-4 text-white/60">{formatDate(c.contract_date || c.created_at)}</td>

@@ -437,8 +437,24 @@ COMPANY_FIELDS = [
     'entity_type', 'contact_full_name', 'phone', 'email', 'website', 'activity_type',
     'inn', 'legal_address', 'bank_name', 'bik', 'account_number', 'bank_inn', 'bank_kpp',
     'correspondent_account', 'estimate_mode', 'currency', 'unit_system', 'signature_url',
-    'ogrn', 'kpp', 'director_position', 'director_name'
+    'ogrn', 'kpp', 'director_position', 'director_name', 'stamp_url'
 ]
+
+
+def upload_company_image(company_id, data_url, folder):
+    header, b64data = data_url.split(',', 1) if ',' in data_url else ('', data_url)
+    file_bytes = base64.b64decode(b64data)
+    ext = 'jpg' if ('jpeg' in header or 'jpg' in header) else 'png'
+    key = f"{folder}/{company_id}/{uuid.uuid4().hex}.{ext}"
+    s3 = boto3.client(
+        's3',
+        endpoint_url=os.environ.get('S3_ENDPOINT', 'https://bucket.poehali.dev'),
+        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
+    )
+    s3.put_object(Bucket='files', Key=key, Body=file_bytes, ContentType='image/jpeg' if ext == 'jpg' else 'image/png')
+    base = os.environ.get('S3_PUBLIC_URL', 'https://cdn.poehali.dev/projects/' + os.environ['AWS_ACCESS_KEY_ID'] + '/bucket').rstrip('/')
+    return f"{base}/{key}"
 
 
 def handle_company(method, event, conn, cur):
@@ -486,6 +502,13 @@ def handle_company(method, event, conn, cur):
             except Exception:
                 return response(400, {'error': 'Не удалось загрузить файл подписи'})
 
+        stamp_url = None
+        if body.get('stamp_file'):
+            try:
+                stamp_url = upload_company_image(company_id, body['stamp_file'], 'stamps')
+            except Exception:
+                return response(400, {'error': 'Не удалось загрузить файл печати'})
+
         set_clauses = []
         values = []
 
@@ -495,7 +518,10 @@ def handle_company(method, event, conn, cur):
             values.append(name.strip())
 
         for field in COMPANY_FIELDS:
-            if field == 'signature_url':
+            if field in ('signature_url', 'stamp_url'):
+                if field in body and body[field] == '':
+                    set_clauses.append(f'{field} = %s')
+                    values.append('')
                 continue
             if field in body:
                 set_clauses.append(f'{field} = %s')
@@ -504,6 +530,9 @@ def handle_company(method, event, conn, cur):
         if signature_url:
             set_clauses.append('signature_url = %s')
             values.append(signature_url)
+        if stamp_url:
+            set_clauses.append('stamp_url = %s')
+            values.append(stamp_url)
 
         if not set_clauses:
             return response(400, {'error': 'Нет данных для обновления'})

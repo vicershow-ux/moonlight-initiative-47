@@ -11,6 +11,7 @@ import { ObjectSidebar } from "@/components/crm/object-detail/ObjectSidebar"
 import { formatDateTime } from "@/components/crm/object-detail/utils"
 import { printEstimate } from "@/lib/printEstimate"
 import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
+import { printHtml } from "@/lib/printHtml"
 import { getStatusBadgeClass } from "@/lib/objectStatusColors"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -116,25 +117,7 @@ export default function ObjectDetail() {
   }
 
   const handlePrintContract = (contract: Contract) => {
-    const win = window.open("", "_blank")
-    if (!win) return
-    win.document.write(`
-      <html>
-        <head>
-          <title>Договор № ${contract.contract_number}</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 32px; line-height: 1.5; color: #161616; }
-            h2, h3 { color: #161616; }
-            table { border-collapse: collapse; }
-            ${docBrandStyles}
-          </style>
-        </head>
-        <body>${docBrandHeader(`Договор № ${contract.contract_number}`)}${contract.content_html}</body>
-      </html>
-    `)
-    win.document.close()
-    win.focus()
-    win.print()
+    printHtml(`Договор № ${contract.contract_number}`, `${docBrandHeader("")}${contract.content_html}`, docBrandStyles)
   }
 
   if (loading || !object) {

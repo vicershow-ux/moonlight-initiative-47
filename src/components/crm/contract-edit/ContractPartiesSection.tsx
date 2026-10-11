@@ -3,6 +3,7 @@ import { ToggleGroup } from "@/components/crm/contract-create/ToggleGroup"
 import { InlineInput, InlineSelect } from "@/components/crm/contract-create/InlineField"
 import { ContractOptions } from "@/lib/api"
 import { genderOptions } from "./constants"
+import { RENOVATION, subjectTitle } from "@/lib/contractSubject"
 
 interface ContractPartiesSectionProps {
   contractNumber: string
@@ -11,6 +12,8 @@ interface ContractPartiesSectionProps {
   setContractDate: Dispatch<SetStateAction<string>>
   options: Required<ContractOptions>
   updateOption: <K extends keyof ContractOptions>(key: K, value: ContractOptions[K]) => void
+  /** Направления услуг с сайта */
+  serviceCategories?: string[]
 }
 
 export function ContractPartiesSection({
@@ -20,12 +23,29 @@ export function ContractPartiesSection({
   setContractDate,
   options,
   updateOption,
+  serviceCategories = [],
 }: ContractPartiesSectionProps) {
+  const subject = options.work_subject || RENOVATION
+  const subjects = [RENOVATION, ...serviceCategories.filter((c) => c !== RENOVATION)]
+  if (!subjects.includes(subject)) subjects.push(subject)
   return (
     <>
   {/* Заголовок */}
   <h2 className="text-center text-lg font-semibold text-white mb-2">
-    Договор подряда на ремонт квартиры №{" "}
+    Договор подряда на{" "}
+    <select
+      value={subject}
+      onChange={(e) => updateOption("work_subject", e.target.value)}
+      className="mx-0.5 inline-block max-w-[320px] cursor-pointer rounded border border-[#D4AF37]/40 bg-[#161616] px-1 py-0.5 text-lg font-semibold text-[#D4AF37] outline-none focus:border-[#D4AF37]"
+      title="Вид работ — из услуг на сайте"
+    >
+      {subjects.map((s) => (
+        <option key={s} value={s} className="bg-[#1f1f1f] text-sm text-white">
+          {subjectTitle(s)}
+        </option>
+      ))}
+    </select>{" "}
+    №{" "}
     <InlineInput value={contractNumber} onChange={setContractNumber} placeholder="№" minWidth={56} />
   </h2>
   <div className="flex items-center justify-between text-sm mb-6">
@@ -169,7 +189,7 @@ export function ContractPartiesSection({
     </p>
   )}
   <p>
-    вместе именуемые «Стороны», а индивидуально — «Сторона», заключили настоящий договор подряда на ремонт квартиры
+    вместе именуемые «Стороны», а индивидуально — «Сторона», заключили настоящий договор подряда на {subjectTitle(subject)}
     (далее — «Договор») о нижеследующем:
   </p>
     </>

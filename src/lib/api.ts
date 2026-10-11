@@ -529,6 +529,11 @@ export interface ContractOptions {
   // 9. Заключительные положения
   copies_total?: string
   copies_per_party?: string
+  // Вид работ: «ремонт квартиры» или направление услуг с сайта
+  work_subject?: string
+  // Наложить на договор подпись и печать из раздела «Компания»
+  apply_signature?: boolean
+  apply_stamp?: boolean
 }
 
 export interface Contract {
@@ -981,6 +986,7 @@ export interface CompanyData {
   kpp?: string
   director_position?: string
   director_name?: string
+  stamp_url?: string
 }
 
 export const companyApi = {

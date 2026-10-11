@@ -73,6 +73,9 @@ export const defaultOptions: Required<ContractOptions> = {
   dispute_court: "",
   copies_total: "двух",
   copies_per_party: "одному",
+  work_subject: "ремонт квартиры",
+  apply_signature: false,
+  apply_stamp: false,
 }
 
 export const copiesTotalOptions = [

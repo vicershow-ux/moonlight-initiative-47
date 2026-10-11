@@ -1,5 +1,6 @@
 import { ObjectItem, Estimate, CompanyData, ContractOptions } from "@/lib/api"
 import { moneyInWords, durationWordsRu } from "@/lib/numberToWordsRu"
+import { contractTitle, subjectTitle, subjectWorks } from "@/lib/contractSubject"
 
 export interface ContractContext {
   object: ObjectItem
@@ -79,7 +80,82 @@ function contractorIntro(ctx: ContractContext): string {
 }
 
 function partyIntro(ctx: ContractContext): string {
-  return `<p>${customerIntro(ctx)} ${contractorIntro(ctx)} вместе именуемые «Стороны», а индивидуально — «Сторона», заключили настоящий договор подряда на ремонт квартиры (далее — «Договор») о нижеследующем:</p>`
+  return `<p>${customerIntro(ctx)} ${contractorIntro(ctx)} вместе именуемые «Стороны», а индивидуально — «Сторона», заключили настоящий договор подряда на ${subjectTitle(ctx.options.work_subject)} (далее — «Договор») о нижеследующем:</p>`
+}
+
+/** Реквизиты подрядчика — все, что заполнено в разделе «Компания» */
+function contractorRequisites(ctx: ContractContext, companyName: string): string {
+  const c = ctx.company
+  const o = ctx.options
+  const isLegal = o.contractor_type === "legal"
+  const isIp = o.contractor_type === "entrepreneur"
+  const title = isLegal ? o.contractor_org_name || companyName : isIp ? `ИП ${o.contractor_name || c?.contact_full_name || companyName}` : o.contractor_name || c?.contact_full_name || companyName
+  const ogrn = o.contractor_ogrnip || c?.ogrn
+  return [
+    req(title),
+    isLegal || isIp ? req(ogrn, isLegal ? "ОГРН" : "ОГРНИП") : "",
+    req(c?.inn, "ИНН"),
+    isLegal ? req(c?.kpp, "КПП") : "",
+    req(c?.legal_address, isLegal ? "Юр. адрес" : "Адрес"),
+    req(c?.phone, "Тел."),
+    req(c?.email, "Email"),
+    req(c?.bank_name, "Банк"),
+    req(c?.bik, "БИК"),
+    req(c?.account_number, "Р/с"),
+    req(c?.correspondent_account, "К/с"),
+    req(c?.bank_inn, "ИНН банка"),
+    req(c?.bank_kpp, "КПП банка"),
+  ].join("\n")
+}
+
+/**
+ * Реквизиты и подписи. Под роспись — высокое поле во всю ширину колонки, чтобы размашистая
+ * подпись не наезжала на текст. Подпись и печать компании накладываются поверх поля по галочкам
+ */
+function requisitesAndSigns(ctx: ContractContext, companyName: string, address: string): string {
+  const { options: o, object, company: c } = ctx
+  const signer = o.contractor_type === "legal"
+    ? `${o.contractor_director_position || c?.director_position || "Директор"} ${o.contractor_director_name || c?.director_name || c?.contact_full_name || ""}`.trim()
+    : o.contractor_name || c?.contact_full_name || companyName
+  const customer = o.customer_name || object.client_name || ""
+  const sig = o.apply_signature && c?.signature_url
+    ? `<img src="${esc(c.signature_url)}" crossorigin="anonymous" alt="" style="position:absolute;left:10px;bottom:4px;height:62px;max-width:200px;object-fit:contain"/>`
+    : ""
+  const stamp = o.apply_stamp && c?.stamp_url
+    ? `<img src="${esc(c.stamp_url)}" crossorigin="anonymous" alt="" style="position:absolute;left:120px;bottom:-30px;height:118px;width:118px;object-fit:contain;opacity:0.92"/>`
+    : ""
+  const box = (overlay: string) =>
+    `<div style="position:relative;height:84px;border-bottom:1px solid #555;margin:0 0 4px">${overlay}</div>`
+  return `<table style="width:100%;margin-top:16px;border-collapse:collapse">
+<tr>
+<td style="width:50%;vertical-align:top;padding-right:20px">
+<p><strong>ПОДРЯДЧИК (ИСПОЛНИТЕЛЬ)</strong></p>
+${contractorRequisites(ctx, companyName)}
+</td>
+<td style="width:50%;vertical-align:top;padding-left:20px">
+<p><strong>ЗАКАЗЧИК</strong></p>
+${req(customer)}
+${o.customer_type === "entrepreneur" ? req(o.customer_ogrnip, "ОГРНИП") : ""}
+${req(object.client_phone, "Тел.")}
+${req(object.email, "Email")}
+${req(address, "Объект")}
+</td>
+</tr>
+<tr style="page-break-inside:avoid">
+<td style="width:50%;vertical-align:bottom;padding:40px 20px 0 0">
+<p style="margin:0 0 6px"><strong>ОТ ИМЕНИ ПОДРЯДЧИКА</strong></p>
+${box(sig + stamp)}
+<p style="margin:0">${esc(signer)}</p>
+<p style="font-size:11px;color:#666;margin:2px 0 0">(подпись${o.contractor_type === "legal" || o.contractor_type === "entrepreneur" ? ", М.П." : ""})</p>
+</td>
+<td style="width:50%;vertical-align:bottom;padding:40px 0 0 20px">
+<p style="margin:0 0 6px"><strong>ОТ ИМЕНИ ЗАКАЗЧИКА</strong></p>
+${box("")}
+<p style="margin:0">${esc(customer)}</p>
+<p style="font-size:11px;color:#666;margin:2px 0 0">(подпись)</p>
+</td>
+</tr>
+</table>`
 }
 
 export function buildContractHtml(ctx: ContractContext): string {
@@ -256,13 +332,13 @@ ${materialsBody}`
 
   return `
 <div class="contract-doc">
-<h2 style="text-align:center">Договор подряда на ремонт квартиры № ${esc(ctx.contractNumber)}</h2>
+<h2 style="text-align:center">${contractTitle(o.work_subject)} № ${esc(ctx.contractNumber)}</h2>
 <p style="text-align:right">г. ${esc(o.city) || "________"}, ${formatDate(ctx.contractDate)}</p>
 
 ${partyIntro(ctx)}
 
 <h3>1. Предмет договора</h3>
-<p>1.1. Подрядчик обязуется по заданию Заказчика выполнить ремонтно-отделочные работы (далее — «Работы») в квартире по адресу: ${esc(address)} (далее — «Объект»), а Заказчик обязуется принять результат Работ и оплатить его.</p>
+<p>1.1. Подрядчик обязуется по заданию Заказчика выполнить ${subjectWorks(o.work_subject).works} (далее — «Работы») ${subjectWorks(o.work_subject).place} по адресу: ${esc(address)} (далее — «Объект»), а Заказчик обязуется принять результат Работ и оплатить его.</p>
 <p>1.2. Перечень, объёмы и стоимость Работ, а также график их выполнения определяются в Смете${estimate ? ` №${estimate.id}` : ""} (Приложение №1 — Смета/Техническое задание).</p>
 ${designHtml}
 <p>1.3. Качество работ должно соответствовать действующим строительным нормам и правилам (СНиП), сводам правил (СП), государственным стандартам (ГОСТ) и техническим регламентам. При отсутствии конкретных требований качество определяется общепринятой практикой выполнения строительных и отделочных работ.</p>
@@ -305,41 +381,7 @@ ${acceptanceHtml}
 <p>9.2. Договор составлен в ${copiesTotal} экземплярах, имеющих равную юридическую силу, — по ${copiesPerParty} для каждой из Сторон.</p>
 
 <h3>10. Реквизиты и подписи сторон</h3>
-<table style="width:100%;margin-top:16px">
-<tr>
-<td style="width:50%;vertical-align:top;padding-right:16px">
-<p><strong>ПОДРЯДЧИК (ИСПОЛНИТЕЛЬ)</strong></p>
-${req(companyName)}
-${req(ctx.company?.phone, "Тел.")}
-${req(ctx.company?.email, "Email")}
-${req(ctx.company?.inn, "ИНН")}
-${req(ctx.company?.legal_address, "Юр. адрес")}
-${req(ctx.company?.bank_name, "Банк")}
-${req(ctx.company?.bik, "БИК")}
-${req(ctx.company?.account_number, "Р/с")}
-${req(ctx.company?.correspondent_account, "К/с")}
-</td>
-<td style="width:50%;vertical-align:top;padding-left:16px">
-<p><strong>ЗАКАЗЧИК</strong></p>
-${req(o.customer_name || object.client_name)}
-${req(object.client_phone, "Тел.")}
-${req(object.email, "Email")}
-${req(address, "Объект")}
-</td>
-</tr>
-<tr>
-<td style="width:50%;vertical-align:bottom;padding:36px 16px 0 0">
-<p style="margin-bottom:28px"><strong>ОТ ИМЕНИ ПОДРЯДЧИКА</strong></p>
-<p style="border-top:1px solid #999;padding-top:4px;max-width:240px;margin:0">${esc(ctx.company?.contact_full_name || o.contractor_name || companyName)}</p>
-<p style="font-size:11px;color:#666;margin:2px 0 0">(подпись, М.П.)</p>
-</td>
-<td style="width:50%;vertical-align:bottom;padding:36px 0 0 16px">
-<p style="margin-bottom:28px"><strong>ОТ ИМЕНИ ЗАКАЗЧИКА</strong></p>
-<p style="border-top:1px solid #999;padding-top:4px;max-width:240px;margin:0">${esc(o.customer_name || object.client_name)}</p>
-<p style="font-size:11px;color:#666;margin:2px 0 0">(подпись)</p>
-</td>
-</tr>
-</table>
+${requisitesAndSigns(ctx, companyName, address)}
 </div>
 `.trim()
 }

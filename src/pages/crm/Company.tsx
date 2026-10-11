@@ -49,6 +49,7 @@ const emptyForm: CompanyData = {
   kpp: "",
   director_position: "",
   director_name: "",
+  stamp_url: "",
 }
 
 export default function Company() {
@@ -58,6 +59,7 @@ export default function Company() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [signatureFile, setSignatureFile] = useState<{ name: string; dataUrl: string } | null>(null)
+  const [stampFile, setStampFile] = useState<{ name: string; dataUrl: string } | null>(null)
   const canEdit = user?.role === "owner" || user?.role === "admin"
 
   useEffect(() => {
@@ -72,23 +74,28 @@ export default function Company() {
     setSaved(false)
   }
 
-  const handleSignatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const readImage = (e: React.ChangeEvent<HTMLInputElement>, set: (v: { name: string; dataUrl: string }) => void) => {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
     reader.onload = () => {
-      setSignatureFile({ name: file.name, dataUrl: reader.result as string })
+      set({ name: file.name, dataUrl: reader.result as string })
       setSaved(false)
     }
     reader.readAsDataURL(file)
   }
+  const handleSignatureChange = (e: React.ChangeEvent<HTMLInputElement>) => readImage(e, setSignatureFile)
+  const handleStampChange = (e: React.ChangeEvent<HTMLInputElement>) => readImage(e, setStampFile)
 
   const isIndividual = form.entity_type === "Физическое лицо" || form.entity_type === "Самозанятый"
 
   const handleSave = async () => {
     setSaving(true)
     try {
-      const payload: Partial<CompanyData> & { signature_file?: string } = { ...form }
+      const payload: Partial<CompanyData> & { signature_file?: string; stamp_file?: string } = { ...form }
+      delete payload.signature_url
+      delete payload.stamp_url
+      if (stampFile) payload.stamp_file = stampFile.dataUrl
       if (isIndividual) {
         payload.name = form.contact_full_name
       }
@@ -98,6 +105,7 @@ export default function Company() {
       const updated = await companyApi.update(payload)
       setForm({ ...emptyForm, ...updated })
       setSignatureFile(null)
+      setStampFile(null)
       setSaved(true)
       if (updated.name) updateCompanyName(updated.name)
     } finally {
@@ -431,6 +439,27 @@ export default function Company() {
                   <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleSignatureChange} />
                 </label>
               )}
+            </div>
+
+            <div>
+              <label className={labelClass}>Печать</label>
+              {(stampFile || form.stamp_url) && (
+                <div className="mb-2 flex items-center gap-3 bg-[#161616] border border-white/10 rounded-lg px-3 py-2">
+                  <img src={stampFile?.dataUrl || form.stamp_url} alt="Печать" className="h-14 w-14 object-contain bg-white rounded" />
+                  <span className="text-xs text-white/40">{stampFile ? "Новая печать — нажмите «Сохранить»" : "Текущая печать"}</span>
+                </div>
+              )}
+              {canEdit && (
+                <label className="flex items-center gap-2 bg-[#161616] border border-dashed border-white/15 rounded-lg px-3 py-2.5 text-sm text-white/60 cursor-pointer hover:border-[#D4AF37]/40 transition-colors w-fit">
+                  <Icon name="Stamp" fallback="Paperclip" size={15} />
+                  {stampFile ? stampFile.name : "Прикрепить фото печати"}
+                  <span className="text-[10px] text-white/30 ml-1">PNG с прозрачным фоном лучше всего</span>
+                  <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleStampChange} />
+                </label>
+              )}
+              <p className="mt-1.5 text-[11px] text-white/30">
+                Подпись и печать можно наложить на договор в конструкторе — галочками в разделе «Реквизиты и подписи».
+              </p>
             </div>
 
             {canEdit && (
