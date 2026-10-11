@@ -364,6 +364,13 @@ export interface Estimate {
   company_bank_kpp?: string
   company_correspondent_account?: string
   company_signature_url?: string
+  company_stamp_url?: string
+  company_ogrn?: string
+  company_kpp?: string
+  company_entity_type?: string
+  company_contact_full_name?: string
+  apply_signature?: boolean
+  apply_stamp?: boolean
   revisions?: EstimateRevision[]
 }
 
@@ -391,6 +398,8 @@ export const estimatesApi = {
     discount_percent?: number
     discount_amount?: number
     notes?: string
+    apply_signature?: boolean
+    apply_stamp?: boolean
   }) {
     const res = await fetch(ESTIMATES_URL, {
       method: "POST",
@@ -407,6 +416,8 @@ export const estimatesApi = {
     discount_percent?: number
     discount_amount?: number
     notes?: string
+    apply_signature?: boolean
+    apply_stamp?: boolean
   }) {
     const res = await fetch(`${ESTIMATES_URL}?id=${id}`, {
       method: "PUT",
@@ -571,6 +582,15 @@ export const contractsApi = {
     return parseResponse(res) as Promise<Contract>
   },
 
+  async sendEmail(id: number, payload: { email: string; pdf_base64: string; title: string; message?: string }) {
+    const res = await fetch(`${CONTRACTS_URL}?id=${id}&action=send_email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<{ success: boolean }>
+  },
+
   async generate(payload: {
     object_id: number
     estimate_id?: number
@@ -648,6 +668,8 @@ export interface ActOptions {
   inspection_result?: string
   calculation?: string
   appendix?: string
+  apply_signature?: boolean
+  apply_stamp?: boolean
 }
 
 export interface Act {
@@ -995,7 +1017,7 @@ export const companyApi = {
     return parseResponse(res) as Promise<CompanyData>
   },
 
-  async update(payload: Partial<CompanyData> & { signature_file?: string }) {
+  async update(payload: Partial<CompanyData> & { signature_file?: string; stamp_file?: string }) {
     const res = await fetch(`${AUTH_URL}?resource=company`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...authHeaders() },

@@ -202,10 +202,74 @@ INSPECTION_ACT_TEXT = {
 
 def dark_block(text):
     return (
-        '<div style="background:#F5EBD9;color:#3A2404;border:1.5px solid #7A4E10;'
-        'border-left:5px solid #5C3A11;border-radius:8px;'
+        '<div style="background:#B9A27A;color:#1F1405;border:1.5px solid #5C3A11;'
+        'border-left:5px solid #3E2608;border-radius:8px;page-break-inside:avoid;break-inside:avoid;'
         'padding:12px 16px;margin:10px 0;font-size:13px;font-weight:600">' + text + '</div>'
     )
+
+
+def parties_block(c, opts, executor_display, executor_short, client_name, customer_contacts):
+    '''Реквизиты сторон и поля для подписей; подпись и печать компании накладываются по галочкам'''
+    entity = (c.get('entity_type') or '').lower()
+    is_legal = 'юрид' in entity or entity.startswith('ооо') or 'общество' in entity
+    is_ip = 'предприниматель' in entity or entity == 'ип'
+    lines = []
+    def add(label, value):
+        v = esc(value)
+        if v:
+            lines.append(f'<p style="margin:2px 0">{label + ": " if label else ""}{v}</p>')
+    if is_ip or is_legal:
+        add('ОГРН' if is_legal else 'ОГРНИП', c.get('ogrn'))
+    add('ИНН', c.get('inn'))
+    if is_legal:
+        add('КПП', c.get('kpp'))
+    add('Адрес', c.get('legal_address'))
+    add('Тел.', c.get('phone'))
+    add('Email', c.get('email'))
+    add('Банк', c.get('bank_name'))
+    add('БИК', c.get('bik'))
+    add('Р/с', c.get('account_number'))
+    add('К/с', c.get('correspondent_account'))
+    executor_req = ''.join(lines)
+    title = f'ИП {executor_short}' if is_ip and executor_short else executor_display
+
+    sig = ''
+    if opts.get('apply_signature') and c.get('signature_url'):
+        sig = (f'<img src="{esc(c["signature_url"])}" crossorigin="anonymous" alt="" '
+               'style="position:absolute;left:10px;bottom:4px;height:62px;max-width:200px;object-fit:contain"/>')
+    stamp = ''
+    if opts.get('apply_stamp') and c.get('stamp_url'):
+        stamp = (f'<img src="{esc(c["stamp_url"])}" crossorigin="anonymous" alt="" '
+                 'style="position:absolute;right:0;top:88px;height:118px;width:118px;object-fit:contain;opacity:0.9"/>')
+    pad = '80px' if stamp else '0'
+    box = '<div style="position:relative;height:84px;border-bottom:1.5px solid #5C3A11;margin:0 0 4px">{}</div>'
+    label = 'margin:0 0 6px;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:#4A2E06'
+    return f'''<table style="width:100%;font-size:13px;margin-bottom:12px;border-collapse:collapse"><tr>
+<td style="width:50%;vertical-align:top;padding-right:24px">
+  <p style="{label}">ИСПОЛНИТЕЛЬ</p>
+  <p style="margin:0 0 2px;font-weight:600">{title}</p>
+  {executor_req}
+</td>
+<td style="width:50%;vertical-align:top;padding-left:24px">
+  <p style="{label}">ЗАКАЗЧИК</p>
+  <p style="margin:0 0 2px;font-weight:600">{client_name}</p>
+  {customer_contacts}
+</td>
+</tr>
+<tr style="page-break-inside:avoid;break-inside:avoid">
+<td style="width:50%;vertical-align:top;padding:36px 24px {pad} 0">
+  <p style="{label}">ОТ ИМЕНИ ИСПОЛНИТЕЛЯ</p>
+  {box.format(sig + stamp)}
+  <p style="margin:0">{executor_short}</p>
+  <p style="font-size:11px;color:#555;margin:2px 0 0">(подпись)</p>
+</td>
+<td style="width:50%;vertical-align:top;padding:36px 0 0 24px">
+  <p style="{label}">ОТ ИМЕНИ ЗАКАЗЧИКА</p>
+  {box.format('')}
+  <p style="margin:0">{client_name}</p>
+  <p style="font-size:11px;color:#555;margin:2px 0 0">(подпись)</p>
+</td>
+</tr></table>'''
 
 
 def build_act_html(object_row, company_row, contract_row, opts, items, act_number, act_date, act_type, total_amount):
@@ -246,9 +310,9 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
                 amount = float(qty) * float(price)
             except (TypeError, ValueError):
                 amount = 0
-        bg = '#ffffff' if i % 2 else '#F5EBD9'
+        bg = '#ffffff' if i % 2 else '#D3C2A2'
         rows_html += (
-            f'<tr style="background:{bg}">'
+            f'<tr style="background:{bg};page-break-inside:avoid;break-inside:avoid">'
             f'<td style="border:1.2px solid #6B4508;padding:7px;text-align:center">{i}</td>'
             f'<td style="border:1.2px solid #6B4508;padding:7px">{name}</td>'
             f'<td style="border:1.2px solid #6B4508;padding:7px;text-align:center">{unit}</td>'
@@ -314,8 +378,8 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
 <th style="border:1.2px solid #6B4508;padding:7px;color:#ffffff;font-weight:700;width:18%">Сумма, руб.</th>
 </tr></thead>
 <tbody>{rows_html}
-<tr style="background:#EADCC0"><td colspan="5" style="border:1.2px solid #6B4508;padding:7px;text-align:right;font-weight:700;color:#4A2E06">Итого:</td>
-<td style="border:1.2px solid #6B4508;padding:7px;text-align:right;font-weight:700;color:#4A2E06">{fmt_money(total_amount)}</td></tr>
+<tr style="background:#B9A27A;page-break-inside:avoid"><td colspan="5" style="border:1.2px solid #6B4508;padding:7px;text-align:right;font-weight:700;color:#1F1405">Итого:</td>
+<td style="border:1.2px solid #6B4508;padding:7px;text-align:right;font-weight:700;color:#1F1405">{fmt_money(total_amount)}</td></tr>
 </tbody>
 </table>
 
@@ -327,29 +391,7 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
 
 <hr style="border:none;border-top:1.5px solid #7A4E10;margin:26px 0 14px" />
 
-<table style="width:100%;font-size:13px;margin-bottom:12px"><tr>
-<td style="width:50%;vertical-align:top;padding-right:24px">
-  <p style="margin:0 0 4px;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:#6B4508">ИСПОЛНИТЕЛЬ</p>
-  <p style="margin:0;font-weight:600">{executor_display}</p>
-  {executor_contacts}
-</td>
-<td style="width:50%;vertical-align:top;padding-left:24px">
-  <p style="margin:0 0 4px;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:#6B4508">ЗАКАЗЧИК</p>
-  <p style="margin:0;font-weight:600">{client_name}</p>
-  {customer_contacts}
-</td>
-</tr></table>
-
-<table style="width:100%;margin-top:32px;font-size:13px"><tr>
-<td style="width:50%;vertical-align:top;padding-right:24px">
-  <p style="margin:0 0 28px;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:#6B4508">ИСПОЛНИТЕЛЬ</p>
-  <div style="border-top:1.5px solid #5C3A11;padding-top:6px;font-size:13px;text-align:center;color:#1a1a1a">{executor_short}</div>
-</td>
-<td style="width:50%;vertical-align:top;padding-left:24px">
-  <p style="margin:0 0 28px;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:#6B4508">ЗАКАЗЧИК</p>
-  <div style="border-top:1.5px solid #5C3A11;padding-top:6px;font-size:13px;text-align:center;color:#1a1a1a">{client_name}</div>
-</td>
-</tr></table>
+{parties_block(company_row, opts, executor_display, executor_short, client_name, customer_contacts)}
 </div>"""
 
 
@@ -366,14 +408,15 @@ def load_context(cur, company_id, object_id, contract_id):
     }
 
     cur.execute(
-        "SELECT name, contact_full_name, phone, email FROM companies WHERE id = %s",
+        "SELECT name, contact_full_name, phone, email, entity_type, ogrn, inn, kpp, legal_address, "
+        "bank_name, bik, account_number, correspondent_account, signature_url, stamp_url "
+        "FROM companies WHERE id = %s",
         (company_id,)
     )
-    c = cur.fetchone() or ('', '', '', '')
-    company_row = {
-        'name': c[0], 'contact_full_name': c[1] or '',
-        'phone': c[2] or '', 'email': c[3] or '',
-    }
+    c = cur.fetchone() or ('',) * 15
+    keys = ['name', 'contact_full_name', 'phone', 'email', 'entity_type', 'ogrn', 'inn', 'kpp', 'legal_address',
+            'bank_name', 'bik', 'account_number', 'correspondent_account', 'signature_url', 'stamp_url']
+    company_row = {k: (v or '') for k, v in zip(keys, c)}
 
     contract_row = None
     if contract_id:

@@ -1,6 +1,6 @@
 import { ObjectItem, Estimate, CompanyData, ContractOptions } from "@/lib/api"
 import { moneyInWords, durationWordsRu } from "@/lib/numberToWordsRu"
-import { contractTitle, subjectTitle, subjectWorks } from "@/lib/contractSubject"
+import { contractTitle, subjectTitle, subjectWorks, qualityClause } from "@/lib/contractSubject"
 
 export interface ContractContext {
   object: ObjectItem
@@ -341,7 +341,7 @@ ${partyIntro(ctx)}
 <p>1.1. Подрядчик обязуется по заданию Заказчика выполнить ${subjectWorks(o.work_subject).works} (далее — «Работы») ${subjectWorks(o.work_subject).place} по адресу: ${esc(address)} (далее — «Объект»), а Заказчик обязуется принять результат Работ и оплатить его.</p>
 <p>1.2. Перечень, объёмы и стоимость Работ, а также график их выполнения определяются в Смете${estimate ? ` №${estimate.id}` : ""} (Приложение №1 — Смета/Техническое задание).</p>
 ${designHtml}
-<p>1.3. Качество работ должно соответствовать действующим строительным нормам и правилам (СНиП), сводам правил (СП), государственным стандартам (ГОСТ) и техническим регламентам. При отсутствии конкретных требований качество определяется общепринятой практикой выполнения строительных и отделочных работ.</p>
+<p>1.3. ${qualityClause(o.work_subject)}</p>
 ${workOrderHtml}
 ${subHtml}
 

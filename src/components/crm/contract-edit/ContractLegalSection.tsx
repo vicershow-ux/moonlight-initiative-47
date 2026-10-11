@@ -1,5 +1,6 @@
 import { Dispatch, SetStateAction } from "react"
 import Icon from "@/components/ui/icon"
+import { SignStampToggles } from "@/components/crm/common/SignStampToggles"
 import { ToggleGroup } from "@/components/crm/contract-create/ToggleGroup"
 import { InlineInput, InlineSelect } from "@/components/crm/contract-create/InlineField"
 import { CompanyData, ContractOptions, ObjectItem } from "@/lib/api"
@@ -138,35 +139,14 @@ export function ContractLegalSection({
 
   {/* 10. Реквизиты и подписи сторон */}
   <h3 className="text-white font-semibold mt-6 mb-2">10. Реквизиты и подписи сторон</h3>
-  {(company?.signature_url || company?.stamp_url) ? (
-    <div className="mb-3 flex flex-wrap gap-4 rounded-lg border border-white/10 bg-[#161616] px-3 py-2.5 text-sm">
-      <span className="text-white/50">Наложить на договор:</span>
-      <label className={`flex items-center gap-2 ${company?.signature_url ? "cursor-pointer" : "opacity-40"}`}>
-        <input
-          type="checkbox"
-          className="accent-[#D4AF37]"
-          disabled={!company?.signature_url}
-          checked={Boolean(options.apply_signature && company?.signature_url)}
-          onChange={(e) => updateOption("apply_signature", e.target.checked)}
-        />
-        подпись
-      </label>
-      <label className={`flex items-center gap-2 ${company?.stamp_url ? "cursor-pointer" : "opacity-40"}`}>
-        <input
-          type="checkbox"
-          className="accent-[#D4AF37]"
-          disabled={!company?.stamp_url}
-          checked={Boolean(options.apply_stamp && company?.stamp_url)}
-          onChange={(e) => updateOption("apply_stamp", e.target.checked)}
-        />
-        печать{!company?.stamp_url && " (загрузите в «Компании»)"}
-      </label>
-    </div>
-  ) : (
-    <p className="mb-3 text-xs text-white/40">
-      Подпись и печать можно загрузить в разделе «Компания» — тогда здесь появится возможность наложить их на договор.
-    </p>
-  )}
+  <SignStampToggles
+    className="mb-3"
+    signatureUrl={company?.signature_url}
+    stampUrl={company?.stamp_url}
+    applySignature={Boolean(options.apply_signature)}
+    applyStamp={Boolean(options.apply_stamp)}
+    onChange={(k, v) => updateOption(k, v)}
+  />
   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-white/10 pt-4 items-stretch">
     <div className="md:border-r md:border-white/10 md:pr-6 flex flex-col">
       <p className="text-xs uppercase tracking-wide text-white/50 mb-2">Подрядчик (Исполнитель)</p>

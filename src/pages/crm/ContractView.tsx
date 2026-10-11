@@ -8,6 +8,7 @@ import { downloadContractPdf } from "@/lib/downloadContractPdf"
 import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
 import { printHtml } from "@/lib/printHtml"
 import { contractTitle, titleFromHtml } from "@/lib/contractSubject"
+import { SendContractEmailDialog } from "@/components/crm/SendContractEmailDialog"
 
 export default function ContractView() {
   const { id, contractId } = useParams()
@@ -17,6 +18,7 @@ export default function ContractView() {
   const [contract, setContract] = useState<Contract | null>(null)
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState(false)
+  const [sendOpen, setSendOpen] = useState(false)
 
   useEffect(() => {
     if (!contractId) return
@@ -55,10 +57,13 @@ export default function ContractView() {
   }
 
   if (!contract) return null
+  const docTitle = contract.options?.work_subject
+    ? contractTitle(contract.options.work_subject)
+    : titleFromHtml(contract.content_html) || contractTitle()
 
   return (
     <CrmLayout
-      title={`${contract.options?.work_subject ? contractTitle(contract.options.work_subject) : titleFromHtml(contract.content_html) || contractTitle()} № ${contract.contract_number}`}
+      title={`${docTitle} № ${contract.contract_number}`}
     >
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <Link
@@ -91,6 +96,13 @@ export default function ContractView() {
             Составить акт
           </Link>
           <button
+            onClick={() => setSendOpen(true)}
+            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
+          >
+            <Icon name="Mail" size={14} />
+            Отправить на почту
+          </button>
+          <button
             onClick={handlePrint}
             title="Печать"
             className="flex items-center justify-center w-9 h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg"
@@ -114,6 +126,7 @@ export default function ContractView() {
           dangerouslySetInnerHTML={{ __html: contract.content_html }}
         />
       </div>
+      <SendContractEmailDialog open={sendOpen} onOpenChange={setSendOpen} contract={contract} title={docTitle} />
     </CrmLayout>
   )
 }

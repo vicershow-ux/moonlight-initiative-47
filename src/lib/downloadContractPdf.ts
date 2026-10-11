@@ -1,6 +1,15 @@
 import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
 
 export async function downloadContractPdf(contentHtml: string, contractNumber: string) {
+  await renderContractPdf(contentHtml, contractNumber, "save")
+}
+
+/** PDF договора в base64 — для отправки письмом */
+export async function contractPdfBase64(contentHtml: string, contractNumber: string): Promise<string> {
+  return (await renderContractPdf(contentHtml, contractNumber, "base64")) || ""
+}
+
+async function renderContractPdf(contentHtml: string, contractNumber: string, mode: "save" | "base64"): Promise<string | void> {
   const container = document.createElement("div")
   container.style.position = "fixed"
   container.style.left = "-10000px"
@@ -49,7 +58,7 @@ export async function downloadContractPdf(contentHtml: string, contractNumber: s
   )
 
   const html2pdf = (await import("html2pdf.js")).default
-  await html2pdf()
+  const worker = html2pdf()
     .set({
       margin: [10, 10, 10, 10],
       filename: `Договор №${contractNumber}.pdf`,
@@ -59,7 +68,14 @@ export async function downloadContractPdf(contentHtml: string, contractNumber: s
       pagebreak: { mode: ["css", "legacy"], avoid: ["p", "tr", "h3", "li"] },
     } as never)
     .from(root)
-    .save()
-
-  document.body.removeChild(container)
+  try {
+    if (mode === "save") {
+      await worker.save()
+      return
+    }
+    const uri: string = await (worker as unknown as { outputPdf: (t: string) => Promise<string> }).outputPdf("datauristring")
+    return uri
+  } finally {
+    if (container.parentNode) document.body.removeChild(container)
+  }
 }

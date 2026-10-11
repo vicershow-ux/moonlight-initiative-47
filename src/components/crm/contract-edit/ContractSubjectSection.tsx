@@ -5,7 +5,7 @@ import { ContractOptions, Estimate } from "@/lib/api"
 import { durationWordsOnlyRu } from "@/lib/numberToWordsRu"
 import { WorkStages } from "./ContractScheduleParts"
 import { formatMoney, durationUnitOptions } from "./constants"
-import { subjectWorks } from "@/lib/contractSubject"
+import { subjectWorks, qualityClause } from "@/lib/contractSubject"
 
 interface ContractSubjectSectionProps {
   options: Required<ContractOptions>
@@ -71,9 +71,7 @@ export function ContractSubjectSection({
     </p>
   )}
   <p>
-    1.3. Качество работ должно соответствовать действующим строительным нормам и правилам (СНиП), сводам правил (СП),
-    государственным стандартам (ГОСТ) и техническим регламентам. При отсутствии конкретных требований качество определяется
-    общепринятой практикой выполнения строительных и отделочных работ.
+    1.3. {qualityClause(options.work_subject)}
   </p>
 
   {/* Порядок выполнения работ */}

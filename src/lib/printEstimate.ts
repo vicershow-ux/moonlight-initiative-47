@@ -14,9 +14,6 @@ const formatDate = (d: string) =>
 const formatDateTime = (d: string) =>
   new Date(d).toLocaleString("ru-RU", { day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
 
-const cssString = (s: string) =>
-  String(s ?? "").replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r?\n/g, " ")
-
 function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyName: string) {
   const items = estimate.items || []
 
@@ -237,8 +234,8 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
   .right { text-align: right; }
   .amount { font-weight: 600; }
   .cat-row td {
-    background: #EADCC0;
-    color: #4A2E06;
+    background: #B9A27A;
+    color: #1F1405;
     font-weight: 700;
     font-size: 12px;
     border-top: none;
@@ -254,7 +251,7 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: #EADCC0;
+    background: #B9A27A;
     border: 1.5px solid #7A4E10;
     border-left: 5px solid #5C3A11;
     border-radius: 6px;
@@ -369,26 +366,28 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
      снизу — "Страница N из M", чтобы распечатанные листы не путались */
   @page {
     size: A4 portrait;
-    margin: 16mm 10mm 14mm;
-    @top-left {
-      content: "${cssString(`Смета № ${estimate.id} от ${formatDate(estimate.created_at)}`)}";
-      font-family: 'Segoe UI', Arial, sans-serif;
-      font-size: 8.5pt;
-      color: #6B4508;
-    }
-    @top-right {
-      content: "${cssString(object.client_name || companyName)}";
-      font-family: 'Segoe UI', Arial, sans-serif;
-      font-size: 8.5pt;
-      color: #6B4508;
-    }
-    @bottom-center {
-      content: "Страница " counter(page) " из " counter(pages);
+    margin: 14mm 12mm 14mm 16mm;
+    @top-left { content: ""; }
+    @top-center { content: ""; }
+    @top-right { content: ""; }
+    @bottom-left { content: ""; }
+    @bottom-center { content: ""; }
+    @bottom-right {
+      content: "Стр. " counter(page) " из " counter(pages);
       font-family: 'Segoe UI', Arial, sans-serif;
       font-size: 8.5pt;
       color: #555555;
     }
   }
+  .sign-row { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 36px; page-break-inside: avoid; break-inside: avoid; }
+  .sign-col .label { color: #4A2E06; font-size: 11.5px; font-weight: 700; letter-spacing: 0.4px; margin-bottom: 6px; text-transform: uppercase; }
+  .sign-box { position: relative; height: 84px; border-bottom: 1.5px solid #5C3A11; margin-bottom: 4px; }
+  .sign-box .sig { position: absolute; left: 10px; bottom: 4px; height: 62px; max-width: 200px; object-fit: contain; }
+  .sign-box .stamp { position: absolute; right: 0; top: 88px; height: 118px; width: 118px; object-fit: contain; opacity: 0.9; }
+  .sign-col .who { font-size: 13px; color: #1a1a1a; }
+  .sign-col .hint { font-size: 11px; color: #555; margin-top: 2px; }
+  .sign-col.with-stamp { padding-bottom: 80px; }
+  .parties, .info-grid, .summary, .notes, .room-total { page-break-inside: avoid; break-inside: avoid; }
   @media print {
     html, body { width: auto; margin: 0; padding: 0; background: #fff; overflow: visible; }
     * {
@@ -447,8 +446,8 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     thead th:nth-child(6) { width: 13%; }
     thead th:nth-child(7) { width: 15%; }
     thead th { background: #5C3A11 !important; color: #ffffff !important; }
-    .cat-row td { background: #EADCC0 !important; color: #4A2E06 !important; }
-    .room-total { background: #EADCC0 !important; border: 1.5px solid #7A4E10 !important; border-left: 5px solid #5C3A11 !important; }
+    .cat-row td { background: #B9A27A !important; color: #1F1405 !important; }
+    .room-total { background: #B9A27A !important; border: 1.5px solid #7A4E10 !important; border-left: 5px solid #5C3A11 !important; }
     tfoot td { background: #ffffff !important; border-top: 1px solid #A98A5C !important; }
     .info-grid, .summary-box { background: #ffffff !important; border: 1.5px solid #7A4E10 !important; }
     .cat-block { border: 1.5px solid #7A4E10 !important; }
@@ -470,6 +469,9 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     .cat-block tfoot td:last-child { padding-right: 12px; }
   }
 `
+
+  const withSig = Boolean(estimate.apply_signature && estimate.company_signature_url)
+  const withStamp = Boolean(estimate.apply_stamp && estimate.company_stamp_url)
 
   const bodyContent = `
   <div class="header">
@@ -544,7 +546,11 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
       ${estimate.company_website ? `<div class="contact">${escapeHtml(estimate.company_website)}</div>` : ""}
       ${estimate.company_inn ? `<div class="contact">ИНН: ${escapeHtml(estimate.company_inn)}</div>` : ""}
       ${estimate.company_legal_address ? `<div class="contact">${escapeHtml(estimate.company_legal_address)}</div>` : ""}
-      ${estimate.company_signature_url ? `<img class="signature" src="${estimate.company_signature_url}" alt="Подпись" />` : ""}
+      ${estimate.company_ogrn && /предприним|юрид/i.test(estimate.company_entity_type || "") ? `<div class="contact">${/юрид/i.test(estimate.company_entity_type || "") ? "ОГРН" : "ОГРНИП"}: ${escapeHtml(estimate.company_ogrn)}</div>` : ""}
+      ${estimate.company_bank_name ? `<div class="contact">Банк: ${escapeHtml(estimate.company_bank_name)}</div>` : ""}
+      ${estimate.company_bik ? `<div class="contact">БИК: ${escapeHtml(estimate.company_bik)}</div>` : ""}
+      ${estimate.company_account_number ? `<div class="contact">Р/с: ${escapeHtml(estimate.company_account_number)}</div>` : ""}
+      ${estimate.company_correspondent_account ? `<div class="contact">К/с: ${escapeHtml(estimate.company_correspondent_account)}</div>` : ""}
     </div>
     <div>
       <div class="label">Заказчик</div>
@@ -553,14 +559,21 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     </div>
   </div>
 
-  <div class="signatures">
-    <div class="signature-block">
-      <div class="label">Исполнитель</div>
-      <div class="signature-line">${escapeHtml(estimate.company_name || companyName)}</div>
+  <div class="sign-row">
+    <div class="sign-col${withStamp ? " with-stamp" : ""}">
+      <div class="label">От имени Исполнителя</div>
+      <div class="sign-box">
+        ${withSig ? `<img class="sig" src="${escapeHtml(estimate.company_signature_url || "")}" crossorigin="anonymous" alt=""/>` : ""}
+        ${withStamp ? `<img class="stamp" src="${escapeHtml(estimate.company_stamp_url || "")}" crossorigin="anonymous" alt=""/>` : ""}
+      </div>
+      <div class="who">${escapeHtml(estimate.company_contact_full_name || estimate.company_name || companyName)}</div>
+      <div class="hint">(подпись)</div>
     </div>
-    <div class="signature-block">
-      <div class="label">Заказчик</div>
-      <div class="signature-line">${escapeHtml(object.client_name)}</div>
+    <div class="sign-col">
+      <div class="label">От имени Заказчика</div>
+      <div class="sign-box"></div>
+      <div class="who">${escapeHtml(object.client_name)}</div>
+      <div class="hint">(подпись)</div>
     </div>
   </div>
 
@@ -592,10 +605,29 @@ export function printEstimate(estimate: Estimate, object: ObjectItem, companyNam
   printWindow.document.open()
   printWindow.document.write(html)
   printWindow.document.close()
-  printWindow.onload = () => {
+  let printed = false
+  const go = () => {
+    if (printed) return
+    printed = true
     printWindow.focus()
     printWindow.print()
   }
+  const waitImages = () => {
+    const pending = Array.from(printWindow.document.images).filter((im) => !im.complete)
+    if (!pending.length) return setTimeout(go, 200)
+    let left = pending.length
+    pending.forEach((im) => {
+      const one = () => {
+        left -= 1
+        if (left <= 0) setTimeout(go, 200)
+      }
+      im.addEventListener("load", one, { once: true })
+      im.addEventListener("error", one, { once: true })
+    })
+    setTimeout(go, 5000)
+  }
+  if (printWindow.document.readyState === "complete") waitImages()
+  else printWindow.onload = waitImages
 }
 
 function stripAtRule(css: string, startRe: RegExp) {
@@ -685,6 +717,17 @@ export async function downloadEstimatePdf(estimate: Estimate, object: ObjectItem
     img.src = `${window.location.origin}/logo-print.png`
     setTimeout(resolve, 3000)
   })
+  await Promise.all(
+    Array.from(root.querySelectorAll("img")).map(
+      (im) =>
+        new Promise<void>((resolve) => {
+          if (im.complete) return resolve()
+          im.addEventListener("load", () => resolve(), { once: true })
+          im.addEventListener("error", () => resolve(), { once: true })
+          setTimeout(resolve, 4000)
+        }),
+    ),
+  )
 
   try {
     const html2pdf = (await import("html2pdf.js")).default
@@ -703,8 +746,8 @@ export async function downloadEstimatePdf(estimate: Estimate, object: ObjectItem
           scrollY: 0,
         },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        pagebreak: { mode: ["css", "legacy"], avoid: [".cat-block", ".room-block"] },
-      })
+        pagebreak: { mode: ["css", "legacy"], avoid: ["tr", ".room-total", ".sign-row", ".summary", ".parties"] },
+      } as never)
       .from(root)
       .save()
   } finally {

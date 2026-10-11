@@ -9,6 +9,8 @@ import {
   objectsApi,
   ActItem,
   ActOptions,
+  companyApi,
+  CompanyData,
   Contract,
   Estimate,
   ObjectItem,
@@ -71,6 +73,8 @@ export default function ActCreate() {
             inspection_result: existingAct.options?.inspection_result || "",
             calculation: existingAct.options?.calculation || "contract",
             appendix: existingAct.options?.appendix || "",
+            apply_signature: Boolean(existingAct.options?.apply_signature),
+            apply_stamp: Boolean(existingAct.options?.apply_stamp),
           })
           setItems(existingAct.items || [])
           setSelectedEstimateId(existingAct.estimate_id || null)
@@ -92,7 +96,12 @@ export default function ActCreate() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objectId, contractIdParam, editingActId])
 
-  const setOpt = (key: keyof ActOptions, value: string) =>
+  const [company, setCompany] = useState<CompanyData | null>(null)
+  useEffect(() => {
+    companyApi.get().then(setCompany).catch(() => null)
+  }, [])
+
+  const setOpt = (key: keyof ActOptions, value: string | boolean) =>
     setOptions((prev) => ({ ...prev, [key]: value }))
 
   const total = useMemo(
@@ -257,6 +266,7 @@ export default function ActCreate() {
             setActDate={setActDate}
             options={options}
             setOpt={setOpt}
+            company={company}
             estimates={estimates}
             selectedEstimateId={selectedEstimateId}
             setSelectedEstimateId={setSelectedEstimateId}

@@ -1,5 +1,6 @@
 import Icon from "@/components/ui/icon"
-import { ActOptions, Contract, Estimate, ObjectItem } from "@/lib/api"
+import { ActOptions, CompanyData, Contract, Estimate, ObjectItem } from "@/lib/api"
+import { SignStampToggles } from "@/components/crm/common/SignStampToggles"
 import {
   ACT_TYPES,
   SCOPE_OPTIONS,
@@ -17,7 +18,8 @@ interface ActParamsStepProps {
   actDate: string
   setActDate: (v: string) => void
   options: ActOptions
-  setOpt: (key: keyof ActOptions, value: string) => void
+  setOpt: (key: keyof ActOptions, value: string | boolean) => void
+  company?: CompanyData | null
   estimates: Estimate[]
   selectedEstimateId: number | null
   setSelectedEstimateId: (v: number | null) => void
@@ -35,6 +37,7 @@ export function ActParamsStep({
   setActDate,
   options,
   setOpt,
+  company,
   estimates,
   selectedEstimateId,
   setSelectedEstimateId,
@@ -124,6 +127,17 @@ export function ActParamsStep({
             placeholder="Фото, дефектная ведомость, гарантийные документы..."
             rows={3}
             className={`${fieldClass} resize-none`}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5 mt-4">
+          <label className="text-xs text-white/50">Подпись и печать Исполнителя</label>
+          <SignStampToggles
+            signatureUrl={company?.signature_url}
+            stampUrl={company?.stamp_url}
+            applySignature={Boolean(options.apply_signature)}
+            applyStamp={Boolean(options.apply_stamp)}
+            onChange={(k, v) => setOpt(k, v)}
           />
         </div>
       </div>

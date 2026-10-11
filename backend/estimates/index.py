@@ -54,6 +54,7 @@ ESTIMATE_KEYS = [
     'id', 'object_id', 'total_amount', 'created_at',
     'contract_number', 'contract_date', 'discount_percent', 'discount_amount',
     'notes', 'subtotal_amount', 'status', 'revision_number', 'created_by',
+    'apply_signature', 'apply_stamp',
 ]
 
 
@@ -106,14 +107,16 @@ def handler(event: dict, context) -> dict:
 
                 cur.execute(
                     "SELECT name, phone, email, website, inn, legal_address, bank_name, bik, account_number, "
-                    "bank_inn, bank_kpp, correspondent_account, signature_url FROM companies WHERE id = %s",
+                    "bank_inn, bank_kpp, correspondent_account, signature_url, stamp_url, ogrn, kpp, "
+                    "entity_type, contact_full_name FROM companies WHERE id = %s",
                     (company_id,)
                 )
                 company_row = cur.fetchone()
                 company_keys = [
                     'company_name', 'company_phone', 'company_email', 'company_website', 'company_inn',
                     'company_legal_address', 'company_bank_name', 'company_bik', 'company_account_number',
-                    'company_bank_inn', 'company_bank_kpp', 'company_correspondent_account', 'company_signature_url'
+                    'company_bank_inn', 'company_bank_kpp', 'company_correspondent_account', 'company_signature_url',
+                    'company_stamp_url', 'company_ogrn', 'company_kpp', 'company_entity_type', 'company_contact_full_name'
                 ]
                 if company_row:
                     estimate.update(dict(zip(company_keys, company_row)))
@@ -276,6 +279,8 @@ def handler(event: dict, context) -> dict:
             discount_percent = float(body.get('discount_percent') or 0)
             discount_amount_input = float(body.get('discount_amount') or 0)
             notes = (body.get('notes') or '').strip()
+            apply_signature = bool(body.get('apply_signature'))
+            apply_stamp = bool(body.get('apply_stamp'))
 
             if not items:
                 return response(400, {'error': 'Добавьте хотя бы одну позицию сметы'})
@@ -314,8 +319,8 @@ def handler(event: dict, context) -> dict:
 
             cur.execute(
                 "UPDATE estimates SET total_amount = %s, subtotal_amount = %s, contract_number = %s, contract_date = %s, "
-                "discount_percent = %s, discount_amount = %s, notes = %s WHERE id = %s",
-                (total, subtotal, contract_number, contract_date, discount_percent, discount_amount, notes, estimate_id)
+                "discount_percent = %s, discount_amount = %s, notes = %s, apply_signature = %s, apply_stamp = %s WHERE id = %s",
+                (total, subtotal, contract_number, contract_date, discount_percent, discount_amount, notes, apply_signature, apply_stamp, estimate_id)
             )
             cur.execute("DELETE FROM estimate_items WHERE estimate_id = %s", (estimate_id,))
             for it in clean_items:
@@ -345,6 +350,8 @@ def handler(event: dict, context) -> dict:
             discount_percent = float(body.get('discount_percent') or 0)
             discount_amount_input = float(body.get('discount_amount') or 0)
             notes = (body.get('notes') or '').strip()
+            apply_signature = bool(body.get('apply_signature'))
+            apply_stamp = bool(body.get('apply_stamp'))
 
             if not obj_id:
                 return response(400, {'error': 'Не указан объект'})
@@ -394,9 +401,9 @@ def handler(event: dict, context) -> dict:
             next_revision = (cur.fetchone()[0] or 0) + 1
 
             cur.execute(
-                "INSERT INTO estimates (company_id, object_id, total_amount, subtotal_amount, contract_number, contract_date, discount_percent, discount_amount, notes, revision_number, created_by) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id, created_at",
-                (company_id, obj_id, total, subtotal, contract_number, contract_date, discount_percent, discount_amount, notes, next_revision, user['user_id'])
+                "INSERT INTO estimates (company_id, object_id, total_amount, subtotal_amount, contract_number, contract_date, discount_percent, discount_amount, notes, revision_number, created_by, apply_signature, apply_stamp) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id, created_at",
+                (company_id, obj_id, total, subtotal, contract_number, contract_date, discount_percent, discount_amount, notes, next_revision, user['user_id'], apply_signature, apply_stamp)
             )
             new_id, created_at = cur.fetchone()
 

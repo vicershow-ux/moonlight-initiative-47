@@ -11,7 +11,10 @@ import {
   ObjectRoom,
   ServiceItem,
   Estimate,
+  companyApi,
+  CompanyData,
 } from "@/lib/api"
+import { SignStampToggles } from "@/components/crm/common/SignStampToggles"
 import { EstimateRoomBlock, RoomBlockState } from "@/components/crm/estimate-create/EstimateRoomBlock"
 import { num2 } from "@/lib/formatNumber"
 
@@ -85,6 +88,13 @@ export default function EstimateCreate() {
   const [discountPercent, setDiscountPercent] = useState("")
   const [discountAmount, setDiscountAmount] = useState("")
   const [notes, setNotes] = useState("")
+  const [applySignature, setApplySignature] = useState(false)
+  const [applyStamp, setApplyStamp] = useState(false)
+  const [company, setCompany] = useState<CompanyData | null>(null)
+
+  useEffect(() => {
+    companyApi.get().then(setCompany).catch(() => null)
+  }, [])
 
   useEffect(() => {
     if (!id) return
@@ -109,6 +119,8 @@ export default function EstimateCreate() {
           setDiscountPercent(est.discount_percent ? String(est.discount_percent) : "")
           setDiscountAmount(est.discount_amount ? String(est.discount_amount) : "")
           setNotes(est.notes || "")
+          setApplySignature(Boolean(est.apply_signature))
+          setApplyStamp(Boolean(est.apply_stamp))
           setRooms(buildRoomsFromEstimate(est, roomsList))
         }
       })
@@ -174,6 +186,8 @@ export default function EstimateCreate() {
         discount_percent: discountPercentNum,
         discount_amount: discountAmountNum,
         notes,
+        apply_signature: applySignature,
+        apply_stamp: applyStamp,
       }
       if (editMode) {
         await estimatesApi.update(Number(estimateId), payload)
@@ -308,6 +322,17 @@ export default function EstimateCreate() {
               placeholder="Особые условия, комментарии..."
               rows={4}
               className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-3 py-2.5 text-sm outline-none resize-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30 w-full"
+            />
+          </div>
+
+          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+            <p className="font-medium mb-3">Подпись и печать в смете</p>
+            <SignStampToggles
+              signatureUrl={company?.signature_url}
+              stampUrl={company?.stamp_url}
+              applySignature={applySignature}
+              applyStamp={applyStamp}
+              onChange={(k, v) => (k === "apply_signature" ? setApplySignature(v) : setApplyStamp(v))}
             />
           </div>
 

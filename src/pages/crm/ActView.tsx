@@ -5,7 +5,7 @@ import Icon from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 import { actsApi, Act } from "@/lib/api"
 import { downloadContractPdf } from "@/lib/downloadContractPdf"
-import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
+import { printAct, darkenActHtml } from "@/lib/printAct"
 
 export default function ActView() {
   const { actId } = useParams()
@@ -28,48 +28,14 @@ export default function ActView() {
 
   const handlePrint = () => {
     if (!act) return
-    const win = window.open("", "_blank")
-    if (!win) return
-    win.document.write(`
-      <html>
-        <head>
-          <title>Акт № ${act.act_number}</title>
-          <style>
-            @page { size: A4 portrait; margin: 10mm; }
-            body { font-family: Arial, sans-serif; padding: 0 2mm; line-height: 1.5; color: #1a1a1a; font-size: 13px; }
-            table { border-collapse: collapse; width: 100%; }
-            td, th { overflow-wrap: break-word; }
-            @media print {
-              * {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                color-adjust: exact !important;
-              }
-              body { padding: 0 2mm; color: #1a1a1a !important; }
-              table, tr, td, th { page-break-inside: avoid; }
-              table:not(.works-table) td,
-              table:not(.works-table) th { border: none !important; }
-              .works-table thead th { background: #5C3A11 !important; color: #ffffff !important; font-weight: 700 !important; }
-              .works-table tbody td,
-              .works-table thead th { border: 1.2px solid #6B4508 !important; }
-              .works-table tbody td { color: #1a1a1a !important; }
-            }
-            ${docBrandStyles}
-          </style>
-        </head>
-        <body>${docBrandHeader(`Акт № ${act.act_number}`)}${act.content_html}</body>
-      </html>
-    `)
-    win.document.close()
-    win.focus()
-    win.print()
+    printAct(act)
   }
 
   const handleDownload = async () => {
     if (!act) return
     setDownloading(true)
     try {
-      await downloadContractPdf(act.content_html, `Акт ${act.act_number}`)
+      await downloadContractPdf(darkenActHtml(act.content_html), `Акт ${act.act_number}`)
     } finally {
       setDownloading(false)
     }
@@ -131,7 +97,7 @@ export default function ActView() {
       </div>
 
       <div className="bg-white text-[#161616] rounded-xl p-8 sm:p-12 max-w-4xl mx-auto shadow-lg">
-        <div dangerouslySetInnerHTML={{ __html: act.content_html }} />
+        <div dangerouslySetInnerHTML={{ __html: darkenActHtml(act.content_html) }} />
       </div>
     </CrmLayout>
   )
