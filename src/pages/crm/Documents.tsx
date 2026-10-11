@@ -231,7 +231,7 @@ export default function Documents() {
                 kind="Смета на работу"
                 kindClass="text-[#D4AF37]"
                 title="Смета на ремонтные работы"
-                subtitle={`№${e.id}`}
+                subtitle={`№${e.estimate_number || e.id}`}
                 createdAt={e.created_at}
                 amount={Number(e.total_amount)}
                 obj={objectsMap[e.object_id]}

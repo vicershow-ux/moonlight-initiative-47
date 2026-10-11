@@ -39,6 +39,7 @@ export default function ActCreate() {
   const [selectedEstimateId, setSelectedEstimateId] = useState<number | null>(null)
 
   const [actType, setActType] = useState("acceptance")
+  const [actNumber, setActNumber] = useState("")
   const [actDate, setActDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [options, setOptions] = useState<ActOptions>({
     period_from: "",
@@ -65,6 +66,7 @@ export default function ActCreate() {
 
         if (existingAct) {
           setActType(existingAct.act_type || "acceptance")
+          setActNumber(existingAct.act_number || "")
           setActDate((existingAct.act_date || "").slice(0, 10) || new Date().toISOString().slice(0, 10))
           setOptions({
             period_from: existingAct.options?.period_from || "",
@@ -177,11 +179,13 @@ export default function ActCreate() {
         contract_id: contract?.id || null,
         estimate_id: selectedEstimateId,
         act_type: actType,
+        act_number: actNumber.trim() || undefined,
         act_date: actDate,
         options,
         items,
       })
       setPreviewHtml(res.content_html)
+      if (!actNumber.trim() && res.act_number) setActNumber(res.act_number)
       setStep(3)
     } catch {
       setError("Не удалось сформировать акт")
@@ -196,6 +200,7 @@ export default function ActCreate() {
     try {
       if (editingActId) {
         await actsApi.update(editingActId, {
+          act_number: actNumber.trim() || undefined,
           act_type: actType,
           act_date: actDate,
           options,
@@ -211,6 +216,7 @@ export default function ActCreate() {
         contract_id: contract?.id || null,
         estimate_id: selectedEstimateId,
         act_type: actType,
+        act_number: actNumber.trim() || undefined,
         act_date: actDate,
         options,
         items,
@@ -264,6 +270,8 @@ export default function ActCreate() {
             setActType={setActType}
             actDate={actDate}
             setActDate={setActDate}
+            actNumber={actNumber}
+            setActNumber={setActNumber}
             options={options}
             setOpt={setOpt}
             company={company}

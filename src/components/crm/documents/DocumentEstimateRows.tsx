@@ -34,7 +34,7 @@ export function DocumentEstimateRow({
           </td>
           <td className="py-3 px-4">
             <p className="font-medium">Смета на ремонтные работы</p>
-            <p className="text-xs text-white/30">№{e.id}</p>
+            <p className="text-xs text-white/30">№{e.estimate_number || e.id}</p>
           </td>
           <td className="py-3 px-4 text-white/60">{formatDate(e.created_at)}</td>
           <td className="py-3 px-4 text-white/60">

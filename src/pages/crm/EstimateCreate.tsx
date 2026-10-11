@@ -83,6 +83,7 @@ export default function EstimateCreate() {
   const savedRef = useRef(false)
 
   const [contractNumber, setContractNumber] = useState("")
+  const [estimateNumber, setEstimateNumber] = useState("")
   const [contractDate, setContractDate] = useState("")
   const [rooms, setRooms] = useState<RoomBlockState[]>([emptyRoom()])
   const [discountPercent, setDiscountPercent] = useState("")
@@ -115,6 +116,7 @@ export default function EstimateCreate() {
         setServices(servicesList)
         if (est) {
           setContractNumber(est.contract_number || "")
+          setEstimateNumber(est.estimate_number || "")
           setContractDate(est.contract_date || "")
           setDiscountPercent(est.discount_percent ? String(est.discount_percent) : "")
           setDiscountAmount(est.discount_amount ? String(est.discount_amount) : "")
@@ -188,6 +190,7 @@ export default function EstimateCreate() {
         notes,
         apply_signature: applySignature,
         apply_stamp: applyStamp,
+        estimate_number: estimateNumber.trim(),
       }
       if (editMode) {
         await estimatesApi.update(Number(estimateId), payload)
@@ -245,8 +248,17 @@ export default function EstimateCreate() {
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
         <div className="xl:col-span-4 flex flex-col gap-4">
           <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
-            <p className="font-medium mb-4">Информация о договоре</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <p className="font-medium mb-4">Номер сметы и договор</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-white/50">Номер сметы</label>
+                <input
+                  value={estimateNumber}
+                  onChange={(e) => setEstimateNumber(e.target.value)}
+                  placeholder={editMode ? `По умолчанию — ${estimateId}` : "По умолчанию — порядковый"}
+                  className="bg-[#161616] border border-white/15 shadow-inner shadow-black/20 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/30"
+                />
+              </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-white/50">Номер договора</label>
                 <input

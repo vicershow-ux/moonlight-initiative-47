@@ -99,6 +99,7 @@ function contractorRequisites(ctx: ContractContext, companyName: string): string
     req(c?.legal_address, isLegal ? "Юр. адрес" : "Адрес"),
     req(c?.phone, "Тел."),
     req(c?.email, "Email"),
+    req(c?.website, "Сайт"),
     req(c?.bank_name, "Банк"),
     req(c?.bik, "БИК"),
     req(c?.account_number, "Р/с"),
@@ -135,7 +136,10 @@ ${contractorRequisites(ctx, companyName)}
 <td style="width:50%;vertical-align:top;padding-left:20px">
 <p><strong>ЗАКАЗЧИК</strong></p>
 ${req(customer)}
+${o.customer_type === "legal" ? req(o.customer_org_name, "") : ""}
 ${o.customer_type === "entrepreneur" ? req(o.customer_ogrnip, "ОГРНИП") : ""}
+${o.customer_type === "legal" ? req(o.customer_ogrn, "ОГРН") : ""}
+${o.customer_type === "legal" && o.customer_director_name ? req(`${o.customer_director_position || "Директор"} ${o.customer_director_name}`) : ""}
 ${req(object.client_phone, "Тел.")}
 ${req(object.email, "Email")}
 ${req(address, "Объект")}
@@ -339,7 +343,7 @@ ${partyIntro(ctx)}
 
 <h3>1. Предмет договора</h3>
 <p>1.1. Подрядчик обязуется по заданию Заказчика выполнить ${subjectWorks(o.work_subject).works} (далее — «Работы») ${subjectWorks(o.work_subject).place} по адресу: ${esc(address)} (далее — «Объект»), а Заказчик обязуется принять результат Работ и оплатить его.</p>
-<p>1.2. Перечень, объёмы и стоимость Работ, а также график их выполнения определяются в Смете${estimate ? ` №${estimate.id}` : ""} (Приложение №1 — Смета/Техническое задание).</p>
+<p>1.2. Перечень, объёмы и стоимость Работ, а также график их выполнения определяются в Смете${estimate ? ` №${estimate.estimate_number || estimate.id}` : ""} (Приложение №1 — Смета/Техническое задание).</p>
 ${designHtml}
 <p>1.3. ${qualityClause(o.work_subject)}</p>
 ${workOrderHtml}

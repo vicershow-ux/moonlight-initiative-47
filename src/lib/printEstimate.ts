@@ -11,9 +11,6 @@ const formatMoney = (n: unknown) =>
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
 
-const formatDateTime = (d: string) =>
-  new Date(d).toLocaleString("ru-RU", { day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
-
 function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyName: string) {
   const items = estimate.items || []
 
@@ -470,14 +467,15 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
   }
 `
 
+  const estNo = estimate.estimate_number || String(estimate.id)
   const withSig = Boolean(estimate.apply_signature && estimate.company_signature_url)
   const withStamp = Boolean(estimate.apply_stamp && estimate.company_stamp_url)
 
   const bodyContent = `
   <div class="header">
-    <div class="brand"><img class="brand-logo" src="${window.location.origin}/logo-print.png" alt="FixKey"/>Fix<span>Key</span></div>
+    <div class="brand"><img class="brand-logo" src="${window.location.origin}/logo-print.png" alt="FixKey"/><b class="brand-word">Fix<span>Key</span></b></div>
     <div class="doc-title">
-      <h1>Смета № ${estimate.id}</h1>
+      <h1>Смета № ${escapeHtml(estNo)}</h1>
       <p>от ${formatDate(estimate.created_at)}</p>
     </div>
   </div>
@@ -540,13 +538,14 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
   <div class="parties">
     <div>
       <div class="label">Исполнитель</div>
-      <div class="name">${escapeHtml(estimate.company_name || companyName)}</div>
-      ${estimate.company_phone ? `<div class="contact">Тел: ${escapeHtml(estimate.company_phone)}</div>` : ""}
-      ${estimate.company_email ? `<div class="contact">Email: ${escapeHtml(estimate.company_email)}</div>` : ""}
-      ${estimate.company_website ? `<div class="contact">${escapeHtml(estimate.company_website)}</div>` : ""}
-      ${estimate.company_inn ? `<div class="contact">ИНН: ${escapeHtml(estimate.company_inn)}</div>` : ""}
-      ${estimate.company_legal_address ? `<div class="contact">${escapeHtml(estimate.company_legal_address)}</div>` : ""}
+      <div class="name">${escapeHtml(/предприним/i.test(estimate.company_entity_type || "") && estimate.company_contact_full_name ? `ИП ${estimate.company_contact_full_name}` : estimate.company_name || companyName)}</div>
       ${estimate.company_ogrn && /предприним|юрид/i.test(estimate.company_entity_type || "") ? `<div class="contact">${/юрид/i.test(estimate.company_entity_type || "") ? "ОГРН" : "ОГРНИП"}: ${escapeHtml(estimate.company_ogrn)}</div>` : ""}
+      ${estimate.company_inn ? `<div class="contact">ИНН: ${escapeHtml(estimate.company_inn)}</div>` : ""}
+      ${estimate.company_kpp && /юрид/i.test(estimate.company_entity_type || "") ? `<div class="contact">КПП: ${escapeHtml(estimate.company_kpp)}</div>` : ""}
+      ${estimate.company_legal_address ? `<div class="contact">Адрес: ${escapeHtml(estimate.company_legal_address)}</div>` : ""}
+      ${estimate.company_phone ? `<div class="contact">Тел.: ${escapeHtml(estimate.company_phone)}</div>` : ""}
+      ${estimate.company_email ? `<div class="contact">Email: ${escapeHtml(estimate.company_email)}</div>` : ""}
+      ${estimate.company_website ? `<div class="contact">Сайт: ${escapeHtml(estimate.company_website)}</div>` : ""}
       ${estimate.company_bank_name ? `<div class="contact">Банк: ${escapeHtml(estimate.company_bank_name)}</div>` : ""}
       ${estimate.company_bik ? `<div class="contact">БИК: ${escapeHtml(estimate.company_bik)}</div>` : ""}
       ${estimate.company_account_number ? `<div class="contact">Р/с: ${escapeHtml(estimate.company_account_number)}</div>` : ""}
@@ -555,7 +554,9 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
     <div>
       <div class="label">Заказчик</div>
       <div class="name">${escapeHtml(object.client_name)}</div>
-      ${object.client_phone ? `<div class="contact">Тел: ${escapeHtml(object.client_phone)}</div>` : ""}
+      ${object.client_phone ? `<div class="contact">Тел.: ${escapeHtml(object.client_phone)}</div>` : ""}
+      ${object.email || estimate.email ? `<div class="contact">Email: ${escapeHtml(object.email || estimate.email || "")}</div>` : ""}
+      ${object.address || estimate.address ? `<div class="contact">Адрес объекта: ${escapeHtml(object.address || estimate.address || "")}</div>` : ""}
     </div>
   </div>
 
@@ -575,13 +576,9 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
       <div class="who">${escapeHtml(object.client_name)}</div>
       <div class="hint">(подпись)</div>
     </div>
-  </div>
-
-  <div class="footer">
-    Сформировано ${formatDateTime(new Date().toISOString())}
   </div>`
 
-  const title = `Смета № ${estimate.id} — ${escapeHtml(object.client_name)}`
+  const title = `Смета № ${escapeHtml(estNo)} — ${escapeHtml(object.client_name)}`
 
   return { styles, bodyContent, title }
 }
@@ -678,6 +675,15 @@ function scopeStyles(css: string, scope: string) {
 }
 
 export async function downloadEstimatePdf(estimate: Estimate, object: ObjectItem, companyName: string) {
+  await renderEstimatePdf(estimate, object, companyName, "save")
+}
+
+/** PDF сметы в base64 — для отправки письмом */
+export async function estimatePdfBase64(estimate: Estimate, object: ObjectItem, companyName: string): Promise<string> {
+  return (await renderEstimatePdf(estimate, object, companyName, "base64")) || ""
+}
+
+async function renderEstimatePdf(estimate: Estimate, object: ObjectItem, companyName: string, mode: "save" | "base64"): Promise<string | void> {
   const { styles, bodyContent } = buildEstimateDocument(estimate, object, companyName)
 
   // Рендерим в СКРЫТЫЙ контейнер основного документа (не в iframe),
@@ -731,10 +737,10 @@ export async function downloadEstimatePdf(estimate: Estimate, object: ObjectItem
 
   try {
     const html2pdf = (await import("html2pdf.js")).default
-    await html2pdf()
+    const worker = html2pdf()
       .set({
         margin: [12, 12, 12, 12],
-        filename: `Смета №${estimate.id}.pdf`,
+        filename: `Смета №${estimate.estimate_number || estimate.id}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: {
           scale: 2,
@@ -749,7 +755,11 @@ export async function downloadEstimatePdf(estimate: Estimate, object: ObjectItem
         pagebreak: { mode: ["css", "legacy"], avoid: ["tr", ".room-total", ".sign-row", ".summary", ".parties"] },
       } as never)
       .from(root)
-      .save()
+    if (mode === "save") {
+      await worker.save()
+      return
+    }
+    return await (worker as unknown as { outputPdf: (t: string) => Promise<string> }).outputPdf("datauristring")
   } finally {
     if (container.parentNode) document.body.removeChild(container)
   }

@@ -5,9 +5,10 @@ import Icon from "@/components/ui/icon"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { estimatesApi, Estimate, EstimateItem } from "@/lib/api"
-import { printEstimate, downloadEstimatePdf } from "@/lib/printEstimate"
+import { printEstimate, downloadEstimatePdf, estimatePdfBase64 } from "@/lib/printEstimate"
 import { estimateStatusOptions, getEstimateStatusColor, getEstimateStatusLabel, EstimateStatus } from "@/lib/estimateStatus"
 import { useAuth } from "@/contexts/AuthContext"
+import { SendDocEmailDialog } from "@/components/crm/SendDocEmailDialog"
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog"
 
 const num = (v: unknown, fallback = 0): number => {
@@ -24,6 +25,17 @@ const formatDate = (d: string) =>
 const formatDateTime = (d: string) =>
   new Date(d).toLocaleString("ru-RU", { day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
 
+const estObject = (e: Estimate) =>
+  ({
+    object_code: e.object_code || "",
+    client_name: e.client_name || "",
+    client_phone: e.client_phone || "",
+    object_type: e.object_type || "",
+    area: e.area || 0,
+    email: e.email || "",
+    address: e.address || "",
+  }) as never
+
 export default function EstimateView() {
   const { id, estimateId } = useParams()
   const navigate = useNavigate()
@@ -35,6 +47,7 @@ export default function EstimateView() {
   const [loading, setLoading] = useState(true)
   const [printing, setPrinting] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [sendOpen, setSendOpen] = useState(false)
   const [savingStatus, setSavingStatus] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -61,13 +74,7 @@ export default function EstimateView() {
     try {
       printEstimate(
         estimate,
-        {
-          object_code: estimate.object_code || "",
-          client_name: estimate.client_name || "",
-          client_phone: estimate.client_phone || "",
-          object_type: estimate.object_type || "",
-          area: estimate.area || 0,
-        } as never,
+        estObject(estimate),
         estimate.company_name || user?.company_name || ""
       )
     } finally {
@@ -92,13 +99,7 @@ export default function EstimateView() {
     try {
       await downloadEstimatePdf(
         estimate,
-        {
-          object_code: estimate.object_code || "",
-          client_name: estimate.client_name || "",
-          client_phone: estimate.client_phone || "",
-          object_type: estimate.object_type || "",
-          area: estimate.area || 0,
-        } as never,
+        estObject(estimate),
         estimate.company_name || user?.company_name || ""
       )
     } finally {
@@ -140,7 +141,7 @@ export default function EstimateView() {
   const revisions = estimate.revisions || []
 
   return (
-    <CrmLayout title={`Смета №${estimate.id}`} subtitle={`Редакция №${estimate.revision_number ?? 1}`}>
+    <CrmLayout title={`Смета №${estimate.estimate_number || estimate.id}`} subtitle={`Редакция №${estimate.revision_number ?? 1}`}>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <Link
           to={`/cabinet/objects/${objectId}`}
@@ -163,6 +164,13 @@ export default function EstimateView() {
               Редактировать
             </Link>
           )}
+          <button
+            onClick={() => setSendOpen(true)}
+            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
+          >
+            <Icon name="Mail" size={14} />
+            Отправить на почту
+          </button>
           <button
             onClick={handlePrint}
             disabled={printing}
@@ -281,10 +289,10 @@ export default function EstimateView() {
       <div className="bg-white text-[#1a1a1a] rounded-xl p-8 md:p-10 max-w-4xl mx-auto shadow-xl">
         <div className="flex items-center justify-between border-b-2 border-[#D4AF37] pb-4 mb-6">
           <div className="text-xl font-bold tracking-tight">
-            Fix<span className="text-[#D4AF37]">Key</span>
+            <span>Fix</span><span className="text-[#D4AF37]">Key</span>
           </div>
           <div className="text-right">
-            <h1 className="text-lg font-semibold">Смета № {estimate.id}</h1>
+            <h1 className="text-lg font-semibold">Смета № {estimate.estimate_number || estimate.id}</h1>
             <p className="text-xs text-gray-500">от {formatDate(estimate.created_at)}</p>
           </div>
         </div>
@@ -448,10 +456,6 @@ export default function EstimateView() {
             {estimate.email && <p className="text-gray-500 text-xs">Email: {estimate.email}</p>}
           </div>
         </div>
-
-        <div className="text-right text-[11px] text-gray-300 mt-8">
-          Сформировано {formatDateTime(new Date().toISOString())}
-        </div>
       </div>
       <ConfirmDeleteDialog
         open={confirmDelete}
@@ -461,6 +465,15 @@ export default function EstimateView() {
         description="Смета и все её позиции будут удалены безвозвратно."
       />
 
+      <SendDocEmailDialog
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        docName="смету"
+        objectId={estimate.object_id}
+        fileName={`Смета_${estimate.estimate_number || estimate.id}.pdf`}
+        makePdf={() => estimatePdfBase64(estimate, estObject(estimate), estimate.company_name || user?.company_name || "")}
+        send={(p) => estimatesApi.sendEmail(estimate.id, p)}
+      />
     </CrmLayout>
   )
 }

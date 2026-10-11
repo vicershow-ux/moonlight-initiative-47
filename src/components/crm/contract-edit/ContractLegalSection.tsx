@@ -165,6 +165,7 @@ export function ContractLegalSection({
       {company?.legal_address && <p className="text-sm text-white/70">Адрес: {company.legal_address}</p>}
       {company?.phone && <p className="text-sm text-white/70">Тел.: {company.phone}</p>}
       {company?.email && <p className="text-sm text-white/70">Email: {company.email}</p>}
+      {company?.website && <p className="text-sm text-white/70">Сайт: {company.website}</p>}
       {company?.bank_name && <p className="text-sm text-white/70">Банк: {company.bank_name}</p>}
       {company?.bik && <p className="text-sm text-white/70">БИК: {company.bik}</p>}
       {company?.account_number && <p className="text-sm text-white/70">Р/с: {company.account_number}</p>}

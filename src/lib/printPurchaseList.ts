@@ -12,15 +12,6 @@ const num = (v: unknown, fallback = 0): number => {
 const formatMoney = (n: unknown) =>
   new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(num(n)) + " ₽"
 
-const formatDateTime = (d: string) =>
-  new Date(d).toLocaleString("ru-RU", {
-    day: "numeric",
-    month: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-
 function escapeHtml(str: string) {
   const div = document.createElement("div")
   div.textContent = str ?? ""
@@ -320,7 +311,7 @@ export function buildPurchaseDocument(
 
   const bodyContent = `
   <div class="header">
-    <div class="brand"><img class="brand-logo" src="${window.location.origin}/logo-print.png" alt="FixKey"/>Fix<span>Key</span></div>
+    <div class="brand"><img class="brand-logo" src="${window.location.origin}/logo-print.png" alt="FixKey"/><b class="brand-word">Fix<span>Key</span></b></div>
     <div class="doc-title">
       <h1>Список на закупку</h1>
       <p>Объект № ${escapeHtml(object.object_code)}</p>
@@ -386,10 +377,6 @@ export function buildPurchaseDocument(
       <div class="label">Объект</div>
       <div class="name">${escapeHtml(object.client_name)}</div>
     </div>
-  </div>
-
-  <div class="footer">
-    Сформировано ${formatDateTime(new Date().toISOString())}
   </div>`
 
   const title = `Список на закупку № ${object.object_code} — ${escapeHtml(object.client_name)}`

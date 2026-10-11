@@ -4,7 +4,8 @@ import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 import { actsApi, Act } from "@/lib/api"
-import { downloadContractPdf } from "@/lib/downloadContractPdf"
+import { downloadContractPdf, contractPdfBase64 } from "@/lib/downloadContractPdf"
+import { SendDocEmailDialog } from "@/components/crm/SendDocEmailDialog"
 import { printAct, darkenActHtml } from "@/lib/printAct"
 
 export default function ActView() {
@@ -14,6 +15,7 @@ export default function ActView() {
   const [act, setAct] = useState<Act | null>(null)
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState(false)
+  const [sendOpen, setSendOpen] = useState(false)
 
   useEffect(() => {
     if (!actId) return
@@ -79,6 +81,13 @@ export default function ActView() {
             Редактировать
           </Link>
           <button
+            onClick={() => setSendOpen(true)}
+            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
+          >
+            <Icon name="Mail" size={14} />
+            Отправить на почту
+          </button>
+          <button
             onClick={handlePrint}
             title="Печать"
             className="flex items-center justify-center w-9 h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg"
@@ -99,6 +108,15 @@ export default function ActView() {
       <div className="bg-white text-[#161616] rounded-xl p-8 sm:p-12 max-w-4xl mx-auto shadow-lg">
         <div dangerouslySetInnerHTML={{ __html: darkenActHtml(act.content_html) }} />
       </div>
+      <SendDocEmailDialog
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        docName="акт"
+        objectId={act.object_id}
+        fileName={`Акт_${act.act_number}.pdf`}
+        makePdf={() => contractPdfBase64(darkenActHtml(act.content_html), `Акт ${act.act_number}`)}
+        send={(p) => actsApi.sendEmail(act.id, p)}
+      />
     </CrmLayout>
   )
 }

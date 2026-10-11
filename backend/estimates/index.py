@@ -1,7 +1,29 @@
 import json
 import os
+import re
+import html as html_lib
 import psycopg2
+from mailer import send_document_email
 
+
+
+def build_doc_email(brand, comp_phone, comp_email, comp_site, client_name, doc_label, note):
+    e = html_lib.escape
+    greet = f'Здравствуйте, {client_name}!' if client_name else 'Здравствуйте!'
+    note_html = f'<p style="margin:0 0 14px;white-space:pre-line">{e(note)}</p>' if note else ''
+    contacts = ' · '.join(x for x in [comp_phone, comp_email, comp_site] if x)
+    html_body = f'''<!doctype html><html><body style="margin:0;padding:24px;background:#f4f1ea;font-family:Arial,sans-serif;color:#161616">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden">
+<tr><td style="background:#5C3A11;padding:18px 24px;color:#fff;font-size:18px;font-weight:bold">{e(brand)}</td></tr>
+<tr><td style="padding:24px;font-size:15px;line-height:1.55">
+<p style="margin:0 0 14px">{e(greet)}</p>
+<p style="margin:0 0 14px">Направляем вам {e(doc_label)}. Файл приложен к письму в формате PDF.</p>
+{note_html}
+<p style="margin:0 0 14px">Если появятся вопросы — просто ответьте на это письмо.</p>
+<p style="margin:20px 0 0;padding-top:16px;border-top:1px solid #eee;font-size:13px;color:#777">С уважением, {e(brand)}{('<br/>' + e(contacts)) if contacts else ''}</p>
+</td></tr></table></body></html>'''
+    text_body = f"{greet}\n\nНаправляем вам {doc_label}. Файл приложен к письму.\n\n{note}\n\nС уважением, {brand}\n{contacts}"
+    return html_body, text_body
 
 def get_conn():
     return psycopg2.connect(os.environ['DATABASE_URL'])
@@ -54,7 +76,7 @@ ESTIMATE_KEYS = [
     'id', 'object_id', 'total_amount', 'created_at',
     'contract_number', 'contract_date', 'discount_percent', 'discount_amount',
     'notes', 'subtotal_amount', 'status', 'revision_number', 'created_by',
-    'apply_signature', 'apply_stamp',
+    'apply_signature', 'apply_stamp', 'estimate_number',
 ]
 
 
@@ -96,13 +118,13 @@ def handler(event: dict, context) -> dict:
                     return response(403, {'error': 'Недостаточно прав'})
 
                 cur.execute(
-                    "SELECT o.object_code, o.client_name, o.client_phone, o.email, o.object_type, o.area "
+                    "SELECT o.object_code, o.client_name, o.client_phone, o.email, o.object_type, o.area, o.address "
                     "FROM objects o WHERE o.id = %s",
                     (estimate['object_id'],)
                 )
                 obj_row = cur.fetchone()
                 if obj_row:
-                    obj_keys = ['object_code', 'client_name', 'client_phone', 'email', 'object_type', 'area']
+                    obj_keys = ['object_code', 'client_name', 'client_phone', 'email', 'object_type', 'area', 'address']
                     estimate.update(dict(zip(obj_keys, obj_row)))
 
                 cur.execute(
@@ -163,6 +185,36 @@ def handler(event: dict, context) -> dict:
             rows = cur.fetchall()
             keys = ESTIMATE_KEYS + ['object_code', 'client_name', 'object_type', 'area', 'has_pending']
             return response(200, {'estimates': [dict(zip(keys, r)) for r in rows]})
+
+        if method == 'POST' and action == 'send_email':
+            if user.get('role') == 'client':
+                return response(403, {'error': 'Недостаточно прав'})
+            body = json.loads(event.get('body') or '{}')
+            to_email = (body.get('email') or '').strip()
+            pdf_b64 = body.get('pdf_base64') or ''
+            if not estimate_id:
+                return response(400, {'error': 'Не указан документ'})
+            if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', to_email):
+                return response(400, {'error': 'Укажите корректный email заказчика'})
+            if not pdf_b64:
+                return response(400, {'error': 'Нет файла документа'})
+            if len(pdf_b64) > 9_000_000:
+                return response(400, {'error': 'Файл слишком большой для отправки'})
+            cur.execute("SELECT COALESCE(NULLIF(e.estimate_number, ''), e.id::text), o.client_name FROM estimates e JOIN objects o ON o.id = e.object_id WHERE e.id = %s AND e.company_id = %s", (estimate_id, company_id))
+            row = cur.fetchone()
+            if not row:
+                return response(404, {'error': 'Документ не найден'})
+            number, client_name = row
+            cur.execute("SELECT name, phone, email, website FROM companies WHERE id = %s", (company_id,))
+            comp = cur.fetchone() or ('', '', '', '')
+            brand = comp[0] or 'FixKey'
+            label = f'Смета № {number}'
+            note = (body.get('message') or '').strip()[:2000]
+            html_body, text_body = build_doc_email(brand, comp[1] or '', comp[2] or '', comp[3] or '', client_name, label.lower(), note)
+            ok, err = send_document_email(to_email, label, html_body, text_body, pdf_b64, f'Смета_{number}.pdf', brand, comp[2] or '')
+            if not ok:
+                return response(502, {'error': err})
+            return response(200, {'success': True})
 
         if method == 'POST' and action == 'propose':
             body = json.loads(event.get('body') or '{}')
@@ -281,6 +333,7 @@ def handler(event: dict, context) -> dict:
             notes = (body.get('notes') or '').strip()
             apply_signature = bool(body.get('apply_signature'))
             apply_stamp = bool(body.get('apply_stamp'))
+            estimate_number = str(body.get('estimate_number') or '').strip()[:40]
 
             if not items:
                 return response(400, {'error': 'Добавьте хотя бы одну позицию сметы'})
@@ -319,8 +372,8 @@ def handler(event: dict, context) -> dict:
 
             cur.execute(
                 "UPDATE estimates SET total_amount = %s, subtotal_amount = %s, contract_number = %s, contract_date = %s, "
-                "discount_percent = %s, discount_amount = %s, notes = %s, apply_signature = %s, apply_stamp = %s WHERE id = %s",
-                (total, subtotal, contract_number, contract_date, discount_percent, discount_amount, notes, apply_signature, apply_stamp, estimate_id)
+                "discount_percent = %s, discount_amount = %s, notes = %s, apply_signature = %s, apply_stamp = %s, estimate_number = %s WHERE id = %s",
+                (total, subtotal, contract_number, contract_date, discount_percent, discount_amount, notes, apply_signature, apply_stamp, estimate_number, estimate_id)
             )
             cur.execute("DELETE FROM estimate_items WHERE estimate_id = %s", (estimate_id,))
             for it in clean_items:
@@ -352,6 +405,7 @@ def handler(event: dict, context) -> dict:
             notes = (body.get('notes') or '').strip()
             apply_signature = bool(body.get('apply_signature'))
             apply_stamp = bool(body.get('apply_stamp'))
+            estimate_number = str(body.get('estimate_number') or '').strip()[:40]
 
             if not obj_id:
                 return response(400, {'error': 'Не указан объект'})
@@ -401,9 +455,9 @@ def handler(event: dict, context) -> dict:
             next_revision = (cur.fetchone()[0] or 0) + 1
 
             cur.execute(
-                "INSERT INTO estimates (company_id, object_id, total_amount, subtotal_amount, contract_number, contract_date, discount_percent, discount_amount, notes, revision_number, created_by, apply_signature, apply_stamp) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id, created_at",
-                (company_id, obj_id, total, subtotal, contract_number, contract_date, discount_percent, discount_amount, notes, next_revision, user['user_id'], apply_signature, apply_stamp)
+                "INSERT INTO estimates (company_id, object_id, total_amount, subtotal_amount, contract_number, contract_date, discount_percent, discount_amount, notes, revision_number, created_by, apply_signature, apply_stamp, estimate_number) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id, created_at",
+                (company_id, obj_id, total, subtotal, contract_number, contract_date, discount_percent, discount_amount, notes, next_revision, user['user_id'], apply_signature, apply_stamp, estimate_number)
             )
             new_id, created_at = cur.fetchone()
 

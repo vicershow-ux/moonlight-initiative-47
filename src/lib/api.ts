@@ -371,6 +371,8 @@ export interface Estimate {
   company_contact_full_name?: string
   apply_signature?: boolean
   apply_stamp?: boolean
+  estimate_number?: string
+  address?: string
   revisions?: EstimateRevision[]
 }
 
@@ -390,6 +392,15 @@ export const estimatesApi = {
     return parseResponse(res) as Promise<Estimate>
   },
 
+  async sendEmail(id: number, payload: { email: string; pdf_base64: string; message?: string }) {
+    const res = await fetch(`${ESTIMATES_URL}?id=${id}&action=send_email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<{ success: boolean }>
+  },
+
   async create(payload: {
     object_id: number
     items: EstimateItem[]
@@ -400,6 +411,7 @@ export const estimatesApi = {
     notes?: string
     apply_signature?: boolean
     apply_stamp?: boolean
+    estimate_number?: string
   }) {
     const res = await fetch(ESTIMATES_URL, {
       method: "POST",
@@ -418,6 +430,7 @@ export const estimatesApi = {
     notes?: string
     apply_signature?: boolean
     apply_stamp?: boolean
+    estimate_number?: string
   }) {
     const res = await fetch(`${ESTIMATES_URL}?id=${id}`, {
       method: "PUT",
@@ -707,6 +720,15 @@ export const actsApi = {
   async get(id: number) {
     const res = await fetch(`${ACTS_URL}?id=${id}`, { headers: { ...authHeaders() } })
     return parseResponse(res) as Promise<Act>
+  },
+
+  async sendEmail(id: number, payload: { email: string; pdf_base64: string; message?: string }) {
+    const res = await fetch(`${ACTS_URL}?id=${id}&action=send_email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<{ success: boolean }>
   },
 
   async generate(payload: {

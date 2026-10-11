@@ -1,8 +1,30 @@
 import json
 import os
 import re
+import re
+import html as html_lib
 import psycopg2
+from mailer import send_document_email
 
+
+
+def build_doc_email(brand, comp_phone, comp_email, comp_site, client_name, doc_label, note):
+    e = html_lib.escape
+    greet = f'Здравствуйте, {client_name}!' if client_name else 'Здравствуйте!'
+    note_html = f'<p style="margin:0 0 14px;white-space:pre-line">{e(note)}</p>' if note else ''
+    contacts = ' · '.join(x for x in [comp_phone, comp_email, comp_site] if x)
+    html_body = f'''<!doctype html><html><body style="margin:0;padding:24px;background:#f4f1ea;font-family:Arial,sans-serif;color:#161616">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden">
+<tr><td style="background:#5C3A11;padding:18px 24px;color:#fff;font-size:18px;font-weight:bold">{e(brand)}</td></tr>
+<tr><td style="padding:24px;font-size:15px;line-height:1.55">
+<p style="margin:0 0 14px">{e(greet)}</p>
+<p style="margin:0 0 14px">Направляем вам {e(doc_label)}. Файл приложен к письму в формате PDF.</p>
+{note_html}
+<p style="margin:0 0 14px">Если появятся вопросы — просто ответьте на это письмо.</p>
+<p style="margin:20px 0 0;padding-top:16px;border-top:1px solid #eee;font-size:13px;color:#777">С уважением, {e(brand)}{('<br/>' + e(contacts)) if contacts else ''}</p>
+</td></tr></table></body></html>'''
+    text_body = f"{greet}\n\nНаправляем вам {doc_label}. Файл приложен к письму.\n\n{note}\n\nС уважением, {brand}\n{contacts}"
+    return html_body, text_body
 
 def get_conn():
     return psycopg2.connect(os.environ['DATABASE_URL'])
@@ -226,6 +248,7 @@ def parties_block(c, opts, executor_display, executor_short, client_name, custom
     add('Адрес', c.get('legal_address'))
     add('Тел.', c.get('phone'))
     add('Email', c.get('email'))
+    add('Сайт', c.get('website'))
     add('Банк', c.get('bank_name'))
     add('БИК', c.get('bik'))
     add('Р/с', c.get('account_number'))
@@ -347,6 +370,8 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
         executor_contacts += f'<p style="margin:2px 0">Email: {company_email}</p>'
 
     customer_contacts = ''
+    if address:
+        customer_contacts += f'<p style="margin:2px 0">Адрес объекта: {address}</p>'
     if client_phone:
         customer_contacts += f'<p style="margin:2px 0">Тел.: {client_phone}</p>'
     if client_email:
@@ -409,13 +434,13 @@ def load_context(cur, company_id, object_id, contract_id):
 
     cur.execute(
         "SELECT name, contact_full_name, phone, email, entity_type, ogrn, inn, kpp, legal_address, "
-        "bank_name, bik, account_number, correspondent_account, signature_url, stamp_url "
+        "bank_name, bik, account_number, correspondent_account, signature_url, stamp_url, website "
         "FROM companies WHERE id = %s",
         (company_id,)
     )
-    c = cur.fetchone() or ('',) * 15
+    c = cur.fetchone() or ('',) * 16
     keys = ['name', 'contact_full_name', 'phone', 'email', 'entity_type', 'ogrn', 'inn', 'kpp', 'legal_address',
-            'bank_name', 'bik', 'account_number', 'correspondent_account', 'signature_url', 'stamp_url']
+            'bank_name', 'bik', 'account_number', 'correspondent_account', 'signature_url', 'stamp_url', 'website']
     company_row = {k: (v or '') for k, v in zip(keys, c)}
 
     contract_row = None
@@ -487,6 +512,36 @@ def handler(event, context):
             keys = ACT_KEYS + ['object_code', 'client_name', 'address']
             acts = [dict(zip(keys, r)) for r in cur.fetchall()]
             return response(200, {'acts': acts})
+
+        if method == 'POST' and action == 'send_email':
+            if user.get('role') == 'client':
+                return response(403, {'error': 'Недостаточно прав'})
+            body = json.loads(event.get('body') or '{}')
+            to_email = (body.get('email') or '').strip()
+            pdf_b64 = body.get('pdf_base64') or ''
+            if not act_id:
+                return response(400, {'error': 'Не указан документ'})
+            if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', to_email):
+                return response(400, {'error': 'Укажите корректный email заказчика'})
+            if not pdf_b64:
+                return response(400, {'error': 'Нет файла документа'})
+            if len(pdf_b64) > 9_000_000:
+                return response(400, {'error': 'Файл слишком большой для отправки'})
+            cur.execute("SELECT a.act_number, o.client_name FROM acts a JOIN objects o ON o.id = a.object_id WHERE a.id = %s AND a.company_id = %s", (act_id, company_id))
+            row = cur.fetchone()
+            if not row:
+                return response(404, {'error': 'Документ не найден'})
+            number, client_name = row
+            cur.execute("SELECT name, phone, email, website FROM companies WHERE id = %s", (company_id,))
+            comp = cur.fetchone() or ('', '', '', '')
+            brand = comp[0] or 'FixKey'
+            label = f'Акт сдачи-приёмки выполненных работ № {number}'
+            note = (body.get('message') or '').strip()[:2000]
+            html_body, text_body = build_doc_email(brand, comp[1] or '', comp[2] or '', comp[3] or '', client_name, label.lower(), note)
+            ok, err = send_document_email(to_email, label, html_body, text_body, pdf_b64, f'Акт_{number}.pdf', brand, comp[2] or '')
+            if not ok:
+                return response(502, {'error': err})
+            return response(200, {'success': True})
 
         if method == 'POST' and action == 'generate':
             body = json.loads(event.get('body') or '{}')

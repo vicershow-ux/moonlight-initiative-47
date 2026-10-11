@@ -76,7 +76,7 @@ export function CreateContractModal({ open, onOpenChange, object }: CreateContra
               <option value="">-- Выберите смету --</option>
               {estimates.map((est) => (
                 <option key={est.id} value={est.id}>
-                  Смета №{est.id} — {formatMoney(est.total_amount)}
+                  Смета №{est.estimate_number || est.id} — {formatMoney(est.total_amount)}
                 </option>
               ))}
             </select>

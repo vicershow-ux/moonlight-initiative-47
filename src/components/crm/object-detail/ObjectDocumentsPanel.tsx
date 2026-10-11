@@ -73,7 +73,7 @@ export function ObjectDocumentsPanel({
           {estimates.map((est) => (
             <div key={est.id} className="bg-[#161616] border border-white/10 rounded-lg p-4">
               <div className="flex items-center justify-between mb-1">
-                <p className="text-sm font-medium">Смета №{est.id} (ред. №{est.revision_number ?? 1})</p>
+                <p className="text-sm font-medium">Смета №{est.estimate_number || est.id} (ред. №{est.revision_number ?? 1})</p>
                 <div className="flex items-center gap-1.5">
                   <span className={`px-2 py-0.5 rounded-full text-xs ${getEstimateStatusColor(est.status)}`}>
                     {getEstimateStatusLabel(est.status)}

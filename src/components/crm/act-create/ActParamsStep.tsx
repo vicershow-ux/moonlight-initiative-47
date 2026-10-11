@@ -17,6 +17,8 @@ interface ActParamsStepProps {
   setActType: (v: string) => void
   actDate: string
   setActDate: (v: string) => void
+  actNumber: string
+  setActNumber: (v: string) => void
   options: ActOptions
   setOpt: (key: keyof ActOptions, value: string | boolean) => void
   company?: CompanyData | null
@@ -35,6 +37,8 @@ export function ActParamsStep({
   setActType,
   actDate,
   setActDate,
+  actNumber,
+  setActNumber,
   options,
   setOpt,
   company,
@@ -70,9 +74,20 @@ export function ActParamsStep({
         </select>
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs text-white/50">Дата акта</label>
-        <input type="date" value={actDate} onChange={(e) => setActDate(e.target.value)} className={fieldClass} />
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs text-white/50">Номер акта</label>
+          <input
+            value={actNumber}
+            onChange={(e) => setActNumber(e.target.value)}
+            placeholder="Присвоится автоматически"
+            className={fieldClass}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs text-white/50">Дата акта</label>
+          <input type="date" value={actDate} onChange={(e) => setActDate(e.target.value)} className={fieldClass} />
+        </div>
       </div>
 
       <div className="border border-white/10 rounded-lg p-4">
@@ -152,7 +167,7 @@ export function ActParamsStep({
           <option value="">Смета не выбрана</option>
           {estimates.map((est) => (
             <option key={est.id} value={est.id}>
-              Смета №{est.id} — {formatMoney(est.total_amount)}
+              Смета №{est.estimate_number || est.id} — {formatMoney(est.total_amount)}
             </option>
           ))}
         </select>
