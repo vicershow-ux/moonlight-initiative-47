@@ -14,6 +14,7 @@ import { DocumentsToolbar } from "@/components/crm/documents/DocumentsToolbar"
 import { DocumentEstimateRow, DocumentMatEstimateRow } from "@/components/crm/documents/DocumentEstimateRows"
 import { DocumentContractRow, DocumentActRow } from "@/components/crm/documents/DocumentContractRows"
 import { TabKey } from "@/components/crm/documents/constants"
+import { DocumentInvoicesTab } from "@/components/crm/documents/DocumentInvoicesTab"
 import { DocumentMobileCard } from "@/components/crm/documents/DocumentMobileCard"
 import { DeleteButton } from "@/components/ui/delete-button"
 
@@ -216,7 +217,7 @@ export default function Documents() {
     (showActs && filteredActs.length > 0)
 
   return (
-    <CrmLayout title="Реестр документов" subtitle="Единый центр управления сметами, договорами подряда и актами выполненных работ вашей компании">
+    <CrmLayout title="Реестр документов" subtitle="Единый центр управления сметами, договорами подряда, актами и счетами вашей компании">
       <div className="bg-[#1f1f1f] border border-white/10 rounded-xl overflow-hidden">
         <DocumentsToolbar
           tab={tab}
@@ -225,7 +226,9 @@ export default function Documents() {
           setSearch={setSearch}
         />
 
-        {loading ? (
+        {tab === "invoices" ? (
+          <DocumentInvoicesTab search={search} />
+        ) : loading ? (
           <div className="flex justify-center py-16">
             <Icon name="Loader2" size={24} className="animate-spin text-white/40" />
           </div>
