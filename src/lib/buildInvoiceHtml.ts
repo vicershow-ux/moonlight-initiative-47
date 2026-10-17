@@ -78,18 +78,19 @@ export function buildInvoiceHtml(inv: Invoice): string {
     )
     .join("")
 
-  const sellerLine = [
-    esc(sellerName),
-    c.inn ? `ИНН ${esc(c.inn)}` : "",
-    isLegal && c.kpp ? `КПП ${esc(c.kpp)}` : "",
-    (isIp || isLegal) && c.ogrn ? `${isLegal ? "ОГРН" : "ОГРНИП"} ${esc(c.ogrn)}` : "",
-    c.legal_address ? esc(c.legal_address) : "",
-    c.phone ? `тел.: ${esc(c.phone)}` : "",
-    c.email ? `e-mail: ${esc(c.email)}` : "",
-    c.website ? `сайт: ${esc(c.website)}` : "",
-  ]
-    .filter(Boolean)
-    .join(", ")
+  const field = (label: string, value?: string | null) =>
+    value ? `<tr><td class="k">${label}</td><td class="v">${esc(value)}</td></tr>` : ""
+
+  const sellerRows = [
+    field("Наименование", sellerName),
+    field("ИНН", c.inn),
+    isLegal ? field("КПП", c.kpp) : "",
+    isIp || isLegal ? field(isLegal ? "ОГРН" : "ОГРНИП", c.ogrn) : "",
+    field("Адрес", c.legal_address),
+    field("Телефон", c.phone),
+    field("E-mail", c.email),
+    field("Сайт", c.website),
+  ].join("")
 
   const opts = inv.contract?.options || {}
   const buyerName =
@@ -98,16 +99,14 @@ export function buildInvoiceHtml(inv: Invoice): string {
       : opts.customer_type === "entrepreneur"
         ? `ИП ${opts.customer_name || cust.name}`
         : opts.customer_name || cust.name
-  const buyerLine = [
-    esc(buyerName),
-    opts.customer_type === "entrepreneur" && opts.customer_ogrnip ? `ОГРНИП ${esc(opts.customer_ogrnip)}` : "",
-    opts.customer_type === "legal" && opts.customer_ogrn ? `ОГРН ${esc(opts.customer_ogrn)}` : "",
-    cust.address ? `адрес объекта: ${esc(cust.address)}` : "",
-    cust.phone ? `тел.: ${esc(cust.phone)}` : "",
-    cust.email ? `e-mail: ${esc(cust.email)}` : "",
-  ]
-    .filter(Boolean)
-    .join(", ")
+  const buyerRows = [
+    field(opts.customer_type === "legal" ? "Организация" : "ФИО", buyerName),
+    opts.customer_type === "entrepreneur" ? field("ОГРНИП", opts.customer_ogrnip) : "",
+    opts.customer_type === "legal" ? field("ОГРН", opts.customer_ogrn) : "",
+    field("Адрес объекта", cust.address),
+    field("Телефон", cust.phone),
+    field("E-mail", cust.email),
+  ].join("")
 
   const purpose = inv.purpose || defaultPurpose(inv)
   const sig =
@@ -117,57 +116,85 @@ export function buildInvoiceHtml(inv: Invoice): string {
   const stamp =
     inv.apply_stamp && c.stamp_url ? `<img src="${esc(c.stamp_url)}" crossorigin="anonymous" alt="" class="inv-stamp"/>` : ""
 
+  const acc = (v?: string | null) => esc((v || "").replace(/\s+/g, "").replace(/(\d{4})(?=\d)/g, "$1 "))
+
   return `<div class="invoice-doc">
 <style>
-.invoice-doc { font-family: Arial, sans-serif; color: #111; font-size: 12.5px; line-height: 1.4; }
+.invoice-doc { font-family: Arial, sans-serif; color: #161616; font-size: 12.5px; line-height: 1.45; }
 .invoice-doc table { border-collapse: collapse; width: 100%; }
-.invoice-doc .bank td { border: 1px solid #333; padding: 4px 6px; vertical-align: top; }
-.invoice-doc .bank .small { font-size: 10.5px; color: #444; }
-.invoice-doc h1 { font-size: 19px; margin: 22px 0 6px; padding-bottom: 6px; border-bottom: 2px solid #111; }
-.invoice-doc .party { margin: 8px 0; }
-.invoice-doc .party b { display: inline-block; min-width: 110px; }
-.invoice-doc .items th { background: #5C3A11; color: #fff; border: 1px solid #333; padding: 6px; font-size: 11.5px; }
-.invoice-doc .items td { border: 1px solid #333; padding: 5px 6px; }
+.invoice-doc .sec-title { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #6B4508; margin: 0 0 6px; }
+.invoice-doc .bank { border: 1.2px solid #6B4508; border-radius: 10px; overflow: hidden; }
+.invoice-doc .bank-head { background: #5C3A11; color: #fff; padding: 8px 14px; font-weight: 700; font-size: 12px; letter-spacing: .4px; text-transform: uppercase; }
+.invoice-doc .bank td { padding: 7px 14px; border-top: 1px solid #D9C9A8; vertical-align: top; }
+.invoice-doc .bank tr:first-child td { border-top: none; }
+.invoice-doc .bank .k { width: 38%; color: #5a4a30; font-size: 11.5px; }
+.invoice-doc .bank .v { font-weight: 600; }
+.invoice-doc .bank .acc { font-family: "Courier New", monospace; font-size: 13.5px; font-weight: 700; letter-spacing: .3px; }
+.invoice-doc .bank tr.main td { background: #F3EBDC; }
+.invoice-doc .title { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin: 22px 0 14px; padding-bottom: 8px; border-bottom: 2.5px solid #5C3A11; }
+.invoice-doc .title h1 { font-size: 20px; margin: 0; }
+.invoice-doc .title .due { font-size: 12px; color: #5a4a30; text-align: right; white-space: nowrap; }
+.invoice-doc .title .due b { color: #161616; }
+.invoice-doc .parties { display: table; width: 100%; table-layout: fixed; border-spacing: 0; }
+.invoice-doc .party { display: table-cell; width: 50%; vertical-align: top; }
+.invoice-doc .party + .party { padding-left: 14px; }
+.invoice-doc .card { border: 1.2px solid #6B4508; border-radius: 10px; overflow: hidden; height: 100%; }
+.invoice-doc .card-head { background: #B9A27A; color: #1F1405; padding: 7px 12px; font-weight: 700; font-size: 11.5px; letter-spacing: .4px; text-transform: uppercase; }
+.invoice-doc .card td { padding: 4px 12px; vertical-align: top; font-size: 12px; }
+.invoice-doc .card tr:first-child td { padding-top: 8px; }
+.invoice-doc .card tr:last-child td { padding-bottom: 9px; }
+.invoice-doc .card .k { width: 34%; color: #6b5a3e; font-size: 11px; }
+.invoice-doc .card .v { font-weight: 600; word-break: break-word; }
+.invoice-doc .basis { margin: 12px 0 0; padding: 9px 14px; background: #F3EBDC; border-left: 4px solid #5C3A11; border-radius: 8px; font-size: 12.5px; }
+.invoice-doc .items { margin-top: 14px; }
+.invoice-doc .items { border-collapse: collapse; }
+.invoice-doc .items th { background: #5C3A11; color: #fff; border: 1.2px solid #6B4508; padding: 7px 6px; font-size: 11.5px; }
+.invoice-doc .items td { border: 1.2px solid #6B4508; padding: 6px; }
 .invoice-doc .items tr { page-break-inside: avoid; break-inside: avoid; }
 .invoice-doc .c { text-align: center; }
 .invoice-doc .r { text-align: right; white-space: nowrap; }
-.invoice-doc .totals { width: auto; margin: 8px 0 0 auto; }
-.invoice-doc .totals td { padding: 2px 0 2px 16px; font-weight: 700; }
-.invoice-doc .totals .val { text-align: right; min-width: 110px; }
+.invoice-doc .totals { width: auto; margin: 10px 0 0 auto; border: 1.2px solid #6B4508; border-radius: 10px; border-collapse: separate; border-spacing: 0; overflow: hidden; }
+.invoice-doc .totals td { padding: 5px 14px; font-weight: 600; }
+.invoice-doc .totals .val { text-align: right; min-width: 120px; }
+.invoice-doc .totals tr.grand td { background: #5C3A11; color: #fff; font-size: 15px; font-weight: 700; padding: 8px 14px; }
 .invoice-doc .words { margin: 12px 0 4px; }
-.invoice-doc .words b { font-weight: 700; }
-.invoice-doc .note { font-size: 11.5px; color: #333; margin: 10px 0 0; padding-bottom: 10px; border-bottom: 2px solid #111; }
-.invoice-doc .signs { margin-top: 28px; page-break-inside: avoid; break-inside: avoid; }
+.invoice-doc .note { font-size: 11.5px; color: #333; margin: 10px 0 0; padding-bottom: 10px; border-bottom: 2px solid #5C3A11; }
+.invoice-doc .signs { margin-top: 26px; page-break-inside: avoid; break-inside: avoid; }
 .invoice-doc .sign-cell { position: relative; padding-bottom: 70px; }
-.invoice-doc .sign-line { position: relative; height: 70px; border-bottom: 1px solid #111; margin: 0 0 3px; }
+.invoice-doc .sign-line { position: relative; height: 70px; border-bottom: 1px solid #161616; margin: 0 0 3px; }
 .invoice-doc .inv-sig { position: absolute; left: 10px; bottom: 3px; height: 58px; max-width: 190px; object-fit: contain; }
 .invoice-doc .inv-stamp { position: absolute; right: 0; top: 74px; width: 118px; height: 118px; object-fit: contain; opacity: .9; }
 .invoice-doc .hint { font-size: 10.5px; color: #555; }
 </style>
 
-<table class="bank">
-<tr>
-  <td colspan="2" rowspan="2" style="width:60%">${esc(c.bank_name)}<br/><span class="small">Банк получателя</span></td>
-  <td style="width:10%">БИК</td><td>${esc(c.bik)}</td>
-</tr>
-<tr><td>Сч. №</td><td>${esc(c.correspondent_account)}</td></tr>
-<tr>
-  <td>ИНН ${esc(c.inn)}</td><td>${isLegal ? `КПП ${esc(c.kpp)}` : ""}</td>
-  <td rowspan="2">Сч. №</td><td rowspan="2">${esc(c.account_number)}</td>
-</tr>
-<tr><td colspan="2">${esc(sellerName)}<br/><span class="small">Получатель</span></td></tr>
+<div class="sec-title">Реквизиты для оплаты</div>
+<div class="bank">
+<div class="bank-head">Получатель платежа</div>
+<table>
+<tr><td class="k">Получатель</td><td class="v">${esc(sellerName)}</td></tr>
+<tr><td class="k">ИНН${isLegal ? " / КПП" : ""}</td><td class="v">${esc(c.inn)}${isLegal && c.kpp ? ` / ${esc(c.kpp)}` : ""}</td></tr>
+<tr class="main"><td class="k">Расчётный счёт (р/с)</td><td class="v acc">${acc(c.account_number)}</td></tr>
+<tr><td class="k">Банк получателя</td><td class="v">${esc(c.bank_name)}</td></tr>
+<tr><td class="k">БИК банка</td><td class="v acc">${esc(c.bik)}</td></tr>
+<tr><td class="k">Корреспондентский счёт (к/с)</td><td class="v acc">${acc(c.correspondent_account)}</td></tr>
 </table>
+</div>
 
-<h1>Счёт на оплату № ${esc(inv.invoice_number)} от ${dateRu(inv.invoice_date)}</h1>
+<div class="title">
+  <h1>Счёт на оплату № ${esc(inv.invoice_number)} от ${dateRu(inv.invoice_date)}</h1>
+  ${inv.due_date ? `<div class="due">Оплатить до<br/><b>${dateRu(inv.due_date)}</b></div>` : ""}
+</div>
 
-<div class="party"><b>Поставщик<br/>(Исполнитель):</b> ${sellerLine}</div>
-<div class="party"><b>Покупатель<br/>(Заказчик):</b> ${buyerLine}</div>
-${purpose ? `<div class="party"><b>Основание:</b> ${esc(purpose)}</div>` : ""}
+<div class="parties">
+  <div class="party"><div class="card"><div class="card-head">Поставщик (Исполнитель)</div><table>${sellerRows}</table></div></div>
+  <div class="party"><div class="card"><div class="card-head">Покупатель (Заказчик)</div><table>${buyerRows}</table></div></div>
+</div>
+${purpose ? `<div class="basis"><b>Основание:</b> ${esc(purpose)}</div>` : ""}
 
-<table class="items" style="margin-top:10px">
+<table class="items">
 <thead><tr>
   <th style="width:5%">№</th><th>Товары (работы, услуги)</th><th style="width:9%">Кол-во</th>
-  <th style="width:8%">Ед.</th><th style="width:15%">Цена</th><th style="width:16%">Сумма</th>
+  <th style="width:8%">Ед.</th><th style="width:15%">Цена, ₽</th><th style="width:16%">Сумма, ₽</th>
 </tr></thead>
 <tbody>${rows}</tbody>
 </table>
@@ -175,13 +202,13 @@ ${purpose ? `<div class="party"><b>Основание:</b> ${esc(purpose)}</div>
 <table class="totals">
 <tr><td class="lbl">Итого:</td><td class="val">${money(sum)}</td></tr>
 ${vatLine}
-<tr><td class="lbl">Всего к оплате:</td><td class="val">${money(total)}</td></tr>
+<tr class="grand"><td class="lbl">Всего к оплате:</td><td class="val">${money(total)} ₽</td></tr>
 </table>
 
 <div class="words">Всего наименований ${(inv.items || []).length}, на сумму ${money(total)} руб.<br/>
 <b>${esc(capitalize(moneyInWords(Math.floor(total))))} ${kopecks(total)} ${kopWord(Number(kopecks(total)))}</b></div>
 <div class="note">
-${inv.due_date ? `Оплатить не позднее ${dateRu(inv.due_date)} ` : ""}В назначении платежа укажите номер счёта.
+В назначении платежа укажите: «Оплата по счёту № ${esc(inv.invoice_number)} от ${dateRu(inv.invoice_date)}».
 ${inv.notes ? `<br/>${esc(inv.notes).replace(/\n/g, "<br/>")}` : ""}
 </div>
 
