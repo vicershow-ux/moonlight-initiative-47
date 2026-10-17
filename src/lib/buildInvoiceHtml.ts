@@ -124,7 +124,7 @@ export function buildInvoiceHtml(inv: Invoice): string {
 .invoice-doc table { border-collapse: collapse; width: 100%; }
 .invoice-doc, .invoice-doc * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 .invoice-doc .sec-title { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #6B4508; margin: 0 0 6px; }
-.invoice-doc .bank { border: 1.2px solid #6B4508; overflow: hidden; }
+.invoice-doc .bank { border: 1.2px solid #6B4508; border-radius: 10px; overflow: hidden; }
 .invoice-doc .bank-head { background: #5C3A11; color: #fff; padding: 8px 14px; font-weight: 700; font-size: 12px; letter-spacing: .4px; text-transform: uppercase; }
 .invoice-doc .bank td { padding: 7px 14px; border-top: 1px solid #B9A27A; vertical-align: top; }
 .invoice-doc .bank tr:first-child td { border-top: none; }
@@ -139,22 +139,27 @@ export function buildInvoiceHtml(inv: Invoice): string {
 .invoice-doc .parties { display: table; width: 100%; table-layout: fixed; border-spacing: 0; }
 .invoice-doc .party { display: table-cell; width: 50%; vertical-align: top; }
 .invoice-doc .party + .party { padding-left: 14px; }
-.invoice-doc .card { border: 1.2px solid #6B4508; overflow: hidden; height: 100%; }
+.invoice-doc .card { border: 1.2px solid #6B4508; border-radius: 10px; overflow: hidden; height: 100%; }
 .invoice-doc .card-head { background: #B9A27A; color: #1F1405; padding: 7px 12px; font-weight: 700; font-size: 11.5px; letter-spacing: .4px; text-transform: uppercase; }
 .invoice-doc .card td { padding: 4px 12px; vertical-align: top; font-size: 12px; }
 .invoice-doc .card tr:first-child td { padding-top: 8px; }
 .invoice-doc .card tr:last-child td { padding-bottom: 9px; }
 .invoice-doc .card .k { width: 34%; color: #6b5a3e; font-size: 11px; }
 .invoice-doc .card .v { font-weight: 600; word-break: break-word; }
-.invoice-doc .basis { margin: 12px 0 0; padding: 9px 14px; background: #D3C2A2; border: 1.2px solid #6B4508; border-left: 4px solid #5C3A11; font-size: 12.5px; color: #161616; }
-.invoice-doc .items { margin-top: 14px; }
-.invoice-doc .items { border-collapse: collapse; }
+.invoice-doc .basis { margin: 12px 0 0; padding: 9px 14px; background: #D3C2A2; border: 1.2px solid #6B4508; border-left: 4px solid #5C3A11; border-radius: 10px; font-size: 12.5px; color: #161616; }
+.invoice-doc .items-wrap { margin-top: 14px; }
 .invoice-doc .items th { background: #5C3A11; color: #fff; border: 1.2px solid #6B4508; padding: 7px 6px; font-size: 11.5px; }
 .invoice-doc .items td { border: 1.2px solid #6B4508; padding: 6px; }
+.invoice-doc .pdf-rt { border: 1.2px solid #6B4508; border-radius: 10px; overflow: hidden; box-sizing: border-box; }
+.invoice-doc .pdf-rt > table { border-collapse: collapse; width: 100%; margin: 0; }
+.invoice-doc .pdf-rt > table tr > *:first-child { border-left: none; }
+.invoice-doc .pdf-rt > table tr > *:last-child { border-right: none; }
+.invoice-doc .pdf-rt > table > thead > tr:first-child > * { border-top: none; }
+.invoice-doc .pdf-rt > table > *:last-child > tr:last-child > * { border-bottom: none; }
 .invoice-doc .items tr { page-break-inside: avoid; break-inside: avoid; }
 .invoice-doc .c { text-align: center; }
 .invoice-doc .r { text-align: right; white-space: nowrap; }
-.invoice-doc .totals { width: auto; margin: 10px 0 0 auto; border: 1.2px solid #6B4508; border-collapse: separate; border-spacing: 0; overflow: hidden; }
+.invoice-doc .totals { width: auto; margin: 10px 0 0 auto; border: 1.2px solid #6B4508; border-collapse: separate; border-spacing: 0; border-radius: 10px; overflow: hidden; }
 .invoice-doc .totals td { padding: 5px 14px; font-weight: 600; }
 .invoice-doc .totals .val { text-align: right; min-width: 120px; }
 .invoice-doc .totals tr.grand td { background: #5C3A11; color: #fff; font-size: 15px; font-weight: 700; padding: 8px 14px; }
@@ -192,13 +197,13 @@ export function buildInvoiceHtml(inv: Invoice): string {
 </div>
 ${purpose ? `<div class="basis"><b>Основание:</b> ${esc(purpose)}</div>` : ""}
 
-<table class="items">
+<div class="pdf-rt items-wrap"><table class="items">
 <thead><tr>
   <th style="width:5%">№</th><th>Товары (работы, услуги)</th><th style="width:9%">Кол-во</th>
   <th style="width:8%">Ед.</th><th style="width:15%">Цена, ₽</th><th style="width:16%">Сумма, ₽</th>
 </tr></thead>
 <tbody>${rows}</tbody>
-</table>
+</table></div>
 
 <table class="totals">
 <tr><td class="lbl">Итого:</td><td class="val">${money(sum)}</td></tr>
