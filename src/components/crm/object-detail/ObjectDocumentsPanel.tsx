@@ -5,6 +5,7 @@ import { ObjectMaterialEstimates } from "@/components/crm/ObjectMaterialEstimate
 import { DeleteButton } from "@/components/ui/delete-button"
 import { getEstimateStatusColor, getEstimateStatusLabel } from "@/lib/estimateStatus"
 import { formatMoney } from "./utils"
+import { ObjectInvoices } from "./ObjectInvoices"
 
 interface ObjectDocumentsPanelProps {
   object: ObjectItem
@@ -180,6 +181,8 @@ export function ObjectDocumentsPanel({
           ))}
         </div>
       )}
+
+      {!isClient && <ObjectInvoices objectId={object.id} />}
     </div>
   )
 }

@@ -35,6 +35,7 @@ const OBJECT_STATUSES_URL = funcUrl("object_statuses")
 const SITE_URL = funcUrl("site")
 const CONTRACTS_URL = funcUrl("contracts")
 const ACTS_URL = funcUrl("acts")
+const INVOICES_URL = funcUrl("invoices")
 const WAREHOUSE_URL = funcUrl("warehouse")
 const MATERIALS_URL = funcUrl("materials")
 const OBJECT_FILES_URL = funcUrl("object_files")
@@ -2034,5 +2035,98 @@ export const rentalsApi = {
       })
       return parseResponse(res)
     },
+  },
+}
+export interface InvoiceItem {
+  name: string
+  unit: string
+  quantity: number
+  price: number
+  amount: number
+}
+
+export type InvoiceVatMode = "none" | "included" | "on_top"
+
+export interface Invoice {
+  id: number
+  object_id: number
+  contract_id?: number | null
+  act_id?: number | null
+  invoice_number: string
+  invoice_date: string
+  due_date?: string | null
+  purpose: string
+  items: InvoiceItem[]
+  vat_mode: InvoiceVatMode
+  total_amount: number
+  apply_signature: boolean
+  apply_stamp: boolean
+  notes: string
+  status: "issued" | "sent" | "paid"
+  created_at: string
+  updated_at: string
+  object_code?: string
+  client_name?: string
+  address?: string
+  contract_number?: string | null
+  act_number?: string | null
+  company?: Partial<CompanyData> & { stamp_url?: string }
+  customer?: { name: string; phone: string; email: string; address: string; object_code: string }
+  contract?: { contract_number: string; contract_date: string; options: ContractOptions } | null
+  act?: { act_number: string; act_date: string } | null
+}
+
+export type InvoicePayload = Partial<
+  Pick<
+    Invoice,
+    | "object_id" | "contract_id" | "act_id" | "invoice_number" | "invoice_date" | "due_date" | "purpose"
+    | "items" | "vat_mode" | "apply_signature" | "apply_stamp" | "notes" | "status"
+  >
+>
+
+export const invoicesApi = {
+  async list(filter: { object_id?: number; contract_id?: number; act_id?: number } = {}) {
+    const q = new URLSearchParams(
+      Object.entries(filter).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]),
+    ).toString()
+    const res = await fetch(`${INVOICES_URL}${q ? `?${q}` : ""}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ invoices: Invoice[] }>
+  },
+
+  async get(id: number) {
+    const res = await fetch(`${INVOICES_URL}?id=${id}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<Invoice>
+  },
+
+  async create(payload: InvoicePayload) {
+    const res = await fetch(INVOICES_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<{ id: number; invoice_number: string }>
+  },
+
+  async update(id: number, payload: InvoicePayload) {
+    const res = await fetch(`${INVOICES_URL}?id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<{ success: boolean }>
+  },
+
+  async remove(id: number) {
+    const res = await fetch(`${INVOICES_URL}?id=${id}`, { method: "DELETE", headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ success: boolean }>
+  },
+
+  async sendEmail(id: number, payload: { email: string; pdf_base64: string; message?: string }) {
+    const res = await fetch(`${INVOICES_URL}?id=${id}&action=send_email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<{ success: boolean }>
   },
 }

@@ -31,6 +31,8 @@ const ContractEdit = lazy(() => import("./pages/crm/ContractEdit"));
 const ContractView = lazy(() => import("./pages/crm/ContractView"));
 const ActCreate = lazy(() => import("./pages/crm/ActCreate"));
 const ActView = lazy(() => import("./pages/crm/ActView"));
+const InvoiceEdit = lazy(() => import("./pages/crm/InvoiceEdit"));
+const InvoiceView = lazy(() => import("./pages/crm/InvoiceView"));
 const Services = lazy(() => import("./pages/crm/Services"));
 const ServiceCreate = lazy(() => import("./pages/crm/ServiceCreate"));
 const CompanyAssets = lazy(() => import("./pages/crm/CompanyAssets"));
@@ -82,6 +84,9 @@ const App = () => (
             <Route path="/cabinet/objects/:id/acts/new" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><ActCreate /></ProtectedRoute>} />
             <Route path="/cabinet/objects/:id/acts/:actId/edit" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><ActCreate /></ProtectedRoute>} />
             <Route path="/cabinet/objects/:id/acts/:actId" element={<ProtectedRoute><ActView /></ProtectedRoute>} />
+            <Route path="/cabinet/objects/:id/invoices/new" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><InvoiceEdit /></ProtectedRoute>} />
+            <Route path="/cabinet/objects/:id/invoices/:invoiceId/edit" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><InvoiceEdit /></ProtectedRoute>} />
+            <Route path="/cabinet/objects/:id/invoices/:invoiceId" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><InvoiceView /></ProtectedRoute>} />
             <Route path="/cabinet/documents" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Documents /></ProtectedRoute>} />
             <Route path="/cabinet/customers" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Customers /></ProtectedRoute>} />
             <Route path="/cabinet/services" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><Services /></ProtectedRoute>} />

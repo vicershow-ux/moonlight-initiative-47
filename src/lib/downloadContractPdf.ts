@@ -61,7 +61,7 @@ async function renderContractPdf(contentHtml: string, contractNumber: string, mo
   const worker = html2pdf()
     .set({
       margin: [10, 10, 10, 10],
-      filename: `Договор №${contractNumber}.pdf`,
+      filename: /^(Акт|Счёт) /.test(contractNumber) ? `${contractNumber}.pdf` : `Договор №${contractNumber}.pdf`,
       // Для письма — облегчённый файл: сервер принимает вложения примерно до 3 МБ
       image: { type: "jpeg", quality: mode === "save" ? 0.98 : 0.8 },
       html2canvas: { scale: mode === "save" ? 2 : 1.5, useCORS: true, backgroundColor: "#ffffff" },

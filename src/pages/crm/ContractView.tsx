@@ -95,6 +95,13 @@ export default function ContractView() {
             <Icon name="Plus" size={14} />
             Составить акт
           </Link>
+          <Link
+            to={`/cabinet/objects/${objectId}/invoices/new?contract_id=${contract.id}`}
+            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
+          >
+            <Icon name="Receipt" size={14} />
+            Выставить счёт
+          </Link>
           <button
             onClick={() => setSendOpen(true)}
             className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"

@@ -80,6 +80,13 @@ export default function ActView() {
             <Icon name="Pencil" size={14} />
             Редактировать
           </Link>
+          <Link
+            to={`/cabinet/objects/${act.object_id}/invoices/new?act_id=${act.id}`}
+            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
+          >
+            <Icon name="Receipt" size={14} />
+            Выставить счёт
+          </Link>
           <button
             onClick={() => setSendOpen(true)}
             className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
