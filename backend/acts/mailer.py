@@ -29,6 +29,9 @@ def send_document_email(to_email, subject, html_body, text_body, pdf_b64, filena
     msg['To'] = to_email
     if reply_to:
         msg['Reply-To'] = reply_to
+    # Копия отправленного документа — в рабочий ящик, чтобы было видно, что и кому ушло
+    if user.lower() != to_email.lower():
+        msg['Bcc'] = user
     msg.set_content(text_body)
     msg.add_alternative(html_body, subtype='html')
     msg.add_attachment(pdf_bytes, maintype='application', subtype='pdf', filename=filename)
@@ -58,3 +61,4 @@ def send_document_email(to_email, subject, html_body, text_body, pdf_b64, filena
     if 'timed out' in joined or 'timeout' in joined:
         return False, 'Почтовый сервер не отвечает, попробуйте позже.'
     return False, 'Не удалось отправить письмо: ' + ' | '.join(errors)[:300]
+

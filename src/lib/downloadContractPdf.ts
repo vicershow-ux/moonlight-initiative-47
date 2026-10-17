@@ -62,9 +62,10 @@ async function renderContractPdf(contentHtml: string, contractNumber: string, mo
     .set({
       margin: [10, 10, 10, 10],
       filename: `Договор №${contractNumber}.pdf`,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
-      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      // Для письма — облегчённый файл: сервер принимает вложения примерно до 3 МБ
+      image: { type: "jpeg", quality: mode === "save" ? 0.98 : 0.8 },
+      html2canvas: { scale: mode === "save" ? 2 : 1.5, useCORS: true, backgroundColor: "#ffffff" },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait", compress: true },
       pagebreak: { mode: ["css", "legacy"], avoid: ["p", "tr", "h3", "li"] },
     } as never)
     .from(root)

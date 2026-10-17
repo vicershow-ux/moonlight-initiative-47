@@ -44,6 +44,9 @@ export function SendDocEmailDialog({ open, onOpenChange, docName, objectId, file
     try {
       const pdf = await makePdf()
       if (!pdf) throw new Error("Не удалось сформировать PDF")
+      if (pdf.length > 3_300_000) {
+        throw new Error("Документ слишком большой для письма. Скачайте PDF и отправьте его вручную.")
+      }
       await send({ email: email.trim(), pdf_base64: pdf, message: message.trim() })
       setSent(true)
     } catch (e) {

@@ -741,9 +741,9 @@ async function renderEstimatePdf(estimate: Estimate, object: ObjectItem, company
       .set({
         margin: [12, 12, 12, 12],
         filename: `Смета №${estimate.estimate_number || estimate.id}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
+        image: { type: "jpeg", quality: mode === "save" ? 0.98 : 0.8 },
         html2canvas: {
-          scale: 2,
+          scale: mode === "save" ? 2 : 1.5,
           useCORS: true,
           backgroundColor: "#ffffff",
           width: 760,
@@ -751,7 +751,7 @@ async function renderEstimatePdf(estimate: Estimate, object: ObjectItem, company
           scrollX: 0,
           scrollY: 0,
         },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait", compress: true },
         pagebreak: { mode: ["css", "legacy"], avoid: ["tr", ".room-total", ".sign-row", ".summary", ".parties"] },
       } as never)
       .from(root)
