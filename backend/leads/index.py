@@ -63,7 +63,7 @@ def clean_works(cur, raw):
         if not name or qty <= 0 or qty > 1000000:
             continue
         cur.execute(
-            "SELECT unit, price FROM services WHERE company_id = %s AND is_active = true AND name = %s AND category = %s LIMIT 1",
+            "SELECT unit, price, id, subcategory FROM services WHERE company_id = %s AND is_active = true AND name = %s AND category = %s LIMIT 1",
             (LEADS_COMPANY_ID, name, category)
         )
         row = cur.fetchone()
@@ -71,7 +71,7 @@ def clean_works(cur, raw):
             continue
         price = float(row[1] or 0)
         out.append({'name': name, 'category': category, 'unit': row[0] or '', 'quantity': qty,
-                    'price': price, 'amount': round(qty * price, 2)})
+                    'price': price, 'amount': round(qty * price, 2), 'service_id': row[2], 'subcategory': row[3] or ''})
     return out
 
 
@@ -301,10 +301,11 @@ def handler(event: dict, context) -> dict:
         object_code = f"{LEADS_COMPANY_ID:03d}-20{year}-{seq:04d}"
 
         cur.execute(
-            "INSERT INTO objects (company_id, object_code, client_name, client_phone, email, object_type, area, status, lead_request) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+            "INSERT INTO objects (company_id, object_code, client_name, client_phone, email, object_type, area, status, lead_request, lead_works) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
             (LEADS_COMPANY_ID, object_code, client_name, client_phone, client_email, 'Заявка с сайта', 0, 'лид',
-             '\n\n'.join(x for x in [f'Комментарий: {comment}' if comment and works else '', lead_request] if x))
+             '\n\n'.join(x for x in [f'Комментарий: {comment}' if comment and works else '', lead_request] if x),
+             json.dumps(works, ensure_ascii=False) if works else '')
         )
         new_id = cur.fetchone()[0]
 

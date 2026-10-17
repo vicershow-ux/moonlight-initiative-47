@@ -62,6 +62,49 @@ def get_current_user(cur, event):
     return {'user_id': row[0], 'company_id': row[1], 'role': row[2], 'full_name': row[3]}
 
 
+def parse_lead_works(cur, company_id, raw_json, raw_text):
+    '''Работы из заявки с сайта: из сохранённого списка, а для старых заявок — из текста'''
+    works = []
+    try:
+        works = json.loads(raw_json) if raw_json else []
+    except ValueError:
+        works = []
+    if not works and raw_text:
+        for line in raw_text.split('\n'):
+            m = re.match(r'^\s*\d+\.\s+(.+?)\s+—\s+([\d.,]+)\s*(.*?)\s+×', line)
+            if m:
+                works.append({'name': m.group(1).strip(), 'quantity': float(m.group(2).replace(',', '.')), 'category': None})
+    out = []
+    for w in works:
+        name = str(w.get('name') or '').strip()
+        qty = float(w.get('quantity') or 0)
+        if not name or qty <= 0:
+            continue
+        if w.get('category') is None:
+            cur.execute(
+                "SELECT id, unit, price, category, subcategory FROM services WHERE company_id = %s AND name = %s ORDER BY is_active DESC LIMIT 1",
+                (company_id, name)
+            )
+        else:
+            cur.execute(
+                "SELECT id, unit, price, category, subcategory FROM services WHERE company_id = %s AND name = %s AND category = %s ORDER BY is_active DESC LIMIT 1",
+                (company_id, name, w.get('category') or '')
+            )
+        s = cur.fetchone()
+        price = float(s[2]) if s else float(w.get('price') or 0)
+        out.append({
+            'service_id': s[0] if s else None,
+            'name': name[:255],
+            'unit': ((s[1] if s else w.get('unit')) or 'шт')[:50],
+            'price': price,
+            'quantity': qty,
+            'amount': round(price * qty, 2),
+            'category': (s[3] if s else w.get('category')) or '',
+            'subcategory': (s[4] if s else w.get('subcategory')) or '',
+        })
+    return out
+
+
 def has_object_access(cur, user, object_id):
     if user['role'] != 'client':
         return True
@@ -215,6 +258,43 @@ def handler(event: dict, context) -> dict:
             if not ok:
                 return response(502, {'error': err})
             return response(200, {'success': True})
+
+        if method == 'POST' and action == 'from_lead':
+            if is_client:
+                return response(403, {'error': 'Недостаточно прав'})
+            body = json.loads(event.get('body') or '{}')
+            obj_id = body.get('object_id')
+            cur.execute(
+                "SELECT lead_works, lead_request FROM objects WHERE id = %s AND company_id = %s",
+                (obj_id, company_id)
+            )
+            row = cur.fetchone()
+            if not row:
+                return response(404, {'error': 'Объект не найден'})
+            works = parse_lead_works(cur, company_id, row[0], row[1])
+            if not works:
+                return response(400, {'error': 'В заявке нет работ из прайса'})
+
+            subtotal = round(sum(w['amount'] for w in works), 2)
+            cur.execute(
+                "SELECT COALESCE(MAX(revision_number), 0) FROM estimates WHERE object_id = %s AND company_id = %s",
+                (obj_id, company_id)
+            )
+            next_revision = (cur.fetchone()[0] or 0) + 1
+            cur.execute(
+                "INSERT INTO estimates (company_id, object_id, total_amount, subtotal_amount, contract_number, contract_date, discount_percent, discount_amount, notes, revision_number, created_by, apply_signature, apply_stamp, estimate_number) "
+                "VALUES (%s, %s, %s, %s, '', NULL, 0, 0, %s, %s, %s, false, false, '') RETURNING id",
+                (company_id, obj_id, subtotal, subtotal, 'Составлена по заявке клиента с сайта', next_revision, user['user_id'])
+            )
+            new_id = cur.fetchone()[0]
+            for w in works:
+                cur.execute(
+                    "INSERT INTO estimate_items (estimate_id, service_id, name, unit, price, quantity, times, discount_percent, amount, status, room_name, category, subcategory) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, 1, 0, %s, 'approved', '', %s, %s)",
+                    (new_id, w['service_id'], w['name'], w['unit'], w['price'], w['quantity'], w['amount'], w['category'], w['subcategory'])
+                )
+            conn.commit()
+            return response(200, {'id': new_id, 'items': len(works), 'total_amount': subtotal})
 
         if method == 'POST' and action == 'propose':
             body = json.loads(event.get('body') or '{}')

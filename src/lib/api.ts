@@ -192,6 +192,7 @@ export interface ObjectItem {
   measurer_comment: string
   design_project: string
   lead_request?: string
+  lead_works?: string
   created_at: string
   updated_at: string
 }
@@ -458,6 +459,15 @@ export const estimatesApi = {
       body: JSON.stringify({ status }),
     })
     return parseResponse(res)
+  },
+
+  async fromLead(objectId: number) {
+    const res = await fetch(`${ESTIMATES_URL}?action=from_lead`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ object_id: objectId }),
+    })
+    return parseResponse(res) as Promise<{ id: number; items: number; total_amount: number }>
   },
 
   async propose(payload: { estimate_id: number; name: string; unit: string; price: number; quantity: number }) {

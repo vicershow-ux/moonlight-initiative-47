@@ -3,14 +3,16 @@ import Icon from "@/components/ui/icon"
 import { ObjectItem, ObjectRoom } from "@/lib/api"
 import { yesNo, capitalizeFirst } from "./utils"
 import { num2 } from "@/lib/formatNumber"
+import { LeadToEstimateButton } from "./LeadToEstimateButton"
 
 interface ObjectInfoPanelsProps {
   object: ObjectItem
   rooms: ObjectRoom[]
   roomsLoading: boolean
+  isClient?: boolean
 }
 
-export function ObjectInfoPanels({ object, rooms, roomsLoading }: ObjectInfoPanelsProps) {
+export function ObjectInfoPanels({ object, rooms, roomsLoading, isClient }: ObjectInfoPanelsProps) {
   return (
     <>
       <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
@@ -99,10 +101,13 @@ export function ObjectInfoPanels({ object, rooms, roomsLoading }: ObjectInfoPane
 
       {object.lead_request && (
         <div className="bg-[#1f1f1f] border border-[#D4AF37]/30 rounded-xl p-5">
-          <p className="font-medium mb-3 flex items-center gap-2">
-            <Icon name="ShoppingCart" size={16} className="text-[#D4AF37]" />
-            Заявка клиента с сайта
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <p className="font-medium flex items-center gap-2">
+              <Icon name="ShoppingCart" size={16} className="text-[#D4AF37]" />
+              Заявка клиента с сайта
+            </p>
+            {!isClient && /\d+\.\s/.test(object.lead_request) && <LeadToEstimateButton objectId={object.id} />}
+          </div>
           <p className="text-sm text-white/70 whitespace-pre-wrap">{object.lead_request}</p>
         </div>
       )}

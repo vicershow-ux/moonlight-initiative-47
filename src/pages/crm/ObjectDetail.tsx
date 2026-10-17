@@ -180,6 +180,7 @@ export default function ObjectDetail() {
             object={object}
             rooms={rooms}
             roomsLoading={roomsLoading}
+            isClient={isClient}
           />
 
           <ObjectDocumentsPanel
