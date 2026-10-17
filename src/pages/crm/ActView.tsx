@@ -123,6 +123,7 @@ export default function ActView() {
         fileName={`Акт_${act.act_number}.pdf`}
         makePdf={() => contractPdfBase64(darkenActHtml(act.content_html), `Акт ${act.act_number}`)}
         send={(p) => actsApi.sendEmail(act.id, p)}
+        extraFiles={(act.options?.attachments || []).map((f) => f.name)}
       />
     </CrmLayout>
   )

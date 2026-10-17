@@ -13,20 +13,24 @@ interface Props {
   /** Сформировать PDF (data URI) */
   makePdf: () => Promise<string>
   send: (p: { email: string; pdf_base64: string; message?: string }) => Promise<unknown>
+  /** Дополнительные файлы, которые уйдут в письме вместе с PDF */
+  extraFiles?: string[]
 }
 
 /** Отправка документа заказчику на почту — PDF во вложении, почта берётся из объекта */
-export function SendDocEmailDialog({ open, onOpenChange, docName, objectId, fileName, makePdf, send }: Props) {
+export function SendDocEmailDialog({ open, onOpenChange, docName, objectId, fileName, makePdf, send, extraFiles = [] }: Props) {
   const [email, setEmail] = useState("")
   const [message, setMessage] = useState("")
   const [sending, setSending] = useState(false)
   const [error, setError] = useState("")
   const [sent, setSent] = useState(false)
+  const [skipped, setSkipped] = useState<string[]>([])
 
   useEffect(() => {
     if (!open) return
     setError("")
     setSent(false)
+    setSkipped([])
     if (!objectId) return
     objectsApi
       .get(objectId)
@@ -47,7 +51,8 @@ export function SendDocEmailDialog({ open, onOpenChange, docName, objectId, file
       if (pdf.length > 3_300_000) {
         throw new Error("Документ слишком большой для письма. Скачайте PDF и отправьте его вручную.")
       }
-      await send({ email: email.trim(), pdf_base64: pdf, message: message.trim() })
+      const res = (await send({ email: email.trim(), pdf_base64: pdf, message: message.trim() })) as { skipped?: string[] } | undefined
+      setSkipped(res?.skipped || [])
       setSent(true)
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не удалось отправить письмо")
@@ -68,7 +73,12 @@ export function SendDocEmailDialog({ open, onOpenChange, docName, objectId, file
               <Icon name="Check" size={24} />
             </div>
             <p className="font-medium">Отправлено</p>
-            <p className="text-sm text-white/50">PDF ушёл на {email}</p>
+            <p className="text-sm text-white/50">
+              {extraFiles.length ? "PDF и вложения ушли" : "PDF ушёл"} на {email}
+            </p>
+            {skipped.length > 0 && (
+              <p className="text-xs text-amber-400">Не удалось приложить: {skipped.join(", ")}</p>
+            )}
             <button
               onClick={() => onOpenChange(false)}
               className="mt-2 rounded-lg bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/15"
@@ -100,7 +110,7 @@ export function SendDocEmailDialog({ open, onOpenChange, docName, objectId, file
             </div>
             <p className="flex items-center gap-1.5 text-xs text-white/40">
               <Icon name="Paperclip" size={13} />
-              Вложение: {fileName}
+              Вложения: {[fileName, ...extraFiles].join(", ")}
             </p>
             {error && (
               <p className="flex items-center gap-1.5 text-sm text-red-400">

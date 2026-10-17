@@ -14,7 +14,7 @@ def _smtp_settings():
     return host, user, password
 
 
-def send_document_email(to_email, subject, html_body, text_body, pdf_b64, filename, sender_name, reply_to=''):
+def send_document_email(to_email, subject, html_body, text_body, pdf_b64, filename, sender_name, reply_to='', extra_files=None):
     '''Отправляет письмо с PDF во вложении. Возвращает (ok, сообщение об ошибке)'''
     host, user, password = _smtp_settings()
     if not host or not user or not password:
@@ -35,6 +35,9 @@ def send_document_email(to_email, subject, html_body, text_body, pdf_b64, filena
     msg.set_content(text_body)
     msg.add_alternative(html_body, subtype='html')
     msg.add_attachment(pdf_bytes, maintype='application', subtype='pdf', filename=filename)
+    for data, name, mime in (extra_files or []):
+        main, _, sub = (mime or 'application/octet-stream').partition('/')
+        msg.add_attachment(data, maintype=main, subtype=sub or 'octet-stream', filename=name)
 
     errors = []
     try:

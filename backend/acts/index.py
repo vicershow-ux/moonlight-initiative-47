@@ -3,6 +3,9 @@ import os
 import re
 import html as html_lib
 import psycopg2
+import mimetypes
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from mailer import send_document_email
 
 
@@ -463,11 +466,51 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
 {appendix_block}
 {dark_block('6. Гарантийные обязательства в отношении принятых работ определяются Договором подряда и применимым законодательством.')}
 
+{attachments_html}
+
 <hr style="border:none;border-top:1.5px solid #7A4E10;margin:26px 0 14px" />
 
 {parties_block(company_row, opts, executor_display, executor_short, client_name, customer_contacts)}
-{attachments_html}
 </div>"""
+
+
+MAX_MAIL_FILES_BYTES = 20 * 1024 * 1024
+
+
+def _fetch_file(f):
+    url = f.get('url') or ''
+    if not url.startswith('https://'):
+        return None
+    try:
+        with urllib.request.urlopen(url, timeout=4) as r:
+            data = r.read(MAX_MAIL_FILES_BYTES + 1)
+        name = f.get('name') or url.rsplit('/', 1)[-1]
+        mime = mimetypes.guess_type(name)[0] or mimetypes.guess_type(url)[0] or 'application/octet-stream'
+        return data, name, mime
+    except Exception:
+        return None
+
+
+def load_attachment_files(options):
+    """Скачивает прикреплённые к акту файлы для отправки письмом"""
+    if isinstance(options, str):
+        try:
+            options = json.loads(options)
+        except Exception:
+            options = {}
+    files = [f for f in ((options or {}).get('attachments') or []) if isinstance(f, dict) and f.get('url')]
+    if not files:
+        return [], []
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        results = list(ex.map(_fetch_file, files))
+    out, skipped, total = [], [], 0
+    for f, res in zip(files, results):
+        if not res or total + len(res[0]) > MAX_MAIL_FILES_BYTES:
+            skipped.append(f.get('name') or 'файл')
+            continue
+        total += len(res[0])
+        out.append(res)
+    return out, skipped
 
 
 def load_context(cur, company_id, object_id, contract_id):
@@ -577,21 +620,22 @@ def handler(event, context):
                 return response(400, {'error': 'Нет файла документа'})
             if len(pdf_b64) > 9_000_000:
                 return response(400, {'error': 'Файл слишком большой для отправки'})
-            cur.execute("SELECT a.act_number, o.client_name FROM acts a JOIN objects o ON o.id = a.object_id WHERE a.id = %s AND a.company_id = %s", (act_id, company_id))
+            cur.execute("SELECT a.act_number, o.client_name, a.options FROM acts a JOIN objects o ON o.id = a.object_id WHERE a.id = %s AND a.company_id = %s", (act_id, company_id))
             row = cur.fetchone()
             if not row:
                 return response(404, {'error': 'Документ не найден'})
-            number, client_name = row
+            number, client_name, act_options = row
+            extra_files, skipped_files = load_attachment_files(act_options)
             cur.execute("SELECT name, phone, email, website FROM companies WHERE id = %s", (company_id,))
             comp = cur.fetchone() or ('', '', '', '')
             brand = comp[0] or 'FixKey'
             label = f'Акт сдачи-приёмки выполненных работ № {number}'
             note = (body.get('message') or '').strip()[:2000]
             html_body, text_body = build_doc_email(brand, comp[1] or '', comp[2] or '', comp[3] or '', client_name, label.lower(), note)
-            ok, err = send_document_email(to_email, label, html_body, text_body, pdf_b64, f'Акт_{number}.pdf', brand, comp[2] or '')
+            ok, err = send_document_email(to_email, label, html_body, text_body, pdf_b64, f'Акт_{number}.pdf', brand, comp[2] or '', extra_files)
             if not ok:
                 return response(502, {'error': err})
-            return response(200, {'success': True})
+            return response(200, {'success': True, 'attached': len(extra_files), 'skipped': skipped_files})
 
         if method == 'POST' and action == 'generate':
             body = json.loads(event.get('body') or '{}')

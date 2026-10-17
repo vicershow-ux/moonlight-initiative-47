@@ -602,7 +602,7 @@ export const contractsApi = {
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify(payload),
     })
-    return parseResponse(res) as Promise<{ success: boolean }>
+    return parseResponse(res) as Promise<{ success: boolean; attached?: number; skipped?: string[] }>
   },
 
   async generate(payload: {
