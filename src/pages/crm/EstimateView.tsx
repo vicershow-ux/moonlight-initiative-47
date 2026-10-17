@@ -5,7 +5,7 @@ import Icon from "@/components/ui/icon"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { estimatesApi, Estimate, EstimateItem } from "@/lib/api"
-import { printEstimate, downloadEstimatePdf, estimatePdfBase64 } from "@/lib/printEstimate"
+import { printEstimate, downloadEstimatePdf, estimatePdfBase64, estimatePreviewHtml } from "@/lib/printEstimate"
 import { estimateStatusOptions, getEstimateStatusColor, getEstimateStatusLabel, EstimateStatus } from "@/lib/estimateStatus"
 import { useAuth } from "@/contexts/AuthContext"
 import { SendDocEmailDialog } from "@/components/crm/SendDocEmailDialog"
@@ -226,7 +226,7 @@ export default function EstimateView() {
                 </span>
               </p>
               <p className="text-xs text-white/40 mt-1">
-                Сформирована {formatDateTime(estimate.created_at)}. Стадия описывает процесс вне SMPro и не ограничивает редактирование.
+                Сформирована {formatDateTime(estimate.created_at)}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -286,176 +286,12 @@ export default function EstimateView() {
         </div>
       )}
 
-      <div className="bg-white text-[#1a1a1a] rounded-xl p-8 md:p-10 max-w-4xl mx-auto shadow-xl">
-        <div className="flex items-center justify-between border-b-2 border-[#D4AF37] pb-4 mb-6">
-          <div className="text-xl font-bold tracking-tight">
-            <span>Fix</span><span className="text-[#D4AF37]">Key</span>
-          </div>
-          <div className="text-right">
-            <h1 className="text-lg font-semibold">Смета № {estimate.estimate_number || estimate.id}</h1>
-            <p className="text-xs text-gray-500">от {formatDate(estimate.created_at)}</p>
-          </div>
-        </div>
-
-        <div className="mb-2">
-          <h2 className="text-xl font-bold tracking-tight">СМЕТА НА РАБОТЫ</h2>
-          <p className="text-xs text-gray-500 mt-1">Расчёт ремонтно-отделочных работ</p>
-          {estimate.contract_number && (
-            <p className="text-xs text-gray-500">
-              Приложение к договору № {estimate.contract_number}
-              {estimate.contract_date ? ` от ${formatDate(estimate.contract_date)}` : ""}
-            </p>
-          )}
-        </div>
-
-        <div className="h-px bg-gray-200 my-5" />
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 rounded-lg p-4 mb-6 text-sm">
-          <div>
-            <p className="text-[10px] uppercase text-gray-400 tracking-wide mb-1">ID объекта</p>
-            <p className="font-medium">{estimate.object_code}</p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase text-gray-400 tracking-wide mb-1">Заказчик</p>
-            <p className="font-medium">{estimate.client_name}</p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase text-gray-400 tracking-wide mb-1">Контактный телефон</p>
-            <p className="font-medium">{estimate.client_phone || "—"}</p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase text-gray-400 tracking-wide mb-1">Характеристики объекта</p>
-            <p className="font-medium">{estimate.object_type} · {estimate.area} м²</p>
-          </div>
-        </div>
-
-        {Array.from(groups.entries()).map(([roomName, groupItems]) => {
-          const catGroups = new Map<string, EstimateItem[]>()
-          groupItems.forEach((it) => {
-            const key = it.category || "Прочие работы"
-            if (!catGroups.has(key)) catGroups.set(key, [])
-            catGroups.get(key)!.push(it)
-          })
-          const roomTotal = groupItems.reduce((s, it) => s + num(it.amount), 0)
-
-          return (
-            <div key={roomName} className="mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-base font-bold">{roomName}</h3>
-              </div>
-
-              {Array.from(catGroups.entries()).map(([catName, catItems]) => {
-                const catTotal = catItems.reduce((s, it) => s + num(it.amount), 0)
-                return (
-                  <div key={catName} className="mb-3 border border-gray-200 rounded-lg overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-gray-100 text-gray-500 text-[11px] uppercase tracking-wide">
-                          <th className="text-left font-medium py-2 px-3 w-10">№</th>
-                          <th className="text-left font-medium py-2 px-3">Наименование работы</th>
-                          <th className="text-left font-medium py-2 px-3 w-16">Ед.</th>
-                          <th className="text-left font-medium py-2 px-3 w-16">Кол-во</th>
-                          <th className="text-left font-medium py-2 px-3 w-12">Раз</th>
-                          <th className="text-right font-medium py-2 px-3 w-24">Цена</th>
-                          <th className="text-right font-medium py-2 px-3 w-24">Сумма</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td colSpan={7} className="px-3 py-1.5 text-xs font-semibold text-[#B8860B] bg-[#D4AF37]/10 flex items-center gap-1.5">
-                            <Icon name="Tag" size={12} />
-                            {catName}
-                          </td>
-                        </tr>
-                        {catItems.map((it, idx) => (
-                          <tr key={it.id ?? idx} className="border-t border-gray-100">
-                            <td className="py-2 px-3 text-gray-400">{idx + 1}</td>
-                            <td className="py-2 px-3">{it.name}</td>
-                            <td className="py-2 px-3 text-gray-500">{it.unit}</td>
-                            <td className="py-2 px-3 text-gray-500">{it.quantity}</td>
-                            <td className="py-2 px-3 text-gray-500">{it.times ?? 1}</td>
-                            <td className="py-2 px-3 text-right text-gray-500">{formatMoney(it.price)}</td>
-                            <td className="py-2 px-3 text-right font-medium">{formatMoney(it.amount)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr className="border-t border-gray-200 bg-gray-50">
-                          <td colSpan={6} className="py-2 px-3 text-right text-xs text-gray-500">Итого по категории</td>
-                          <td className="py-2 px-3 text-right text-sm font-semibold">{formatMoney(catTotal)}</td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                )
-              })}
-
-              <div className="flex items-center justify-between bg-[#F5EFE4] border-l-4 border-[#C08A2A] rounded px-4 py-3 mt-3">
-                <div>
-                  <p className="text-[10px] uppercase tracking-wide text-[#A9711F] font-semibold">Итоговая сумма по помещению</p>
-                  <p className="text-sm text-gray-600">{roomName}</p>
-                </div>
-                <p className="text-lg font-bold text-[#A9711F]">{formatMoney(roomTotal)}</p>
-              </div>
-            </div>
-          )
-        })}
-
-        <div className="flex justify-end mb-6">
-          <div className="w-full sm:w-72 bg-gray-50 rounded-lg p-4 text-sm">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-gray-500">Сумма до скидки:</span>
-              <span>{formatMoney(subtotal)}</span>
-            </div>
-            {discountAmount > 0 && (
-              <div className="flex items-center justify-between mb-1.5 text-[#A9711F]">
-                <span>Скидка:</span>
-                <span>-{formatMoney(discountAmount)}</span>
-              </div>
-            )}
-            <div className="h-px bg-gray-200 my-2" />
-            <div className="flex items-center justify-between text-base font-bold">
-              <span>ИТОГО К ОПЛАТЕ:</span>
-              <span>{formatMoney(estimate.total_amount)}</span>
-            </div>
-          </div>
-        </div>
-
-        {estimate.notes && (
-          <div className="mb-6 text-sm">
-            <p className="text-[10px] uppercase text-gray-400 tracking-wide mb-1">Примечания</p>
-            <p className="text-gray-700">{estimate.notes}</p>
-          </div>
-        )}
-
-        <div className="h-px bg-gray-200 mb-6" />
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
-          <div>
-            <p className="text-[10px] uppercase text-gray-400 tracking-wide mb-1">Исполнитель</p>
-            <p className="font-semibold">{estimate.company_name || estimate.created_by_name}</p>
-            {estimate.created_by_name && estimate.company_name && (
-              <p className="text-gray-500 text-xs mt-0.5">{estimate.created_by_name}</p>
-            )}
-            {(estimate.created_by_phone || estimate.company_phone) && (
-              <p className="text-gray-500 text-xs mt-0.5">Тел: {estimate.created_by_phone || estimate.company_phone}</p>
-            )}
-            {(estimate.created_by_email || estimate.company_email) && (
-              <p className="text-gray-500 text-xs">Email: {estimate.created_by_email || estimate.company_email}</p>
-            )}
-            {estimate.company_inn && <p className="text-gray-500 text-xs">ИНН: {estimate.company_inn}</p>}
-            {estimate.company_legal_address && <p className="text-gray-500 text-xs">{estimate.company_legal_address}</p>}
-            {estimate.company_signature_url && (
-              <img src={estimate.company_signature_url} alt="Подпись" className="h-10 object-contain mt-2" />
-            )}
-          </div>
-          <div>
-            <p className="text-[10px] uppercase text-gray-400 tracking-wide mb-1">Заказчик</p>
-            <p className="font-semibold">{estimate.client_name}</p>
-            {estimate.client_phone && <p className="text-gray-500 text-xs mt-0.5">Тел: {estimate.client_phone}</p>}
-            {estimate.email && <p className="text-gray-500 text-xs">Email: {estimate.email}</p>}
-          </div>
-        </div>
+      <div className="bg-white rounded-xl p-6 md:p-10 max-w-4xl mx-auto shadow-xl overflow-x-auto">
+        <div
+          dangerouslySetInnerHTML={{
+            __html: estimatePreviewHtml(estimate, estObject(estimate), estimate.company_name || user?.company_name || ""),
+          }}
+        />
       </div>
       <ConfirmDeleteDialog
         open={confirmDelete}

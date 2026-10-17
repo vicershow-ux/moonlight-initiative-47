@@ -674,6 +674,27 @@ function scopeStyles(css: string, scope: string) {
   })
 }
 
+
+/** Правки для PDF: таблицы свободно переходят на следующую страницу (как в актах),
+    рвутся только между строками, без пустых листов и «обрезанных» рамок */
+const PDF_OVERRIDES = `
+  .room-block, .cat-block { page-break-inside: auto !important; break-inside: auto !important; }
+  .cat-block { border: none !important; border-radius: 0 !important; overflow: visible !important; margin-bottom: 14px; }
+  .cat-block table { border: 1.2px solid #6B4508; }
+  .cat-block thead th { border: 1.2px solid #6B4508; }
+  .cat-block tbody td, .cat-block tfoot td { border: 1.2px solid #6B4508 !important; }
+  .room-title { margin-top: 6px; }
+  thead th:nth-child(3) { width: 54px; }
+  tbody td:nth-child(3) { white-space: nowrap; word-break: normal; }
+  thead th:nth-child(1) { color: #ffffff; }
+  .summary-box > .summary-total:first-child { border-top: none; padding-top: 0; }
+`
+
+export function estimatePreviewHtml(estimate: Estimate, object: ObjectItem, companyName: string, scopeId = "est-preview") {
+  const { styles, bodyContent } = buildEstimateDocument(estimate, object, companyName)
+  return `<style>${scopeStyles(styles + PDF_OVERRIDES, `#${scopeId}`)}</style><div id="${scopeId}" class="est-root">${bodyContent}</div>`
+}
+
 export async function downloadEstimatePdf(estimate: Estimate, object: ObjectItem, companyName: string) {
   await renderEstimatePdf(estimate, object, companyName, "save")
 }
@@ -705,7 +726,7 @@ async function renderEstimatePdf(estimate: Estimate, object: ObjectItem, company
   root.style.background = "#ffffff"
 
   const styleTag = document.createElement("style")
-  styleTag.textContent = scopeStyles(styles, "#pdf-scope-estimate")
+  styleTag.textContent = scopeStyles(styles + PDF_OVERRIDES, "#pdf-scope-estimate")
 
   root.appendChild(styleTag)
   const content = document.createElement("div")
@@ -752,7 +773,7 @@ async function renderEstimatePdf(estimate: Estimate, object: ObjectItem, company
           scrollY: 0,
         },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait", compress: true },
-        pagebreak: { mode: ["css", "legacy"], avoid: ["tr", ".room-total", ".sign-row", ".summary", ".parties"] },
+        pagebreak: { mode: ["css", "legacy"], avoid: ["tr", "h3", ".room-total", ".sign-row", ".summary", ".info-grid", ".notes", ".parties .label", ".parties .name", ".parties .contact", ".doc-subtitle"] },
       } as never)
       .from(root)
     if (mode === "save") {
