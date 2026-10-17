@@ -1,4 +1,5 @@
 import { Estimate, ObjectItem, EstimateItem } from "@/lib/api"
+import { renderPagedPdf } from "@/lib/pdfRender"
 
 const num = (v: unknown, fallback = 0): number => {
   const n = typeof v === "string" ? parseFloat(v) : Number(v)
@@ -678,12 +679,17 @@ function scopeStyles(css: string, scope: string) {
 /** Правки для PDF: таблицы свободно переходят на следующую страницу (как в актах),
     рвутся только между строками, без пустых листов и «обрезанных» рамок */
 const PDF_OVERRIDES = `
+  .est-root { padding: 0; }
   .room-block, .cat-block { page-break-inside: auto !important; break-inside: auto !important; }
-  .cat-block { border: none !important; border-radius: 0 !important; overflow: visible !important; margin-bottom: 14px; }
-  .cat-block table { border: 1.2px solid #6B4508; }
+  .cat-block { border: 1.2px solid #6B4508; border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
   .cat-block thead th { border: 1.2px solid #6B4508; }
   .cat-block tbody td, .cat-block tfoot td { border: 1.2px solid #6B4508 !important; }
+  .cat-block tr > *:first-child { border-left: none !important; }
+  .cat-block tr > *:last-child { border-right: none !important; }
+  .cat-block thead tr > * { border-top: none !important; }
+  .cat-block tfoot tr:last-child > * { border-bottom: none !important; }
   .room-title { margin-top: 6px; }
+  .room-total { border-radius: 10px; }
   thead th:nth-child(3) { width: 54px; }
   tbody td:nth-child(3) { white-space: nowrap; word-break: normal; }
   thead th:nth-child(1) { color: #ffffff; }
@@ -706,84 +712,14 @@ export async function estimatePdfBase64(estimate: Estimate, object: ObjectItem, 
 
 async function renderEstimatePdf(estimate: Estimate, object: ObjectItem, companyName: string, mode: "save" | "base64"): Promise<string | void> {
   const { styles, bodyContent } = buildEstimateDocument(estimate, object, companyName)
-
-  // Рендерим в СКРЫТЫЙ контейнер основного документа (не в iframe),
-  // чтобы html2canvas гарантированно видел стили и вёрстка совпадала с печатью
-  const container = document.createElement("div")
-  container.style.position = "fixed"
-  container.style.left = "-10000px"
-  container.style.top = "0"
-  container.style.width = "760px"
-  container.style.background = "#ffffff"
-
-  const root = document.createElement("div")
-  root.id = "pdf-scope-estimate"
-  root.className = "est-root"
-  root.style.width = "760px"
-  root.style.maxWidth = "760px"
-  root.style.padding = "0"
-  root.style.margin = "0"
-  root.style.background = "#ffffff"
-
-  const styleTag = document.createElement("style")
-  styleTag.textContent = scopeStyles(styles + PDF_OVERRIDES, "#pdf-scope-estimate")
-
-  root.appendChild(styleTag)
-  const content = document.createElement("div")
-  content.innerHTML = bodyContent
-  root.appendChild(content)
-
-  container.appendChild(root)
-  document.body.appendChild(container)
-
-  // Ждём загрузку логотипа перед снимком
-  await new Promise<void>((resolve) => {
-    const img = new Image()
-    img.onload = () => resolve()
-    img.onerror = () => resolve()
-    img.src = `${window.location.origin}/logo-print.png`
-    setTimeout(resolve, 3000)
-  })
-  await Promise.all(
-    Array.from(root.querySelectorAll("img")).map(
-      (im) =>
-        new Promise<void>((resolve) => {
-          if (im.complete) return resolve()
-          im.addEventListener("load", () => resolve(), { once: true })
-          im.addEventListener("error", () => resolve(), { once: true })
-          setTimeout(resolve, 4000)
-        }),
-    ),
+  return renderPagedPdf(
+    (root) => {
+      root.id = "pdf-scope-estimate"
+      root.className = "est-root"
+      root.innerHTML = `<style>${scopeStyles(styles + PDF_OVERRIDES, "#pdf-scope-estimate")}</style>${bodyContent}`
+    },
+    { filename: `Смета №${estimate.estimate_number || estimate.id}.pdf`, mode },
   )
-
-  try {
-    const html2pdf = (await import("html2pdf.js")).default
-    const worker = html2pdf()
-      .set({
-        margin: [12, 12, 12, 12],
-        filename: `Смета №${estimate.estimate_number || estimate.id}.pdf`,
-        image: { type: "jpeg", quality: mode === "save" ? 0.98 : 0.8 },
-        html2canvas: {
-          scale: mode === "save" ? 2 : 1.5,
-          useCORS: true,
-          backgroundColor: "#ffffff",
-          width: 760,
-          windowWidth: 760,
-          scrollX: 0,
-          scrollY: 0,
-        },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait", compress: true },
-        pagebreak: { mode: ["css", "legacy"], avoid: ["tr", "h3", ".room-total", ".sign-row", ".summary", ".info-grid", ".notes", ".parties .label", ".parties .name", ".parties .contact", ".doc-subtitle"] },
-      } as never)
-      .from(root)
-    if (mode === "save") {
-      await worker.save()
-      return
-    }
-    return await (worker as unknown as { outputPdf: (t: string) => Promise<string> }).outputPdf("datauristring")
-  } finally {
-    if (container.parentNode) document.body.removeChild(container)
-  }
 }
 
 function escapeHtml(str: string) {

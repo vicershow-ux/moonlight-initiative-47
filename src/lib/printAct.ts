@@ -1,12 +1,29 @@
 import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
 import { printHtml } from "@/lib/printHtml"
+import { ROUNDED_TABLE_CSS } from "@/lib/pdfRender"
 
 /** Старые акты сохранены со светло-жёлтыми плашками — затемняем их до читаемого тона */
 export function darkenActHtml(html: string): string {
-  return (html || "")
+  return roundActTables((html || "")
     .replace(/#F5EBD9/gi, "#D3C2A2")
     .replace(/background:#EADCC0/gi, "background:#B9A27A")
-    .replace(/color:#3A2404/gi, "color:#1F1405")
+    .replace(/color:#3A2404/gi, "color:#1F1405"))
+}
+
+/** Таблица работ акта — в скруглённой рамке */
+function roundActTables(html: string): string {
+  if (typeof DOMParser === "undefined" || !html.includes("works-table")) return html
+  const doc = new DOMParser().parseFromString(`<div id="r">${html}</div>`, "text/html")
+  const r = doc.getElementById("r")
+  if (!r) return html
+  r.querySelectorAll("table.works-table").forEach((t) => {
+    if (t.parentElement?.classList.contains("pdf-rt")) return
+    const w = doc.createElement("div")
+    w.className = "pdf-rt"
+    t.before(w)
+    w.appendChild(t)
+  })
+  return `<style>${ROUNDED_TABLE_CSS}</style>${r.innerHTML}`
 }
 
 export const actPrintStyles = `
@@ -18,7 +35,10 @@ export const actPrintStyles = `
   .works-table thead th { background: #5C3A11 !important; color: #ffffff !important; font-weight: 700 !important; border: 1.2px solid #6B4508 !important; }
   .works-table tbody td { border: 1.2px solid #6B4508 !important; color: #1a1a1a !important; }
   .works-table { page-break-inside: auto; break-inside: auto; }
-  .act-doc > div { page-break-inside: avoid; break-inside: avoid; }
+  .act-doc > div:not(.pdf-rt) { page-break-inside: avoid; break-inside: avoid; }
+  .pdf-rt { page-break-inside: auto; break-inside: auto; }
+  .works-table tr { page-break-inside: avoid; break-inside: avoid; }
+  ${ROUNDED_TABLE_CSS}
   ${docBrandStyles}
 `
 
