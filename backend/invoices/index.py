@@ -48,7 +48,7 @@ def get_current_user(cur, event):
 INVOICE_KEYS = [
     'id', 'object_id', 'contract_id', 'act_id', 'invoice_number', 'invoice_date', 'due_date',
     'purpose', 'items', 'vat_mode', 'total_amount', 'apply_signature', 'apply_stamp', 'notes',
-    'status', 'created_at', 'updated_at',
+    'status', 'created_at', 'updated_at', 'paid_at',
 ]
 COLS = ', '.join(f'i.{k}' for k in INVOICE_KEYS)
 LIST_SQL = (

@@ -7,6 +7,7 @@ import { buildInvoiceHtml } from "@/lib/buildInvoiceHtml"
 import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
 import { printHtml } from "@/lib/printHtml"
 import { notifyThanks } from "@/lib/invoiceThanks"
+import { exportInvoicesXlsx } from "@/lib/exportInvoicesXlsx"
 import { contractPdfBase64 } from "@/lib/downloadContractPdf"
 import { SendDocEmailDialog } from "@/components/crm/SendDocEmailDialog"
 import { formatDate, formatMoney } from "./constants"
@@ -29,6 +30,7 @@ export function DocumentInvoicesTab({ search }: { search: string }) {
   const [filter, setFilter] = useState<StatusFilter>("all")
   const [busyId, setBusyId] = useState<number | null>(null)
   const [sendFor, setSendFor] = useState<Invoice | null>(null)
+  const [exporting, setExporting] = useState(false)
 
   const load = () =>
     invoicesApi
@@ -70,6 +72,16 @@ export function DocumentInvoicesTab({ search }: { search: string }) {
       printHtml(`Счёт № ${full.invoice_number}`, `${docBrandHeader("")}${buildInvoiceHtml(full)}`, docBrandStyles)
     } finally {
       setBusyId(null)
+    }
+  }
+
+  const exportXlsx = async () => {
+    setExporting(true)
+    try {
+      const suffix = filter === "paid" ? "_оплаченные" : filter === "unpaid" ? "_неоплаченные" : ""
+      await exportInvoicesXlsx(filtered, `Счета${suffix}`)
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -164,10 +176,19 @@ export function DocumentInvoicesTab({ search }: { search: string }) {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 px-4 pt-4">
+      <div className="flex flex-wrap items-center gap-2 px-4 pt-4">
         {filterBtn("all", "Все")}
         {filterBtn("unpaid", "Не оплачены")}
         {filterBtn("paid", "Оплачены")}
+        <button
+          onClick={exportXlsx}
+          disabled={exporting || filtered.length === 0}
+          title="Выгрузить показанные счета в Excel"
+          className="ml-auto flex items-center gap-1.5 rounded-lg bg-green-700 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-green-800 disabled:opacity-50"
+        >
+          <Icon name={exporting ? "Loader2" : "FileSpreadsheet"} size={14} className={exporting ? "animate-spin" : ""} />
+          Выгрузить в Excel
+        </button>
       </div>
 
       {filtered.length === 0 ? (

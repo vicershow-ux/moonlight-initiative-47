@@ -2074,6 +2074,7 @@ export interface Invoice {
   status: "issued" | "sent" | "paid"
   created_at: string
   updated_at: string
+  paid_at?: string | null
   object_code?: string
   client_name?: string
   address?: string
