@@ -182,7 +182,7 @@ export function ObjectDocumentsPanel({
         </div>
       )}
 
-      {!isClient && <ObjectInvoices objectId={object.id} />}
+      <ObjectInvoices objectId={object.id} isClient={isClient} />
     </div>
   )
 }

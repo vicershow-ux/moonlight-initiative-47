@@ -141,21 +141,27 @@ def handler(event: dict, context) -> dict:
         user = get_current_user(cur, event)
         if not user:
             return response(401, {'error': 'Не авторизован'})
-        if user['role'] == 'client':
+        is_client = user['role'] == 'client'
+        if is_client and method != 'GET':
             return response(403, {'error': 'Недостаточно прав'})
         company_id = user['company_id']
+        client_filter = ''
+        client_args = []
+        if is_client:
+            client_filter = " AND i.object_id IN (SELECT object_id FROM object_access WHERE user_id = %s)"
+            client_args = [user['user_id']]
         params = event.get('queryStringParameters') or {}
         inv_id = params.get('id')
         action = params.get('action')
 
         if method == 'GET':
             if inv_id:
-                cur.execute(LIST_SQL + "WHERE i.id = %s AND i.company_id = %s", (inv_id, company_id))
+                cur.execute(LIST_SQL + "WHERE i.id = %s AND i.company_id = %s" + client_filter, (inv_id, company_id, *client_args))
                 row = cur.fetchone()
                 if not row:
                     return response(404, {'error': 'Счёт не найден'})
                 return response(200, load_extra(cur, company_id, dict(zip(LIST_KEYS, row))))
-            where, args = "WHERE i.company_id = %s", [company_id]
+            where, args = "WHERE i.company_id = %s" + client_filter, [company_id, *client_args]
             for key in ('object_id', 'contract_id', 'act_id'):
                 if params.get(key):
                     where += f" AND i.{key} = %s"

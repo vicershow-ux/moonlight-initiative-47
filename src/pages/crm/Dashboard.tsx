@@ -7,6 +7,7 @@ import { getStatusBadgeClass } from "@/lib/objectStatusColors"
 import { useAuth } from "@/contexts/AuthContext"
 import { DeleteButton } from "@/components/ui/delete-button"
 import { MobileCard } from "@/components/crm/MobileCard"
+import { ClientInvoicesCard } from "@/components/crm/ClientInvoicesCard"
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -60,6 +61,8 @@ export default function Dashboard() {
           <p className="text-lg font-semibold">{stats?.invites_count ?? 0}</p>
         </div>
       </div>
+
+      {isClient && <ClientInvoicesCard />}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
         <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-4 md:p-5">
