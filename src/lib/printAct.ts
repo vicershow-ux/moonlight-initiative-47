@@ -43,5 +43,5 @@ export const actPrintStyles = `
 `
 
 export function printAct(act: { act_number: string; content_html: string }): void {
-  printHtml(`Акт № ${act.act_number}`, `${docBrandHeader("")}${darkenActHtml(act.content_html)}`, actPrintStyles)
+  printHtml(`Акт № ${act.act_number}`, `${docBrandHeader("")}${darkenActHtml(act.content_html)}`, actPrintStyles, { paginate: true })
 }

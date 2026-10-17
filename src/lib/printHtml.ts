@@ -4,7 +4,14 @@
  *   поля листа задаём отступами страницы
  * - печать запускается только после загрузки картинок: логотипа, подписи, печати
  */
-export function printHtml(title: string, body: string, styles = ""): void {
+import { paginateForPrint } from "@/lib/pdfRender"
+
+const MM = 96 / 25.4
+/** Область печати A4 при полях 15/15/16/20 мм */
+const PRINT_W = 175 * MM
+const PRINT_H = Math.floor(266 * MM) - 12
+
+export function printHtml(title: string, body: string, styles = "", opts: { paginate?: boolean } = {}): void {
   const win = window.open("", "_blank")
   if (!win) return
   win.document.write(`<!doctype html>
@@ -37,11 +44,16 @@ export function printHtml(title: string, body: string, styles = ""): void {
       ${styles}
     </style>
   </head>
-  <body>${body}</body>
+  <body>${opts.paginate ? `<div id="print-root" style="width:${PRINT_W}px">${body}</div>` : body}</body>
 </html>`)
   win.document.close()
 
   const go = () => {
+    const root = win.document.getElementById("print-root")
+    if (root && !root.dataset.paged) {
+      root.dataset.paged = "1"
+      paginateForPrint(root, PRINT_H)
+    }
     win.focus()
     win.print()
   }

@@ -34,30 +34,32 @@ export const PAGE_H = Math.floor((A4.h - MARGIN.top - MARGIN.bottom) * PX_PER_MM
 
 const ATOMIC_CLASSES = ["sign-row", "room-total", "summary", "info-grid", "parties", "doc-brand-header", "header", "notes"]
 
+const cssOf = (el: Element) => (el.ownerDocument.defaultView || window).getComputedStyle(el)
+
 interface Unit {
   el: HTMLElement
   row: boolean
 }
 
 function isHeading(el: Element | null): el is HTMLElement {
-  if (!el || !(el instanceof HTMLElement)) return false
+  if (!el || el.nodeType !== 1 || !("style" in el)) return false
   if (/^H[1-6]$/.test(el.tagName)) return true
   if (el.classList.contains("room-title")) return true
   if (!/^(P|DIV)$/.test(el.tagName)) return false
   const text = (el.textContent || "").trim()
   if (!text || text.length > 90 || el.querySelector("table, img, div")) return false
-  return Number(getComputedStyle(el).fontWeight) >= 600
+  return Number(cssOf(el).fontWeight) >= 600
 }
 
 function isContainer(el: HTMLElement): boolean {
   if (ATOMIC_CLASSES.some((c) => el.classList.contains(c))) return false
-  const cs = getComputedStyle(el)
+  const cs = cssOf(el)
   if (cs.display !== "block") return false
   if (!el.children.length) return false
   const hasText = Array.from(el.childNodes).some((n) => n.nodeType === 3 && (n.textContent || "").trim())
   if (hasText) return false
   return Array.from(el.children).some((c) => {
-    const d = getComputedStyle(c).display
+    const d = cssOf(c).display
     return d === "block" || d === "table" || d === "flex" || d === "grid"
   })
 }
@@ -65,7 +67,7 @@ function isContainer(el: HTMLElement): boolean {
 function collect(el: HTMLElement, out: Unit[]) {
   for (const child of Array.from(el.children) as HTMLElement[]) {
     if (child.tagName === "STYLE" || child.tagName === "SCRIPT") continue
-    if (getComputedStyle(child).display === "none") continue
+    if (cssOf(child).display === "none") continue
     if (child.tagName === "TABLE") {
       const t = child as HTMLTableElement
       if (t.tHead) {
@@ -96,7 +98,7 @@ function wrapperOf(t: HTMLTableElement, root: HTMLElement): HTMLElement {
 function continuationOf<T extends HTMLElement>(el: T): T {
   const c = el.cloneNode(true) as T
   const cell = (c.querySelector("td, th") as HTMLElement | null) || c
-  const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT)
+  const walker = el.ownerDocument.createTreeWalker(cell, 4)
   let last: Text | null = null
   while (walker.nextNode()) {
     const n = walker.currentNode as Text
@@ -106,8 +108,23 @@ function continuationOf<T extends HTMLElement>(el: T): T {
   return c
 }
 
+/**
+ * Для печати через браузер: раскладывает документ по страницам так же, как PDF
+ * (таблица делится на отдельные скруглённые блоки), затем распорки заменяются принудительными разрывами
+ */
+export function paginateForPrint(root: HTMLElement, pageH: number) {
+  paginate(root, pageH)
+  root.querySelectorAll<HTMLElement>(".pg-spacer").forEach((sp) => {
+    sp.style.height = "0"
+    sp.style.breakBefore = "page"
+    sp.style.pageBreakBefore = "always"
+  })
+}
+
 /** Расставляет переносы: блоки не режутся, таблицы делятся между строками с повтором шапки */
-export function paginate(root: HTMLElement) {
+export function paginate(root: HTMLElement, pageH: number = PAGE_H) {
+  const PAGE_H = pageH
+  const document = root.ownerDocument
   const rootTop = () => root.getBoundingClientRect().top
   const rel = (el: Element) => {
     const r = el.getBoundingClientRect()
@@ -116,6 +133,7 @@ export function paginate(root: HTMLElement) {
   }
   const spacerBefore = (anchor: HTMLElement, target: number) => {
     const sp = document.createElement("div")
+    sp.className = "pg-spacer"
     sp.style.cssText = "display:block;height:0;margin:0;padding:0;border:0"
     anchor.before(sp)
     sp.style.height = `${Math.max(0, target - rel(sp).top)}px`
