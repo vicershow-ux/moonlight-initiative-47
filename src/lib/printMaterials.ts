@@ -1,3 +1,4 @@
+import { renderPagedPdf } from "@/lib/pdfRender"
 import { MaterialItem, MaterialObject, ObjectMaterial } from "@/lib/api"
 
 const cssString = (s: string) =>
@@ -473,6 +474,30 @@ function scopeStyles(css: string, scope: string) {
   })
 }
 
+/** Правки для PDF: таблицы магазинов переходят на следующую страницу между строками, как в сметах и актах */
+const PDF_OVERRIDES = `
+  .room-block, .cat-block { page-break-inside: auto !important; break-inside: auto !important; }
+  .cat-block { border: 1.2px solid #6B4508; border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+  .cat-block thead th { border: 1.2px solid #6B4508; }
+  .cat-block tbody td, .cat-block tfoot td { border: 1.2px solid #6B4508 !important; }
+  .cat-block tr > *:first-child { border-left: none !important; }
+  .cat-block tr > *:last-child { border-right: none !important; }
+  .cat-block thead tr > * { border-top: none !important; }
+  .cat-block tfoot tr:last-child > * { border-bottom: none !important; }
+  .cat-row td { background: #B9A27A; color: #1F1405; }
+  tbody td:nth-child(5) { white-space: nowrap; word-break: normal; }
+  thead th { white-space: nowrap; }
+  thead th:nth-child(1) { color: #ffffff; }
+  thead th:nth-child(3) { width: 100px; }
+  thead th:nth-child(4) { width: 70px; }
+`
+
+/** HTML документа для PDF (используется и для проверки вёрстки) */
+export function materialsPdfHtml(object: MaterialObject, items: ObjectMaterial[], catalog: MaterialItem[], companyName: string) {
+  const { styles, bodyContent } = buildMaterialsDocument(object, items, catalog, companyName)
+  return `<style>${scopeStyles(styles + PDF_OVERRIDES, "#pdf-scope-materials")}</style>${bodyContent}`
+}
+
 export async function downloadMaterialsPdf(
   object: MaterialObject,
   items: ObjectMaterial[],
@@ -480,64 +505,12 @@ export async function downloadMaterialsPdf(
   companyName: string
 ) {
   const { styles, bodyContent } = buildMaterialsDocument(object, items, catalog, companyName)
-
-  const container = document.createElement("div")
-  container.style.position = "fixed"
-  container.style.left = "-10000px"
-  container.style.top = "0"
-  container.style.width = "760px"
-  container.style.background = "#ffffff"
-
-  const root = document.createElement("div")
-  root.id = "pdf-scope-materials"
-  root.className = "est-root"
-  root.style.width = "760px"
-  root.style.maxWidth = "760px"
-  root.style.padding = "0"
-  root.style.margin = "0"
-  root.style.background = "#ffffff"
-
-  const styleTag = document.createElement("style")
-  styleTag.textContent = scopeStyles(styles, "#pdf-scope-materials")
-
-  root.appendChild(styleTag)
-  const content = document.createElement("div")
-  content.innerHTML = bodyContent
-  root.appendChild(content)
-
-  container.appendChild(root)
-  document.body.appendChild(container)
-
-  await new Promise<void>((resolve) => {
-    const img = new Image()
-    img.onload = () => resolve()
-    img.onerror = () => resolve()
-    img.src = `${window.location.origin}/logo-print.png`
-    setTimeout(resolve, 3000)
-  })
-
-  try {
-    const html2pdf = (await import("html2pdf.js")).default
-    await html2pdf()
-      .set({
-        margin: [12, 12, 12, 12],
-        filename: `Смета на материал ${object.object_code}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: "#ffffff",
-          width: 760,
-          windowWidth: 760,
-          scrollX: 0,
-          scrollY: 0,
-        },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        pagebreak: { mode: ["css", "legacy"], avoid: [".cat-block", ".room-block"] },
-      })
-      .from(root)
-      .save()
-  } finally {
-    if (container.parentNode) document.body.removeChild(container)
-  }
+  await renderPagedPdf(
+    (root) => {
+      root.id = "pdf-scope-materials"
+      root.className = "est-root"
+      root.innerHTML = `<style>${scopeStyles(styles + PDF_OVERRIDES, "#pdf-scope-materials")}</style>${bodyContent}`
+    },
+    { filename: `Смета на материал ${object.object_code}.pdf`, mode: "save" },
+  )
 }
