@@ -240,7 +240,7 @@ def parties_block(c, opts, executor_display, executor_short, client_name, custom
         if not v:
             return ''
         bg = 'background:#F3EBDC;' if hl else ''
-        font = 'font-family:Courier New,monospace;font-size:13px !important;letter-spacing:.3px;' if mono else ''
+        font = 'font-family:Courier New,monospace;font-size:12.5px !important;letter-spacing:.2px;white-space:nowrap;' if mono else ''
         return (f'<tr><td style="{bg}padding:4px 12px;width:36%;color:#6b5a3e;font-size:11px;vertical-align:top">{label}</td>'
                 f'<td style="{bg}padding:4px 12px;font-size:12.5px;font-weight:600;{font}word-break:break-word">{v}</td></tr>')
 
@@ -277,10 +277,9 @@ def parties_block(c, opts, executor_display, executor_short, client_name, custom
     stamp = ''
     if opts.get('apply_stamp') and c.get('stamp_url'):
         stamp = (f'<img src="{esc(c["stamp_url"])}" crossorigin="anonymous" alt="" '
-                 'style="position:absolute;right:0;bottom:0;height:112px;width:112px;object-fit:contain;opacity:0.9"/>')
-    pad = '0'
-    box_h = '118px' if stamp else '84px'
-    box = '<div style="position:relative;height:' + box_h + ';border-bottom:1.5px solid #5C3A11;margin:0 0 4px">{}</div>'
+                 'style="position:absolute;right:0;top:88px;height:118px;width:118px;object-fit:contain;opacity:0.9"/>')
+    pad = '80px' if stamp else '0'
+    box = '<div style="position:relative;height:84px;border-bottom:1.5px solid #5C3A11;margin:0 0 4px">{}</div>'
     label = 'margin:0 0 6px;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:#4A2E06'
     card = ('border:1.2px solid #6B4508;border-radius:10px;overflow:hidden;page-break-inside:avoid;break-inside:avoid')
     head = ('background:#B9A27A;color:#1F1405;padding:7px 12px;font-weight:700;font-size:11.5px;'
@@ -331,6 +330,14 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
 
     contract_number = esc(contract_row.get('contract_number')) if contract_row else ''
     contract_date = contract_row.get('contract_date') if contract_row else ''
+
+    entity = (company_row.get('entity_type') or '').lower()
+    executor_is_org = ('юрид' in entity or entity.startswith('ооо') or 'общество' in entity) and bool(company_name)
+    if executor_is_org:
+        named_executor = 'именуемое'
+    else:
+        named_executor = 'именуемая' if opts.get('executor_gender') == 'f' else 'именуемый'
+    named_customer = 'именуемая' if opts.get('customer_gender') == 'f' else 'именуемый'
 
     period_from = opts.get('period_from') or ''
     period_to = opts.get('period_to') or ''
@@ -404,7 +411,7 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
 <td style="text-align:right">{fmt_date_long(act_date)}</td>
 </tr></table>
 
-<p>{executor_display}, именуемый(ая) в дальнейшем «Исполнитель», с одной стороны, и {client_name}, именуемый(ая) в дальнейшем «Заказчик», с другой стороны, совместно именуемые «Стороны», составили настоящий Акт о сдаче и приёмке результата работ.</p>
+<p>{executor_display}, {named_executor} в дальнейшем «Исполнитель», с одной стороны, и {client_name}, {named_customer} в дальнейшем «Заказчик», с другой стороны, совместно именуемые «Стороны», составили настоящий Акт о сдаче и приёмке результата работ.</p>
 
 <p>Основание: {basis_line}</p>
 

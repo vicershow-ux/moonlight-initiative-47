@@ -172,12 +172,12 @@ export function ContractLegalSection({
       {company?.correspondent_account && <p className="text-sm text-white/70">К/с: {company.correspondent_account}</p>}
       <div className="mt-auto pt-10">
         <p className="text-xs uppercase tracking-wide text-white/50 mb-2">От имени Подрядчика</p>
-        <div className={`relative border-b border-white/30 ${options.apply_stamp && company?.stamp_url ? "h-32" : "h-24"}`}>
+        <div className="relative h-24 border-b border-white/30">
           {options.apply_signature && company?.signature_url && (
             <img src={company.signature_url} alt="Подпись" className="absolute bottom-1 left-2 h-16 max-w-[200px] rounded bg-white/90 object-contain" />
           )}
           {options.apply_stamp && company?.stamp_url && (
-            <img src={company.stamp_url} alt="Печать" className="absolute bottom-0 right-0 z-10 h-28 w-28 object-contain opacity-90" />
+            <img src={company.stamp_url} alt="Печать" className="absolute right-0 top-[100px] z-10 h-28 w-28 object-contain opacity-90" />
           )}
         </div>
         <p className="mt-1 font-semibold text-white text-sm">
@@ -186,6 +186,7 @@ export function ContractLegalSection({
             : options.contractor_name || company?.contact_full_name || "—"}
         </p>
         <p className="text-xs text-white/40">(подпись)</p>
+        {options.apply_stamp && company?.stamp_url && <div className="h-16" />}
       </div>
     </div>
     <div className="flex flex-col">
@@ -199,6 +200,7 @@ export function ContractLegalSection({
         <div className="h-24 border-b border-white/30" />
         <p className="mt-1 font-semibold text-white text-sm">{options.customer_name || object?.client_name || "—"}</p>
         <p className="text-xs text-white/40">(подпись)</p>
+        {options.apply_stamp && company?.stamp_url && <div className="h-16" />}
       </div>
     </div>
   </div>

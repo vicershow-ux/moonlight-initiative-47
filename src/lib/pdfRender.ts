@@ -246,7 +246,7 @@ export async function renderPagedPdf(build: (root: HTMLElement) => void, opts: P
   const container = document.createElement("div")
   container.style.cssText = "position:fixed;left:-100000px;top:0;width:" + CONTENT_W + "px;background:#fff;z-index:-1"
   const root = document.createElement("div")
-  root.style.cssText = `width:${CONTENT_W}px;max-width:${CONTENT_W}px;margin:0;padding:0;background:#fff;box-sizing:border-box`
+  root.style.cssText = `width:${CONTENT_W}px;max-width:${CONTENT_W}px;margin:0;padding:0 0 32px;background:#fff;box-sizing:border-box;overflow:visible`
   container.appendChild(root)
   document.body.appendChild(container)
 
@@ -276,7 +276,7 @@ export async function renderPagedPdf(build: (root: HTMLElement) => void, opts: P
     const { jsPDF } = await import("jspdf")
     const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait", compress: true })
     const contentH = canvas.height / scale
-    const pages = Math.max(1, Math.ceil((contentH - 2) / PAGE_H))
+    const pages = Math.max(1, Math.ceil((contentH - 32 - 2) / PAGE_H))
     const footerPx = Math.round(9 * PX_PER_MM)
     const quality = opts.mode === "save" ? 0.95 : 0.8
 

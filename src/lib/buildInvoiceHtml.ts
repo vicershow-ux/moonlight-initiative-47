@@ -160,11 +160,10 @@ export function buildInvoiceHtml(inv: Invoice): string {
 .invoice-doc .words { margin: 12px 0 4px; }
 .invoice-doc .note { font-size: 11.5px; color: #333; margin: 10px 0 0; padding-bottom: 10px; border-bottom: 2px solid #5C3A11; }
 .invoice-doc .signs { margin-top: 26px; page-break-inside: avoid; break-inside: avoid; }
-.invoice-doc .sign-cell { position: relative; }
+.invoice-doc .sign-cell { position: relative; padding-bottom: 70px; }
 .invoice-doc .sign-line { position: relative; height: 70px; border-bottom: 1px solid #161616; margin: 0 0 3px; }
 .invoice-doc .inv-sig { position: absolute; left: 10px; bottom: 3px; height: 58px; max-width: 190px; object-fit: contain; }
-.invoice-doc .inv-stamp { position: absolute; right: 0; bottom: 0; width: 112px; height: 112px; object-fit: contain; opacity: .9; }
-.invoice-doc .sign-line.with-stamp { height: 118px; }
+.invoice-doc .inv-stamp { position: absolute; right: 0; top: 74px; width: 118px; height: 118px; object-fit: contain; opacity: .9; }
 .invoice-doc .hint { font-size: 10.5px; color: #555; }
 </style>
 
@@ -216,7 +215,7 @@ ${inv.notes ? `<br/>${esc(inv.notes).replace(/\n/g, "<br/>")}` : ""}
 <table class="signs"><tr>
 <td class="sign-cell" style="width:60%;padding-right:24px">
   <div style="font-weight:700;margin-bottom:4px">${esc(signer.role)}</div>
-  <div class="sign-line${stamp ? " with-stamp" : ""}">${sig}${stamp}</div>
+  <div class="sign-line">${sig}${stamp}</div>
   <div>${esc(signer.name)}</div>
   <div class="hint">(подпись)</div>
 </td>

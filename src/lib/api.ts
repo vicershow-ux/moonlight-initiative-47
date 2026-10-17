@@ -684,6 +684,8 @@ export interface ActOptions {
   appendix?: string
   apply_signature?: boolean
   apply_stamp?: boolean
+  executor_gender?: "m" | "f"
+  customer_gender?: "m" | "f"
 }
 
 export interface Act {

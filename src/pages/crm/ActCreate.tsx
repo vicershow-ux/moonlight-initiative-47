@@ -48,6 +48,8 @@ export default function ActCreate() {
     inspection_result: "",
     calculation: "contract",
     appendix: "",
+    executor_gender: "m",
+    customer_gender: "m",
   })
 
   const [items, setItems] = useState<ActItem[]>([])
@@ -77,6 +79,8 @@ export default function ActCreate() {
             appendix: existingAct.options?.appendix || "",
             apply_signature: Boolean(existingAct.options?.apply_signature),
             apply_stamp: Boolean(existingAct.options?.apply_stamp),
+            executor_gender: existingAct.options?.executor_gender || "m",
+            customer_gender: existingAct.options?.customer_gender || "m",
           })
           setItems(existingAct.items || [])
           setSelectedEstimateId(existingAct.estimate_id || null)
@@ -91,6 +95,11 @@ export default function ActCreate() {
 
         const contr = contractIdParam ? await contractsApi.get(Number(contractIdParam)).catch(() => null) : null
         setContract(contr)
+        setOptions((prev) => ({
+          ...prev,
+          executor_gender: contr?.options?.contractor_gender || prev.executor_gender || "m",
+          customer_gender: contr?.options?.customer_gender || prev.customer_gender || "m",
+        }))
         const preferred = contr?.estimate_id || ests[0]?.id || null
         setSelectedEstimateId(preferred)
       })

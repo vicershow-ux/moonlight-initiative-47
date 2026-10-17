@@ -167,17 +167,17 @@ function requisitesAndSigns(ctx: ContractContext, companyName: string, address: 
     : ""
   const withStamp = Boolean(o.apply_stamp && c?.stamp_url)
   const stamp = withStamp
-    ? `<img src="${esc(c?.stamp_url)}" crossorigin="anonymous" alt="" style="position:absolute;right:0;bottom:0;height:112px;width:112px;object-fit:contain;opacity:0.92"/>`
+    ? `<img src="${esc(c?.stamp_url)}" crossorigin="anonymous" alt="" style="position:absolute;right:0;top:88px;height:118px;width:118px;object-fit:contain;opacity:0.92"/>`
     : ""
   const box = (overlay: string) =>
-    `<div style="position:relative;height:${withStamp ? 118 : 84}px;border-bottom:1px solid #555;margin:0 0 4px">${overlay}</div>`
+    `<div style="position:relative;height:84px;border-bottom:1px solid #555;margin:0 0 4px">${overlay}</div>`
   return `<table style="width:100%;margin-top:16px;border-collapse:collapse">
 <tr>
 <td style="width:50%;vertical-align:top;padding-right:8px;border:none">${contractorCard(ctx, companyName)}</td>
 <td style="width:50%;vertical-align:top;padding-left:8px;border:none">${customerCard(ctx, address)}</td>
 </tr>
 <tr style="page-break-inside:avoid;break-inside:avoid">
-<td style="width:50%;vertical-align:top;padding:36px 20px 0 0;border:none">
+<td style="width:50%;vertical-align:top;padding:36px 20px ${withStamp ? "80px" : "0"} 0;border:none">
 <p style="margin:0 0 6px"><strong>ОТ ИМЕНИ ПОДРЯДЧИКА</strong></p>
 ${box(sig + stamp)}
 <p style="margin:0">${esc(signer)}</p>

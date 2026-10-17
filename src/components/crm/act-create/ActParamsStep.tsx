@@ -145,6 +145,35 @@ export function ActParamsStep({
           />
         </div>
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+          {([
+            ["executor_gender", "Исполнитель в тексте акта"],
+            ["customer_gender", "Заказчик в тексте акта"],
+          ] as const).map(([key, label]) => (
+            <div key={key} className="flex flex-col gap-1.5">
+              <label className="text-xs text-white/50">{label}</label>
+              <div className="flex rounded-lg bg-white/5 p-1">
+                {([
+                  ["m", "именуемый"],
+                  ["f", "именуемая"],
+                ] as const).map(([val, text]) => {
+                  const active = (options[key] || "m") === val
+                  return (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setOpt(key, val)}
+                      className={`flex-1 rounded-md px-3 py-2 text-sm transition-colors ${active ? "bg-[#D4AF37] text-[#161616] font-medium" : "text-white/60 hover:text-white"}`}
+                    >
+                      {text}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+
         <div className="flex flex-col gap-1.5 mt-4">
           <label className="text-xs text-white/50">Подпись и печать Исполнителя</label>
           <SignStampToggles
