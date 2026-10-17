@@ -398,11 +398,12 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
     docs = [f for f in attachments if f.get('type') != 'photo']
     attachments_html = ''
     if attachments:
-        parts = ['<div class="pg-break" style="page-break-before:always;break-before:page;height:0"></div>',
-                 '<p style="font-weight:700;font-size:15px;margin:0 0 12px;color:#4A2E06">Приложение к Акту № ' + esc(act_number) + '</p>']
+        title_html = '<p style="font-weight:700;font-size:15px;margin:18px 0 12px;color:#4A2E06;page-break-after:avoid;break-after:avoid">Приложение к Акту № ' + esc(act_number) + '</p>'
+        parts = [] if photos else [title_html]
         for i, f in enumerate(photos):
             parts.append(
                 '<div style="page-break-inside:avoid;break-inside:avoid;margin:0 0 16px">'
+                + (title_html if i == 0 else '') +
                 f'<img src="{html_lib.escape(f["url"])}" crossorigin="anonymous" alt="" style="display:block;max-width:100%;max-height:400px;margin:0 auto;border-radius:8px;object-fit:contain"/>'
                 f'<p style="text-align:center;font-size:11px;color:#6b5a3e;margin:6px 0 0">Фото {i + 1}. {html_lib.escape(f.get("name") or "")}</p>'
                 '</div>'

@@ -5,6 +5,8 @@ import { ROUNDED_TABLE_CSS } from "@/lib/pdfRender"
 /** Старые акты сохранены со светло-жёлтыми плашками — затемняем их до читаемого тона */
 export function darkenActHtml(html: string): string {
   return roundActTables((html || "")
+    .replace(/<div class="pg-break"[^>]*><\/div>/g, "")
+    .replace(/(<p style="font-weight:700;font-size:15px;margin:)0 0 12px(;color:#4A2E06)(">Приложение к Акту)/g, (_m, a: string, b: string, c: string) => `${a}18px 0 12px${b};page-break-after:avoid;break-after:avoid${c}`)
     .replace(/#F5EBD9/gi, "#D3C2A2")
     .replace(/background:#EADCC0/gi, "background:#B9A27A")
     .replace(/color:#3A2404/gi, "color:#1F1405"))
