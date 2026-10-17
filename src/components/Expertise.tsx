@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react"
-import { Home, Building, Armchair, Trees, ArrowRight } from "lucide-react"
+import { Home, Building, Armchair, Trees } from "lucide-react"
 import { HighlightedText } from "./HighlightedText"
 import { useSiteContent } from "@/hooks/useSiteContent"
 import { useServiceLandings } from "@/hooks/useServiceLandings"
+import { ServiceDirectionPicker } from "./ServiceDirectionPicker"
 
 const iconMap: Record<string, typeof Home> = { Home, Building, Armchair, Trees }
 
@@ -121,27 +122,10 @@ export function Expertise() {
         </div>
 
         <div className="mt-16 pt-12 border-t border-border">
-          <p className="text-muted-foreground mb-6">
+          <p className="text-muted-foreground mb-5">
             Работаем и по отдельным направлениям — с открытым прайсом на каждую позицию:
           </p>
-          <div className="flex flex-wrap gap-3">
-            {landings.map((c) => (
-              <a
-                key={c.slug}
-                href={`/uslugi/${c.slug}`}
-                className="text-sm px-4 py-2 rounded-full border border-border hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors"
-              >
-                {c.category}
-              </a>
-            ))}
-          </div>
-          <a
-            href="/uslugi"
-            className="inline-flex items-center gap-2 mt-8 text-sm hover:text-[#D4AF37] transition-colors"
-          >
-            Все услуги и цены
-            <ArrowRight className="w-4 h-4" />
-          </a>
+          <ServiceDirectionPicker landings={landings} />
         </div>
       </div>
     </section>
