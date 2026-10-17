@@ -92,6 +92,20 @@ function wrapperOf(t: HTMLTableElement, root: HTMLElement): HTMLElement {
   return t
 }
 
+/** Копия заголовка группы с пометкой «(продолжение)» */
+function continuationOf<T extends HTMLElement>(el: T): T {
+  const c = el.cloneNode(true) as T
+  const cell = (c.querySelector("td, th") as HTMLElement | null) || c
+  const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT)
+  let last: Text | null = null
+  while (walker.nextNode()) {
+    const n = walker.currentNode as Text
+    if ((n.textContent || "").trim()) last = n
+  }
+  if (last) last.textContent = `${(last.textContent || "").trimEnd()} (продолжение)`
+  return c
+}
+
 /** Расставляет переносы: блоки не режутся, таблицы делятся между строками с повтором шапки */
 export function paginate(root: HTMLElement) {
   const rootTop = () => root.getBoundingClientRect().top
@@ -118,10 +132,24 @@ export function paginate(root: HTMLElement) {
     const newTable = table.cloneNode(false) as HTMLTableElement
     if (table.tHead) newTable.appendChild(table.tHead.cloneNode(true))
     const section = tr.parentElement as HTMLElement
+    // Заголовок группы (вид работ), к которому относится продолжение
+    let groupRow: HTMLTableRowElement | null = null
+    if (!isCatRow(tr)) {
+      for (const r of bodyRows(table)) {
+        if (r === tr) break
+        if (isCatRow(r)) groupRow = r
+      }
+    }
     if (section.tagName === "TFOOT") {
+      if (groupRow) {
+        const b = document.createElement("tbody")
+        b.appendChild(continuationOf(groupRow))
+        newTable.appendChild(b)
+      }
       newTable.appendChild(section)
     } else {
       const newBody = section.cloneNode(false) as HTMLElement
+      if (groupRow) newBody.appendChild(continuationOf(groupRow))
       let cur: Element | null = tr
       while (cur) {
         const next: Element | null = cur.nextElementSibling
@@ -142,7 +170,16 @@ export function paginate(root: HTMLElement) {
       piece.appendChild(newTable)
     }
     wrapper.after(piece)
-    spacerBefore(piece, target)
+    // Заголовок раздела (помещение) тоже повторяем над продолжением
+    const block = wrapper.closest(".room-block")
+    const title = block?.querySelector<HTMLElement>(":scope > .room-title")
+    let anchor: HTMLElement = piece
+    if (title) {
+      const t = continuationOf(title)
+      piece.before(t)
+      anchor = t
+    }
+    spacerBefore(anchor, target)
   }
 
   const units: Unit[] = []
