@@ -7,6 +7,7 @@ import { useServiceLandings } from "@/hooks/useServiceLandings"
 import { usePageSeo } from "@/hooks/usePageSeo"
 import Icon from "@/components/ui/icon"
 import { reachGoal } from "@/lib/metrika"
+import { WorkCartBar } from "@/components/services/WorkCartBar"
 
 const META_TITLE = "Услуги по ремонту и строительству в Хабаровске — цены | FixKey"
 const META_DESCRIPTION =
@@ -172,6 +173,7 @@ export default function ServicesIndex() {
       </main>
 
       <Footer />
+      <WorkCartBar />
     </div>
   )
 }

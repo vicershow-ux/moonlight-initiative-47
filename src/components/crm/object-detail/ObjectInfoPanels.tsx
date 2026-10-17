@@ -97,6 +97,16 @@ export function ObjectInfoPanels({ object, rooms, roomsLoading }: ObjectInfoPane
         </div>
       </div>
 
+      {object.lead_request && (
+        <div className="bg-[#1f1f1f] border border-[#D4AF37]/30 rounded-xl p-5">
+          <p className="font-medium mb-3 flex items-center gap-2">
+            <Icon name="ShoppingCart" size={16} className="text-[#D4AF37]" />
+            Заявка клиента с сайта
+          </p>
+          <p className="text-sm text-white/70 whitespace-pre-wrap">{object.lead_request}</p>
+        </div>
+      )}
+
       {object.measurer_comment && (
         <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
           <p className="font-medium mb-3">Комментарий замерщика</p>

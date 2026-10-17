@@ -191,6 +191,7 @@ export interface ObjectItem {
   kitchen_furniture: string
   measurer_comment: string
   design_project: string
+  lead_request?: string
   created_at: string
   updated_at: string
 }
@@ -1008,7 +1009,13 @@ export const notificationsApi = {
 }
 
 export const leadsApi = {
-  async create(payload: { client_name: string; client_phone: string; email?: string; comment?: string }) {
+  async create(payload: {
+    client_name: string
+    client_phone: string
+    email?: string
+    comment?: string
+    works?: { name: string; category: string; quantity: number }[]
+  }) {
     const res = await fetch(LEADS_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

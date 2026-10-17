@@ -13,6 +13,8 @@ import { getServiceFaq } from "@/lib/serviceFaq"
 import Icon from "@/components/ui/icon"
 import PageNotFound from "@/pages/PageNotFound"
 import { reachGoal } from "@/lib/metrika"
+import { WorkQtyControl } from "@/components/services/WorkQtyControl"
+import { WorkCartBar } from "@/components/services/WorkCartBar"
 
 const formatPrice = (value: number) =>
   new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(value)
@@ -341,8 +343,8 @@ export default function ServiceLanding() {
               Цены на {meta.category.toLowerCase()}
             </h2>
             <p className="text-muted-foreground mb-10 max-w-2xl">
-              Стоимость указана за работу без учёта материалов. Точную сумму фиксируем в смете
-              после бесплатного замера.
+              Стоимость указана за работу без учёта материалов. Отметьте нужные работы и укажите
+              объём — посчитаем ориентировочную сумму, а точную зафиксируем в смете после бесплатного замера.
             </p>
 
             {loading ? (
@@ -365,16 +367,19 @@ export default function ServiceLanding() {
                       {list.map((item, i) => (
                         <div
                           key={`${item.name}-${i}`}
-                          className={`flex items-baseline justify-between gap-6 px-4 md:px-6 py-3.5 ${
+                          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-6 px-4 md:px-6 py-3.5 ${
                             i % 2 ? "bg-muted/40" : ""
                           }`}
                         >
                           <span className="text-sm md:text-base">{item.name}</span>
-                          <span className="text-sm md:text-base font-medium whitespace-nowrap">
-                            {formatPrice(item.price)} ₽
-                            <span className="text-muted-foreground font-normal">
-                              {item.unit ? ` / ${item.unit}` : ""}
+                          <span className="flex items-center justify-between sm:justify-end gap-4 shrink-0">
+                            <span className="text-sm md:text-base font-medium whitespace-nowrap">
+                              {formatPrice(item.price)} ₽
+                              <span className="text-muted-foreground font-normal">
+                                {item.unit ? ` / ${item.unit}` : ""}
+                              </span>
                             </span>
+                            <WorkQtyControl name={item.name} category={meta.category} unit={item.unit} price={item.price} />
                           </span>
                         </div>
                       ))}
@@ -486,6 +491,7 @@ export default function ServiceLanding() {
       </main>
 
       <Footer />
+      <WorkCartBar />
     </div>
   )
 }

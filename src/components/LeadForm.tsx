@@ -12,6 +12,8 @@ interface LeadFormProps {
   commentPlaceholder?: string
   submitLabel?: string
   successText?: string
+  works?: { name: string; category: string; quantity: number }[]
+  onSuccess?: () => void
 }
 
 export function LeadForm({
@@ -20,6 +22,8 @@ export function LeadForm({
   commentPlaceholder = "Площадь, район, пожелания (необязательно)",
   submitLabel = "Оставить заявку",
   successText = "Свяжемся с вами в течение 24 часов",
+  works,
+  onSuccess,
 }: LeadFormProps = {}) {
   const [clientName, setClientName] = useState("")
   const [clientPhone, setClientPhone] = useState("")
@@ -68,8 +72,10 @@ export function LeadForm({
         client_phone: clientPhone,
         email: clientEmail.trim(),
         comment: fullComment,
+        works: works?.length ? works : undefined,
       })
       setSuccess(true)
+      onSuccess?.()
       reachGoal("lead_submit", { forma: formName, stranica: source })
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось отправить заявку")

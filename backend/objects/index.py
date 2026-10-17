@@ -13,7 +13,7 @@ FIELDS = [
     'measurer_comment', 'design_project',
 ]
 
-ALL_KEYS = ['id', 'object_code'] + FIELDS + ['created_at', 'updated_at']
+ALL_KEYS = ['id', 'object_code'] + FIELDS + ['lead_request', 'created_at', 'updated_at']
 
 
 def get_conn():

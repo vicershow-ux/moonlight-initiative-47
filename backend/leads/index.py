@@ -7,6 +7,7 @@ from email.message import EmailMessage
 from email.utils import formataddr
 
 import psycopg2
+from html import escape
 
 LEADS_COMPANY_ID = 2
 
@@ -43,7 +44,65 @@ def response(status: int, body):
     }
 
 
-def send_lead_email(to_email, brand, client_name, client_phone, comment, object_code, client_email=''):
+def money(v):
+    return f"{v:,.2f}".replace(',', ' ').replace('.', ',')
+
+
+def clean_works(cur, raw):
+    '''Сверяет выбранные работы с прайсом компании, цены берёт из базы'''
+    out = []
+    for it in (raw or [])[:200]:
+        if not isinstance(it, dict):
+            continue
+        name = str(it.get('name') or '').strip()[:500]
+        category = str(it.get('category') or '').strip()[:200]
+        try:
+            qty = round(float(it.get('quantity') or 0), 2)
+        except (TypeError, ValueError):
+            qty = 0
+        if not name or qty <= 0 or qty > 1000000:
+            continue
+        cur.execute(
+            "SELECT unit, price FROM services WHERE company_id = %s AND is_active = true AND name = %s AND category = %s LIMIT 1",
+            (LEADS_COMPANY_ID, name, category)
+        )
+        row = cur.fetchone()
+        if not row:
+            continue
+        price = float(row[1] or 0)
+        out.append({'name': name, 'category': category, 'unit': row[0] or '', 'quantity': qty,
+                    'price': price, 'amount': round(qty * price, 2)})
+    return out
+
+
+def works_text(works):
+    if not works:
+        return ''
+    lines = [f"{i}. {w['name']} — {w['quantity']:g} {w['unit']} × {money(w['price'])} = {money(w['amount'])} ₽"
+             for i, w in enumerate(works, 1)]
+    total = sum(w['amount'] for w in works)
+    return 'Выбранные работы:\n' + '\n'.join(lines) + f"\nИтого ориентировочно: {money(total)} ₽"
+
+
+def works_html(works):
+    if not works:
+        return ''
+    rows = ''.join(
+        f'<tr><td style="padding:6px 8px;border-bottom:1px solid #eee;">{escape(w["name"])}</td>'
+        f'<td style="padding:6px 8px;border-bottom:1px solid #eee;white-space:nowrap;text-align:right;">{w["quantity"]:g} {escape(w["unit"])}</td>'
+        f'<td style="padding:6px 8px;border-bottom:1px solid #eee;white-space:nowrap;text-align:right;">{money(w["amount"])} ₽</td></tr>'
+        for w in works
+    )
+    total = sum(w['amount'] for w in works)
+    return (
+        '<p style="margin:24px 0 8px;font-weight:bold;">Выбранные работы</p>'
+        '<table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;color:#161616;">'
+        f'{rows}<tr><td colspan="2" style="padding:8px;font-weight:bold;">Итого ориентировочно</td>'
+        f'<td style="padding:8px;font-weight:bold;text-align:right;white-space:nowrap;">{money(total)} ₽</td></tr></table>'
+    )
+
+
+def send_lead_email(to_email, brand, client_name, client_phone, comment, object_code, client_email='', works=None):
     host = os.environ.get('SMTP_HOST', '').strip()
     host = host.replace('https://', '').replace('http://', '').replace('smtps://', '')
     host = host.strip().strip('/').split('/')[0]
@@ -77,6 +136,8 @@ def send_lead_email(to_email, brand, client_name, client_phone, comment, object_
         f"Телефон: {client_phone}\n"
         f"Email: {client_email or '—'}\n"
         f"Комментарий: {comment or '—'}\n\n"
+        + (works_text(works) + "\n\n" if works else '') +
+        f""
         f"Номер объекта: {object_code}\n"
         f"Получена: {created} (МСК)\n\n"
         f"Заявка уже создана в кабинете в разделе «Объекты»."
@@ -103,6 +164,7 @@ def send_lead_email(to_email, brand, client_name, client_phone, comment, object_
         <tr><td style="padding:8px 0;color:#888;">Объект</td><td style="padding:8px 0;">{object_code}</td></tr>
         <tr><td style="padding:8px 0;color:#888;">Получена</td><td style="padding:8px 0;">{created} (МСК)</td></tr>
       </table>
+      {works_html(works)}
       <p style="margin:24px 0 0;padding-top:20px;border-top:1px solid #eee;font-size:13px;color:#999;">
         Заявка автоматически создана в кабинете в разделе «Объекты» со статусом «лид».
       </p>
@@ -218,7 +280,7 @@ def handler(event: dict, context) -> dict:
     client_name = (body.get('client_name') or '').strip()
     client_phone = normalize_phone(body.get('client_phone') or '')
     client_email = (body.get('email') or '').strip()
-    comment = (body.get('comment') or '').strip()
+    comment = (body.get('comment') or '').strip()[:2000]
 
     if len(client_name) < 2:
         return response(400, {'error': 'Введите имя'})
@@ -231,15 +293,18 @@ def handler(event: dict, context) -> dict:
     cur = conn.cursor()
 
     try:
+        works = clean_works(cur, body.get('works'))
+        lead_request = works_text(works)
         year = datetime.utcnow().strftime('%y')
         cur.execute("SELECT COUNT(*) FROM objects WHERE company_id = %s", (LEADS_COMPANY_ID,))
         seq = cur.fetchone()[0] + 1
         object_code = f"{LEADS_COMPANY_ID:03d}-20{year}-{seq:04d}"
 
         cur.execute(
-            "INSERT INTO objects (company_id, object_code, client_name, client_phone, email, object_type, area, status) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
-            (LEADS_COMPANY_ID, object_code, client_name, client_phone, client_email, 'Заявка с сайта', 0, 'лид')
+            "INSERT INTO objects (company_id, object_code, client_name, client_phone, email, object_type, area, status, lead_request) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+            (LEADS_COMPANY_ID, object_code, client_name, client_phone, client_email, 'Заявка с сайта', 0, 'лид',
+             '\n\n'.join(x for x in [f'Комментарий: {comment}' if comment and works else '', lead_request] if x))
         )
         new_id = cur.fetchone()[0]
 
@@ -248,12 +313,14 @@ def handler(event: dict, context) -> dict:
             message += f", {client_email}"
         if comment:
             message += f" — {comment}"
+        if works:
+            message += f" · выбрано работ: {len(works)} на {money(sum(w['amount'] for w in works))} ₽"
 
         cur.execute(
             "INSERT INTO notifications (company_id, type, title, message, payload) "
             "VALUES (%s, %s, %s, %s, %s)",
             (LEADS_COMPANY_ID, 'lead', 'Новая заявка с сайта', message,
-             json.dumps({'object_id': new_id, 'object_code': object_code}))
+             json.dumps({'object_id': new_id, 'object_code': object_code, 'works': len(works)}))
         )
 
         conn.commit()
@@ -271,7 +338,7 @@ def handler(event: dict, context) -> dict:
         conn.close()
 
     email_sent, email_note = send_lead_email(
-        notify_email, brand, client_name, client_phone, comment, object_code, client_email
+        notify_email, brand, client_name, client_phone, comment, object_code, client_email, works
     )
     if email_sent:
         print(f'Lead email OK ({object_code}) -> {notify_email}')

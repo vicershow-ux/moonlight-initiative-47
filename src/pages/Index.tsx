@@ -9,6 +9,7 @@ import { FAQ } from "../components/FAQ"
 import { CallToAction } from "../components/CallToAction"
 import { Footer } from "../components/Footer"
 import { useSiteContent } from "@/hooks/useSiteContent"
+import { WorkCartBar } from "@/components/services/WorkCartBar"
 
 export default function Index() {
   const { content } = useSiteContent()
@@ -125,6 +126,7 @@ export default function Index() {
       <FAQ />
       <CallToAction />
       <Footer />
+      <WorkCartBar />
     </main>
   )
 }
