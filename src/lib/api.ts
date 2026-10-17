@@ -686,6 +686,13 @@ export interface ActOptions {
   apply_stamp?: boolean
   executor_gender?: "m" | "f"
   customer_gender?: "m" | "f"
+  attachments?: ActAttachment[]
+}
+
+export interface ActAttachment {
+  name: string
+  url: string
+  type: "photo" | "pdf" | "excel" | "other"
 }
 
 export interface Act {

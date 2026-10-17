@@ -81,6 +81,7 @@ export default function ActCreate() {
             apply_stamp: Boolean(existingAct.options?.apply_stamp),
             executor_gender: existingAct.options?.executor_gender || "m",
             customer_gender: existingAct.options?.customer_gender || "m",
+            attachments: existingAct.options?.attachments || [],
           })
           setItems(existingAct.items || [])
           setSelectedEstimateId(existingAct.estimate_id || null)
@@ -112,7 +113,7 @@ export default function ActCreate() {
     companyApi.get().then(setCompany).catch(() => null)
   }, [])
 
-  const setOpt = (key: keyof ActOptions, value: string | boolean) =>
+  const setOpt = (key: keyof ActOptions, value: ActOptions[keyof ActOptions]) =>
     setOptions((prev) => ({ ...prev, [key]: value }))
 
   const total = useMemo(

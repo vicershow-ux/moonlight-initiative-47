@@ -206,6 +206,17 @@ export function paginate(root: HTMLElement, pageH: number = PAGE_H) {
   let pageTop = 0
 
   for (const u of units) {
+    if (u.el.classList.contains("pg-break")) {
+      const top = rel(u.el).top
+      u.el.style.breakBefore = "auto"
+      u.el.style.pageBreakBefore = "auto"
+      if (top > pageTop + 2) {
+        u.el.classList.add("pg-spacer")
+        u.el.style.height = `${Math.max(0, pageTop + PAGE_H - top)}px`
+        pageTop += PAGE_H
+      }
+      continue
+    }
     for (let guard = 0; guard < 60; guard++) {
       const r = rel(u.el)
       const limit = pageTop + PAGE_H

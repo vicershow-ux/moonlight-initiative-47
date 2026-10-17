@@ -1,7 +1,6 @@
 import json
 import os
 import re
-import re
 import html as html_lib
 import psycopg2
 from mailer import send_document_email
@@ -383,11 +382,35 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
         basis_parts.append(f'Объект: {object_row.get("object_type", "")} по адресу: {address}')
     basis_line = '. '.join(basis_parts) + '.' if basis_parts else ''
 
+    attachments = [f for f in (opts.get('attachments') or []) if isinstance(f, dict) and f.get('url')]
+    att_names = ', '.join(html_lib.escape(f.get('name') or 'файл') for f in attachments)
+    appendix_parts = [p for p in [esc(appendix.strip().rstrip('.')), att_names] if p]
     appendix_block = dark_block(
-        f'5. Приложения и сопроводительные документы, переданные вместе с результатом работ: {esc(appendix)}.'
-    ) if appendix else dark_block(
+        f'5. Приложения и сопроводительные документы, переданные вместе с результатом работ: {"; ".join(appendix_parts)}.'
+    ) if appendix_parts else dark_block(
         '5. Приложения и сопроводительные документы вместе с результатом работ не передавались.'
     )
+
+    photos = [f for f in attachments if f.get('type') == 'photo']
+    docs = [f for f in attachments if f.get('type') != 'photo']
+    attachments_html = ''
+    if attachments:
+        parts = ['<div class="pg-break" style="page-break-before:always;break-before:page;height:0"></div>',
+                 '<p style="font-weight:700;font-size:15px;margin:0 0 12px;color:#4A2E06">Приложение к Акту № ' + esc(act_number) + '</p>']
+        for i, f in enumerate(photos):
+            parts.append(
+                '<div style="page-break-inside:avoid;break-inside:avoid;margin:0 0 16px">'
+                f'<img src="{html_lib.escape(f["url"])}" crossorigin="anonymous" alt="" style="display:block;max-width:100%;max-height:400px;margin:0 auto;border-radius:8px;object-fit:contain"/>'
+                f'<p style="text-align:center;font-size:11px;color:#6b5a3e;margin:6px 0 0">Фото {i + 1}. {html_lib.escape(f.get("name") or "")}</p>'
+                '</div>'
+            )
+        if docs:
+            items_li = ''.join(
+                f'<li style="margin:0 0 4px"><a href="{html_lib.escape(f["url"])}" style="color:#4A2E06">{html_lib.escape(f.get("name") or "документ")}</a></li>'
+                for f in docs
+            )
+            parts.append(f'<p style="font-weight:600;margin:12px 0 6px">Документы:</p><ol style="margin:0;padding-left:20px">{items_li}</ol>')
+        attachments_html = '\n'.join(parts)
 
     executor_contacts = ''
     if company_phone:
@@ -443,6 +466,7 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
 <hr style="border:none;border-top:1.5px solid #7A4E10;margin:26px 0 14px" />
 
 {parties_block(company_row, opts, executor_display, executor_short, client_name, customer_contacts)}
+{attachments_html}
 </div>"""
 
 

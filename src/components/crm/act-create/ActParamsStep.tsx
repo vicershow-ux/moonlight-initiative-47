@@ -1,6 +1,7 @@
 import Icon from "@/components/ui/icon"
 import { ActOptions, CompanyData, Contract, Estimate, ObjectItem } from "@/lib/api"
 import { SignStampToggles } from "@/components/crm/common/SignStampToggles"
+import { ActAttachments } from "./ActAttachments"
 import {
   ACT_TYPES,
   SCOPE_OPTIONS,
@@ -20,7 +21,7 @@ interface ActParamsStepProps {
   actNumber: string
   setActNumber: (v: string) => void
   options: ActOptions
-  setOpt: (key: keyof ActOptions, value: string | boolean) => void
+  setOpt: (key: keyof ActOptions, value: ActOptions[keyof ActOptions]) => void
   company?: CompanyData | null
   estimates: Estimate[]
   selectedEstimateId: number | null
@@ -143,6 +144,13 @@ export function ActParamsStep({
             rows={3}
             className={`${fieldClass} resize-none`}
           />
+          {object && (
+            <ActAttachments
+              objectId={object.id}
+              value={options.attachments || []}
+              onChange={(v) => setOpt("attachments", v)}
+            />
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
