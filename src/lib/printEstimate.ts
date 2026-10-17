@@ -401,10 +401,10 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
   .sign-col .label { color: #4A2E06; font-size: 11.5px; font-weight: 700; letter-spacing: 0.4px; margin-bottom: 6px; text-transform: uppercase; }
   .sign-box { position: relative; height: 84px; border-bottom: 1.5px solid #5C3A11; margin-bottom: 4px; }
   .sign-box .sig { position: absolute; left: 10px; bottom: 4px; height: 62px; max-width: 200px; object-fit: contain; }
-  .sign-box .stamp { position: absolute; right: 0; top: 88px; height: 118px; width: 118px; object-fit: contain; opacity: 0.9; }
+  .sign-box .stamp { position: absolute; right: 0; bottom: 0; height: 112px; width: 112px; object-fit: contain; opacity: 0.9; }
+  .sign-col.with-stamp .sign-box { height: 118px; }
   .sign-col .who { font-size: 13px; color: #1a1a1a; }
   .sign-col .hint { font-size: 11px; color: #555; margin-top: 2px; }
-  .sign-col.with-stamp { padding-bottom: 80px; }
   .parties, .info-grid, .summary, .notes, .room-total { page-break-inside: avoid; break-inside: avoid; }
   @media print {
     html, body { width: auto; margin: 0; padding: 0; background: #fff; overflow: visible; }

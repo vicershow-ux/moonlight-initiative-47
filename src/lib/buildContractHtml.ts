@@ -83,30 +83,73 @@ function partyIntro(ctx: ContractContext): string {
   return `<p>${customerIntro(ctx)} ${contractorIntro(ctx)} вместе именуемые «Стороны», а индивидуально — «Сторона», заключили настоящий договор подряда на ${subjectTitle(ctx.options.work_subject)} (далее — «Договор») о нижеследующем:</p>`
 }
 
-/** Реквизиты подрядчика — все, что заполнено в разделе «Компания» */
-function contractorRequisites(ctx: ContractContext, companyName: string): string {
+const group4 = (v?: string | null) => (v || "").replace(/\s+/g, "").replace(/(\d{4})(?=\d)/g, "$1 ")
+
+/** Строка реквизита: подпись слева, значение справа; acc — моноширинный номер, hl — выделение фоном */
+function row(label: string, value: unknown, mode: "" | "acc" | "acc-hl" = "") {
+  const v = esc(value).trim()
+  if (!v) return ""
+  const bg = mode === "acc-hl" ? "background:#F3EBDC;" : ""
+  const font = mode ? "font-family:'Courier New',monospace;font-size:13px;letter-spacing:.3px;" : "font-size:12.5px;"
+  return `<tr><td style="${bg}padding:4px 12px;width:36%;color:#6b5a3e;font-size:11px;vertical-align:top;border:none">${label}</td><td style="${bg}padding:4px 12px;font-weight:600;${font}word-break:break-word;border:none">${v}</td></tr>`
+}
+
+const CARD = "border:1.2px solid #6B4508;border-radius:10px;overflow:hidden;page-break-inside:avoid;break-inside:avoid"
+const HEAD = "background:#B9A27A;color:#1F1405;padding:7px 12px;font-weight:700;font-size:11.5px;letter-spacing:.4px;text-transform:uppercase"
+
+function card(title: string, name: string, rows: string) {
+  return `<div style="${CARD}"><div style="${HEAD}">${title}</div>
+<table style="width:100%;border-collapse:collapse;margin:0">
+<tr><td colspan="2" style="padding:8px 12px 4px;font-weight:700;font-size:13px;border:none">${esc(name)}</td></tr>
+${rows}
+<tr><td colspan="2" style="height:6px;border:none"></td></tr>
+</table></div>`
+}
+
+/** Реквизиты подрядчика — все, что заполнено в разделе «Компания», банк отдельным блоком */
+function contractorCard(ctx: ContractContext, companyName: string): string {
   const c = ctx.company
   const o = ctx.options
   const isLegal = o.contractor_type === "legal"
   const isIp = o.contractor_type === "entrepreneur"
   const title = isLegal ? o.contractor_org_name || companyName : isIp ? `ИП ${o.contractor_name || c?.contact_full_name || companyName}` : o.contractor_name || c?.contact_full_name || companyName
   const ogrn = o.contractor_ogrnip || c?.ogrn
-  return [
-    req(title),
-    isLegal || isIp ? req(ogrn, isLegal ? "ОГРН" : "ОГРНИП") : "",
-    req(c?.inn, "ИНН"),
-    isLegal ? req(c?.kpp, "КПП") : "",
-    req(c?.legal_address, isLegal ? "Юр. адрес" : "Адрес"),
-    req(c?.phone, "Тел."),
-    req(c?.email, "Email"),
-    req(c?.website, "Сайт"),
-    req(c?.bank_name, "Банк"),
-    req(c?.bik, "БИК"),
-    req(c?.account_number, "Р/с"),
-    req(c?.correspondent_account, "К/с"),
-    req(c?.bank_inn, "ИНН банка"),
-    req(c?.bank_kpp, "КПП банка"),
-  ].join("\n")
+  const main = [
+    isLegal || isIp ? row(isLegal ? "ОГРН" : "ОГРНИП", ogrn) : "",
+    row("ИНН", c?.inn),
+    isLegal ? row("КПП", c?.kpp) : "",
+    row(isLegal ? "Юр. адрес" : "Адрес", c?.legal_address),
+    row("Телефон", c?.phone),
+    row("E-mail", c?.email),
+    row("Сайт", c?.website),
+  ].join("")
+  const bank = [
+    row("Расчётный счёт", group4(c?.account_number), "acc-hl"),
+    row("Банк", c?.bank_name),
+    row("БИК", c?.bik, "acc"),
+    row("Корр. счёт", group4(c?.correspondent_account), "acc"),
+    row("ИНН банка", c?.bank_inn, "acc"),
+    row("КПП банка", c?.bank_kpp, "acc"),
+  ].join("")
+  const bankBlock = bank
+    ? `<tr><td colspan="2" style="padding:8px 12px 3px;font-size:10.5px;font-weight:700;letter-spacing:.4px;color:#6B4508;text-transform:uppercase;border:none;border-top:1px solid #D9C9A8">Банковские реквизиты</td></tr>${bank}`
+    : ""
+  return card("Подрядчик (Исполнитель)", title, main + bankBlock)
+}
+
+function customerCard(ctx: ContractContext, address: string): string {
+  const { options: o, object } = ctx
+  const isLegal = o.customer_type === "legal"
+  const name = isLegal && o.customer_org_name ? o.customer_org_name : o.customer_type === "entrepreneur" ? `ИП ${o.customer_name || object.client_name || ""}` : o.customer_name || object.client_name || ""
+  const rows = [
+    o.customer_type === "entrepreneur" ? row("ОГРНИП", o.customer_ogrnip) : "",
+    isLegal ? row("ОГРН", o.customer_ogrn) : "",
+    isLegal && o.customer_director_name ? row(o.customer_director_position || "Директор", o.customer_director_name) : "",
+    row("Телефон", object.client_phone),
+    row("E-mail", object.email),
+    row("Адрес объекта", address),
+  ].join("")
+  return card("Заказчик", name, rows)
 }
 
 /**
@@ -122,37 +165,25 @@ function requisitesAndSigns(ctx: ContractContext, companyName: string, address: 
   const sig = o.apply_signature && c?.signature_url
     ? `<img src="${esc(c.signature_url)}" crossorigin="anonymous" alt="" style="position:absolute;left:10px;bottom:4px;height:62px;max-width:200px;object-fit:contain"/>`
     : ""
-  const stamp = o.apply_stamp && c?.stamp_url
-    ? `<img src="${esc(c.stamp_url)}" crossorigin="anonymous" alt="" style="position:absolute;right:0;top:88px;height:118px;width:118px;object-fit:contain;opacity:0.92"/>`
+  const withStamp = Boolean(o.apply_stamp && c?.stamp_url)
+  const stamp = withStamp
+    ? `<img src="${esc(c?.stamp_url)}" crossorigin="anonymous" alt="" style="position:absolute;right:0;bottom:0;height:112px;width:112px;object-fit:contain;opacity:0.92"/>`
     : ""
   const box = (overlay: string) =>
-    `<div style="position:relative;height:84px;border-bottom:1px solid #555;margin:0 0 4px">${overlay}</div>`
+    `<div style="position:relative;height:${withStamp ? 118 : 84}px;border-bottom:1px solid #555;margin:0 0 4px">${overlay}</div>`
   return `<table style="width:100%;margin-top:16px;border-collapse:collapse">
 <tr>
-<td style="width:50%;vertical-align:top;padding-right:20px">
-<p><strong>ПОДРЯДЧИК (ИСПОЛНИТЕЛЬ)</strong></p>
-${contractorRequisites(ctx, companyName)}
-</td>
-<td style="width:50%;vertical-align:top;padding-left:20px">
-<p><strong>ЗАКАЗЧИК</strong></p>
-${req(customer)}
-${o.customer_type === "legal" ? req(o.customer_org_name, "") : ""}
-${o.customer_type === "entrepreneur" ? req(o.customer_ogrnip, "ОГРНИП") : ""}
-${o.customer_type === "legal" ? req(o.customer_ogrn, "ОГРН") : ""}
-${o.customer_type === "legal" && o.customer_director_name ? req(`${o.customer_director_position || "Директор"} ${o.customer_director_name}`) : ""}
-${req(object.client_phone, "Тел.")}
-${req(object.email, "Email")}
-${req(address, "Объект")}
-</td>
+<td style="width:50%;vertical-align:top;padding-right:8px;border:none">${contractorCard(ctx, companyName)}</td>
+<td style="width:50%;vertical-align:top;padding-left:8px;border:none">${customerCard(ctx, address)}</td>
 </tr>
 <tr style="page-break-inside:avoid;break-inside:avoid">
-<td style="width:50%;vertical-align:top;padding:40px 20px ${o.apply_stamp && c?.stamp_url ? "80px" : "0"} 0">
+<td style="width:50%;vertical-align:top;padding:36px 20px 0 0;border:none">
 <p style="margin:0 0 6px"><strong>ОТ ИМЕНИ ПОДРЯДЧИКА</strong></p>
 ${box(sig + stamp)}
 <p style="margin:0">${esc(signer)}</p>
 <p style="font-size:11px;color:#666;margin:2px 0 0">(подпись)</p>
 </td>
-<td style="width:50%;vertical-align:top;padding:40px 0 0 20px">
+<td style="width:50%;vertical-align:top;padding:36px 0 0 20px;border:none">
 <p style="margin:0 0 6px"><strong>ОТ ИМЕНИ ЗАКАЗЧИКА</strong></p>
 ${box("")}
 <p style="margin:0">${esc(customer)}</p>

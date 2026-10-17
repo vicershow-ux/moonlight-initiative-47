@@ -277,9 +277,10 @@ def parties_block(c, opts, executor_display, executor_short, client_name, custom
     stamp = ''
     if opts.get('apply_stamp') and c.get('stamp_url'):
         stamp = (f'<img src="{esc(c["stamp_url"])}" crossorigin="anonymous" alt="" '
-                 'style="position:absolute;right:0;top:88px;height:118px;width:118px;object-fit:contain;opacity:0.9"/>')
-    pad = '80px' if stamp else '0'
-    box = '<div style="position:relative;height:84px;border-bottom:1.5px solid #5C3A11;margin:0 0 4px">{}</div>'
+                 'style="position:absolute;right:0;bottom:0;height:112px;width:112px;object-fit:contain;opacity:0.9"/>')
+    pad = '0'
+    box_h = '118px' if stamp else '84px'
+    box = '<div style="position:relative;height:' + box_h + ';border-bottom:1.5px solid #5C3A11;margin:0 0 4px">{}</div>'
     label = 'margin:0 0 6px;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:#4A2E06'
     card = ('border:1.2px solid #6B4508;border-radius:10px;overflow:hidden;page-break-inside:avoid;break-inside:avoid')
     head = ('background:#B9A27A;color:#1F1405;padding:7px 12px;font-weight:700;font-size:11.5px;'
