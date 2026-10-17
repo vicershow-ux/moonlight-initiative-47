@@ -70,7 +70,8 @@ function collect(el: HTMLElement, out: Unit[]) {
     if (cssOf(child).display === "none") continue
     if (child.tagName === "TABLE") {
       const t = child as HTMLTableElement
-      if (t.tHead) {
+      const layoutRows = !t.tHead && bodyRows(t).length > 1 && Boolean(t.querySelector(":scope > tbody > tr > td table, :scope > tbody > tr > td div"))
+      if (t.tHead || layoutRows) {
         Array.from(t.tBodies).forEach((b) => Array.from(b.rows).forEach((r) => out.push({ el: r, row: true })))
         if (t.tFoot) Array.from(t.tFoot.rows).forEach((r) => out.push({ el: r, row: true }))
       } else out.push({ el: t, row: false })
