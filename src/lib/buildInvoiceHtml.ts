@@ -51,7 +51,7 @@ export function buildInvoiceHtml(inv: Invoice): string {
   const isLegal = /юрид|ооо|общество/.test(entity)
   const isIp = /предприним/.test(entity)
   const sellerName = isIp
-    ? `Индивидуальный предприниматель ${c.contact_full_name || c.name || ""}`
+    ? `ИП ${c.contact_full_name || c.name || ""}`
     : c.name || c.contact_full_name || ""
   const signer = isLegal
     ? { role: c.director_position || "Руководитель", name: c.director_name || c.contact_full_name || "" }
@@ -122,15 +122,16 @@ export function buildInvoiceHtml(inv: Invoice): string {
 <style>
 .invoice-doc { font-family: Arial, sans-serif; color: #161616; font-size: 12.5px; line-height: 1.45; }
 .invoice-doc table { border-collapse: collapse; width: 100%; }
+.invoice-doc, .invoice-doc * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 .invoice-doc .sec-title { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #6B4508; margin: 0 0 6px; }
-.invoice-doc .bank { border: 1.2px solid #6B4508; border-radius: 10px; overflow: hidden; }
+.invoice-doc .bank { border: 1.2px solid #6B4508; overflow: hidden; }
 .invoice-doc .bank-head { background: #5C3A11; color: #fff; padding: 8px 14px; font-weight: 700; font-size: 12px; letter-spacing: .4px; text-transform: uppercase; }
-.invoice-doc .bank td { padding: 7px 14px; border-top: 1px solid #D9C9A8; vertical-align: top; }
+.invoice-doc .bank td { padding: 7px 14px; border-top: 1px solid #B9A27A; vertical-align: top; }
 .invoice-doc .bank tr:first-child td { border-top: none; }
 .invoice-doc .bank .k { width: 38%; color: #5a4a30; font-size: 11.5px; }
 .invoice-doc .bank .v { font-weight: 600; }
 .invoice-doc .bank .acc { font-family: "Courier New", monospace; font-size: 13.5px; font-weight: 700; letter-spacing: .3px; }
-.invoice-doc .bank tr.main td { background: #F3EBDC; }
+.invoice-doc .bank tr.main td { background: #D3C2A2; }
 .invoice-doc .title { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin: 22px 0 14px; padding-bottom: 8px; border-bottom: 2.5px solid #5C3A11; }
 .invoice-doc .title h1 { font-size: 20px; margin: 0; }
 .invoice-doc .title .due { font-size: 12px; color: #5a4a30; text-align: right; white-space: nowrap; }
@@ -138,14 +139,14 @@ export function buildInvoiceHtml(inv: Invoice): string {
 .invoice-doc .parties { display: table; width: 100%; table-layout: fixed; border-spacing: 0; }
 .invoice-doc .party { display: table-cell; width: 50%; vertical-align: top; }
 .invoice-doc .party + .party { padding-left: 14px; }
-.invoice-doc .card { border: 1.2px solid #6B4508; border-radius: 10px; overflow: hidden; height: 100%; }
+.invoice-doc .card { border: 1.2px solid #6B4508; overflow: hidden; height: 100%; }
 .invoice-doc .card-head { background: #B9A27A; color: #1F1405; padding: 7px 12px; font-weight: 700; font-size: 11.5px; letter-spacing: .4px; text-transform: uppercase; }
 .invoice-doc .card td { padding: 4px 12px; vertical-align: top; font-size: 12px; }
 .invoice-doc .card tr:first-child td { padding-top: 8px; }
 .invoice-doc .card tr:last-child td { padding-bottom: 9px; }
 .invoice-doc .card .k { width: 34%; color: #6b5a3e; font-size: 11px; }
 .invoice-doc .card .v { font-weight: 600; word-break: break-word; }
-.invoice-doc .basis { margin: 12px 0 0; padding: 9px 14px; background: #F3EBDC; border-left: 4px solid #5C3A11; border-radius: 8px; font-size: 12.5px; }
+.invoice-doc .basis { margin: 12px 0 0; padding: 9px 14px; background: #D3C2A2; border: 1.2px solid #6B4508; border-left: 4px solid #5C3A11; font-size: 12.5px; color: #161616; }
 .invoice-doc .items { margin-top: 14px; }
 .invoice-doc .items { border-collapse: collapse; }
 .invoice-doc .items th { background: #5C3A11; color: #fff; border: 1.2px solid #6B4508; padding: 7px 6px; font-size: 11.5px; }
@@ -153,7 +154,7 @@ export function buildInvoiceHtml(inv: Invoice): string {
 .invoice-doc .items tr { page-break-inside: avoid; break-inside: avoid; }
 .invoice-doc .c { text-align: center; }
 .invoice-doc .r { text-align: right; white-space: nowrap; }
-.invoice-doc .totals { width: auto; margin: 10px 0 0 auto; border: 1.2px solid #6B4508; border-radius: 10px; border-collapse: separate; border-spacing: 0; overflow: hidden; }
+.invoice-doc .totals { width: auto; margin: 10px 0 0 auto; border: 1.2px solid #6B4508; border-collapse: separate; border-spacing: 0; overflow: hidden; }
 .invoice-doc .totals td { padding: 5px 14px; font-weight: 600; }
 .invoice-doc .totals .val { text-align: right; min-width: 120px; }
 .invoice-doc .totals tr.grand td { background: #5C3A11; color: #fff; font-size: 15px; font-weight: 700; padding: 8px 14px; }
