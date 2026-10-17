@@ -23,16 +23,26 @@ const kopecks = (n: number) => String(Math.round((n || 0) * 100) % 100).padStart
 export const VAT_RATE = 20
 
 /** Суммы счёта с учётом режима НДС */
+export const VAT_RATES = [22, 10, 7, 5]
+
+/** Разбор режима НДС: "included_22" / "on_top_10"; старые "included" / "on_top" — 20% */
+export function parseVatMode(mode?: string | null): { kind: "none" | "included" | "on_top"; rate: number } {
+  const m = /^(included|on_top)(?:_(\d+))?$/.exec(mode || "")
+  if (!m) return { kind: "none", rate: 0 }
+  return { kind: m[1] as "included" | "on_top", rate: m[2] ? Number(m[2]) : VAT_RATE }
+}
+
 export function invoiceTotals(inv: Pick<Invoice, "items" | "vat_mode">) {
   const sum = (inv.items || []).reduce((s, it) => s + (Number(it.quantity) || 0) * (Number(it.price) || 0), 0)
-  if (inv.vat_mode === "on_top") {
-    const vat = Math.round(sum * VAT_RATE) / 100
-    return { sum, vat, total: sum + vat }
+  const { kind, rate } = parseVatMode(inv.vat_mode)
+  if (kind === "on_top") {
+    const vat = Math.round(sum * rate) / 100
+    return { sum, vat, total: sum + vat, rate }
   }
-  if (inv.vat_mode === "included") {
-    return { sum, vat: Math.round((sum * VAT_RATE * 100) / (100 + VAT_RATE)) / 100, total: sum }
+  if (kind === "included") {
+    return { sum, vat: Math.round((sum * rate * 100) / (100 + rate)) / 100, total: sum, rate }
   }
-  return { sum, vat: 0, total: sum }
+  return { sum, vat: 0, total: sum, rate: 0 }
 }
 
 /** Назначение платежа по умолчанию */
@@ -62,12 +72,13 @@ export function buildInvoiceHtml(inv: Invoice): string {
     ? { role: c.director_position || "Руководитель", name: c.director_name || c.contact_full_name || "" }
     : { role: isIp ? "Предприниматель" : "Исполнитель", name: c.contact_full_name || c.name || "" }
 
-  const { sum, vat, total } = invoiceTotals(inv)
+  const { sum, vat, total, rate } = invoiceTotals(inv)
+  const vatKind = parseVatMode(inv.vat_mode).kind
   const vatLine =
-    inv.vat_mode === "on_top"
-      ? `<tr><td class="lbl">НДС ${VAT_RATE}%:</td><td class="val">${money(vat)}</td></tr>`
-      : inv.vat_mode === "included"
-        ? `<tr><td class="lbl">В том числе НДС ${VAT_RATE}%:</td><td class="val">${money(vat)}</td></tr>`
+    vatKind === "on_top"
+      ? `<tr><td class="lbl">НДС ${rate}%:</td><td class="val">${money(vat)}</td></tr>`
+      : vatKind === "included"
+        ? `<tr><td class="lbl">В том числе НДС ${rate}%:</td><td class="val">${money(vat)}</td></tr>`
         : `<tr><td class="lbl" colspan="2">Без налога (НДС)</td></tr>`
 
   const rows = (inv.items || [])
@@ -220,7 +231,7 @@ ${vatLine}
 <div class="words">Всего наименований ${(inv.items || []).length}, на сумму ${money(total)} руб.<br/>
 <b>${esc(capitalize(moneyInWords(Math.floor(total))))} ${kopecks(total)} ${kopWord(Number(kopecks(total)))}</b></div>
 <div class="note">
-${paymentNote ? `В назначении платежа укажите: «${esc(paymentNote)}».` : ""}
+${paymentNote ? `<b>Назначение платежа:</b> ${esc(paymentNote)}` : ""}
 ${inv.notes ? `<br/>${esc(inv.notes).replace(/\n/g, "<br/>")}` : ""}
 </div>
 

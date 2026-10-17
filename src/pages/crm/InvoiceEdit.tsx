@@ -17,7 +17,7 @@ import {
   ObjectItem,
 } from "@/lib/api"
 import { SignStampToggles } from "@/components/crm/common/SignStampToggles"
-import { buildInvoiceHtml, defaultPaymentNote, defaultPurpose, invoiceTotals } from "@/lib/buildInvoiceHtml"
+import { VAT_RATES, buildInvoiceHtml, defaultPaymentNote, defaultPurpose, invoiceTotals } from "@/lib/buildInvoiceHtml"
 import { actInvoiceItems, contractInvoiceItem, contractPayments } from "@/lib/invoiceSources"
 
 const field =
@@ -330,8 +330,13 @@ export default function InvoiceEdit() {
               <label className="text-xs text-white/50">НДС</label>
               <select value={vatMode} onChange={(e) => setVatMode(e.target.value as InvoiceVatMode)} className={field}>
                 <option value="none">Без НДС</option>
-                <option value="included">НДС 20% включён в цену</option>
-                <option value="on_top">НДС 20% сверху</option>
+                {(vatMode === "included" || vatMode === "on_top") && (
+                  <option value={vatMode}>НДС 20% {vatMode === "included" ? "включён в цену" : "сверху"}</option>
+                )}
+                {VAT_RATES.map((r) => [
+                  <option key={`i${r}`} value={`included_${r}`}>НДС {r}% включён в цену</option>,
+                  <option key={`t${r}`} value={`on_top_${r}`}>НДС {r}% сверху</option>,
+                ])}
               </select>
             </div>
           </div>

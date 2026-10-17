@@ -2063,7 +2063,7 @@ export interface InvoiceItem {
   amount: number
 }
 
-export type InvoiceVatMode = "none" | "included" | "on_top"
+export type InvoiceVatMode = string
 
 export interface Invoice {
   id: number
