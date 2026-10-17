@@ -102,7 +102,7 @@ def works_html(works):
     )
 
 
-def send_lead_email(to_email, brand, client_name, client_phone, comment, object_code, client_email='', works=None):
+def smtp_config():
     host = os.environ.get('SMTP_HOST', '').strip()
     host = host.replace('https://', '').replace('http://', '').replace('smtps://', '')
     host = host.strip().strip('/').split('/')[0]
@@ -110,6 +110,52 @@ def send_lead_email(to_email, brand, client_name, client_phone, comment, object_
         host = host.split(':')[0]
     user = os.environ.get('SMTP_USER', '').strip().strip('<>').replace(' ', '')
     password = os.environ.get('SMTP_PASSWORD', '').strip()
+    return host, user, password
+
+
+def deliver(msgs, host, user, password):
+    '''Отправляет одно или несколько писем за одно подключение к почтовому серверу'''
+    errors = []
+
+    try:
+        with smtplib.SMTP_SSL(host, 465, timeout=5) as server:
+            server.login(user, password)
+            for m in msgs:
+                server.send_message(m)
+        return True, 'порт 465 (SSL)'
+    except Exception as err:
+        errors.append(f'465/SSL: {err}')
+
+    for port in (587, 25):
+        try:
+            with smtplib.SMTP(host, port, timeout=5) as server:
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+                server.login(user, password)
+                for m in msgs:
+                    server.send_message(m)
+            return True, f'порт {port} (STARTTLS)'
+        except Exception as err:
+            errors.append(f'{port}/TLS: {err}')
+
+    joined = ' | '.join(errors)
+    if 'authentication' in joined.lower() or '535' in joined or '534' in joined:
+        return False, 'Почтовый сервер отклонил пароль. Проверьте пароль от ящика-отправителя.'
+    low = joined.lower()
+    if 'not resolve' in low or 'name or service not known' in low or 'getaddrinfo' in low:
+        return False, (
+            f'Не найден почтовый сервер «{host}». '
+            'Проверьте адрес в настройках: для Majordomo это smtp.majordomo.ru '
+            '(без «https://», без пробелов и лишних символов).'
+        )
+    if 'timed out' in low or 'timeout' in low:
+        return False, f'Почтовый сервер «{host}» не отвечает. Проверьте его адрес.'
+    return False, joined
+
+
+def send_lead_email(to_email, brand, client_name, client_phone, comment, object_code, client_email='', works=None, extra=None):
+    host, user, password = smtp_config()
 
     missing = []
     if not host:
@@ -124,6 +170,8 @@ def send_lead_email(to_email, brand, client_name, client_phone, comment, object_
             + ', '.join(missing)
         )
     if not to_email:
+        if extra:
+            deliver(extra, host, user, password)
         return False, 'Не указана почта получателя — заполните поле «Почта для новых заявок»'
 
     moscow_time = datetime.utcnow().timestamp() + 3 * 3600
@@ -180,41 +228,88 @@ def send_lead_email(to_email, brand, client_name, client_phone, comment, object_
     msg.set_content(text_body)
     msg.add_alternative(html_body, subtype='html')
 
-    errors = []
+    return deliver([msg] + list(extra or []), host, user, password)
 
-    try:
-        with smtplib.SMTP_SSL(host, 465, timeout=5) as server:
-            server.login(user, password)
-            server.send_message(msg)
-        return True, 'порт 465 (SSL)'
-    except Exception as err:
-        errors.append(f'465/SSL: {err}')
 
-    for port in (587, 25):
-        try:
-            with smtplib.SMTP(host, port, timeout=5) as server:
-                server.ehlo()
-                server.starttls()
-                server.ehlo()
-                server.login(user, password)
-                server.send_message(msg)
-            return True, f'порт {port} (STARTTLS)'
-        except Exception as err:
-            errors.append(f'{port}/TLS: {err}')
+def build_client_copy(to_email, client_name, comment, object_code, works, company):
+    '''Копия заявки клиенту: что выбрал и ориентировочная сумма'''
+    host, user, password = smtp_config()
+    if not host or not user or not password:
+        return None
+    brand = company['brand']
+    phone = company['phone']
+    reply_to = company['email'] or user
+    total = sum(w['amount'] for w in works) if works else 0
+    phone_digits = ''.join(ch for ch in phone if ch.isdigit() or ch == '+')
 
-    joined = ' | '.join(errors)
-    if 'authentication' in joined.lower() or '535' in joined or '534' in joined:
-        return False, 'Почтовый сервер отклонил пароль. Проверьте пароль от ящика-отправителя.'
-    low = joined.lower()
-    if 'not resolve' in low or 'name or service not known' in low or 'getaddrinfo' in low:
-        return False, (
-            f'Не найден почтовый сервер «{host}». '
-            'Проверьте адрес в настройках: для Majordomo это smtp.majordomo.ru '
-            '(без «https://», без пробелов и лишних символов).'
+    text_parts = [
+        f"Здравствуйте, {client_name}!",
+        f"Спасибо за заявку в {brand}. Мы получили её и свяжемся с вами в ближайшее время, чтобы согласовать бесплатный замер.",
+        f"Номер заявки: {object_code}",
+    ]
+    if works:
+        text_parts.append(works_text(works))
+        text_parts.append("Сумма ориентировочная: указана стоимость работ без материалов. "
+                          "Точную стоимость зафиксируем в смете после замера.")
+    if comment:
+        text_parts.append(f"Ваш комментарий: {comment}")
+    if phone:
+        text_parts.append(f"Если захотите что-то уточнить — звоните: {phone} или просто ответьте на это письмо.")
+    text_parts.append(f"С уважением, команда {brand}")
+    text_body = "\n\n".join(text_parts)
+
+    works_block = ''
+    if works:
+        works_block = works_html(works) + (
+            '<p style="margin:12px 0 0;font-size:13px;color:#888;line-height:1.5;">'
+            'Сумма ориентировочная: указана стоимость работ без материалов. '
+            'Точную стоимость зафиксируем в смете после бесплатного замера.</p>'
         )
-    if 'timed out' in low or 'timeout' in low:
-        return False, f'Почтовый сервер «{host}» не отвечает. Проверьте его адрес.'
-    return False, joined
+    comment_block = (
+        f'<p style="margin:20px 0 0;font-size:14px;"><span style="color:#888;">Ваш комментарий:</span> {escape(comment)}</p>'
+        if comment else ''
+    )
+    phone_block = (
+        f'<p style="margin:24px 0 0;font-size:14px;line-height:1.6;">Если захотите что-то уточнить — звоните '
+        f'<a href="tel:{phone_digits}" style="color:#B8860B;text-decoration:none;font-weight:bold;">{escape(phone)}</a> '
+        'или просто ответьте на это письмо.</p>'
+        if phone else ''
+    )
+    total_line = (
+        f'<p style="margin:16px 0 0;font-size:15px;">Ориентировочная стоимость работ: '
+        f'<b style="font-size:18px;">{money(total)} ₽</b></p>' if works else ''
+    )
+
+    html_body = f"""<!DOCTYPE html>
+<html><body style="margin:0;padding:24px;background:#f4f4f4;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;">
+    <tr><td style="background:#161616;padding:20px 28px;">
+      <span style="color:#D4AF37;font-size:18px;font-weight:bold;">{escape(brand)}</span>
+      <span style="color:#ffffff;font-size:15px;"> · Ваша заявка принята</span>
+    </td></tr>
+    <tr><td style="padding:28px;color:#161616;font-size:15px;line-height:1.6;">
+      <p style="margin:0 0 12px;">Здравствуйте, {escape(client_name)}!</p>
+      <p style="margin:0;">Спасибо за заявку. Мы получили её и свяжемся с вами в ближайшее время, чтобы согласовать бесплатный замер.</p>
+      <p style="margin:16px 0 0;color:#888;font-size:13px;">Номер заявки: <b style="color:#161616;">{escape(object_code)}</b></p>
+      {total_line}
+      {works_block}
+      {comment_block}
+      {phone_block}
+      <p style="margin:28px 0 0;padding-top:20px;border-top:1px solid #eee;font-size:13px;color:#999;">
+        С уважением, команда {escape(brand)}
+      </p>
+    </td></tr>
+  </table>
+</body></html>"""
+
+    msg = EmailMessage()
+    msg['Subject'] = f'{brand}: ваша заявка № {object_code} принята'
+    msg['From'] = formataddr((brand, user))
+    msg['To'] = to_email
+    msg['Reply-To'] = reply_to
+    msg.set_content(text_body)
+    msg.add_alternative(html_body, subtype='html')
+    return msg
 
 
 def handle_test_email(event):
@@ -327,23 +422,30 @@ def handler(event: dict, context) -> dict:
         conn.commit()
 
         cur.execute(
-            "SELECT COALESCE(NULLIF(lead_notify_email, ''), email), COALESCE(brand_name, 'FixKey') "
+            "SELECT COALESCE(NULLIF(lead_notify_email, ''), email), COALESCE(brand_name, 'FixKey'), "
+            "COALESCE(phone, ''), COALESCE(email, '') "
             "FROM site_settings WHERE company_id = %s",
             (LEADS_COMPANY_ID,)
         )
         row = cur.fetchone()
         notify_email = (row[0] or '').strip() if row else ''
         brand = row[1] if row else 'FixKey'
+        company = {'brand': brand, 'phone': (row[2] if row else '').strip(), 'email': (row[3] if row else '').strip()}
     finally:
         cur.close()
         conn.close()
 
+    client_copy = build_client_copy(client_email, client_name, comment, object_code, works, company) if client_email else None
     email_sent, email_note = send_lead_email(
-        notify_email, brand, client_name, client_phone, comment, object_code, client_email, works
+        notify_email, brand, client_name, client_phone, comment, object_code, client_email, works,
+        [client_copy] if client_copy else None
     )
     if email_sent:
         print(f'Lead email OK ({object_code}) -> {notify_email}')
     else:
         print(f'Lead email FAILED ({object_code}) -> {notify_email or "получатель не задан"}: {email_note}')
+
+    if client_copy:
+        print(f'Client copy queued ({object_code}) -> {client_email}')
 
     return response(200, {'success': True, 'object_code': object_code})
