@@ -17,7 +17,7 @@ import {
   ObjectItem,
 } from "@/lib/api"
 import { SignStampToggles } from "@/components/crm/common/SignStampToggles"
-import { buildInvoiceHtml, defaultPurpose, invoiceTotals } from "@/lib/buildInvoiceHtml"
+import { buildInvoiceHtml, defaultPaymentNote, defaultPurpose, invoiceTotals } from "@/lib/buildInvoiceHtml"
 import { actInvoiceItems, contractInvoiceItem, contractPayments } from "@/lib/invoiceSources"
 
 const field =
@@ -56,6 +56,7 @@ export default function InvoiceEdit() {
   const [items, setItems] = useState<InvoiceItem[]>([])
   const [vatMode, setVatMode] = useState<InvoiceVatMode>("none")
   const [notes, setNotes] = useState("")
+  const [paymentNote, setPaymentNote] = useState<string | null>(null)
   const [applySignature, setApplySignature] = useState(true)
   const [applyStamp, setApplyStamp] = useState(true)
 
@@ -83,6 +84,7 @@ export default function InvoiceEdit() {
           setItems(inv.items || [])
           setVatMode(inv.vat_mode || "none")
           setNotes(inv.notes || "")
+          setPaymentNote(inv.payment_note ?? null)
           setApplySignature(inv.apply_signature)
           setApplyStamp(inv.apply_stamp)
           return
@@ -175,6 +177,7 @@ export default function InvoiceEdit() {
     apply_signature: applySignature,
     apply_stamp: applyStamp,
     notes,
+    payment_note: paymentNote,
     status: "issued",
     created_at: "",
     updated_at: "",
@@ -209,6 +212,7 @@ export default function InvoiceEdit() {
         items,
         vat_mode: vatMode,
         notes: notes.trim(),
+        payment_note: paymentNote,
         apply_signature: applySignature,
         apply_stamp: applyStamp,
       }
@@ -374,6 +378,20 @@ export default function InvoiceEdit() {
 
           <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-[#1f1f1f] p-5">
             <p className="font-medium">Дополнительно</p>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-white/50">Назначение платежа</label>
+              <input
+                value={paymentNote ?? defaultPaymentNote({ invoice_number: number || "—", invoice_date: invDate })}
+                onChange={(e) => setPaymentNote(e.target.value)}
+                placeholder="Оставьте пустым, чтобы не выводить строку"
+                className={field}
+              />
+              {paymentNote !== null && (
+                <button type="button" onClick={() => setPaymentNote(null)} className="self-start text-xs text-[#D4AF37] hover:underline">
+                  Вернуть по умолчанию
+                </button>
+              )}
+            </div>
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Примечание для заказчика (необязательно)" className={`${field} resize-none`} />
             <SignStampToggles
               signatureUrl={company?.signature_url}

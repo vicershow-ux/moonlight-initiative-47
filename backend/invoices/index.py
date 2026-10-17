@@ -47,7 +47,7 @@ def get_current_user(cur, event):
 
 INVOICE_KEYS = [
     'id', 'object_id', 'contract_id', 'act_id', 'invoice_number', 'invoice_date', 'due_date',
-    'purpose', 'items', 'vat_mode', 'total_amount', 'apply_signature', 'apply_stamp', 'notes',
+    'purpose', 'items', 'vat_mode', 'total_amount', 'apply_signature', 'apply_stamp', 'notes', 'payment_note',
     'status', 'created_at', 'updated_at', 'paid_at',
 ]
 COLS = ', '.join(f'i.{k}' for k in INVOICE_KEYS)
@@ -267,14 +267,15 @@ def handler(event: dict, context) -> dict:
             number = str(body.get('invoice_number') or '').strip()[:40] or next_number(cur, company_id)
             cur.execute(
                 "INSERT INTO invoices (company_id, object_id, contract_id, act_id, invoice_number, invoice_date, due_date, "
-                "purpose, items, vat_mode, total_amount, apply_signature, apply_stamp, notes, created_by) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                "purpose, items, vat_mode, total_amount, apply_signature, apply_stamp, notes, payment_note, created_by) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
                 (
                     company_id, object_id, body.get('contract_id') or None, body.get('act_id') or None, number,
                     body.get('invoice_date') or date.today().isoformat(), body.get('due_date') or None,
                     str(body.get('purpose') or '')[:500], json.dumps(items, ensure_ascii=False),
                     body.get('vat_mode') or 'none', total, bool(body.get('apply_signature')),
-                    bool(body.get('apply_stamp')), str(body.get('notes') or '')[:2000], user['user_id'],
+                    bool(body.get('apply_stamp')), str(body.get('notes') or '')[:2000],
+                    (str(body['payment_note'])[:500] if body.get('payment_note') is not None else None), user['user_id'],
                 )
             )
             new_id = cur.fetchone()[0]
@@ -294,7 +295,7 @@ def handler(event: dict, context) -> dict:
                     return response(400, {'error': 'Добавьте хотя бы одну позицию'})
                 fields += ['items = %s', 'total_amount = %s']
                 values += [json.dumps(items, ensure_ascii=False), total]
-            for key in ('invoice_number', 'invoice_date', 'due_date', 'purpose', 'vat_mode', 'notes', 'status'):
+            for key in ('invoice_number', 'invoice_date', 'due_date', 'purpose', 'vat_mode', 'notes', 'payment_note', 'status'):
                 if key in body:
                     val = body[key]
                     if key in ('invoice_date', 'due_date') and not val:

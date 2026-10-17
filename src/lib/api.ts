@@ -2080,6 +2080,7 @@ export interface Invoice {
   apply_signature: boolean
   apply_stamp: boolean
   notes: string
+  payment_note?: string | null
   status: "issued" | "sent" | "paid"
   created_at: string
   updated_at: string
@@ -2099,7 +2100,7 @@ export type InvoicePayload = Partial<
   Pick<
     Invoice,
     | "object_id" | "contract_id" | "act_id" | "invoice_number" | "invoice_date" | "due_date" | "purpose"
-    | "items" | "vat_mode" | "apply_signature" | "apply_stamp" | "notes" | "status"
+    | "items" | "vat_mode" | "apply_signature" | "apply_stamp" | "notes" | "payment_note" | "status"
   >
 >
 

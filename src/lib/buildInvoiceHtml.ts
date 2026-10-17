@@ -35,6 +35,11 @@ export function invoiceTotals(inv: Pick<Invoice, "items" | "vat_mode">) {
   return { sum, vat: 0, total: sum }
 }
 
+/** Назначение платежа по умолчанию */
+export function defaultPaymentNote(inv: Pick<Invoice, "invoice_number" | "invoice_date">): string {
+  return `Оплата по счёту № ${inv.invoice_number} от ${dateRu(inv.invoice_date)}`
+}
+
 /** Основание платежа по умолчанию — из договора или акта */
 export function defaultPurpose(inv: Pick<Invoice, "contract" | "act">): string {
   const parts: string[] = []
@@ -63,7 +68,7 @@ export function buildInvoiceHtml(inv: Invoice): string {
       ? `<tr><td class="lbl">НДС ${VAT_RATE}%:</td><td class="val">${money(vat)}</td></tr>`
       : inv.vat_mode === "included"
         ? `<tr><td class="lbl">В том числе НДС ${VAT_RATE}%:</td><td class="val">${money(vat)}</td></tr>`
-        : `<tr><td class="lbl">Без налога (НДС)</td><td class="val">—</td></tr>`
+        : `<tr><td class="lbl" colspan="2">Без налога (НДС)</td></tr>`
 
   const rows = (inv.items || [])
     .map(
@@ -109,6 +114,7 @@ export function buildInvoiceHtml(inv: Invoice): string {
   ].join("")
 
   const purpose = inv.purpose || defaultPurpose(inv)
+  const paymentNote = inv.payment_note == null ? defaultPaymentNote(inv) : inv.payment_note.trim()
   const sig =
     inv.apply_signature && c.signature_url
       ? `<img src="${esc(c.signature_url)}" crossorigin="anonymous" alt="" class="inv-sig"/>`
@@ -214,7 +220,7 @@ ${vatLine}
 <div class="words">Всего наименований ${(inv.items || []).length}, на сумму ${money(total)} руб.<br/>
 <b>${esc(capitalize(moneyInWords(Math.floor(total))))} ${kopecks(total)} ${kopWord(Number(kopecks(total)))}</b></div>
 <div class="note">
-В назначении платежа укажите: «Оплата по счёту № ${esc(inv.invoice_number)} от ${dateRu(inv.invoice_date)}».
+${paymentNote ? `В назначении платежа укажите: «${esc(paymentNote)}».` : ""}
 ${inv.notes ? `<br/>${esc(inv.notes).replace(/\n/g, "<br/>")}` : ""}
 </div>
 
