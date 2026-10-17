@@ -338,13 +338,14 @@ def handler(event: dict, context) -> dict:
             return response(401, {'error': 'Не авторизован'})
         company_id = user['company_id']
 
-        if user['role'] == 'client':
-            return response(403, {'error': 'Недостаточно прав'})
-
+        is_client = user['role'] == 'client'
         params = event.get('queryStringParameters') or {}
         contract_id = params.get('id')
         object_id = params.get('object_id')
         action = params.get('action')
+
+        if is_client and method != 'GET':
+            return response(403, {'error': 'Недостаточно прав'})
 
         if method == 'GET':
             if contract_id:
@@ -356,10 +357,23 @@ def handler(event: dict, context) -> dict:
                 if not row:
                     return response(404, {'error': 'Договор не найден'})
                 data = dict(zip(CONTRACT_KEYS, row))
+                if not has_object_access(cur, user, data['object_id']):
+                    return response(404, {'error': 'Договор не найден'})
                 return response(200, data)
 
             base_cols = ', '.join(f'c.{k}' for k in CONTRACT_KEYS)
-            if object_id:
+            if is_client:
+                where = "c.company_id = %s AND c.object_id IN (SELECT object_id FROM object_access WHERE user_id = %s)"
+                args = [company_id, user['user_id']]
+                if object_id:
+                    where += " AND c.object_id = %s"
+                    args.append(object_id)
+                cur.execute(
+                    f"SELECT {base_cols}, o.object_code, o.client_name, o.address FROM contracts c "
+                    f"JOIN objects o ON o.id = c.object_id WHERE {where} ORDER BY c.created_at DESC",
+                    args
+                )
+            elif object_id:
                 cur.execute(
                     f"SELECT {base_cols}, o.object_code, o.client_name, o.address FROM contracts c "
                     "JOIN objects o ON o.id = c.object_id WHERE c.object_id = %s AND c.company_id = %s ORDER BY c.created_at DESC",

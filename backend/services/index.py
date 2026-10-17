@@ -35,13 +35,13 @@ def get_current_user(cur, event):
     if not token:
         return None
     cur.execute(
-        "SELECT u.id, u.company_id FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = %s AND s.expires_at > NOW()",
+        "SELECT u.id, u.company_id, u.role FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = %s AND s.expires_at > NOW()",
         (token,)
     )
     row = cur.fetchone()
     if not row:
         return None
-    return {'user_id': row[0], 'company_id': row[1]}
+    return {'user_id': row[0], 'company_id': row[1], 'role': row[2]}
 
 
 def handler(event: dict, context) -> dict:
@@ -64,10 +64,14 @@ def handler(event: dict, context) -> dict:
         service_id = params.get('id')
 
         action = params.get('action')
+        is_client = user['role'] == 'client'
+        if is_client and method != 'GET':
+            return response(403, {'error': 'Недостаточно прав'})
 
         if method == 'GET':
             cur.execute(
-                "SELECT id, name, unit, price, category, subcategory, description, is_active, created_at FROM services WHERE company_id = %s ORDER BY created_at DESC",
+                "SELECT id, name, unit, price, category, subcategory, description, is_active, created_at FROM services "
+                "WHERE company_id = %s" + (" AND is_active = true AND price > 0" if is_client else "") + " ORDER BY created_at DESC",
                 (company_id,)
             )
             rows = cur.fetchall()

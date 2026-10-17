@@ -141,6 +141,35 @@ def handler(event: dict, context) -> dict:
         params = event.get('queryStringParameters') or {}
         row_id = params.get('id')
         entity = params.get('entity') or 'material'
+        is_client = user.get('role') == 'client'
+        if is_client and method != 'GET':
+            return response(403, {'error': 'Недостаточно прав'})
+        client_cond = " AND me.object_id IN (SELECT object_id FROM object_access WHERE user_id = %s)" if is_client else ""
+        client_args = [user['user_id']] if is_client else []
+
+        if is_client and method == 'GET' and not row_id:
+            cur.execute(
+                "SELECT me.id, me.object_id, me.title, me.room_names, me.total_amount, "
+                "me.created_at, o.object_code, o.client_name "
+                "FROM material_estimates me JOIN objects o ON o.id = me.object_id "
+                f"WHERE me.company_id = %s{client_cond} ORDER BY me.created_at DESC",
+                [company_id] + client_args
+            )
+            ekeys = ['id', 'object_id', 'title', 'room_names', 'total_amount',
+                     'created_at', 'object_code', 'client_name']
+            estimates = [dict(zip(ekeys, r)) for r in cur.fetchall()]
+            cur.execute(
+                "SELECT om.id, om.object_id, om.material_id, om.name, om.unit, om.qty, "
+                "om.price, om.shop_name, om.note, om.created_at, om.room_id, om.room_name, om.work_type "
+                "FROM object_materials om WHERE om.company_id = %s "
+                "AND om.object_id IN (SELECT object_id FROM object_access WHERE user_id = %s) ORDER BY om.created_at DESC",
+                (company_id, user['user_id'])
+            )
+            mkeys = ['id', 'object_id', 'material_id', 'name', 'unit', 'qty',
+                     'price', 'shop_name', 'note', 'created_at', 'room_id', 'room_name', 'work_type']
+            object_materials = [dict(zip(mkeys, r)) for r in cur.fetchall()]
+            return response(200, {'materials': [], 'objects': [], 'object_materials': object_materials,
+                                  'rooms': [], 'estimates': estimates})
 
         if method == 'POST' and entity == 'estimate' and params.get('action') == 'send_email':
             if user.get('role') == 'client':
@@ -184,8 +213,8 @@ def handler(event: dict, context) -> dict:
                 "SELECT me.id, me.object_id, me.title, me.room_names, me.total_amount, "
                 "me.items_json, me.created_at, o.object_code, o.client_name, o.address "
                 "FROM material_estimates me JOIN objects o ON o.id = me.object_id "
-                "WHERE me.id = %s AND me.company_id = %s",
-                (row_id, company_id)
+                f"WHERE me.id = %s AND me.company_id = %s{client_cond}",
+                [row_id, company_id] + client_args
             )
             row = cur.fetchone()
             if not row:

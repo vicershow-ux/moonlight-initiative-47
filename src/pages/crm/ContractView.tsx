@@ -9,11 +9,14 @@ import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
 import { printHtml } from "@/lib/printHtml"
 import { contractTitle, titleFromHtml } from "@/lib/contractSubject"
 import { SendContractEmailDialog } from "@/components/crm/SendContractEmailDialog"
+import { useAuth } from "@/contexts/AuthContext"
 
 export default function ContractView() {
   const { id, contractId } = useParams()
   const navigate = useNavigate()
   const objectId = Number(id)
+  const { user } = useAuth()
+  const isClient = user?.role === "client"
 
   const [contract, setContract] = useState<Contract | null>(null)
   const [loading, setLoading] = useState(true)
@@ -26,7 +29,7 @@ export default function ContractView() {
     contractsApi
       .get(Number(contractId))
       .then(setContract)
-      .catch(() => navigate("/cabinet/documents"))
+      .catch(() => navigate(isClient ? `/cabinet/objects/${objectId}` : "/cabinet/documents"))
       .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contractId])
@@ -67,11 +70,11 @@ export default function ContractView() {
     >
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <Link
-          to="/cabinet/documents"
+          to={isClient ? `/cabinet/objects/${objectId}` : "/cabinet/documents"}
           className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors"
         >
           <Icon name="ChevronLeft" size={16} />
-          К документам
+          {isClient ? "К объекту" : "К документам"}
         </Link>
 
         <div className="flex items-center gap-2">
@@ -81,6 +84,7 @@ export default function ContractView() {
           )}>
             {contract.status === "signed" ? "подписан" : "черновик"}
           </span>
+          {!isClient && (<>
           <Link
             to={`/cabinet/objects/${objectId}/contracts/${contract.id}/edit`}
             className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg"
@@ -109,6 +113,7 @@ export default function ContractView() {
             <Icon name="Mail" size={14} />
             Отправить на почту
           </button>
+          </>)}
           <button
             onClick={handlePrint}
             title="Печать"

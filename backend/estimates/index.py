@@ -299,14 +299,31 @@ def handler(event: dict, context) -> dict:
         if method == 'POST' and action == 'propose':
             body = json.loads(event.get('body') or '{}')
             est_id = body.get('estimate_id')
-            name = (body.get('name') or '').strip()
-            unit = (body.get('unit') or 'м²').strip()
-            price = float(body.get('price') or 0)
+            name = (body.get('name') or '').strip()[:255]
+            unit = (body.get('unit') or 'шт').strip()[:50]
+            price = max(0.0, float(body.get('price') or 0))
             quantity = float(body.get('quantity') or 0)
+            service_id = body.get('service_id')
+            category = ''
+            subcategory = ''
+            comment = (body.get('comment') or '').strip()[:500]
 
             if not is_client:
                 return response(403, {'error': 'Доступно только заказчику'})
-            if not est_id or not name or quantity <= 0:
+            if service_id:
+                cur.execute(
+                    "SELECT name, unit, price, category, subcategory FROM services WHERE id = %s AND company_id = %s AND is_active = true",
+                    (service_id, company_id)
+                )
+                srow = cur.fetchone()
+                if not srow:
+                    return response(400, {'error': 'Услуга не найдена в прайсе'})
+                name, unit, price, category, subcategory = srow[0], srow[1] or 'шт', float(srow[2] or 0), srow[3] or '', srow[4] or ''
+            else:
+                service_id = None
+            if comment:
+                name = f"{name} ({comment})"[:255]
+            if not est_id or not name or quantity <= 0 or quantity > 1000000:
                 return response(400, {'error': 'Заполните все поля позиции'})
 
             cur.execute("SELECT object_id FROM estimates WHERE id = %s AND company_id = %s", (est_id, company_id))
@@ -318,8 +335,9 @@ def handler(event: dict, context) -> dict:
 
             amount = round(price * quantity, 2)
             cur.execute(
-                "INSERT INTO estimate_items (estimate_id, name, unit, price, quantity, amount, status, proposed_by) VALUES (%s, %s, %s, %s, %s, %s, 'pending', %s) RETURNING id",
-                (est_id, name, unit, price, quantity, amount, user['user_id'])
+                "INSERT INTO estimate_items (estimate_id, service_id, name, unit, price, quantity, amount, status, proposed_by, category, subcategory, room_name) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, 'pending', %s, %s, %s, 'Дополнительные работы') RETURNING id",
+                (est_id, service_id, name, unit, price, quantity, amount, user['user_id'], category, subcategory)
             )
             new_item_id = cur.fetchone()[0]
 
@@ -361,9 +379,20 @@ def handler(event: dict, context) -> dict:
 
             new_status = 'approved' if action == 'approve' else 'rejected'
             cur.execute("UPDATE estimate_items SET status = %s WHERE id = %s", (new_status, item_id))
+            body = json.loads(event.get('body') or '{}')
+            if new_status == 'approved' and body.get('price') is not None:
+                new_price = max(0.0, float(body.get('price') or 0))
+                cur.execute(
+                    "UPDATE estimate_items SET price = %s, amount = ROUND(%s * quantity * COALESCE(times, 1) * (1 - COALESCE(discount_percent, 0) / 100), 2) WHERE id = %s",
+                    (new_price, new_price, item_id)
+                )
 
             cur.execute(
-                "UPDATE estimates SET total_amount = (SELECT COALESCE(SUM(amount), 0) FROM estimate_items WHERE estimate_id = %s AND status = 'approved') WHERE id = %s",
+                "UPDATE estimates e SET subtotal_amount = s.sub, "
+                "discount_amount = CASE WHEN e.discount_percent > 0 THEN ROUND(s.sub * e.discount_percent / 100, 2) ELSE e.discount_amount END, "
+                "total_amount = GREATEST(0, s.sub - CASE WHEN e.discount_percent > 0 THEN ROUND(s.sub * e.discount_percent / 100, 2) ELSE e.discount_amount END) "
+                "FROM (SELECT COALESCE(SUM(amount), 0) AS sub FROM estimate_items WHERE estimate_id = %s AND status = 'approved') s "
+                "WHERE e.id = %s",
                 (est_id, est_id)
             )
             conn.commit()
@@ -547,6 +576,13 @@ def handler(event: dict, context) -> dict:
                     "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'approved', %s, %s, %s, %s)",
                     (new_id, it['service_id'], it['name'], it['unit'], it['price'], it['quantity'], it['times'], it['discount_percent'], it['amount'], it['room_id'], it['room_name'], it['category'], it['subcategory'])
                 )
+
+            cur.execute(
+                "INSERT INTO estimate_items (estimate_id, service_id, name, unit, price, quantity, times, discount_percent, amount, status, proposed_by, room_id, room_name, category, subcategory) "
+                "SELECT %s, service_id, name, unit, price, quantity, times, discount_percent, amount, status, proposed_by, room_id, room_name, category, subcategory "
+                "FROM estimate_items WHERE estimate_id = %s AND status IN ('pending', 'rejected')",
+                (new_id, estimate_id)
+            )
 
             conn.commit()
 

@@ -37,7 +37,7 @@ const emptyRoom = (): RoomBlockState => ({
 
 const buildRoomsFromEstimate = (est: Estimate, objectRoomsList: ObjectRoom[]): RoomBlockState[] => {
   const groups = new Map<string, RoomBlockState>()
-  ;(est.items || []).forEach((it) => {
+  ;(est.items || []).filter((it) => !it.status || it.status === "approved").forEach((it) => {
     const key = it.room_id != null ? `room-${it.room_id}` : it.room_name || "no-room"
     if (!groups.has(key)) {
       const tpl = it.room_id != null ? objectRoomsList.find((r) => r.id === it.room_id) : undefined

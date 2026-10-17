@@ -22,7 +22,7 @@ function reqRow(label: string, value?: string | null, cls = "") {
 }
 
 function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyName: string) {
-  const items = estimate.items || []
+  const items = (estimate.items || []).filter((it) => !it.status || it.status === "approved")
 
   const groups = new Map<string, EstimateItem[]>()
   items.forEach((it) => {

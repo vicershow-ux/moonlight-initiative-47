@@ -9,7 +9,7 @@ import { ObjectInfoPanels } from "@/components/crm/object-detail/ObjectInfoPanel
 import { ObjectDocumentsPanel } from "@/components/crm/object-detail/ObjectDocumentsPanel"
 import { ObjectSidebar } from "@/components/crm/object-detail/ObjectSidebar"
 import { formatDateTime } from "@/components/crm/object-detail/utils"
-import { printEstimate } from "@/lib/printEstimate"
+import { printEstimate, downloadEstimatePdf } from "@/lib/printEstimate"
 import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
 import { printHtml } from "@/lib/printHtml"
 import { getStatusBadgeClass } from "@/lib/objectStatusColors"
@@ -26,6 +26,7 @@ export default function ObjectDetail() {
   const [estimates, setEstimates] = useState<Estimate[]>([])
   const [estimatesLoading, setEstimatesLoading] = useState(true)
   const [printingId, setPrintingId] = useState<number | null>(null)
+  const [downloadingId, setDownloadingId] = useState<number | null>(null)
   const [rooms, setRooms] = useState<ObjectRoom[]>([])
   const [roomsLoading, setRoomsLoading] = useState(true)
   const [statuses, setStatuses] = useState<ObjectStatus[]>([])
@@ -103,6 +104,16 @@ export default function ObjectDetail() {
       printEstimate(full, object, user?.company_name || "")
     } finally {
       setPrintingId(null)
+    }
+  }
+
+  const handleDownloadEstimate = async (estimateId: number) => {
+    setDownloadingId(estimateId)
+    try {
+      const full = await estimatesApi.get(estimateId)
+      await downloadEstimatePdf(full, object as ObjectItem, full.company_name || user?.company_name || "")
+    } finally {
+      setDownloadingId(null)
     }
   }
 
@@ -193,6 +204,8 @@ export default function ObjectDetail() {
             printingId={printingId}
             onCreateContract={() => setCreateContractOpen(true)}
             onPrintEstimate={handlePrint}
+            onDownloadEstimate={handleDownloadEstimate}
+            downloadingId={downloadingId}
             onDeleteEstimate={handleDeleteEstimate}
             onPrintContract={handlePrintContract}
             onDeleteContract={handleDeleteContract}

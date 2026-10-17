@@ -470,7 +470,7 @@ export const estimatesApi = {
     return parseResponse(res) as Promise<{ id: number; items: number; total_amount: number }>
   },
 
-  async propose(payload: { estimate_id: number; name: string; unit: string; price: number; quantity: number }) {
+  async propose(payload: { estimate_id: number; quantity: number; service_id?: number; name?: string; unit?: string; price?: number; comment?: string }) {
     const res = await fetch(`${ESTIMATES_URL}?action=propose`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -479,10 +479,11 @@ export const estimatesApi = {
     return parseResponse(res)
   },
 
-  async approveItem(itemId: number) {
+  async approveItem(itemId: number, price?: number) {
     const res = await fetch(`${ESTIMATES_URL}?action=approve&item_id=${itemId}`, {
       method: "PUT",
-      headers: { ...authHeaders() },
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(price != null ? { price } : {}),
     })
     return parseResponse(res)
   },
@@ -731,6 +732,11 @@ export interface Act {
 export const actsApi = {
   async listAll() {
     const res = await fetch(ACTS_URL, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ acts: Act[] }>
+  },
+
+  async listByObject(objectId: number) {
+    const res = await fetch(`${ACTS_URL}?object_id=${objectId}`, { headers: { ...authHeaders() } })
     return parseResponse(res) as Promise<{ acts: Act[] }>
   },
 

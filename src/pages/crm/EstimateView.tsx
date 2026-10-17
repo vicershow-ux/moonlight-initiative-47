@@ -10,6 +10,7 @@ import { estimateStatusOptions, getEstimateStatusColor, getEstimateStatusLabel, 
 import { useAuth } from "@/contexts/AuthContext"
 import { SendDocEmailDialog } from "@/components/crm/SendDocEmailDialog"
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog"
+import { ExtraWorksPanel } from "@/components/crm/estimate/ExtraWorksPanel"
 
 const num = (v: unknown, fallback = 0): number => {
   const n = typeof v === "string" ? parseFloat(v) : Number(v)
@@ -53,9 +54,9 @@ export default function EstimateView() {
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  const load = () => {
+  const load = (silent = false) => {
     if (!estimateId) return
-    setLoading(true)
+    if (!silent) setLoading(true)
     estimatesApi
       .get(Number(estimateId))
       .then(setEstimate)
@@ -164,13 +165,15 @@ export default function EstimateView() {
               Редактировать
             </Link>
           )}
-          <button
-            onClick={() => setSendOpen(true)}
-            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
-          >
-            <Icon name="Mail" size={14} />
-            Отправить на почту
-          </button>
+          {!isClient && (
+            <button
+              onClick={() => setSendOpen(true)}
+              className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
+            >
+              <Icon name="Mail" size={14} />
+              Отправить на почту
+            </button>
+          )}
           <button
             onClick={handlePrint}
             disabled={printing}
@@ -285,6 +288,8 @@ export default function EstimateView() {
           )}
         </div>
       )}
+
+      <ExtraWorksPanel estimate={estimate} isClient={isClient} onChanged={() => load(true)} />
 
       <div className="bg-white rounded-xl p-6 md:p-10 max-w-4xl mx-auto shadow-xl overflow-x-auto">
         <div

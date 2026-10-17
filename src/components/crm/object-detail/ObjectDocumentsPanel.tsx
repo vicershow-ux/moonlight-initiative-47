@@ -6,6 +6,8 @@ import { DeleteButton } from "@/components/ui/delete-button"
 import { getEstimateStatusColor, getEstimateStatusLabel } from "@/lib/estimateStatus"
 import { formatMoney } from "./utils"
 import { ObjectInvoices } from "./ObjectInvoices"
+import { ObjectActs } from "./ObjectActs"
+import { downloadContractPdf } from "@/lib/downloadContractPdf"
 
 interface ObjectDocumentsPanelProps {
   object: ObjectItem
@@ -17,6 +19,8 @@ interface ObjectDocumentsPanelProps {
   printingId: number | null
   onCreateContract: () => void
   onPrintEstimate: (estimateId: number) => void
+  onDownloadEstimate: (estimateId: number) => void
+  downloadingId: number | null
   onDeleteEstimate: (estimateId: number) => void
   onPrintContract: (contract: Contract) => void
   onDeleteContract: (contractId: number) => void
@@ -32,6 +36,8 @@ export function ObjectDocumentsPanel({
   printingId,
   onCreateContract,
   onPrintEstimate,
+  onDownloadEstimate,
+  downloadingId,
   onDeleteEstimate,
   onPrintContract,
   onDeleteContract,
@@ -113,6 +119,22 @@ export function ObjectDocumentsPanel({
                     <Icon name="Printer" size={15} />
                   )}
                 </button>
+                <button
+                  onClick={() => onDownloadEstimate(est.id)}
+                  className="text-white/40 hover:text-white transition-colors"
+                  title="Скачать PDF"
+                >
+                  <Icon name={downloadingId === est.id ? "Loader2" : "Download"} size={15} className={downloadingId === est.id ? "animate-spin" : ""} />
+                </button>
+                {isClient && est.status !== "inactive" && (
+                  <Link
+                    to={`/cabinet/objects/${object.id}/estimates/${est.id}`}
+                    className="ml-auto inline-flex items-center gap-1.5 text-xs text-[#D4AF37] hover:underline"
+                  >
+                    <Icon name="ListPlus" size={14} />
+                    Добавить работы
+                  </Link>
+                )}
                 {!isClient && (
                   <DeleteButton onConfirm={() => onDeleteEstimate(est.id)} />
                 )}
@@ -173,6 +195,13 @@ export function ObjectDocumentsPanel({
                 >
                   <Icon name="Printer" size={15} />
                 </button>
+                <button
+                  onClick={() => downloadContractPdf(c.content_html, c.contract_number)}
+                  className="text-white/40 hover:text-white transition-colors"
+                  title="Скачать PDF"
+                >
+                  <Icon name="Download" size={15} />
+                </button>
                 {!isClient && (
                   <DeleteButton onConfirm={() => onDeleteContract(c.id)} />
                 )}
@@ -181,6 +210,9 @@ export function ObjectDocumentsPanel({
           ))}
         </div>
       )}
+
+      <p className="text-xs text-white/40 uppercase tracking-wide mb-2 mt-6">Акты выполненных работ</p>
+      <ObjectActs objectId={object.id} />
 
       <ObjectInvoices objectId={object.id} isClient={isClient} />
     </div>

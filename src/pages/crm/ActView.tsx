@@ -7,10 +7,13 @@ import { actsApi, Act } from "@/lib/api"
 import { downloadContractPdf, contractPdfBase64 } from "@/lib/downloadContractPdf"
 import { SendDocEmailDialog } from "@/components/crm/SendDocEmailDialog"
 import { printAct, darkenActHtml } from "@/lib/printAct"
+import { useAuth } from "@/contexts/AuthContext"
 
 export default function ActView() {
   const { actId } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const isClient = user?.role === "client"
 
   const [act, setAct] = useState<Act | null>(null)
   const [loading, setLoading] = useState(true)
@@ -23,7 +26,7 @@ export default function ActView() {
     actsApi
       .get(Number(actId))
       .then(setAct)
-      .catch(() => navigate("/cabinet/documents"))
+      .catch(() => navigate(isClient ? "/cabinet/objects" : "/cabinet/documents"))
       .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actId])
@@ -59,11 +62,11 @@ export default function ActView() {
     <CrmLayout title={`Акт выполненных работ № ${act.act_number}`}>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <Link
-          to="/cabinet/documents"
+          to={isClient ? `/cabinet/objects/${act.object_id}` : "/cabinet/documents"}
           className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors"
         >
           <Icon name="ChevronLeft" size={16} />
-          К документам
+          {isClient ? "К объекту" : "К документам"}
         </Link>
 
         <div className="flex items-center gap-2">
@@ -73,6 +76,7 @@ export default function ActView() {
           )}>
             {act.status === "signed" ? "подписан" : "черновик"}
           </span>
+          {!isClient && (<>
           <Link
             to={`/cabinet/objects/${act.object_id}/acts/${act.id}/edit`}
             className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg"
@@ -94,6 +98,7 @@ export default function ActView() {
             <Icon name="Mail" size={14} />
             Отправить на почту
           </button>
+          </>)}
           <button
             onClick={handlePrint}
             title="Печать"

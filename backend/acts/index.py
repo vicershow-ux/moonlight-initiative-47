@@ -572,14 +572,19 @@ def handler(event, context):
         params = event.get('queryStringParameters') or {}
         act_id = params.get('id')
         action = params.get('action')
+        is_client = user['role'] == 'client'
+        if is_client and method != 'GET':
+            return response(403, {'error': 'Недостаточно прав'})
+        client_cond = " AND a.object_id IN (SELECT object_id FROM object_access WHERE user_id = %s)" if is_client else ""
+        client_args = [user['user_id']] if is_client else []
 
         if method == 'GET':
             if act_id:
                 cur.execute(
                     f"SELECT {BASE_COLS}, o.object_code, o.client_name, o.address "
                     f"FROM acts a JOIN objects o ON o.id = a.object_id "
-                    f"WHERE a.id = %s AND a.company_id = %s",
-                    (act_id, company_id)
+                    f"WHERE a.id = %s AND a.company_id = %s{client_cond}",
+                    [act_id, company_id] + client_args
                 )
                 row = cur.fetchone()
                 if not row:
@@ -589,8 +594,8 @@ def handler(event, context):
 
             object_id = params.get('object_id')
             contract_id = params.get('contract_id')
-            where = "a.company_id = %s"
-            args = [company_id]
+            where = "a.company_id = %s" + client_cond
+            args = [company_id] + client_args
             if object_id:
                 where += " AND a.object_id = %s"
                 args.append(object_id)
