@@ -235,25 +235,39 @@ def parties_block(c, opts, executor_display, executor_short, client_name, custom
     entity = (c.get('entity_type') or '').lower()
     is_legal = 'юрид' in entity or entity.startswith('ооо') or 'общество' in entity
     is_ip = 'предприниматель' in entity or entity == 'ип'
-    lines = []
-    def add(label, value):
+    def row(label, value, mono=False, hl=False):
         v = esc(value)
-        if v:
-            lines.append(f'<p style="margin:2px 0">{label + ": " if label else ""}{v}</p>')
-    if is_ip or is_legal:
-        add('ОГРН' if is_legal else 'ОГРНИП', c.get('ogrn'))
-    add('ИНН', c.get('inn'))
-    if is_legal:
-        add('КПП', c.get('kpp'))
-    add('Адрес', c.get('legal_address'))
-    add('Тел.', c.get('phone'))
-    add('Email', c.get('email'))
-    add('Сайт', c.get('website'))
-    add('Банк', c.get('bank_name'))
-    add('БИК', c.get('bik'))
-    add('Р/с', c.get('account_number'))
-    add('К/с', c.get('correspondent_account'))
-    executor_req = ''.join(lines)
+        if not v:
+            return ''
+        bg = 'background:#F3EBDC;' if hl else ''
+        font = 'font-family:Courier New,monospace;font-size:13px !important;letter-spacing:.3px;' if mono else ''
+        return (f'<tr><td style="{bg}padding:4px 12px;width:36%;color:#6b5a3e;font-size:11px;vertical-align:top">{label}</td>'
+                f'<td style="{bg}padding:4px 12px;font-size:12.5px;font-weight:600;{font}word-break:break-word">{v}</td></tr>')
+
+    def group4(v):
+        d = re.sub(r'\s+', '', v or '')
+        return re.sub(r'(\d{4})(?=\d)', r'\1 ', d)
+
+    req_rows = ''.join([
+        row('ОГРН' if is_legal else 'ОГРНИП', c.get('ogrn')) if (is_ip or is_legal) else '',
+        row('ИНН', c.get('inn')),
+        row('КПП', c.get('kpp')) if is_legal else '',
+        row('Адрес', c.get('legal_address')),
+        row('Телефон', c.get('phone')),
+        row('E-mail', c.get('email')),
+        row('Сайт', c.get('website')),
+    ])
+    bank_rows = ''.join([
+        row('Расчётный счёт', group4(c.get('account_number')), mono=True, hl=True),
+        row('Банк', c.get('bank_name')),
+        row('БИК', c.get('bik'), mono=True),
+        row('Корр. счёт', group4(c.get('correspondent_account')), mono=True),
+    ])
+    executor_req = req_rows
+    if bank_rows:
+        executor_req += ('<tr><td colspan="2" style="padding:8px 12px 3px;font-size:10.5px;font-weight:700;'
+                         'letter-spacing:.4px;color:#6B4508;text-transform:uppercase;border-top:1px solid #D9C9A8">'
+                         'Банковские реквизиты</td></tr>' + bank_rows)
     title = f'ИП {executor_short}' if is_ip and executor_short else executor_display
 
     sig = ''
@@ -267,16 +281,20 @@ def parties_block(c, opts, executor_display, executor_short, client_name, custom
     pad = '80px' if stamp else '0'
     box = '<div style="position:relative;height:84px;border-bottom:1.5px solid #5C3A11;margin:0 0 4px">{}</div>'
     label = 'margin:0 0 6px;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:#4A2E06'
+    card = ('border:1.2px solid #6B4508;border-radius:10px;overflow:hidden;page-break-inside:avoid;break-inside:avoid')
+    head = ('background:#B9A27A;color:#1F1405;padding:7px 12px;font-weight:700;font-size:11.5px;'
+            'letter-spacing:.4px;text-transform:uppercase')
+    name_row = 'padding:8px 12px 4px;font-weight:700;font-size:13px'
     return f'''<table style="width:100%;font-size:13px;margin-bottom:12px;border-collapse:collapse"><tr>
-<td style="width:50%;vertical-align:top;padding-right:24px">
-  <p style="{label}">ИСПОЛНИТЕЛЬ</p>
-  <p style="margin:0 0 2px;font-weight:600">{title}</p>
-  {executor_req}
+<td style="width:50%;vertical-align:top;padding-right:8px">
+  <div style="{card}"><div style="{head}">Исполнитель</div>
+  <table style="width:100%;border-collapse:collapse"><tr><td colspan="2" style="{name_row}">{title}</td></tr>{executor_req}
+  <tr><td colspan="2" style="height:6px"></td></tr></table></div>
 </td>
-<td style="width:50%;vertical-align:top;padding-left:24px">
-  <p style="{label}">ЗАКАЗЧИК</p>
-  <p style="margin:0 0 2px;font-weight:600">{client_name}</p>
-  {customer_contacts}
+<td style="width:50%;vertical-align:top;padding-left:8px">
+  <div style="{card}"><div style="{head}">Заказчик</div>
+  <table style="width:100%;border-collapse:collapse"><tr><td colspan="2" style="{name_row}">{client_name}</td></tr>{customer_contacts}
+  <tr><td colspan="2" style="height:6px"></td></tr></table></div>
 </td>
 </tr>
 <tr style="page-break-inside:avoid;break-inside:avoid">
@@ -371,11 +389,11 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
 
     customer_contacts = ''
     if address:
-        customer_contacts += f'<p style="margin:2px 0">Адрес объекта: {address}</p>'
+        customer_contacts += f'<tr><td style="padding:4px 12px;width:36%;color:#6b5a3e;font-size:11px;vertical-align:top">Адрес объекта</td><td style="padding:4px 12px;font-size:12.5px;font-weight:600;word-break:break-word">{address}</td></tr>'
     if client_phone:
-        customer_contacts += f'<p style="margin:2px 0">Тел.: {client_phone}</p>'
+        customer_contacts += f'<tr><td style="padding:4px 12px;width:36%;color:#6b5a3e;font-size:11px;vertical-align:top">Телефон</td><td style="padding:4px 12px;font-size:12.5px;font-weight:600;word-break:break-word">{client_phone}</td></tr>'
     if client_email:
-        customer_contacts += f'<p style="margin:2px 0">Email: {client_email}</p>'
+        customer_contacts += f'<tr><td style="padding:4px 12px;width:36%;color:#6b5a3e;font-size:11px;vertical-align:top">E-mail</td><td style="padding:4px 12px;font-size:12.5px;font-weight:600;word-break:break-word">{client_email}</td></tr>'
 
     return f"""<div class="act-doc" style="font-family:Arial,sans-serif;color:#1a1a1a;line-height:1.55;font-size:13px">
 <h2 style="text-align:center;margin:0 0 4px;font-size:18px">АКТ СДАЧИ-ПРИЁМКИ ВЫПОЛНЕННЫХ РАБОТ № {esc(act_number)}</h2>

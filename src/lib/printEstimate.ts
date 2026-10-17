@@ -12,6 +12,15 @@ const formatMoney = (n: unknown) =>
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
 
+function group4(v?: string | null) {
+  return (v || "").replace(/\s+/g, "").replace(/(\d{4})(?=\d)/g, "$1 ")
+}
+
+function reqRow(label: string, value?: string | null, cls = "") {
+  if (!value) return ""
+  return `<tr class="${cls.includes("hl") ? "hl" : ""}"><td class="rk">${label}</td><td class="rv${cls.includes("acc") ? " acc" : ""}">${escapeHtml(value)}</td></tr>`
+}
+
 function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyName: string) {
   const items = estimate.items || []
 
@@ -332,6 +341,17 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
   .parties .name { font-weight: 600; }
   .parties .contact { color: #333; font-size: 12.5px; margin-top: 2px; }
   .parties .signature { height: 40px; object-fit: contain; margin-top: 8px; }
+  .parties { align-items: start; gap: 16px; }
+  .party-card { border: 1.2px solid #6B4508; border-radius: 10px; overflow: hidden; break-inside: avoid; page-break-inside: avoid; }
+  .party-head { background: #B9A27A; color: #1F1405; padding: 7px 12px; font-weight: 700; font-size: 11.5px; letter-spacing: .4px; text-transform: uppercase; }
+  table.party-table { width: 100%; border-collapse: collapse; table-layout: auto; margin-bottom: 6px; }
+  .party-table td { padding: 4px 12px; border: none !important; vertical-align: top; }
+  .party-table .party-name { padding-top: 8px; font-weight: 700; font-size: 13px; }
+  .party-table .rk { width: 36%; color: #6b5a3e; font-size: 11px; }
+  .party-table .rv { font-weight: 600; font-size: 12.5px; word-break: break-word; }
+  .party-table .acc { font-family: "Courier New", monospace; font-size: 13px; letter-spacing: .3px; }
+  .party-table tr.hl td { background: #F3EBDC; }
+  .party-table .bank-sub { padding-top: 8px; border-top: 1px solid #D9C9A8 !important; font-size: 10.5px; font-weight: 700; letter-spacing: .4px; color: #6B4508; text-transform: uppercase; }
   .signatures {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -537,27 +557,32 @@ function buildEstimateDocument(estimate: Estimate, object: ObjectItem, companyNa
   <hr class="thin" />
 
   <div class="parties">
-    <div>
-      <div class="label">Исполнитель</div>
-      <div class="name">${escapeHtml(/предприним/i.test(estimate.company_entity_type || "") && estimate.company_contact_full_name ? `ИП ${estimate.company_contact_full_name}` : estimate.company_name || companyName)}</div>
-      ${estimate.company_ogrn && /предприним|юрид/i.test(estimate.company_entity_type || "") ? `<div class="contact">${/юрид/i.test(estimate.company_entity_type || "") ? "ОГРН" : "ОГРНИП"}: ${escapeHtml(estimate.company_ogrn)}</div>` : ""}
-      ${estimate.company_inn ? `<div class="contact">ИНН: ${escapeHtml(estimate.company_inn)}</div>` : ""}
-      ${estimate.company_kpp && /юрид/i.test(estimate.company_entity_type || "") ? `<div class="contact">КПП: ${escapeHtml(estimate.company_kpp)}</div>` : ""}
-      ${estimate.company_legal_address ? `<div class="contact">Адрес: ${escapeHtml(estimate.company_legal_address)}</div>` : ""}
-      ${estimate.company_phone ? `<div class="contact">Тел.: ${escapeHtml(estimate.company_phone)}</div>` : ""}
-      ${estimate.company_email ? `<div class="contact">Email: ${escapeHtml(estimate.company_email)}</div>` : ""}
-      ${estimate.company_website ? `<div class="contact">Сайт: ${escapeHtml(estimate.company_website)}</div>` : ""}
-      ${estimate.company_bank_name ? `<div class="contact">Банк: ${escapeHtml(estimate.company_bank_name)}</div>` : ""}
-      ${estimate.company_bik ? `<div class="contact">БИК: ${escapeHtml(estimate.company_bik)}</div>` : ""}
-      ${estimate.company_account_number ? `<div class="contact">Р/с: ${escapeHtml(estimate.company_account_number)}</div>` : ""}
-      ${estimate.company_correspondent_account ? `<div class="contact">К/с: ${escapeHtml(estimate.company_correspondent_account)}</div>` : ""}
+    <div class="party-card">
+      <div class="party-head">Исполнитель</div>
+      <table class="party-table">
+        <tr><td colspan="2" class="party-name">${escapeHtml(/предприним/i.test(estimate.company_entity_type || "") && estimate.company_contact_full_name ? `ИП ${estimate.company_contact_full_name}` : estimate.company_name || companyName)}</td></tr>
+        ${estimate.company_ogrn && /предприним|юрид/i.test(estimate.company_entity_type || "") ? reqRow(/юрид/i.test(estimate.company_entity_type || "") ? "ОГРН" : "ОГРНИП", estimate.company_ogrn) : ""}
+        ${reqRow("ИНН", estimate.company_inn)}
+        ${/юрид/i.test(estimate.company_entity_type || "") ? reqRow("КПП", estimate.company_kpp) : ""}
+        ${reqRow("Адрес", estimate.company_legal_address)}
+        ${reqRow("Телефон", estimate.company_phone)}
+        ${reqRow("E-mail", estimate.company_email)}
+        ${reqRow("Сайт", estimate.company_website)}
+        ${estimate.company_account_number || estimate.company_bank_name ? `<tr><td colspan="2" class="bank-sub">Банковские реквизиты</td></tr>` : ""}
+        ${reqRow("Расчётный счёт", group4(estimate.company_account_number), "acc hl")}
+        ${reqRow("Банк", estimate.company_bank_name)}
+        ${reqRow("БИК", estimate.company_bik, "acc")}
+        ${reqRow("Корр. счёт", group4(estimate.company_correspondent_account), "acc")}
+      </table>
     </div>
-    <div>
-      <div class="label">Заказчик</div>
-      <div class="name">${escapeHtml(object.client_name)}</div>
-      ${object.client_phone ? `<div class="contact">Тел.: ${escapeHtml(object.client_phone)}</div>` : ""}
-      ${object.email || estimate.email ? `<div class="contact">Email: ${escapeHtml(object.email || estimate.email || "")}</div>` : ""}
-      ${object.address || estimate.address ? `<div class="contact">Адрес объекта: ${escapeHtml(object.address || estimate.address || "")}</div>` : ""}
+    <div class="party-card">
+      <div class="party-head">Заказчик</div>
+      <table class="party-table">
+        <tr><td colspan="2" class="party-name">${escapeHtml(object.client_name)}</td></tr>
+        ${reqRow("Телефон", object.client_phone)}
+        ${reqRow("E-mail", object.email || estimate.email)}
+        ${reqRow("Адрес объекта", object.address || estimate.address)}
+      </table>
     </div>
   </div>
 
