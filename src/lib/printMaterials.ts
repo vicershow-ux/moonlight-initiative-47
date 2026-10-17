@@ -504,13 +504,32 @@ export async function downloadMaterialsPdf(
   catalog: MaterialItem[],
   companyName: string
 ) {
-  const { styles, bodyContent } = buildMaterialsDocument(object, items, catalog, companyName)
-  await renderPagedPdf(
+  await renderMaterialsPdf(object, items, catalog, companyName, "save")
+}
+
+/** PDF сметы на материалы в base64 — для отправки письмом */
+export async function materialsPdfBase64(
+  object: MaterialObject,
+  items: ObjectMaterial[],
+  catalog: MaterialItem[],
+  companyName: string
+): Promise<string> {
+  return (await renderMaterialsPdf(object, items, catalog, companyName, "base64")) || ""
+}
+
+async function renderMaterialsPdf(
+  object: MaterialObject,
+  items: ObjectMaterial[],
+  catalog: MaterialItem[],
+  companyName: string,
+  mode: "save" | "base64"
+): Promise<string | void> {
+  return renderPagedPdf(
     (root) => {
       root.id = "pdf-scope-materials"
       root.className = "est-root"
-      root.innerHTML = `<style>${scopeStyles(styles + PDF_OVERRIDES, "#pdf-scope-materials")}</style>${bodyContent}`
+      root.innerHTML = materialsPdfHtml(object, items, catalog, companyName)
     },
-    { filename: `Смета на материал ${object.object_code}.pdf`, mode: "save" },
+    { filename: `Смета на материал ${object.object_code}.pdf`, mode },
   )
 }

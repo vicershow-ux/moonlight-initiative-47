@@ -22,6 +22,7 @@ interface DocumentMobileCardProps {
   editTo?: string
   onPrint?: () => void
   onDownload?: () => void
+  onSend?: () => void
   printing?: boolean
   downloading?: boolean
   deleteButton: ReactNode
@@ -43,6 +44,7 @@ export function DocumentMobileCard({
   editTo,
   onPrint,
   onDownload,
+  onSend,
   printing,
   downloading,
   deleteButton,
@@ -117,6 +119,11 @@ export function DocumentMobileCard({
         {onDownload && (
           <button onClick={onDownload} className={cn(btn, "w-10 shrink-0 px-0")} title="Скачать PDF">
             <Icon name={downloading ? "Loader2" : "Download"} size={15} className={downloading ? "animate-spin" : ""} />
+          </button>
+        )}
+        {onSend && (
+          <button onClick={onSend} className={cn(btn, "w-10 shrink-0 px-0")} title="Отправить на почту">
+            <Icon name="Mail" size={15} />
           </button>
         )}
         <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/5 shrink-0">

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react"
 import Icon from "@/components/ui/icon"
 import { materialsApi, MaterialEstimate } from "@/lib/api"
-import { printMaterials, downloadMaterialsPdf } from "@/lib/printMaterials"
+import { printMaterials, downloadMaterialsPdf, materialsPdfBase64 } from "@/lib/printMaterials"
+import { SendDocEmailDialog } from "@/components/crm/SendDocEmailDialog"
 import { useAuth } from "@/contexts/AuthContext"
 import { DeleteButton } from "@/components/ui/delete-button"
 
@@ -21,6 +22,7 @@ export function ObjectMaterialEstimates({ objectId, isClient }: Props) {
   const [estimates, setEstimates] = useState<MaterialEstimate[]>([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<number | null>(null)
+  const [sendFor, setSendFor] = useState<MaterialEstimate | null>(null)
 
   const load = () => {
     setLoading(true)
@@ -32,17 +34,21 @@ export function ObjectMaterialEstimates({ objectId, isClient }: Props) {
 
   useEffect(load, [objectId])
 
+  const loadDoc = async (id: number) => {
+    const { estimate } = await materialsApi.getEstimate(id)
+    const obj = {
+      id: estimate.object_id,
+      object_code: estimate.object_code,
+      client_name: estimate.client_name,
+      address: estimate.address || "",
+    }
+    return { obj, items: estimate.items || [] }
+  }
+
   const openDoc = async (m: MaterialEstimate, mode: "print" | "pdf") => {
     setBusyId(m.id)
     try {
-      const { estimate } = await materialsApi.getEstimate(m.id)
-      const obj = {
-        id: estimate.object_id,
-        object_code: estimate.object_code,
-        client_name: estimate.client_name,
-        address: estimate.address || "",
-      }
-      const items = estimate.items || []
+      const { obj, items } = await loadDoc(m.id)
       if (mode === "print") printMaterials(obj, items, [], user?.company_name || "")
       else await downloadMaterialsPdf(obj, items, [], user?.company_name || "")
     } finally {
@@ -108,11 +114,34 @@ export function ObjectMaterialEstimates({ objectId, isClient }: Props) {
               <Icon name="Download" size={15} />
             </button>
             {!isClient && (
+              <button
+                onClick={() => setSendFor(m)}
+                className="text-white/40 hover:text-white transition-colors"
+                title="Отправить заказчику на почту"
+              >
+                <Icon name="Mail" size={15} />
+              </button>
+            )}
+            {!isClient && (
               <DeleteButton onConfirm={() => remove(m.id)} />
             )}
           </div>
         </div>
       ))}
+      {sendFor && (
+        <SendDocEmailDialog
+          open={!!sendFor}
+          onOpenChange={(v) => !v && setSendFor(null)}
+          docName="смету на материалы"
+          objectId={objectId}
+          fileName={`Смета_материалы_${sendFor.id}.pdf`}
+          makePdf={async () => {
+            const { obj, items } = await loadDoc(sendFor.id)
+            return materialsPdfBase64(obj, items, [], user?.company_name || "")
+          }}
+          send={(p) => materialsApi.sendEstimateEmail(sendFor.id, p)}
+        />
+      )}
     </div>
   )
 }

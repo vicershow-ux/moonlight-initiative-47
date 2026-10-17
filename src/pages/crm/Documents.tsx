@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { estimatesApi, objectsApi, objectStatusesApi, contractsApi, actsApi, materialsApi, Estimate, ObjectItem, ObjectStatus, Contract, Act, MaterialEstimate } from "@/lib/api"
-import { printMaterials, downloadMaterialsPdf } from "@/lib/printMaterials"
+import { SendDocEmailDialog } from "@/components/crm/SendDocEmailDialog"
+import { printMaterials, downloadMaterialsPdf, materialsPdfBase64 } from "@/lib/printMaterials"
 import { printEstimate, downloadEstimatePdf } from "@/lib/printEstimate"
 import { downloadContractPdf } from "@/lib/downloadContractPdf"
 import { printAct, darkenActHtml } from "@/lib/printAct"
@@ -23,6 +24,7 @@ export default function Documents() {
   const [acts, setActs] = useState<Act[]>([])
   const [matEstimates, setMatEstimates] = useState<MaterialEstimate[]>([])
   const [matBusyId, setMatBusyId] = useState<number | null>(null)
+  const [matSendFor, setMatSendFor] = useState<MaterialEstimate | null>(null)
   const [objectsMap, setObjectsMap] = useState<Record<number, ObjectItem>>({})
   const [objectStatuses, setObjectStatuses] = useState<ObjectStatus[]>([])
   const [loading, setLoading] = useState(true)
@@ -146,7 +148,22 @@ export default function Documents() {
     load()
   }
 
-  const openMatEstimate = async (m: MaterialEstimate, mode: "print" | "pdf") => {
+  const loadMatDoc = async (id: number) => {
+    const { estimate } = await materialsApi.getEstimate(id)
+    const obj = {
+      id: estimate.object_id,
+      object_code: estimate.object_code,
+      client_name: estimate.client_name,
+      address: estimate.address || "",
+    }
+    return { obj, items: estimate.items || [] }
+  }
+
+  const openMatEstimate = async (m: MaterialEstimate, mode: "print" | "pdf" | "email") => {
+    if (mode === "email") {
+      setMatSendFor(m)
+      return
+    }
     setMatBusyId(m.id)
     try {
       const { estimate } = await materialsApi.getEstimate(m.id)
@@ -274,6 +291,7 @@ export default function Documents() {
                 viewTo="/cabinet/materials"
                 onPrint={() => openMatEstimate(m, "print")}
                 onDownload={() => openMatEstimate(m, "pdf")}
+                onSend={() => openMatEstimate(m, "email")}
                 printing={matBusyId === m.id}
                 deleteButton={<DeleteButton onConfirm={() => handleDeleteMatEstimate(m.id)} />}
               />
@@ -407,6 +425,20 @@ export default function Documents() {
           </>
         )}
       </div>
+      {matSendFor && (
+        <SendDocEmailDialog
+          open={!!matSendFor}
+          onOpenChange={(v) => !v && setMatSendFor(null)}
+          docName="смету на материалы"
+          objectId={matSendFor.object_id}
+          fileName={`Смета_материалы_${matSendFor.id}.pdf`}
+          makePdf={async () => {
+            const { obj, items } = await loadMatDoc(matSendFor.id)
+            return materialsPdfBase64(obj, items, [], user?.company_name || "")
+          }}
+          send={(p) => materialsApi.sendEstimateEmail(matSendFor.id, p)}
+        />
+      )}
     </CrmLayout>
   )
 }

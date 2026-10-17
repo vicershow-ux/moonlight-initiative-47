@@ -1,7 +1,10 @@
 import json
 import os
 
+import re
+import html as html_lib
 import psycopg2
+from mailer import send_document_email
 
 
 def get_conn():
@@ -32,14 +35,14 @@ def get_current_user(cur, event):
     if not token:
         return None
     cur.execute(
-        "SELECT u.id, u.company_id FROM sessions s JOIN users u ON u.id = s.user_id "
+        "SELECT u.id, u.company_id, u.role FROM sessions s JOIN users u ON u.id = s.user_id "
         "WHERE s.token = %s AND s.expires_at > NOW()",
         (token,)
     )
     row = cur.fetchone()
     if not row:
         return None
-    return {'user_id': row[0], 'company_id': row[1]}
+    return {'user_id': row[0], 'company_id': row[1], 'role': row[2]}
 
 
 FIELDS = ['name', 'category', 'unit', 'price', 'shop_name', 'shop_address',
@@ -101,6 +104,24 @@ def sync_material_best(cur, material_id, company_id):
     )
 
 
+def build_doc_email(brand, phones, client_name, label, note):
+    e = html_lib.escape
+    greet = f'Здравствуйте, {client_name}!' if client_name else 'Здравствуйте!'
+    note_html = f'<p style="margin:0 0 14px;white-space:pre-line">{e(note)}</p>' if note else ''
+    html_body = f'''<!doctype html><html><body style="margin:0;padding:24px;background:#f4f1ea;font-family:Arial,sans-serif;color:#161616">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden">
+<tr><td style="background:#5C3A11;padding:18px 24px;color:#fff;font-size:18px;font-weight:bold">{e(brand)}</td></tr>
+<tr><td style="padding:24px;font-size:15px;line-height:1.55">
+<p style="margin:0 0 14px">{e(greet)}</p>
+<p style="margin:0 0 14px">Направляем вам {e(label)}. Файл приложен к письму в формате PDF — в нём перечень материалов с ценами и магазинами.</p>
+{note_html}
+<p style="margin:0 0 14px">Если появятся вопросы — просто ответьте на это письмо.</p>
+<p style="margin:20px 0 0;padding-top:16px;border-top:1px solid #eee;font-size:13px;color:#777">С уважением, {e(brand)}{('<br/>' + e(phones)) if phones else ''}</p>
+</td></tr></table></body></html>'''
+    text_body = f"{greet}\n\nНаправляем вам {label}. Файл приложен к письму.\n\n{note}\n\nС уважением, {brand}\n{phones}"
+    return html_body, text_body
+
+
 def handler(event: dict, context) -> dict:
     '''Справочник материалов: цены, магазины и адреса поставщиков'''
     method = event.get('httpMethod', 'GET')
@@ -120,6 +141,43 @@ def handler(event: dict, context) -> dict:
         params = event.get('queryStringParameters') or {}
         row_id = params.get('id')
         entity = params.get('entity') or 'material'
+
+        if method == 'POST' and entity == 'estimate' and params.get('action') == 'send_email':
+            if user.get('role') == 'client':
+                return response(403, {'error': 'Недостаточно прав'})
+            body = json.loads(event.get('body') or '{}')
+            to_email = (body.get('email') or '').strip()
+            pdf_b64 = body.get('pdf_base64') or ''
+            if not row_id:
+                return response(400, {'error': 'Не указан документ'})
+            if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', to_email):
+                return response(400, {'error': 'Укажите корректный email заказчика'})
+            if not pdf_b64:
+                return response(400, {'error': 'Нет файла документа'})
+            if len(pdf_b64) > 9_000_000:
+                return response(400, {'error': 'Файл слишком большой для отправки'})
+            cur.execute(
+                "SELECT me.id, o.client_name, o.object_code FROM material_estimates me "
+                "JOIN objects o ON o.id = me.object_id WHERE me.id = %s AND me.company_id = %s",
+                (row_id, company_id)
+            )
+            row = cur.fetchone()
+            if not row:
+                return response(404, {'error': 'Смета не найдена'})
+            cur.execute("SELECT name, phone, email, website FROM companies WHERE id = %s", (company_id,))
+            comp = cur.fetchone() or ('', '', '', '')
+            brand = comp[0] or 'FixKey'
+            phones = ' · '.join(x for x in comp[1:] if x)
+            label = f'смету на материалы № {row[0]}'
+            note = (body.get('message') or '').strip()[:2000]
+            html_body, text_body = build_doc_email(brand, phones, row[1], label, note)
+            ok, err = send_document_email(
+                to_email, f'Смета на материалы № {row[0]}', html_body, text_body, pdf_b64,
+                f'Смета_материалы_{row[0]}.pdf', brand, comp[2] or ''
+            )
+            if not ok:
+                return response(502, {'error': err})
+            return response(200, {'success': True})
 
         if method == 'GET' and entity == 'estimate' and row_id:
             cur.execute(

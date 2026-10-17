@@ -1715,6 +1715,15 @@ export const materialsApi = {
     return parseResponse(res) as Promise<{ estimate: MaterialEstimate }>
   },
 
+  async sendEstimateEmail(id: number, payload: { email: string; pdf_base64: string; message?: string }) {
+    const res = await fetch(`${MATERIALS_URL}?entity=estimate&id=${id}&action=send_email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<{ success: boolean }>
+  },
+
   async removeEstimate(id: number) {
     const res = await fetch(`${MATERIALS_URL}?entity=estimate&id=${id}`, {
       method: "DELETE",

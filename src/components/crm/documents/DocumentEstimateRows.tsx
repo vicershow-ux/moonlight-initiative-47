@@ -113,7 +113,7 @@ interface MatEstimateRowProps {
   obj: ObjectItem | undefined
   objectStatuses: ObjectStatus[]
   matBusyId: number | null
-  openMatEstimate: (m: MaterialEstimate, mode: "print" | "pdf") => void
+  openMatEstimate: (m: MaterialEstimate, mode: "print" | "pdf" | "email") => void
   handleDeleteMatEstimate: (id: number) => void
 }
 
@@ -183,6 +183,13 @@ export function DocumentMatEstimateRow({
                 title="Скачать PDF"
               >
                 <Icon name="Download" size={15} />
+              </button>
+              <button
+                onClick={() => openMatEstimate(m, "email")}
+                className="text-white/40 hover:text-white transition-colors"
+                title="Отправить заказчику на почту"
+              >
+                <Icon name="Mail" size={15} />
               </button>
               <DeleteButton onConfirm={() => handleDeleteMatEstimate(m.id)} />
             </div>
