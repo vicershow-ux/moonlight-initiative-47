@@ -6,6 +6,7 @@ import { Invoice, invoicesApi } from "@/lib/api"
 import { buildInvoiceHtml } from "@/lib/buildInvoiceHtml"
 import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
 import { printHtml } from "@/lib/printHtml"
+import { notifyThanks } from "@/lib/invoiceThanks"
 import { contractPdfBase64 } from "@/lib/downloadContractPdf"
 import { SendDocEmailDialog } from "@/components/crm/SendDocEmailDialog"
 import { formatDate, formatMoney } from "./constants"
@@ -75,7 +76,11 @@ export function DocumentInvoicesTab({ search }: { search: string }) {
   const togglePaid = async (inv: Invoice) => {
     const status: Invoice["status"] = inv.status === "paid" ? "sent" : "paid"
     setList((prev) => prev.map((x) => (x.id === inv.id ? { ...x, status } : x)))
-    await invoicesApi.update(inv.id, { status }).catch(load)
+    const res = await invoicesApi.update(inv.id, { status }).catch(() => {
+      load()
+      return null
+    })
+    notifyThanks(res?.thanks)
   }
 
   if (loading) {

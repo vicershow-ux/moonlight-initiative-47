@@ -2122,7 +2122,7 @@ export const invoicesApi = {
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify(payload),
     })
-    return parseResponse(res) as Promise<{ success: boolean }>
+    return parseResponse(res) as Promise<{ success: boolean; thanks?: { sent: boolean; email: string; reason: string } }>
   },
 
   async remove(id: number) {

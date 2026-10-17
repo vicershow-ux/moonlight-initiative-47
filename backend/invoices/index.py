@@ -129,6 +129,55 @@ def build_email(brand, phones, client_name, label, note):
     return html_body, text_body
 
 
+def fmt_rub(n):
+    return f"{float(n or 0):,.0f}".replace(',', ' ') + ' ₽'
+
+
+def send_thanks(cur, company_id, inv_id):
+    '''Письмо-благодарность заказчику за оплату счёта. Возвращает (ok, причина)'''
+    cur.execute(
+        "SELECT i.invoice_number, i.total_amount, i.thanks_sent_at, o.client_name, o.email, o.address "
+        "FROM invoices i JOIN objects o ON o.id = i.object_id WHERE i.id = %s AND i.company_id = %s",
+        (inv_id, company_id)
+    )
+    row = cur.fetchone()
+    if not row:
+        return False, 'not_found'
+    number, total, sent_at, client_name, email, address = row
+    if sent_at:
+        return False, 'already_sent'
+    email = (email or '').strip()
+    if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+        return False, 'no_email'
+    cur.execute("SELECT name, phone, email, website FROM companies WHERE id = %s", (company_id,))
+    comp = cur.fetchone() or ('', '', '', '')
+    brand = comp[0] or 'FixKey'
+    contacts = ' · '.join(x for x in comp[1:] if x)
+    e = html_lib.escape
+    greet = f'Здравствуйте, {client_name}!' if client_name else 'Здравствуйте!'
+    addr_line = f' по объекту: {address}' if address else ''
+    html_body = f'''<!doctype html><html><body style="margin:0;padding:24px;background:#f4f1ea;font-family:Arial,sans-serif;color:#161616">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden">
+<tr><td style="background:#5C3A11;padding:18px 24px;color:#fff;font-size:18px;font-weight:bold">{e(brand)}</td></tr>
+<tr><td style="padding:24px;font-size:15px;line-height:1.55">
+<p style="margin:0 0 14px">{e(greet)}</p>
+<p style="margin:0 0 14px">Благодарим вас за оплату! Мы получили оплату по счёту № {e(str(number))}{e(addr_line)}.</p>
+<table cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 16px;background:#f7f2e8;border-radius:8px"><tr>
+<td style="padding:14px 16px;font-size:14px;color:#5C3A11">Сумма оплаты</td>
+<td style="padding:14px 16px;font-size:18px;font-weight:bold;text-align:right;color:#161616">{e(fmt_rub(total))}</td>
+</tr></table>
+<p style="margin:0 0 14px">Ценим ваше доверие и продолжаем работы по вашему объекту. Если появятся вопросы — просто ответьте на это письмо.</p>
+<p style="margin:20px 0 0;padding-top:16px;border-top:1px solid #eee;font-size:13px;color:#777">С уважением, {e(brand)}{('<br/>' + e(contacts)) if contacts else ''}</p>
+</td></tr></table></body></html>'''
+    text_body = f"{greet}\n\nБлагодарим вас за оплату! Мы получили оплату по счёту № {number}{addr_line} на сумму {fmt_rub(total)}.\n\nЕсли появятся вопросы — просто ответьте на это письмо.\n\nС уважением, {brand}\n{contacts}"
+    ok, err = send_document_email(email, f'Спасибо за оплату счёта № {number}', html_body, text_body, '', '', brand, comp[2] or '')
+    if not ok:
+        print(f'thanks email failed for invoice {inv_id}: {err}')
+        return False, 'send_failed'
+    cur.execute("UPDATE invoices SET thanks_sent_at = NOW() WHERE id = %s", (inv_id,))
+    return True, email
+
+
 def handler(event: dict, context) -> dict:
     '''Счета на оплату по договору или акту: создание, редактирование, просмотр и отправка заказчику на почту'''
     method = event.get('httpMethod', 'GET')
@@ -260,11 +309,23 @@ def handler(event: dict, context) -> dict:
                 if key in body:
                     fields.append(f'{key} = %s')
                     values.append(bool(body[key]))
+            cur.execute("SELECT status FROM invoices WHERE id = %s", (inv_id,))
+            prev_status = cur.fetchone()[0]
+            new_status = body.get('status')
+            if new_status == 'paid' and prev_status != 'paid':
+                fields.append('paid_at = NOW()')
+            elif 'status' in body and new_status != 'paid':
+                fields.append('paid_at = NULL')
             if fields:
                 fields.append('updated_at = NOW()')
                 cur.execute(f"UPDATE invoices SET {', '.join(fields)} WHERE id = %s", (*values, inv_id))
                 conn.commit()
-            return response(200, {'success': True})
+            result = {'success': True}
+            if new_status == 'paid' and prev_status != 'paid':
+                ok, info = send_thanks(cur, company_id, inv_id)
+                conn.commit()
+                result['thanks'] = {'sent': ok, 'email': info if ok else '', 'reason': '' if ok else info}
+            return response(200, result)
 
         if method == 'DELETE':
             if not inv_id:

@@ -15,13 +15,15 @@ def _smtp_settings():
 
 
 def send_document_email(to_email, subject, html_body, text_body, pdf_b64, filename, sender_name, reply_to=''):
-    '''Отправляет письмо с PDF во вложении. Возвращает (ok, сообщение об ошибке)'''
+    '''Отправляет письмо с PDF во вложении (без вложения, если pdf_b64 пустой). Возвращает (ok, сообщение об ошибке)'''
     host, user, password = _smtp_settings()
     if not host or not user or not password:
         return False, 'Почта для отправки не настроена (SMTP_HOST, SMTP_USER, SMTP_PASSWORD).'
 
-    raw = pdf_b64.split(',', 1)[1] if ',' in pdf_b64 else pdf_b64
-    pdf_bytes = base64.b64decode(raw)
+    pdf_bytes = None
+    if pdf_b64:
+        raw = pdf_b64.split(',', 1)[1] if ',' in pdf_b64 else pdf_b64
+        pdf_bytes = base64.b64decode(raw)
 
     msg = EmailMessage()
     msg['Subject'] = subject
@@ -34,7 +36,8 @@ def send_document_email(to_email, subject, html_body, text_body, pdf_b64, filena
         msg['Bcc'] = user
     msg.set_content(text_body)
     msg.add_alternative(html_body, subtype='html')
-    msg.add_attachment(pdf_bytes, maintype='application', subtype='pdf', filename=filename)
+    if pdf_bytes:
+        msg.add_attachment(pdf_bytes, maintype='application', subtype='pdf', filename=filename)
 
     errors = []
     try:

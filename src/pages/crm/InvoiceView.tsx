@@ -7,6 +7,7 @@ import { Invoice, invoicesApi } from "@/lib/api"
 import { buildInvoiceHtml } from "@/lib/buildInvoiceHtml"
 import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
 import { printHtml } from "@/lib/printHtml"
+import { notifyThanks } from "@/lib/invoiceThanks"
 import { contractPdfBase64, downloadContractPdf } from "@/lib/downloadContractPdf"
 import { SendDocEmailDialog } from "@/components/crm/SendDocEmailDialog"
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog"
@@ -53,8 +54,9 @@ export default function InvoiceView() {
   const pdfTitle = `Счёт ${inv.invoice_number}`
 
   const setStatus = async (status: Invoice["status"]) => {
-    await invoicesApi.update(inv.id, { status })
+    const res = await invoicesApi.update(inv.id, { status })
     setInv({ ...inv, status })
+    notifyThanks(res.thanks)
   }
 
   const download = async () => {
@@ -81,6 +83,7 @@ export default function InvoiceView() {
           {inv.status !== "paid" ? (
             <button
               onClick={() => setStatus("paid")}
+              title="Заказчику автоматически уйдёт письмо с благодарностью"
               className="flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-2 text-sm text-white transition-colors hover:bg-green-700"
             >
               <Icon name="BadgeCheck" size={14} />
