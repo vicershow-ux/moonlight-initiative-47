@@ -9,6 +9,7 @@ import { TeamOwnerCard } from "@/components/crm/team/TeamOwnerCard"
 import { TeamStatsBar } from "@/components/crm/team/TeamStatsBar"
 import { TeamMembersPanel, RoleFilter, StatusFilter, SortKey } from "@/components/crm/team/TeamMembersPanel"
 import { CreateMemberDialog } from "@/components/crm/team/CreateMemberDialog"
+import { MemberRolesDialog } from "@/components/crm/team/MemberRolesDialog"
 
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" })
@@ -48,6 +49,7 @@ export default function Team() {
   const canManage = user?.role === "owner" || user?.role === "admin"
 
   const [passwordFor, setPasswordFor] = useState<TeamMember | null>(null)
+  const [rolesFor, setRolesFor] = useState<TeamMember | null>(null)
   const [togglingId, setTogglingId] = useState<number | null>(null)
 
   const load = () => {
@@ -125,7 +127,11 @@ export default function Team() {
 
   const handleChangePosition = async (m: TeamMember, newPosition: string) => {
     await teamApi.setPosition(m.id, newPosition)
-    setMembers((prev) => prev.map((x) => (x.id === m.id ? { ...x, position: newPosition } : x)))
+    setMembers((prev) =>
+      prev.map((x) =>
+        x.id === m.id ? { ...x, position: newPosition, extra_positions: (x.extra_positions || []).filter((p) => p !== newPosition) } : x
+      )
+    )
   }
 
   const owner = members.find((m) => m.role === "owner")
@@ -146,7 +152,7 @@ export default function Team() {
       )
     }
     if (roleFilter !== "all") {
-      list = list.filter((m) => m.position === roleFilter)
+      list = list.filter((m) => m.position === roleFilter || (m.extra_positions || []).includes(roleFilter))
     }
     if (statusFilter !== "all") {
       list = list.filter((m) => {
@@ -221,6 +227,7 @@ export default function Team() {
         handleChangePosition={handleChangePosition}
         handleDelete={handleDelete}
         setPasswordFor={setPasswordFor}
+        setRolesFor={setRolesFor}
         setOpen={setOpen}
         formatDate={formatDate}
         formatDateTime={formatDateTime}
@@ -245,6 +252,12 @@ export default function Team() {
         error={error}
         saving={saving}
         onCreate={handleCreate}
+      />
+
+      <MemberRolesDialog
+        member={rolesFor}
+        onOpenChange={(v) => { if (!v) setRolesFor(null) }}
+        onSaved={(patch) => setMembers((prev) => prev.map((x) => (x.id === patch.id ? { ...x, ...patch } : x)))}
       />
 
       <SetPasswordDialog

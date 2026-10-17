@@ -4,7 +4,7 @@ import Icon from "@/components/ui/icon"
 import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/lib/utils"
 import { NotificationBell } from "@/components/crm/NotificationBell"
-import { hasHrefAccess } from "@/lib/positions"
+import { hasHrefAccess, hasPosition } from "@/lib/positions"
 
 interface CrmLayoutProps {
   children: ReactNode
@@ -68,13 +68,13 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
     navigate("/")
   }
 
-  const canManageSite = user?.role === "owner" || user?.position === "super_admin"
+  const canManageSite = user?.role === "owner" || hasPosition(user, "super_admin")
   const navItems = fullNavItems
     .map((item) => ({
     ...item,
     locked: !(
       (!user?.role || item.roles.includes(user.role)) &&
-      hasHrefAccess(user?.role, user?.position, item.href) &&
+      hasHrefAccess(user?.role, user?.position, item.href, user?.extra_positions) &&
       (!item.siteOnly || canManageSite)
     ),
   }))

@@ -36,6 +36,7 @@ interface TeamMembersPanelProps {
   handleChangePosition: (m: TeamMember, newPosition: string) => void
   handleDelete: (id: number) => void
   setPasswordFor: (m: TeamMember) => void
+  setRolesFor: (m: TeamMember) => void
   setOpen: (v: boolean) => void
 
   formatDate: (d: string) => string
@@ -63,6 +64,7 @@ export function TeamMembersPanel({
   handleChangePosition,
   handleDelete,
   setPasswordFor,
+  setRolesFor,
   setOpen,
   formatDate,
   formatDateTime,
@@ -226,6 +228,15 @@ export function TeamMembersPanel({
                           {getPositionLabel(m.position)}
                         </span>
                       )}
+                      {(m.extra_positions || []).length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {(m.extra_positions || []).map((p) => (
+                            <span key={p} className={`px-1.5 py-0.5 rounded-full text-[10px] ${getPositionColor(p)}`}>
+                              + {getPositionLabel(p)}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td className="py-3 pr-4">
                       <span className={`px-2 py-0.5 rounded-full text-xs ${m.is_active ? "bg-green-500/20 text-green-300" : "bg-red-500/20 text-red-300"}`}>
@@ -250,6 +261,13 @@ export function TeamMembersPanel({
                             ) : (
                               <Icon name={m.is_active ? "UserX" : "UserCheck"} size={16} />
                             )}
+                          </button>
+                          <button
+                            onClick={() => setRolesFor(m)}
+                            className="text-white/40 hover:text-[#D4AF37] transition-colors"
+                            title="Роли и полномочия"
+                          >
+                            <Icon name="ShieldCheck" size={16} />
                           </button>
                           <button
                             onClick={() => setPasswordFor(m)}

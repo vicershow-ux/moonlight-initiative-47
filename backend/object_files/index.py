@@ -52,7 +52,7 @@ def get_current_user(cur, event):
     if not token:
         return None
     cur.execute(
-        "SELECT u.id, u.company_id, u.role, u.position, u.full_name FROM sessions s "
+        "SELECT u.id, u.company_id, u.role, u.position, u.full_name, u.extra_positions FROM sessions s "
         "JOIN users u ON u.id = s.user_id WHERE s.token = %s AND s.expires_at > NOW()",
         (token,)
     )
@@ -60,12 +60,25 @@ def get_current_user(cur, event):
     if not row:
         return None
     return {'user_id': row[0], 'company_id': row[1], 'role': row[2],
-            'position': row[3], 'full_name': row[4]}
+            'position': row[3], 'full_name': row[4], 'positions': split_positions(row[3], row[5])}
+
+
+def split_positions(main, extra):
+    """Основная должность + дополнительные роли"""
+    out = [main] if main else []
+    for p in (extra or '').split(','):
+        p = p.strip()
+        if p and p not in out:
+            out.append(p)
+    return out
 
 
 def restricted(user):
     '''Дизайнер и клиент видят только привязанные объекты'''
-    return user['role'] == 'client' or user['position'] == 'designer'
+    if user['role'] == 'client':
+        return True
+    ps = set(user['positions'])
+    return user['role'] == 'employee' and 'designer' in ps and ps <= {'designer'}
 
 
 def has_access(cur, user, object_id):

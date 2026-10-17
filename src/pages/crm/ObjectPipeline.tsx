@@ -9,12 +9,13 @@ import { TransitionsFunnel } from "@/components/crm/pipeline/TransitionsFunnel"
 import { TransitionsEditor } from "@/components/crm/pipeline/TransitionsEditor"
 import { StatusFormDialog, StatusForm } from "@/components/crm/pipeline/StatusFormDialog"
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog"
+import { hasPosition } from "@/lib/positions"
 
 const emptyForm: StatusForm = { name: "", color: "gray", is_active_stage: false, is_final: false }
 
 export default function ObjectPipeline() {
   const { user } = useAuth()
-  const canManage = user?.role === "owner" || user?.position === "super_admin" || user?.position === "director"
+  const canManage = user?.role === "owner" || hasPosition(user, "super_admin", "director")
 
   const [statuses, setStatuses] = useState<ObjectStatus[]>([])
   const [transitions, setTransitions] = useState<ObjectStatusTransition[]>([])

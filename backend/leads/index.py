@@ -166,14 +166,14 @@ def handle_test_email(event):
     cur = conn.cursor()
     try:
         cur.execute(
-            "SELECT u.role, u.position FROM sessions s JOIN users u ON u.id = s.user_id "
+            "SELECT u.role, u.position, u.extra_positions FROM sessions s JOIN users u ON u.id = s.user_id "
             "WHERE s.token = %s AND s.expires_at > NOW() AND u.is_active = TRUE",
             (token,)
         )
         row = cur.fetchone()
         if not row:
             return response(401, {'error': 'Сессия истекла, войдите заново'})
-        if row[0] != 'owner' and row[1] != 'super_admin':
+        if row[0] != 'owner' and row[1] != 'super_admin' and 'super_admin' not in (row[2] or '').split(','):
             return response(403, {'error': 'Доступно только владельцу'})
 
         cur.execute(

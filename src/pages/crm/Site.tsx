@@ -17,6 +17,7 @@ import { AnalyticsTab } from "@/components/crm/site/AnalyticsTab"
 import { SeoTab } from "@/components/crm/site/SeoTab"
 import { LegalTab } from "@/components/crm/site/LegalTab"
 import { CalculatorTab } from "@/components/crm/site/CalculatorTab"
+import { hasPosition } from "@/lib/positions"
 
 const emptyForm: SiteSettings = {
   brand_name: "", logo_url: "", favicon_url: "", meta_title: "", meta_description: "",
@@ -50,7 +51,7 @@ type PendingFiles = Partial<Record<
 export default function Site() {
   const { user } = useAuth()
   const { toast } = useToast()
-  const canManage = user?.role === "owner" || user?.position === "super_admin"
+  const canManage = user?.role === "owner" || hasPosition(user, "super_admin")
 
   const [form, setForm] = useState<SiteSettings>(emptyForm)
   const [loading, setLoading] = useState(true)

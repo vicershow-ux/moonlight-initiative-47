@@ -73,6 +73,7 @@ export interface UserData {
   email: string
   role: string
   position?: string
+  extra_positions?: string[]
   company_id: number
   company_name: string
   totp_enabled?: boolean
@@ -903,6 +904,7 @@ export interface TeamMember {
   email: string
   role: string
   position?: string
+  extra_positions?: string[]
   phone: string | null
   created_at: string
   is_active: boolean
@@ -916,7 +918,7 @@ export const teamApi = {
     return parseResponse(res) as Promise<{ members: TeamMember[] }>
   },
 
-  async create(payload: { full_name: string; email: string; password: string; role: "employee" | "client"; phone?: string; object_ids?: number[]; position?: string }) {
+  async create(payload: { full_name: string; email: string; password: string; role: "employee" | "client"; phone?: string; object_ids?: number[]; position?: string; extra_positions?: string[] }) {
     const res = await fetch(`${AUTH_URL}?resource=team`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -948,6 +950,15 @@ export const teamApi = {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ is_active: isActive }),
+    })
+    return parseResponse(res)
+  },
+
+  async setExtraPositions(id: number, extra_positions: string[]) {
+    const res = await fetch(`${AUTH_URL}?resource=team&id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ extra_positions }),
     })
     return parseResponse(res)
   },

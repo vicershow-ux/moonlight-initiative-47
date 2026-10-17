@@ -44,13 +44,24 @@ def get_current_user(cur, event):
     if not token:
         return None
     cur.execute(
-        "SELECT u.id, u.company_id, u.role, u.position FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = %s AND s.expires_at > NOW()",
+        "SELECT u.id, u.company_id, u.role, u.position, u.extra_positions FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = %s AND s.expires_at > NOW()",
         (token,)
     )
     row = cur.fetchone()
     if not row:
         return None
-    return {'user_id': row[0], 'company_id': row[1], 'role': row[2], 'position': row[3]}
+    return {'user_id': row[0], 'company_id': row[1], 'role': row[2], 'position': row[3],
+            'positions': split_positions(row[3], row[4])}
+
+
+def split_positions(main, extra):
+    """Основная должность + дополнительные роли"""
+    out = [main] if main else []
+    for p in (extra or '').split(','):
+        p = p.strip()
+        if p and p not in out:
+            out.append(p)
+    return out
 
 
 def handler(event: dict, context) -> dict:
@@ -69,7 +80,7 @@ def handler(event: dict, context) -> dict:
             return response(401, {'error': 'Не авторизован'})
         company_id = user['company_id']
         is_client = user['role'] == 'client'
-        is_designer = user['position'] == 'designer' and user['role'] == 'employee'
+        is_designer = user['role'] == 'employee' and 'designer' in user['positions'] and set(user['positions']) <= {'designer'}
         only_own = is_client or is_designer
 
         params = event.get('queryStringParameters') or {}
@@ -110,7 +121,7 @@ def handler(event: dict, context) -> dict:
             return response(200, {'objects': [dict(zip(ALL_KEYS, r)) for r in rows]})
 
         if method == 'POST':
-            if is_client or is_designer:
+            if is_client:
                 return response(403, {'error': 'Недостаточно прав'})
             body = json.loads(event.get('body') or '{}')
             client_name = (body.get('client_name') or '').strip()
@@ -160,6 +171,11 @@ def handler(event: dict, context) -> dict:
                 insert_vals
             )
             new_id, created_at, updated_at = cur.fetchone()
+            if is_designer:
+                cur.execute(
+                    "INSERT INTO object_access (user_id, object_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                    (user['user_id'], new_id)
+                )
             conn.commit()
 
             return response(200, {
@@ -168,11 +184,15 @@ def handler(event: dict, context) -> dict:
             })
 
         if method == 'PUT':
-            if is_client or is_designer:
+            if is_client:
                 return response(403, {'error': 'Недостаточно прав'})
             if not object_id:
                 return response(400, {'error': 'Не указан id объекта'})
             body = json.loads(event.get('body') or '{}')
+            if is_designer:
+                cur.execute("SELECT 1 FROM object_access WHERE user_id = %s AND object_id = %s", (user['user_id'], object_id))
+                if not cur.fetchone():
+                    return response(403, {'error': 'Нет доступа к объекту'})
 
             cur.execute("SELECT id FROM objects WHERE id = %s AND company_id = %s", (object_id, company_id))
             if not cur.fetchone():

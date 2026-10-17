@@ -31,7 +31,7 @@ export function ProtectedRoute({ children, allowedRoles, section }: ProtectedRou
   }
 
   const sectionHref = section || location.pathname
-  if (!hasHrefAccess(user.role, user.position, sectionHref)) {
+  if (!hasHrefAccess(user.role, user.position, sectionHref, user.extra_positions)) {
     return <Navigate to="/cabinet/objects" replace />
   }
 

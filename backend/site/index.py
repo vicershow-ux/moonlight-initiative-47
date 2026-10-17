@@ -89,14 +89,25 @@ def get_current_user(cur, event):
     if not token:
         return None
     cur.execute(
-        "SELECT u.id, u.company_id, u.role, u.position FROM sessions s JOIN users u ON u.id = s.user_id "
+        "SELECT u.id, u.company_id, u.role, u.position, u.extra_positions FROM sessions s JOIN users u ON u.id = s.user_id "
         "WHERE s.token = %s AND s.expires_at > NOW() AND u.is_active = TRUE",
         (token,)
     )
     row = cur.fetchone()
     if not row:
         return None
-    return {'user_id': row[0], 'company_id': row[1], 'role': row[2], 'position': row[3]}
+    return {'user_id': row[0], 'company_id': row[1], 'role': row[2], 'position': row[3],
+            'positions': split_positions(row[3], row[4])}
+
+
+def split_positions(main, extra):
+    """Основная должность + дополнительные роли"""
+    out = [main] if main else []
+    for p in (extra or '').split(','):
+        p = p.strip()
+        if p and p not in out:
+            out.append(p)
+    return out
 
 
 def upload_image(company_id, data_url, folder):
@@ -194,7 +205,7 @@ def handler(event: dict, context) -> dict:
         if not user:
             return response(401, {'error': 'Не авторизован'})
         company_id = user['company_id']
-        can_manage = user['role'] == 'owner' or user['position'] == 'super_admin'
+        can_manage = user['role'] == 'owner' or 'super_admin' in user['positions']
 
         if not can_manage:
             return response(403, {'error': 'Редактировать сайт может только владелец или супер-администратор'})

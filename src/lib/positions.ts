@@ -62,12 +62,28 @@ export const positionPrefixes: Record<PositionKey, string[]> = {
 const matchesPrefix = (path: string, prefix: string) =>
   prefix === "/cabinet" ? path === "/cabinet" : path === prefix || path.startsWith(prefix + "/")
 
+/** Все роли сотрудника: основная + дополнительные */
+export const allPositions = (position?: string, extra?: string[] | null): string[] => {
+  const list = position ? [position] : []
+  ;(extra || []).forEach((p) => {
+    if (p && !list.includes(p)) list.push(p)
+  })
+  return list
+}
+
+export const hasPosition = (
+  user: { position?: string; extra_positions?: string[] } | null | undefined,
+  ...keys: PositionKey[]
+) => allPositions(user?.position, user?.extra_positions).some((p) => keys.includes(p as PositionKey))
+
 export const hasHrefAccess = (
   role: string | undefined,
   position: string | undefined,
-  path: string
+  path: string,
+  extra?: string[] | null
 ) => {
   if (role !== "employee") return true
-  if (!position || !(position in positionPrefixes)) return true
-  return positionPrefixes[position as PositionKey].some((prefix) => matchesPrefix(path, prefix))
+  const known = allPositions(position, extra).filter((p) => p in positionPrefixes)
+  if (!known.length) return true
+  return known.some((p) => positionPrefixes[p as PositionKey].some((prefix) => matchesPrefix(path, prefix)))
 }
