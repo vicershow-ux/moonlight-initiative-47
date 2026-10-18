@@ -14,6 +14,40 @@ def _smtp_settings():
     return host, user, password
 
 
+def send_plain_email(to_email, subject, html_body, text_body, sender_name, reply_to=''):
+    '''Письмо без вложений. Возвращает (ok, ошибка)'''
+    host, user, password = _smtp_settings()
+    if not host or not user or not password:
+        return False, 'Почта для отправки не настроена'
+    msg = EmailMessage()
+    msg['Subject'] = subject
+    msg['From'] = formataddr((sender_name or 'FixKey', user))
+    msg['To'] = to_email
+    if reply_to:
+        msg['Reply-To'] = reply_to
+    msg.set_content(text_body)
+    msg.add_alternative(html_body, subtype='html')
+    errors = []
+    try:
+        with smtplib.SMTP_SSL(host, 465, timeout=5) as server:
+            server.login(user, password)
+            server.send_message(msg)
+        return True, ''
+    except Exception as err:
+        errors.append(str(err))
+    try:
+        with smtplib.SMTP(host, 587, timeout=5) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(user, password)
+            server.send_message(msg)
+        return True, ''
+    except Exception as err:
+        errors.append(str(err))
+    return False, ' | '.join(errors)[:300]
+
+
 def send_document_email(to_email, subject, html_body, text_body, pdf_b64, filename, sender_name, reply_to=''):
     '''Отправляет письмо с PDF во вложении. Возвращает (ok, сообщение об ошибке)'''
     host, user, password = _smtp_settings()

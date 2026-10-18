@@ -29,6 +29,7 @@ const SERVICES_URL = funcUrl("services")
 const DASHBOARD_URL = funcUrl("dashboard")
 const ESTIMATES_URL = funcUrl("estimates")
 const LEADS_URL = funcUrl("leads")
+const OBJECT_HUB_URL = funcUrl("object_hub")
 const OBJECT_ROOMS_URL = funcUrl("object_rooms")
 const OBJECT_PLANS_URL = funcUrl("object_plans")
 const OBJECT_STATUSES_URL = funcUrl("object_statuses")
@@ -353,6 +354,7 @@ export interface Estimate {
   area?: number
   has_pending?: boolean
   status?: EstimateStatus
+  client_approved_at?: string | null
   revision_number?: number
   created_by?: number | null
   company_name?: string
@@ -477,6 +479,15 @@ export const estimatesApi = {
       body: JSON.stringify(payload),
     })
     return parseResponse(res)
+  },
+
+  async clientApprove(id: number) {
+    const res = await fetch(`${ESTIMATES_URL}?action=client_approve&id=${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: "{}",
+    })
+    return parseResponse(res) as Promise<{ success: boolean; status: string }>
   },
 
   async approveItem(itemId: number, price?: number) {
@@ -2182,5 +2193,160 @@ export const invoicesApi = {
       body: JSON.stringify(payload),
     })
     return parseResponse(res) as Promise<{ success: boolean }>
+  },
+}
+
+export interface ObjectMessage {
+  id: number
+  user_id: number
+  body: string
+  photos: string[]
+  created_at: string
+  author_name: string
+  author_role: string
+}
+
+export interface PhotoReport {
+  id: number
+  stage: string
+  caption: string
+  photos: string[]
+  created_at: string
+  user_id: number
+  author_name: string
+}
+
+export interface ObjectPayment {
+  id?: number
+  title: string
+  amount: number | string
+  due_date: string | null
+  paid_amount: number | string
+  paid_at: string | null
+  note?: string
+}
+
+type PhotoPayload = { name: string; data: string }[]
+
+export const objectHubApi = {
+  async messages(objectId: number, afterId = 0) {
+    const res = await fetch(`${OBJECT_HUB_URL}?resource=chat&object_id=${objectId}&after_id=${afterId}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ messages: ObjectMessage[] }>
+  },
+  async send(objectId: number, body: string, photos: PhotoPayload) {
+    const res = await fetch(`${OBJECT_HUB_URL}?resource=chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ object_id: objectId, body, photos }),
+    })
+    return parseResponse(res) as Promise<{ id: number }>
+  },
+  async unread() {
+    const res = await fetch(`${OBJECT_HUB_URL}?resource=unread`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ unread: Record<string, number> }>
+  },
+  async reports(objectId: number) {
+    const res = await fetch(`${OBJECT_HUB_URL}?resource=reports&object_id=${objectId}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ reports: PhotoReport[] }>
+  },
+  async addReport(objectId: number, payload: { stage: string; caption: string; photos: PhotoPayload }) {
+    const res = await fetch(`${OBJECT_HUB_URL}?resource=reports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ object_id: objectId, ...payload }),
+    })
+    return parseResponse(res) as Promise<{ id: number }>
+  },
+  async removeReport(id: number) {
+    const res = await fetch(`${OBJECT_HUB_URL}?resource=reports&id=${id}`, { method: "DELETE", headers: { ...authHeaders() } })
+    return parseResponse(res)
+  },
+  async payments(objectId: number) {
+    const res = await fetch(`${OBJECT_HUB_URL}?resource=payments&object_id=${objectId}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ payments: ObjectPayment[] }>
+  },
+  async savePayments(objectId: number, payments: ObjectPayment[]) {
+    const res = await fetch(`${OBJECT_HUB_URL}?resource=payments`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ object_id: objectId, payments }),
+    })
+    return parseResponse(res) as Promise<{ payments: ObjectPayment[] }>
+  },
+}
+
+export interface AddendumItem {
+  name: string
+  unit: string
+  quantity: number | string
+  price: number | string
+}
+
+export interface AddendumOptions {
+  items?: AddendumItem[]
+  removed_items?: AddendumItem[]
+  old_total?: number | string
+  price_mode?: "auto" | "manual"
+  new_total?: number | string
+  payment_terms?: string
+  change_deadline?: boolean
+  new_deadline?: string
+  deadline_reason?: string
+  custom_terms?: string
+}
+
+export interface ContractAddendum {
+  id: number
+  contract_id: number
+  object_id: number
+  addendum_number: string
+  addendum_date: string
+  status: "draft" | "signed"
+  options: AddendumOptions
+  content_html?: string
+  total_amount: number
+  contract_number?: string
+  created_at: string
+}
+
+type AddendumPayload = {
+  contract_id?: number
+  addendum_number?: string
+  addendum_date?: string
+  status?: "draft" | "signed"
+  options: AddendumOptions
+}
+
+export const addendaApi = {
+  async list(params: { contract_id?: number; object_id?: number }) {
+    const q = new URLSearchParams({ entity: "addendum" })
+    if (params.contract_id) q.set("contract_id", String(params.contract_id))
+    if (params.object_id) q.set("object_id", String(params.object_id))
+    const res = await fetch(`${CONTRACTS_URL}?${q}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ addenda: ContractAddendum[] }>
+  },
+  async get(id: number) {
+    const res = await fetch(`${CONTRACTS_URL}?entity=addendum&id=${id}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<ContractAddendum>
+  },
+  async preview(payload: AddendumPayload & { id?: number }) {
+    const res = await fetch(`${CONTRACTS_URL}?entity=addendum&action=preview`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<{ content_html: string; total_amount: number; addendum_number: string }>
+  },
+  async save(payload: AddendumPayload, id?: number) {
+    const res = await fetch(`${CONTRACTS_URL}?entity=addendum${id ? `&id=${id}` : ""}`, {
+      method: id ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<{ id: number; object_id: number }>
+  },
+  async remove(id: number) {
+    const res = await fetch(`${CONTRACTS_URL}?entity=addendum&id=${id}`, { method: "DELETE", headers: { ...authHeaders() } })
+    return parseResponse(res)
   },
 }

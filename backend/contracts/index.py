@@ -3,6 +3,7 @@ import os
 import re
 import html as html_lib
 import psycopg2
+import addenda
 from mailer import send_document_email
 
 
@@ -66,9 +67,9 @@ TEENS = ["десять", "одиннадцать", "двенадцать", "тр
 TENS = ["", "", "двадцать", "тридцать", "сорок", "пятьдесят", "шестьдесят", "семьдесят", "восемьдесят", "девяносто"]
 HUNDREDS = ["", "сто", "двести", "триста", "четыреста", "пятьсот", "шестьсот", "семьсот", "восемьсот", "девятьсот"]
 SCALES = [
-    (10 ** 9, True, ("миллиард", "миллиарда", "миллиардов")),
-    (10 ** 6, True, ("миллион", "миллиона", "миллионов")),
-    (10 ** 3, False, ("тысяча", "тысячи", "тысяч")),
+    (10 ** 9, False, ("миллиард", "миллиарда", "миллиардов")),
+    (10 ** 6, False, ("миллион", "миллиона", "миллионов")),
+    (10 ** 3, True, ("тысяча", "тысячи", "тысяч")),
 ]
 
 
@@ -343,6 +344,10 @@ def handler(event: dict, context) -> dict:
         contract_id = params.get('id')
         object_id = params.get('object_id')
         action = params.get('action')
+
+        if params.get('entity') == 'addendum':
+            body = json.loads(event.get('body') or '{}') if method in ('POST', 'PUT') else {}
+            return addenda.handle(cur, conn, user, method, params, body, response, has_object_access, money_words)
 
         if is_client and method != 'GET':
             return response(403, {'error': 'Недостаточно прав'})

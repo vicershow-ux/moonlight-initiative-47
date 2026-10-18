@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { SendDocEmailDialog } from "@/components/crm/SendDocEmailDialog"
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog"
 import { ExtraWorksPanel } from "@/components/crm/estimate/ExtraWorksPanel"
+import { ClientApproveBar } from "@/components/crm/estimate/ClientApproveBar"
 
 const num = (v: unknown, fallback = 0): number => {
   const n = typeof v === "string" ? parseFloat(v) : Number(v)
@@ -289,6 +290,7 @@ export default function EstimateView() {
         </div>
       )}
 
+      {isClient && <ClientApproveBar estimate={estimate} onDone={() => load(true)} />}
       <ExtraWorksPanel estimate={estimate} isClient={isClient} onChanged={() => load(true)} />
 
       <div className="bg-white rounded-xl p-6 md:p-10 max-w-4xl mx-auto shadow-xl overflow-x-auto">

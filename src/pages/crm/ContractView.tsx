@@ -10,6 +10,7 @@ import { printHtml } from "@/lib/printHtml"
 import { contractTitle, titleFromHtml } from "@/lib/contractSubject"
 import { SendContractEmailDialog } from "@/components/crm/SendContractEmailDialog"
 import { useAuth } from "@/contexts/AuthContext"
+import { ContractAddendaList } from "@/components/crm/ContractAddendaList"
 
 export default function ContractView() {
   const { id, contractId } = useParams()
@@ -93,6 +94,13 @@ export default function ContractView() {
             Редактировать
           </Link>
           <Link
+            to={`/cabinet/objects/${objectId}/contracts/${contract.id}/addenda/new`}
+            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
+          >
+            <Icon name="FilePlus2" size={14} />
+            Допсоглашение
+          </Link>
+          <Link
             to={`/cabinet/objects/${objectId}/acts/new?contract_id=${contract.id}`}
             className="flex items-center gap-1.5 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-3 py-2 rounded-lg"
           >
@@ -131,6 +139,8 @@ export default function ContractView() {
           </button>
         </div>
       </div>
+
+      <ContractAddendaList objectId={objectId} contractId={contract.id} isClient={isClient} />
 
       <div className="bg-white text-[#161616] rounded-xl p-8 sm:p-12 max-w-4xl mx-auto shadow-lg">
         <div

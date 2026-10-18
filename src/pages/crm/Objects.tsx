@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
-import { objectsApi, objectStatusesApi, ObjectItem, ObjectStatus, ObjectStatusTransition } from "@/lib/api"
+import { objectsApi, objectStatusesApi, ObjectItem, ObjectStatus, ObjectStatusTransition, objectHubApi } from "@/lib/api"
 import { getStatusBadgeClass } from "@/lib/objectStatusColors"
 import { useAuth } from "@/contexts/AuthContext"
 import { DeleteButton } from "@/components/ui/delete-button"
@@ -33,6 +33,8 @@ export default function Objects() {
     return statuses.filter((s) => !s.is_archived && (s.id === current.id || allowedIds.has(s.id)))
   }
 
+  const [unread, setUnread] = useState<Record<string, number>>({})
+
   const load = () => {
     setLoading(true)
     Promise.all([objectsApi.list(), objectStatusesApi.list()])
@@ -46,6 +48,7 @@ export default function Objects() {
 
   useEffect(() => {
     load()
+    objectHubApi.unread().then((d) => setUnread(d.unread || {})).catch(() => {})
   }, [])
 
   const handleDelete = async (id: number) => {
@@ -96,7 +99,7 @@ export default function Objects() {
                   </span>
                 }
                 rows={[
-                  { label: "Объект", value: <span className="text-[#D4AF37]">{obj.object_code}</span> },
+                  { label: "Объект", value: <span className="text-[#D4AF37]">{obj.object_code}{unread[obj.id] ? <UnreadBadge count={unread[obj.id]} /> : null}</span> },
                   { label: "Тип", value: obj.object_type },
                   { label: "Площадь", value: `${obj.area} м²` },
                 ]}
@@ -146,7 +149,7 @@ export default function Objects() {
               <tbody>
                 {objects.map((obj) => (
                   <tr key={obj.id} className="border-b border-white/5 last:border-0">
-                    <td className="py-3 pr-4 text-[#D4AF37]">{obj.object_code}</td>
+                    <td className="py-3 pr-4 text-[#D4AF37]">{obj.object_code}{unread[obj.id] ? <UnreadBadge count={unread[obj.id]} /> : null}</td>
                     <td className="py-3 pr-4">
                       <p>{obj.client_name}</p>
                       <p className="text-xs text-white/30">{obj.client_phone}</p>
@@ -204,5 +207,17 @@ export default function Objects() {
         )}
       </div>
     </CrmLayout>
+  )
+}
+
+function UnreadBadge({ count }: { count: number }) {
+  return (
+    <span
+      title="Новые сообщения в чате"
+      className="ml-2 inline-flex items-center gap-1 rounded-full bg-[#D4AF37] px-1.5 py-0.5 text-[10px] font-semibold text-[#161616] align-middle"
+    >
+      <Icon name="MessageCircle" size={10} />
+      {count}
+    </span>
   )
 }

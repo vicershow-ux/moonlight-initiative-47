@@ -3,7 +3,7 @@ import os
 import re
 import html as html_lib
 import psycopg2
-from mailer import send_document_email
+from mailer import send_document_email, send_plain_email
 
 
 
@@ -24,6 +24,56 @@ def build_doc_email(brand, comp_phone, comp_email, comp_site, client_name, doc_l
 </td></tr></table></body></html>'''
     text_body = f"{greet}\n\nНаправляем вам {doc_label}. Файл приложен к письму.\n\n{note}\n\nС уважением, {brand}\n{contacts}"
     return html_body, text_body
+
+def money(v):
+    return f"{float(v or 0):,.0f}".replace(',', ' ') + ' ₽'
+
+
+def notify_client_decision(cur, company_id, item_id, approved):
+    '''Письмо заказчику, предложившему работу: решение, сумма, новый итог сметы'''
+    cur.execute(
+        "SELECT ei.name, ei.quantity, ei.unit, ei.amount, e.id, COALESCE(NULLIF(e.estimate_number, ''), e.id::text), "
+        "e.total_amount, u.email, u.full_name, o.object_code, e.object_id "
+        "FROM estimate_items ei JOIN estimates e ON e.id = ei.estimate_id "
+        "JOIN objects o ON o.id = e.object_id LEFT JOIN users u ON u.id = ei.proposed_by "
+        "WHERE ei.id = %s",
+        (item_id,)
+    )
+    r = cur.fetchone()
+    if not r or not r[7]:
+        return
+    name, qty, unit, amount, est_id, number, total, to_email, full_name, obj_code, obj_id = r
+    cur.execute("SELECT name, phone, email FROM companies WHERE id = %s", (company_id,))
+    comp = cur.fetchone() or ('FixKey', '', '')
+    brand = comp[0] or 'FixKey'
+    e = html_lib.escape
+    verdict = 'согласована' if approved else 'отклонена'
+    color = '#2e7d32' if approved else '#c62828'
+    qty_txt = f"{float(qty):g} {unit}"
+    tail = (f'Работа добавлена в смету № {number}. Новый итог сметы: {money(total)}.' if approved
+            else f'Итог сметы № {number} не изменился: {money(total)}. Если остались вопросы — ответьте на это письмо, обсудим.')
+    greet = f'Здравствуйте, {full_name}!' if full_name else 'Здравствуйте!'
+    html_body = f'''<!doctype html><html><body style="margin:0;padding:24px;background:#f4f1ea;font-family:Arial,sans-serif;color:#161616">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden">
+<tr><td style="background:#161616;padding:18px 24px;color:#D4AF37;font-size:18px;font-weight:bold">{e(brand)}</td></tr>
+<tr><td style="padding:24px;font-size:15px;line-height:1.55">
+<p style="margin:0 0 14px">{e(greet)}</p>
+<p style="margin:0 0 14px">Предложенная вами дополнительная работа по объекту {e(obj_code)} <b style="color:{color}">{verdict}</b>.</p>
+<table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;border:1px solid #eee;border-radius:8px">
+<tr><td style="padding:10px 12px;color:#888;width:130px">Работа</td><td style="padding:10px 12px;font-weight:bold">{e(name)}</td></tr>
+<tr><td style="padding:10px 12px;color:#888;border-top:1px solid #eee">Объём</td><td style="padding:10px 12px;border-top:1px solid #eee">{e(qty_txt)}</td></tr>
+<tr><td style="padding:10px 12px;color:#888;border-top:1px solid #eee">Сумма</td><td style="padding:10px 12px;border-top:1px solid #eee">{money(amount)}</td></tr>
+<tr><td style="padding:10px 12px;color:#888;border-top:1px solid #eee">Итог сметы</td><td style="padding:10px 12px;border-top:1px solid #eee;font-weight:bold">{money(total)}</td></tr>
+</table>
+<p style="margin:16px 0 0">{e(tail)}</p>
+<p style="margin:20px 0 0;padding-top:16px;border-top:1px solid #eee;font-size:13px;color:#777">С уважением, {e(brand)}{('<br/>' + e(comp[1])) if comp[1] else ''}</p>
+</td></tr></table></body></html>'''
+    text_body = (f"{greet}\n\nПредложенная вами дополнительная работа по объекту {obj_code} {verdict}.\n\n"
+                 f"Работа: {name}\nОбъём: {qty_txt}\nСумма: {money(amount)}\nИтог сметы: {money(total)}\n\n{tail}\n\nС уважением, {brand}")
+    subject = f"Дополнительная работа {verdict}: {name}"[:200]
+    ok, err = send_plain_email(to_email, subject, html_body, text_body, brand, comp[2] or '')
+    print(f'Extra work decision email {"OK" if ok else "FAILED"} -> {to_email}: {err}')
+
 
 def get_conn():
     return psycopg2.connect(os.environ['DATABASE_URL'])
@@ -119,7 +169,7 @@ ESTIMATE_KEYS = [
     'id', 'object_id', 'total_amount', 'created_at',
     'contract_number', 'contract_date', 'discount_percent', 'discount_amount',
     'notes', 'subtotal_amount', 'status', 'revision_number', 'created_by',
-    'apply_signature', 'apply_stamp', 'estimate_number',
+    'apply_signature', 'apply_stamp', 'estimate_number', 'client_approved_at',
 ]
 
 
@@ -396,8 +446,38 @@ def handler(event: dict, context) -> dict:
                 (est_id, est_id)
             )
             conn.commit()
+            notify_client_decision(cur, company_id, item_id, new_status == 'approved')
 
             return response(200, {'success': True, 'status': new_status})
+
+        if method == 'POST' and action == 'client_approve':
+            if not is_client:
+                return response(403, {'error': 'Доступно только заказчику'})
+            cur.execute("SELECT object_id, status, COALESCE(NULLIF(estimate_number, ''), id::text), total_amount FROM estimates WHERE id = %s AND company_id = %s", (estimate_id, company_id))
+            row = cur.fetchone()
+            if not row or not has_object_access(cur, user, row[0]):
+                return response(404, {'error': 'Смета не найдена'})
+            if row[1] == 'approved':
+                return response(200, {'success': True, 'status': 'approved'})
+            if row[1] == 'inactive':
+                return response(400, {'error': 'Эта редакция сметы неактуальна'})
+            cur.execute("SELECT COUNT(*) FROM estimate_items WHERE estimate_id = %s AND status = 'pending'", (estimate_id,))
+            if cur.fetchone()[0]:
+                return response(400, {'error': 'В смете есть доп. работы на согласовании — дождитесь решения подрядчика'})
+            cur.execute(
+                "UPDATE estimates SET status = 'approved', client_approved_at = NOW(), client_approved_by = %s WHERE id = %s",
+                (user['user_id'], estimate_id)
+            )
+            cur.execute("SELECT object_code FROM objects WHERE id = %s", (row[0],))
+            code = (cur.fetchone() or [''])[0]
+            cur.execute(
+                "INSERT INTO notifications (company_id, type, title, message, payload) VALUES (%s, %s, %s, %s, %s)",
+                (company_id, 'estimate_approved', 'Заказчик согласовал смету',
+                 f'{user["full_name"]} согласовал смету № {row[2]} по объекту {code} на {money(row[3])}',
+                 json.dumps({'estimate_id': int(estimate_id), 'object_id': row[0]}))
+            )
+            conn.commit()
+            return response(200, {'success': True, 'status': 'approved'})
 
         if method == 'PUT' and action == 'set_status':
             if is_client:

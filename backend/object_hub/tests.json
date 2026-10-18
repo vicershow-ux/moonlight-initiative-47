@@ -1,0 +1,5 @@
+{"tests": [
+  {"name": "OPTIONS preflight", "method": "OPTIONS", "path": "/", "expectedStatus": 200},
+  {"name": "GET chat without auth", "method": "GET", "path": "/?resource=chat&object_id=1", "expectedStatus": 401},
+  {"name": "POST report without auth", "method": "POST", "path": "/?resource=reports", "body": {"object_id": 1}, "expectedStatus": 401}
+]}

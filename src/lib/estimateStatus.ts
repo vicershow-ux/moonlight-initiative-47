@@ -11,7 +11,7 @@ export const estimateStatusOptions: { value: EstimateStatus; label: string }[] =
   { value: "in_approval", label: "На согласовании" },
   { value: "in_signing", label: "На подписании" },
   { value: "needs_revision", label: "Требует доработки" },
-  { value: "approved", label: "Согласовано" },
+  { value: "approved", label: "Согласована" },
   { value: "inactive", label: "Неактуальна" },
 ]
 

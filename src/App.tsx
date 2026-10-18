@@ -29,6 +29,8 @@ const EstimateCreate = lazy(() => import("./pages/crm/EstimateCreate"));
 const EstimateView = lazy(() => import("./pages/crm/EstimateView"));
 const ContractEdit = lazy(() => import("./pages/crm/ContractEdit"));
 const ContractView = lazy(() => import("./pages/crm/ContractView"));
+const AddendumEdit = lazy(() => import("./pages/crm/AddendumEdit"));
+const AddendumView = lazy(() => import("./pages/crm/AddendumView"));
 const ActCreate = lazy(() => import("./pages/crm/ActCreate"));
 const ActView = lazy(() => import("./pages/crm/ActView"));
 const InvoiceEdit = lazy(() => import("./pages/crm/InvoiceEdit"));
@@ -81,6 +83,9 @@ const App = () => (
             <Route path="/cabinet/objects/:id/contracts/new" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><ContractEdit /></ProtectedRoute>} />
             <Route path="/cabinet/objects/:id/contracts/:contractId/edit" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><ContractEdit /></ProtectedRoute>} />
             <Route path="/cabinet/objects/:id/contracts/:contractId" element={<ProtectedRoute><ContractView /></ProtectedRoute>} />
+            <Route path="/cabinet/objects/:id/contracts/:contractId/addenda/new" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><AddendumEdit /></ProtectedRoute>} />
+            <Route path="/cabinet/objects/:id/contracts/:contractId/addenda/:addendumId/edit" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><AddendumEdit /></ProtectedRoute>} />
+            <Route path="/cabinet/objects/:id/contracts/:contractId/addenda/:addendumId" element={<ProtectedRoute><AddendumView /></ProtectedRoute>} />
             <Route path="/cabinet/objects/:id/acts/new" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><ActCreate /></ProtectedRoute>} />
             <Route path="/cabinet/objects/:id/acts/:actId/edit" element={<ProtectedRoute allowedRoles={["owner", "admin", "employee"]}><ActCreate /></ProtectedRoute>} />
             <Route path="/cabinet/objects/:id/acts/:actId" element={<ProtectedRoute><ActView /></ProtectedRoute>} />

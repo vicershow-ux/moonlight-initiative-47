@@ -7,6 +7,7 @@ import { getEstimateStatusColor, getEstimateStatusLabel } from "@/lib/estimateSt
 import { formatMoney } from "./utils"
 import { ObjectInvoices } from "./ObjectInvoices"
 import { ObjectActs } from "./ObjectActs"
+import { ContractAddendaList } from "@/components/crm/ContractAddendaList"
 import { downloadContractPdf } from "@/lib/downloadContractPdf"
 
 interface ObjectDocumentsPanelProps {
@@ -127,13 +128,24 @@ export function ObjectDocumentsPanel({
                   <Icon name={downloadingId === est.id ? "Loader2" : "Download"} size={15} className={downloadingId === est.id ? "animate-spin" : ""} />
                 </button>
                 {isClient && est.status !== "inactive" && (
-                  <Link
-                    to={`/cabinet/objects/${object.id}/estimates/${est.id}`}
-                    className="ml-auto inline-flex items-center gap-1.5 text-xs text-[#D4AF37] hover:underline"
-                  >
-                    <Icon name="ListPlus" size={14} />
-                    Добавить работы
-                  </Link>
+                  <span className="ml-auto flex items-center gap-3">
+                    <Link
+                      to={`/cabinet/objects/${object.id}/estimates/${est.id}`}
+                      className="inline-flex items-center gap-1.5 text-xs text-white/60 hover:text-[#D4AF37]"
+                    >
+                      <Icon name="ListPlus" size={14} />
+                      Доп. работы
+                    </Link>
+                    {est.status !== "approved" && (
+                      <Link
+                        to={`/cabinet/objects/${object.id}/estimates/${est.id}`}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#D4AF37] hover:bg-[#B8860B] px-3 py-1.5 text-xs font-medium text-[#161616]"
+                      >
+                        <Icon name="CheckCheck" size={14} />
+                        Согласовать смету
+                      </Link>
+                    )}
+                  </span>
                 )}
                 {!isClient && (
                   <DeleteButton onConfirm={() => onDeleteEstimate(est.id)} />
@@ -203,9 +215,19 @@ export function ObjectDocumentsPanel({
                   <Icon name="Download" size={15} />
                 </button>
                 {!isClient && (
+                  <Link
+                    to={`/cabinet/objects/${object.id}/contracts/${c.id}/addenda/new`}
+                    className="text-white/40 hover:text-[#D4AF37] transition-colors"
+                    title="Составить допсоглашение"
+                  >
+                    <Icon name="FilePlus2" size={15} />
+                  </Link>
+                )}
+                {!isClient && (
                   <DeleteButton onConfirm={() => onDeleteContract(c.id)} />
                 )}
               </div>
+              <ContractAddendaList objectId={object.id} contractId={c.id} isClient={isClient} compact />
             </div>
           ))}
         </div>

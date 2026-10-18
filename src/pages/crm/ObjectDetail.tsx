@@ -8,6 +8,9 @@ import { CreateContractModal } from "@/components/crm/CreateContractModal"
 import { ObjectInfoPanels } from "@/components/crm/object-detail/ObjectInfoPanels"
 import { ObjectDocumentsPanel } from "@/components/crm/object-detail/ObjectDocumentsPanel"
 import { ObjectSidebar } from "@/components/crm/object-detail/ObjectSidebar"
+import { ObjectChat } from "@/components/crm/object-detail/ObjectChat"
+import { ObjectPhotoReports } from "@/components/crm/object-detail/ObjectPhotoReports"
+import { ObjectPaymentSchedule } from "@/components/crm/object-detail/ObjectPaymentSchedule"
 import { formatDateTime } from "@/components/crm/object-detail/utils"
 import { printEstimate, downloadEstimatePdf } from "@/lib/printEstimate"
 import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
@@ -210,14 +213,24 @@ export default function ObjectDetail() {
             onPrintContract={handlePrintContract}
             onDeleteContract={handleDeleteContract}
           />
+
+          <ObjectPhotoReports objectId={object.id} isClient={isClient} />
         </div>
 
-        <ObjectSidebar
-          object={object}
-          worksTotal={worksTotal}
-          materialsTotal={materialsTotal}
-          userFullName={user?.full_name}
-        />
+        <div className="flex flex-col gap-4">
+          <ObjectChat objectId={object.id} />
+          <ObjectPaymentSchedule
+            objectId={object.id}
+            isClient={isClient}
+            suggestedTotal={Number(estimates.find((e) => e.status === "approved")?.total_amount || estimates[0]?.total_amount || 0) || undefined}
+          />
+          <ObjectSidebar
+            object={object}
+            worksTotal={worksTotal}
+            materialsTotal={materialsTotal}
+            userFullName={user?.full_name}
+          />
+        </div>
       </div>
 
       <EstimatesListModal
