@@ -362,6 +362,12 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
     calculation = opts.get('calculation') or 'contract'
     calc_text = CALC_LABELS.get(calculation, CALC_LABELS['contract'])
     appendix = opts.get('appendix') or ''
+    stage_label = re.sub(r'\s*\(\d+%\)', '', str(opts.get('stage_label') or '')).strip() if opts.get('scope') == 'stage' else ''
+    stage_suffix = f' — {esc(stage_label.lower())}' if stage_label else ''
+    stage_note = (
+        f' Работы приняты в части этапа «{esc(stage_label)}» по Договору подряда; стоимость каждой позиции указана в доле, приходящейся на этот этап.'
+        if stage_label else ''
+    )
 
     rows_html = ''
     for i, it in enumerate(items, 1):
@@ -459,7 +465,7 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
 {dark_block(period_line)}
 {dark_block('1. Работы, перечисленные в настоящем Акте, выполнены Подрядчиком и переданы Заказчику в указанном объёме.')}
 
-<p style="font-weight:600;margin:18px 0 8px">Перечень и стоимость принятых работ</p>
+<p style="font-weight:600;margin:18px 0 8px">Перечень и стоимость принятых работ{stage_suffix}</p>
 <table class="works-table" style="border-collapse:collapse;width:100%;font-size:12.5px;color:#1a1a1a">
 <thead><tr style="background:#5C3A11;color:#ffffff">
 <th style="border:1.2px solid #6B4508;padding:7px;color:#ffffff;font-weight:700;width:4%">№</th>
@@ -475,7 +481,7 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
 </tbody>
 </table>
 
-{dark_block(f'2. Общая стоимость принятых работ по настоящему Акту составляет <b>{fmt_money(total_amount)}</b> ({money_words(total_amount)}).')}
+{dark_block(f'2. Общая стоимость принятых работ по настоящему Акту составляет <b>{fmt_money(total_amount)}</b> ({money_words(total_amount)}).{stage_note}')}
 {dark_block(f'3. Заказчик осмотрел результат. {inspection_text}')}
 {dark_block(f'4. {calc_text}')}
 {appendix_block}

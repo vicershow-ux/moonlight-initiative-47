@@ -1,5 +1,6 @@
 import Icon from "@/components/ui/icon"
 import { ActOptions, CompanyData, Contract, Estimate, ObjectItem } from "@/lib/api"
+import { contractPayments } from "@/lib/invoiceSources"
 import { SignStampToggles } from "@/components/crm/common/SignStampToggles"
 import { ActAttachments } from "./ActAttachments"
 import {
@@ -116,6 +117,43 @@ export function ActParamsStep({
             ))}
           </select>
         </div>
+
+        {options.scope === "stage" && contract && (() => {
+          const stages = contractPayments(contract).filter((p) => p.key !== "full" && p.amount > 0)
+          if (!stages.length) {
+            return (
+              <p className="text-xs text-white/40 mb-4 -mt-2">
+                В договоре нет графика этапов — отметьте выполненные работы вручную на следующем шаге.
+              </p>
+            )
+          }
+          return (
+            <div className="flex flex-col gap-1.5 mb-4">
+              <label className="text-xs text-white/50">Этап по договору</label>
+              <div className="flex flex-wrap gap-2">
+                {stages.map((p) => (
+                  <button
+                    key={p.key}
+                    type="button"
+                    onClick={() => {
+                      setOpt("stage_key", p.key)
+                      setOpt("stage_label", p.label)
+                      setOpt("stage_amount", p.amount)
+                    }}
+                    className={`rounded-lg px-3 py-2 text-sm transition-colors ${
+                      options.stage_key === p.key ? "bg-[#D4AF37] text-[#161616]" : "bg-white/5 text-white/70 hover:bg-white/10"
+                    }`}
+                  >
+                    {p.label} · {formatMoney(p.amount)}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-white/40">
+                В акт попадёт весь перечень работ из сметы на сумму этапа — с теми же количеством и ценами, что в счёте и чеке.
+              </p>
+            </div>
+          )
+        })()}
 
         <div className="flex flex-col gap-1.5 mb-4">
           <label className="text-xs text-white/50">Результат осмотра</label>

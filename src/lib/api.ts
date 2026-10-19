@@ -713,6 +713,9 @@ export interface ActOptions {
   period_from?: string
   period_to?: string
   scope?: string
+  stage_key?: string
+  stage_label?: string
+  stage_amount?: number
   inspection_result?: string
   calculation?: string
   appendix?: string

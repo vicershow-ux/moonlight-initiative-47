@@ -19,6 +19,8 @@ import { ActParamsStep } from "@/components/crm/act-create/ActParamsStep"
 import { ActWorksStep } from "@/components/crm/act-create/ActWorksStep"
 import { ActPreviewStep } from "@/components/crm/act-create/ActPreviewStep"
 import { num } from "@/components/crm/act-create/constants"
+import { contractPayments } from "@/lib/invoiceSources"
+import { stageWorks } from "@/lib/stageWorks"
 
 export default function ActCreate() {
   const { id, actId } = useParams()
@@ -74,6 +76,9 @@ export default function ActCreate() {
             period_from: existingAct.options?.period_from || "",
             period_to: existingAct.options?.period_to || "",
             scope: existingAct.options?.scope || "all",
+            stage_key: existingAct.options?.stage_key,
+            stage_label: existingAct.options?.stage_label,
+            stage_amount: existingAct.options?.stage_amount,
             inspection_result: existingAct.options?.inspection_result || "",
             calculation: existingAct.options?.calculation || "contract",
             appendix: existingAct.options?.appendix || "",
@@ -127,6 +132,11 @@ export default function ActCreate() {
       setError("Выберите смету, из которой подобрать работы")
       return
     }
+    const byStage = options.scope === "stage" && contract && contractPayments(contract).some((p) => p.key !== "full" && p.amount > 0)
+    if (byStage && !options.stage_key) {
+      setError("Выберите этап по договору")
+      return
+    }
     setSaving(true)
     try {
       const full = await estimatesApi.get(selectedEstimateId)
@@ -139,7 +149,12 @@ export default function ActCreate() {
         room_name: it.room_name || "",
         category: it.category || "",
       }))
-      setItems(estItems)
+      const staged = byStage && options.stage_amount ? stageWorks(full.items || [], Number(options.stage_amount), options.stage_label || "") : []
+      if (byStage && !staged.length) {
+        setError("В смете нет согласованных работ для расчёта этапа")
+        return
+      }
+      setItems(staged.length ? staged : estItems)
       setStep(2)
     } catch {
       setError("Не удалось загрузить работы из сметы")
