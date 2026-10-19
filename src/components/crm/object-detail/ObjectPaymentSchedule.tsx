@@ -35,11 +35,15 @@ export function ObjectPaymentSchedule({ objectId, isClient, suggestedTotal }: { 
   const [error, setError] = useState("")
 
   useEffect(() => {
-    objectHubApi
-      .payments(objectId)
-      .then((d) => setRows(d.payments || []))
-      .catch(() => setRows([]))
-      .finally(() => setLoading(false))
+    const load = () =>
+      objectHubApi
+        .payments(objectId)
+        .then((d) => setRows(d.payments || []))
+        .catch(() => setRows([]))
+        .finally(() => setLoading(false))
+    load()
+    window.addEventListener("invoice-paid", load)
+    return () => window.removeEventListener("invoice-paid", load)
   }, [objectId])
 
   const total = rows.reduce((s, r) => s + n(r.amount), 0)

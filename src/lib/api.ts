@@ -2150,6 +2150,7 @@ export interface Invoice {
   created_at: string
   updated_at: string
   paid_at?: string | null
+  paid_online?: boolean
   object_code?: string
   client_name?: string
   address?: string
@@ -2181,6 +2182,29 @@ export const invoicesApi = {
   async get(id: number) {
     const res = await fetch(`${INVOICES_URL}?id=${id}`, { headers: { ...authHeaders() } })
     return parseResponse(res) as Promise<Invoice>
+  },
+
+  async payConfig() {
+    const res = await fetch(`${INVOICES_URL}?action=pay_config`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ online: boolean }>
+  },
+
+  async pay(id: number, returnUrl: string) {
+    const res = await fetch(`${INVOICES_URL}?action=pay&id=${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ return_url: returnUrl }),
+    })
+    return parseResponse(res) as Promise<{ confirmation_url: string }>
+  },
+
+  async payCheck(id: number) {
+    const res = await fetch(`${INVOICES_URL}?action=pay_check&id=${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: "{}",
+    })
+    return parseResponse(res) as Promise<{ payment: string; invoice_status: string }>
   },
 
   async create(payload: InvoicePayload) {

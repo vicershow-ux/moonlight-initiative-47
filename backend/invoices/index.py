@@ -6,6 +6,7 @@ from datetime import date
 
 import psycopg2
 from mailer import send_document_email
+import yookassa
 
 
 def get_conn():
@@ -48,7 +49,7 @@ def get_current_user(cur, event):
 INVOICE_KEYS = [
     'id', 'object_id', 'contract_id', 'act_id', 'invoice_number', 'invoice_date', 'due_date',
     'purpose', 'items', 'vat_mode', 'total_amount', 'apply_signature', 'apply_stamp', 'notes', 'payment_note',
-    'status', 'created_at', 'updated_at', 'paid_at',
+    'status', 'created_at', 'updated_at', 'paid_at', 'paid_online',
 ]
 COLS = ', '.join(f'i.{k}' for k in INVOICE_KEYS)
 LIST_SQL = (
@@ -178,11 +179,105 @@ def send_thanks(cur, company_id, inv_id):
     return True, email
 
 
+def apply_to_schedule(cur, company_id, object_id, amount):
+    '''Разносит оплату по ближайшим неоплаченным этапам графика платежей'''
+    left = float(amount or 0)
+    cur.execute(
+        "SELECT id, amount, paid_amount FROM object_payments WHERE object_id = %s AND company_id = %s "
+        "AND paid_amount < amount ORDER BY sort_order, id",
+        (object_id, company_id)
+    )
+    for pid, amt, paid in cur.fetchall():
+        if left <= 0:
+            break
+        add = min(left, float(amt) - float(paid))
+        cur.execute(
+            "UPDATE object_payments SET paid_amount = paid_amount + %s, paid_at = CURRENT_DATE WHERE id = %s",
+            (round(add, 2), pid)
+        )
+        left -= add
+
+
+def mark_paid_online(cur, conn, company_id, inv_id, payment_row_id, amount):
+    '''Отмечает счёт оплаченным по подтверждению ЮKassa (один раз)'''
+    cur.execute("UPDATE invoice_payments SET status = 'succeeded', paid_at = NOW(), applied = TRUE WHERE id = %s AND applied = FALSE RETURNING id", (payment_row_id,))
+    if not cur.fetchone():
+        conn.commit()
+        return False
+    cur.execute(
+        "UPDATE invoices SET status = 'paid', paid_at = NOW(), paid_online = TRUE, updated_at = NOW() "
+        "WHERE id = %s AND status <> 'paid' RETURNING object_id, invoice_number",
+        (inv_id,)
+    )
+    row = cur.fetchone()
+    if row:
+        object_id, number = row
+        apply_to_schedule(cur, company_id, object_id, amount)
+        cur.execute("SELECT object_code, client_name FROM objects WHERE id = %s", (object_id,))
+        code, client = cur.fetchone() or ('', '')
+        cur.execute(
+            "INSERT INTO notifications (company_id, type, title, message, payload) VALUES (%s, %s, %s, %s, %s)",
+            (company_id, 'invoice_paid', 'Заказчик оплатил счёт онлайн',
+             f'{client} оплатил счёт № {number} на {fmt_rub(amount)} по объекту {code} через ЮKassa',
+             json.dumps({'object_id': object_id, 'invoice_id': int(inv_id)}))
+        )
+        conn.commit()
+        send_thanks(cur, company_id, inv_id)
+    conn.commit()
+    return True
+
+
+def sync_payment(cur, conn, pay_row):
+    '''Сверяет статус платежа с ЮKassa и применяет оплату'''
+    row_id, company_id, inv_id, provider_id, amount = pay_row
+    data, err = yookassa.get_payment(provider_id)
+    if err or not data:
+        return 'unknown'
+    status = data.get('status') or 'pending'
+    paid_value = float((data.get('amount') or {}).get('value') or 0)
+    if status == 'succeeded' and data.get('paid') and abs(paid_value - float(amount)) < 0.01:
+        mark_paid_online(cur, conn, company_id, inv_id, row_id, amount)
+        return 'succeeded'
+    if status == 'canceled':
+        cur.execute("UPDATE invoice_payments SET status = 'canceled' WHERE id = %s AND applied = FALSE", (row_id,))
+        conn.commit()
+    return status
+
+
+def handle_webhook(event):
+    '''Уведомление ЮKassa: статус перепроверяется запросом в API, телу запроса не доверяем'''
+    try:
+        body = json.loads(event.get('body') or '{}')
+    except ValueError:
+        return response(200, {'ok': True})
+    obj = body.get('object') or {}
+    pid = str(obj.get('id') or '')[:100]
+    if not pid:
+        return response(200, {'ok': True})
+    conn = get_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT id, company_id, invoice_id, provider_payment_id, amount FROM invoice_payments "
+            "WHERE provider = 'yookassa' AND provider_payment_id = %s",
+            (pid,)
+        )
+        row = cur.fetchone()
+        if row:
+            print(f'yookassa webhook {pid}: {sync_payment(cur, conn, row)}')
+        return response(200, {'ok': True})
+    finally:
+        cur.close()
+        conn.close()
+
+
 def handler(event: dict, context) -> dict:
     '''Счета на оплату по договору или акту: создание, редактирование, просмотр и отправка заказчику на почту'''
     method = event.get('httpMethod', 'GET')
     if method == 'OPTIONS':
         return {'statusCode': 200, 'headers': cors_headers(), 'body': ''}
+    if method == 'POST' and (event.get('queryStringParameters') or {}).get('action') == 'yookassa_webhook':
+        return handle_webhook(event)
 
     conn = get_conn()
     cur = conn.cursor()
@@ -191,8 +286,6 @@ def handler(event: dict, context) -> dict:
         if not user:
             return response(401, {'error': 'Не авторизован'})
         is_client = user['role'] == 'client'
-        if is_client and method != 'GET':
-            return response(403, {'error': 'Недостаточно прав'})
         company_id = user['company_id']
         client_filter = ''
         client_args = []
@@ -202,6 +295,75 @@ def handler(event: dict, context) -> dict:
         params = event.get('queryStringParameters') or {}
         inv_id = params.get('id')
         action = params.get('action')
+
+        if method == 'GET' and action == 'pay_config':
+            return response(200, {'online': yookassa.configured()})
+
+        if method == 'POST' and action == 'pay':
+            if not yookassa.configured():
+                return response(400, {'error': 'Онлайн-оплата пока не подключена подрядчиком'})
+            body = json.loads(event.get('body') or '{}')
+            cur.execute(
+                "SELECT i.id, i.invoice_number, i.total_amount, i.status, o.email, o.object_code "
+                "FROM invoices i JOIN objects o ON o.id = i.object_id WHERE i.id = %s AND i.company_id = %s" + client_filter,
+                (inv_id, company_id, *client_args)
+            )
+            row = cur.fetchone()
+            if not row:
+                return response(404, {'error': 'Счёт не найден'})
+            _, number, total, status, email, code = row
+            if status == 'paid':
+                return response(400, {'error': 'Счёт уже оплачен'})
+            amount = round(float(total or 0), 2)
+            if amount <= 0:
+                return response(400, {'error': 'В счёте нет суммы к оплате'})
+            return_url = str(body.get('return_url') or '')
+            if not return_url.startswith('https://'):
+                return response(400, {'error': 'Некорректный адрес возврата'})
+            cur.execute(
+                "SELECT confirmation_url FROM invoice_payments WHERE invoice_id = %s AND status = 'pending' "
+                "AND amount = %s AND created_at > NOW() - INTERVAL '50 minutes' ORDER BY id DESC LIMIT 1",
+                (inv_id, amount)
+            )
+            fresh = cur.fetchone()
+            if fresh and fresh[0]:
+                return response(200, {'confirmation_url': fresh[0]})
+            data, err = yookassa.create_payment(
+                amount, f'Оплата счёта № {number} по объекту {code}', return_url,
+                {'invoice_id': str(inv_id), 'company_id': str(company_id)}, (email or '').strip()
+            )
+            if err or not data:
+                print(f'yookassa create failed: {err}')
+                return response(502, {'error': f'Не удалось создать платёж: {err}'})
+            url = ((data.get('confirmation') or {}).get('confirmation_url')) or ''
+            cur.execute(
+                "INSERT INTO invoice_payments (company_id, invoice_id, user_id, provider_payment_id, amount, status, confirmation_url) "
+                "VALUES (%s, %s, %s, %s, %s, 'pending', %s) ON CONFLICT DO NOTHING",
+                (company_id, inv_id, user['user_id'], data['id'], amount, url)
+            )
+            conn.commit()
+            return response(200, {'confirmation_url': url})
+
+        if method == 'POST' and action == 'pay_check':
+            cur.execute(
+                "SELECT p.id, p.company_id, p.invoice_id, p.provider_payment_id, p.amount FROM invoice_payments p "
+                "JOIN invoices i ON i.id = p.invoice_id WHERE p.invoice_id = %s AND p.company_id = %s AND p.applied = FALSE "
+                "AND p.status = 'pending'" + client_filter + " ORDER BY p.id DESC LIMIT 3",
+                (inv_id, company_id, *client_args)
+            )
+            result = 'pending'
+            for row in cur.fetchall():
+                st = sync_payment(cur, conn, row)
+                if st == 'succeeded':
+                    result = 'succeeded'
+                    break
+                result = st
+            cur.execute("SELECT status FROM invoices WHERE id = %s AND company_id = %s", (inv_id, company_id))
+            inv = cur.fetchone()
+            return response(200, {'payment': result, 'invoice_status': inv[0] if inv else ''})
+
+        if is_client and method != 'GET':
+            return response(403, {'error': 'Недостаточно прав'})
 
         if method == 'GET':
             if inv_id:
@@ -323,6 +485,11 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
             result = {'success': True}
             if new_status == 'paid' and prev_status != 'paid':
+                cur.execute("SELECT object_id, total_amount FROM invoices WHERE id = %s", (inv_id,))
+                ob = cur.fetchone()
+                if ob:
+                    apply_to_schedule(cur, company_id, ob[0], ob[1])
+                    conn.commit()
                 ok, info = send_thanks(cur, company_id, inv_id)
                 conn.commit()
                 result['thanks'] = {'sent': ok, 'email': info if ok else '', 'reason': '' if ok else info}

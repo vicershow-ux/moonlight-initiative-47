@@ -1,6 +1,7 @@
 {
   "tests": [
     {"name": "OPTIONS preflight", "method": "OPTIONS", "path": "/", "expectedStatus": 200},
-    {"name": "GET без авторизации", "method": "GET", "path": "/", "expectedStatus": 401, "expectedBody": {"error": "string"}, "bodyMatcher": "partial"}
+    {"name": "GET без авторизации", "method": "GET", "path": "/", "expectedStatus": 401, "expectedBody": {"error": "string"}, "bodyMatcher": "partial"},
+    {"name": "Webhook ЮKassa с неизвестным платежом", "method": "POST", "path": "/?action=yookassa_webhook", "body": {"event": "payment.succeeded", "object": {"id": "test-unknown"}}, "expectedStatus": 200}
   ]
 }

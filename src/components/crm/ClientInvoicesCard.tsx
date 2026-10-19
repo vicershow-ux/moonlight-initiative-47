@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 import { Invoice, invoicesApi } from "@/lib/api"
 import { downloadInvoicePdf } from "@/components/crm/object-detail/ObjectInvoices"
+import { InvoicePayButton, PaymentReturnBanner, useInvoicePaymentReturn } from "@/components/crm/InvoicePayButton"
 
 const money = (n: number) => new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n || 0) + " ₽"
 const dateRu = (d: string) => new Date(String(d).slice(0, 10)).toLocaleDateString("ru-RU")
@@ -15,13 +16,18 @@ export function ClientInvoicesCard() {
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<number | null>(null)
 
-  useEffect(() => {
+  const load = () =>
     invoicesApi
       .list()
       .then((d) => setList(d.invoices))
       .catch(() => setList([]))
       .finally(() => setLoading(false))
+
+  useEffect(() => {
+    load()
   }, [])
+
+  const payReturn = useInvoicePaymentReturn(() => load())
 
   const download = async (id: number) => {
     setBusyId(id)
@@ -32,13 +38,14 @@ export function ClientInvoicesCard() {
     }
   }
 
-  if (loading || list.length === 0) return null
+  if (loading || list.length === 0) return <PaymentReturnBanner message={payReturn.message} onClose={payReturn.clear} />
 
   const unpaid = list.filter((i) => i.status !== "paid").reduce((s, i) => s + Number(i.total_amount || 0), 0)
   const paid = list.filter((i) => i.status === "paid").reduce((s, i) => s + Number(i.total_amount || 0), 0)
 
   return (
     <div className="mb-6 rounded-xl border border-white/10 bg-[#1f1f1f] p-5">
+      <PaymentReturnBanner message={payReturn.message} onClose={payReturn.clear} />
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="flex items-center gap-2 font-medium">
           <Icon name="Receipt" size={18} className="text-[#D4AF37]" />
@@ -85,6 +92,7 @@ export function ClientInvoicesCard() {
               </div>
               <div className="flex shrink-0 items-center gap-3">
                 <p className="text-lg font-semibold">{money(Number(inv.total_amount))}</p>
+                {!isPaid && <InvoicePayButton invoiceId={inv.id} />}
                 <button
                   onClick={() => download(inv.id)}
                   disabled={busyId === inv.id}

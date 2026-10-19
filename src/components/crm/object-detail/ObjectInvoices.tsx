@@ -6,6 +6,7 @@ import { Invoice, invoicesApi } from "@/lib/api"
 import { buildInvoiceHtml } from "@/lib/buildInvoiceHtml"
 import { downloadContractPdf } from "@/lib/downloadContractPdf"
 import { formatMoney } from "./utils"
+import { InvoicePayButton, PaymentReturnBanner, useInvoicePaymentReturn } from "@/components/crm/InvoicePayButton"
 
 const STATUS: Record<Invoice["status"], { label: string; clientLabel: string; cls: string }> = {
   issued: { label: "Выставлен", clientLabel: "Ожидает оплаты", cls: "bg-white/10 text-white/50" },
@@ -29,13 +30,19 @@ export function ObjectInvoices({ objectId, isClient = false }: { objectId: numbe
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<number | null>(null)
 
-  useEffect(() => {
+  const load = () =>
     invoicesApi
       .list({ object_id: objectId })
       .then((d) => setList(d.invoices))
       .catch(() => setList([]))
       .finally(() => setLoading(false))
+
+  useEffect(() => {
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objectId])
+
+  const payReturn = useInvoicePaymentReturn(() => load())
 
   const download = async (id: number) => {
     setBusyId(id)
@@ -53,7 +60,10 @@ export function ObjectInvoices({ objectId, isClient = false }: { objectId: numbe
 
   return (
     <>
-      <div className="mb-2 mt-6 flex items-center justify-between">
+      <div className="mt-6">
+        <PaymentReturnBanner message={payReturn.message} onClose={payReturn.clear} />
+      </div>
+      <div className="mb-2 flex items-center justify-between">
         <p className="text-xs uppercase tracking-wide text-white/40">Счета на оплату</p>
         {!isClient && (
           <Link
@@ -87,6 +97,9 @@ export function ObjectInvoices({ objectId, isClient = false }: { objectId: numbe
                   </p>
                   <div className="flex flex-wrap items-center justify-end gap-1">
                     <span className={cn("rounded-full px-2 py-0.5 text-xs", st.cls)}>{isClient ? st.clientLabel : st.label}</span>
+                    {inv.status === "paid" && inv.paid_online && (
+                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-300">онлайн</span>
+                    )}
                     {isOverdue(inv) && <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-xs text-red-300">просрочен</span>}
                   </div>
                 </div>
@@ -100,14 +113,17 @@ export function ObjectInvoices({ objectId, isClient = false }: { objectId: numbe
             return isClient ? (
               <div key={inv.id} className="rounded-lg border border-white/10 bg-[#161616] p-4">
                 {body}
-                <button
-                  onClick={() => download(inv.id)}
-                  disabled={busyId === inv.id}
-                  className="mt-3 flex items-center gap-1.5 rounded-lg bg-[#D4AF37] px-3 py-2 text-sm font-medium text-[#161616] transition-colors hover:bg-[#B8860B] disabled:opacity-60"
-                >
-                  <Icon name={busyId === inv.id ? "Loader2" : "Download"} size={14} className={busyId === inv.id ? "animate-spin" : ""} />
-                  Скачать PDF
-                </button>
+                <div className="mt-3 flex flex-wrap items-start gap-2">
+                  {inv.status !== "paid" && <InvoicePayButton invoiceId={inv.id} />}
+                  <button
+                    onClick={() => download(inv.id)}
+                    disabled={busyId === inv.id}
+                    className="flex items-center gap-1.5 rounded-lg bg-[#D4AF37] px-3 py-2 text-sm font-medium text-[#161616] transition-colors hover:bg-[#B8860B] disabled:opacity-60"
+                  >
+                    <Icon name={busyId === inv.id ? "Loader2" : "Download"} size={14} className={busyId === inv.id ? "animate-spin" : ""} />
+                    Скачать PDF
+                  </button>
+                </div>
               </div>
             ) : (
               <Link
