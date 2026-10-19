@@ -36,6 +36,7 @@ export function CatalogEditModal({ material, onClose, onSaved }: CatalogEditModa
     consumption_unit: material.consumption_unit || "м²",
     consumption_mode: getMode(material),
   })
+  const [piece, setPiece] = useState(!Number(material.consumption))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
@@ -56,7 +57,7 @@ export function CatalogEditModal({ material, onClose, onSaved }: CatalogEditModa
       await materialsApi.update(material.id, {
         ...form,
         price: Number(form.price || 0),
-        consumption: Number(form.consumption || 0),
+        consumption: piece ? 0 : Number(form.consumption || 0),
       })
       onSaved()
       onClose()
@@ -147,7 +148,31 @@ export function CatalogEditModal({ material, onClose, onSaved }: CatalogEditModa
           </div>
         </div>
 
-        <div className="mb-4 mt-6 text-xs uppercase text-white/40">Расход материала</div>
+        <div className="mb-3 mt-6 text-xs uppercase text-white/40">Как добавлять в объект</div>
+        <div className="mb-4 grid gap-2 sm:grid-cols-2">
+          {[
+            { v: true, title: "Штучно, без расчёта", hint: "Просто указываете количество" },
+            { v: false, title: "С расчётом по площади", hint: "Количество считается по помещению" },
+          ].map((o) => (
+            <button
+              key={String(o.v)}
+              type="button"
+              onClick={() => setPiece(o.v)}
+              className={`rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
+                piece === o.v
+                  ? "border-[#D4AF37] bg-[#D4AF37]/10 text-white"
+                  : "border-white/10 bg-[#161616] text-white/60 hover:border-white/25"
+              }`}
+            >
+              <div className="font-medium">{o.title}</div>
+              <div className="mt-0.5 text-xs text-white/40">{o.hint}</div>
+            </button>
+          ))}
+        </div>
+
+        {!piece && (
+          <>
+        <div className="mb-4 mt-2 text-xs uppercase text-white/40">Расход материала</div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className={labelCls}>Как считать расход</label>
@@ -219,6 +244,9 @@ export function CatalogEditModal({ material, onClose, onSaved }: CatalogEditModa
             </div>
           )}
         </div>
+
+          </>
+        )}
 
         <div className="mt-6">
           <MaterialOffers

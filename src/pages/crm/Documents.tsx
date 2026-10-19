@@ -197,8 +197,8 @@ export default function Documents() {
         address: estimate.address || "",
       }
       const items = estimate.items || []
-      if (mode === "print") printMaterials(obj, items, [], user?.company_name || "")
-      else await downloadMaterialsPdf(obj, items, [], user?.company_name || "")
+      if (mode === "print") printMaterials(obj, items, [], user?.company_name || "", false, m.title)
+      else await downloadMaterialsPdf(obj, items, [], user?.company_name || "", m.title)
     } finally {
       setMatBusyId(null)
     }
@@ -317,7 +317,7 @@ export default function Documents() {
             {showMatEstimates && filteredMatEstimates.map((m) => (
               <DocumentMobileCard
                 key={`m-mat-${m.id}`}
-                kind="Смета на материал"
+                kind={m.title === "Список закупок" ? "Список закупок" : "Смета на материал"}
                 kindClass="text-[#B49AE5]"
                 title={m.title}
                 subtitle={`№${m.id}${m.room_names ? ` · ${m.room_names}` : ""}`}
@@ -521,7 +521,7 @@ export default function Documents() {
           fileName={`Смета_материалы_${matSendFor.id}.pdf`}
           makePdf={async () => {
             const { obj, items } = await loadMatDoc(matSendFor.id)
-            return materialsPdfBase64(obj, items, [], user?.company_name || "")
+            return materialsPdfBase64(obj, items, [], user?.company_name || "", matSendFor.title)
           }}
           send={(p) => materialsApi.sendEstimateEmail(matSendFor.id, p)}
         />

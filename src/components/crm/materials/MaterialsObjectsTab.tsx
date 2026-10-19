@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import Icon from "@/components/ui/icon"
 import { PurchaseListModal } from "./PurchaseListModal"
 import { RoomCalculator } from "@/components/crm/RoomCalculator"
+import { QuickAddItems } from "./QuickAddItems"
 import { DeleteButton } from "@/components/ui/delete-button"
 import { printMaterials, downloadMaterialsPdf } from "@/lib/printMaterials"
 import {
@@ -81,6 +82,7 @@ export function MaterialsObjectsTab({
   run,
 }: MaterialsObjectsTabProps) {
   const [showPurchase, setShowPurchase] = useState(false)
+  const [showQuick, setShowQuick] = useState(false)
 
   const productUrl = (m: ObjectMaterial) => findProductUrl(m, materials)
 
@@ -118,7 +120,23 @@ export function MaterialsObjectsTab({
 
             {activeObject && (
               <>
-                <button className={goldBtn} onClick={() => setShowCalc(!showCalc)}>
+                <button
+                  className={goldBtn}
+                  onClick={() => {
+                    setShowQuick(!showQuick)
+                    setShowCalc(false)
+                  }}
+                >
+                  <Icon name={showQuick ? "X" : "ListPlus"} size={16} />
+                  {showQuick ? "Свернуть" : "Добавить штучно"}
+                </button>
+                <button
+                  className={goldBtn}
+                  onClick={() => {
+                    setShowCalc(!showCalc)
+                    setShowQuick(false)
+                  }}
+                >
                   <Icon name={showCalc ? "X" : "Calculator"} size={16} />
                   {showCalc ? "Свернуть" : "Рассчитать помещение"}
                 </button>
@@ -152,6 +170,24 @@ export function MaterialsObjectsTab({
             </div>
           ) : (
             <>
+              {showQuick && (
+                <div className="mb-5 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4">
+                  <QuickAddItems
+                    objectId={activeObject.id}
+                    materials={materials}
+                    rooms={rooms}
+                    onAdd={async (items) => {
+                      await run(async () => {
+                        for (const it of items) {
+                          await materialsApi.addToObject({ object_id: activeObject.id, ...it, work_type: "" })
+                        }
+                      })
+                    }}
+                    onCancel={() => setShowQuick(false)}
+                  />
+                </div>
+              )}
+
               {showCalc && (
                 <div className="mb-5 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4">
                   <RoomCalculator
@@ -179,7 +215,7 @@ export function MaterialsObjectsTab({
 
               {materialsOf(activeObject.id).length === 0 ? (
                 <div className="py-14 text-center text-sm text-white/30">
-                  Для этого объекта расчётов ещё нет — нажмите «Рассчитать помещение»
+                  Для этого объекта материалов ещё нет — нажмите «Добавить штучно» или «Рассчитать помещение»
                 </div>
               ) : (
                 <div className="space-y-4">

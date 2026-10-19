@@ -128,7 +128,7 @@ export function DocumentMatEstimateRow({
   return (
         <tr key={`matest-${m.id}`} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
           <td className="py-3 px-4">
-            <span className="text-[#B49AE5] font-medium text-xs">Смета на материал</span>
+            <span className="text-[#B49AE5] font-medium text-xs">{m.title === "Список закупок" ? "Список закупок" : "Смета на материал"}</span>
           </td>
           <td className="py-3 px-4">
             <p className="font-medium">{m.title}</p>

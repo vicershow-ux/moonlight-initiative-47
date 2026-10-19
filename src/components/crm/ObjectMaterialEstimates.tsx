@@ -49,8 +49,8 @@ export function ObjectMaterialEstimates({ objectId, isClient }: Props) {
     setBusyId(m.id)
     try {
       const { obj, items } = await loadDoc(m.id)
-      if (mode === "print") printMaterials(obj, items, [], user?.company_name || "")
-      else await downloadMaterialsPdf(obj, items, [], user?.company_name || "")
+      if (mode === "print") printMaterials(obj, items, [], user?.company_name || "", false, m.title)
+      else await downloadMaterialsPdf(obj, items, [], user?.company_name || "", m.title)
     } finally {
       setBusyId(null)
     }
@@ -137,7 +137,7 @@ export function ObjectMaterialEstimates({ objectId, isClient }: Props) {
           fileName={`Смета_материалы_${sendFor.id}.pdf`}
           makePdf={async () => {
             const { obj, items } = await loadDoc(sendFor.id)
-            return materialsPdfBase64(obj, items, [], user?.company_name || "")
+            return materialsPdfBase64(obj, items, [], user?.company_name || "", sendFor.title)
           }}
           send={(p) => materialsApi.sendEstimateEmail(sendFor.id, p)}
         />

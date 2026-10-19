@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Icon from "@/components/ui/icon"
-import { MaterialItem, MaterialObject, ObjectMaterial } from "@/lib/api"
+import { materialsApi, MaterialItem, MaterialObject, ObjectMaterial } from "@/lib/api"
 import { buildPurchasePlan } from "@/lib/purchaseList"
 import { printPurchaseList } from "@/lib/printPurchaseList"
 import { money, num } from "./constants"
@@ -21,6 +21,21 @@ export function PurchaseListModal({
   onClose,
 }: PurchaseListModalProps) {
   const plan = useMemo(() => buildPurchasePlan(items, catalog), [items, catalog])
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState("")
+
+  const saveToDocs = async () => {
+    setSaving(true)
+    setSaved("")
+    try {
+      await materialsApi.createEstimate({ object_id: object.id, title: "Список закупок", items })
+      setSaved("Список сохранён в «Документы» — его можно открыть, скачать и распечатать")
+    } catch (e) {
+      setSaved((e as Error)?.message || "Не удалось сохранить")
+    } finally {
+      setSaving(false)
+    }
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -177,7 +192,22 @@ export function PurchaseListModal({
           </div>
         )}
 
+        {saved && (
+          <div className="mt-5 flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+            <Icon name="CircleCheck" size={16} />
+            {saved}
+          </div>
+        )}
+
         <div className="mt-6 flex flex-wrap items-center gap-3">
+          <button
+            className="flex items-center gap-2 rounded-lg border border-[#D4AF37]/40 px-5 py-2.5 text-sm text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10 disabled:opacity-40"
+            disabled={items.length === 0 || saving}
+            onClick={saveToDocs}
+          >
+            <Icon name={saving ? "Loader2" : "FileCheck"} size={16} className={saving ? "animate-spin" : ""} />
+            Сохранить в документы
+          </button>
           <button
             className="flex items-center gap-2 rounded-lg bg-[#D4AF37] px-5 py-2.5 text-sm text-[#161616] transition-colors hover:bg-[#B8860B] disabled:opacity-40"
             disabled={plan.shops.length === 0}

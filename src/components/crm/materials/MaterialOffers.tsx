@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon"
 import { DeleteButton } from "@/components/ui/delete-button"
 import { materialsApi, MaterialOffer } from "@/lib/api"
 import { money, num, inputCls } from "./constants"
+import { ShopFields, useKnownShops } from "./ShopFields"
 
 const labelCls = "mb-1.5 block text-xs text-white/50"
 
@@ -31,6 +32,7 @@ export function MaterialOffers({ materialId, unit, offers, onChanged }: Material
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState<OfferForm>(emptyForm)
   const [busy, setBusy] = useState(false)
+  const shops = useKnownShops()
   const [error, setError] = useState("")
 
   const set = (k: keyof OfferForm, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }))
@@ -104,15 +106,6 @@ export function MaterialOffers({ materialId, unit, offers, onChanged }: Material
     <div className="rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label className={labelCls}>Название магазина</label>
-          <input
-            className={inputCls}
-            placeholder="Например: Леруа Мерлен"
-            value={form.shop_name}
-            onChange={(e) => set("shop_name", e.target.value)}
-          />
-        </div>
-        <div>
           <label className={labelCls}>Цена за 1 {unit}, ₽</label>
           <input
             className={inputCls}
@@ -124,25 +117,13 @@ export function MaterialOffers({ materialId, unit, offers, onChanged }: Material
             onChange={(e) => set("price", e.target.value)}
           />
         </div>
-        <div>
-          <label className={labelCls}>Адрес</label>
-          <input
-            className={inputCls}
-            placeholder="Город, улица, дом"
-            value={form.shop_address}
-            onChange={(e) => set("shop_address", e.target.value)}
-          />
-        </div>
-        <div>
-          <label className={labelCls}>Телефон</label>
-          <input
-            className={inputCls}
-            type="tel"
-            placeholder="+7"
-            value={form.shop_phone}
-            onChange={(e) => set("shop_phone", e.target.value)}
-          />
-        </div>
+        <ShopFields
+          shops={shops}
+          name={form.shop_name}
+          address={form.shop_address}
+          phone={form.shop_phone}
+          onChange={(f, v) => set(f, v)}
+        />
         <div className="sm:col-span-2">
           <label className={labelCls}>Ссылка на товар</label>
           <input

@@ -47,7 +47,8 @@ function buildMaterialsDocument(
   object: MaterialObject,
   items: ObjectMaterial[],
   catalog: MaterialItem[],
-  companyName: string
+  companyName: string,
+  docTitle = "Смета на материал"
 ) {
   const groups = groupByShop(items, catalog)
   const total = groups.reduce((s, g) => s + g.sum, 0)
@@ -330,7 +331,7 @@ function buildMaterialsDocument(
   <div class="header">
     <div class="brand"><img class="brand-logo" src="${window.location.origin}/logo-print.png" alt="FixKey"/><b class="brand-word">Fix<span>Key</span></b></div>
     <div class="doc-title">
-      <h1>Смета на материал</h1>
+      <h1>${escapeHtml(docTitle)}</h1>
       <p>Объект № ${escapeHtml(object.object_code)}</p>
     </div>
   </div>
@@ -389,7 +390,7 @@ function buildMaterialsDocument(
     </div>
   </div>`
 
-  const title = `Смета на материал № ${object.object_code} — ${escapeHtml(object.client_name)}`
+  const title = `${escapeHtml(docTitle)} № ${object.object_code} — ${escapeHtml(object.client_name)}`
 
   return { styles, bodyContent, title }
 }
@@ -399,9 +400,10 @@ export function printMaterials(
   items: ObjectMaterial[],
   catalog: MaterialItem[],
   companyName: string,
-  autoPrint = false
+  autoPrint = false,
+  docTitle?: string
 ) {
-  const { styles, bodyContent, title } = buildMaterialsDocument(object, items, catalog, companyName)
+  const { styles, bodyContent, title } = buildMaterialsDocument(object, items, catalog, companyName, docTitle)
   const html = `<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -493,8 +495,8 @@ const PDF_OVERRIDES = `
 `
 
 /** HTML документа для PDF (используется и для проверки вёрстки) */
-export function materialsPdfHtml(object: MaterialObject, items: ObjectMaterial[], catalog: MaterialItem[], companyName: string) {
-  const { styles, bodyContent } = buildMaterialsDocument(object, items, catalog, companyName)
+export function materialsPdfHtml(object: MaterialObject, items: ObjectMaterial[], catalog: MaterialItem[], companyName: string, docTitle?: string) {
+  const { styles, bodyContent } = buildMaterialsDocument(object, items, catalog, companyName, docTitle)
   return `<style>${scopeStyles(styles + PDF_OVERRIDES, "#pdf-scope-materials")}</style>${bodyContent}`
 }
 
@@ -502,9 +504,10 @@ export async function downloadMaterialsPdf(
   object: MaterialObject,
   items: ObjectMaterial[],
   catalog: MaterialItem[],
-  companyName: string
+  companyName: string,
+  docTitle?: string
 ) {
-  await renderMaterialsPdf(object, items, catalog, companyName, "save")
+  await renderMaterialsPdf(object, items, catalog, companyName, "save", docTitle)
 }
 
 /** PDF сметы на материалы в base64 — для отправки письмом */
@@ -512,9 +515,10 @@ export async function materialsPdfBase64(
   object: MaterialObject,
   items: ObjectMaterial[],
   catalog: MaterialItem[],
-  companyName: string
+  companyName: string,
+  docTitle?: string
 ): Promise<string> {
-  return (await renderMaterialsPdf(object, items, catalog, companyName, "base64")) || ""
+  return (await renderMaterialsPdf(object, items, catalog, companyName, "base64", docTitle)) || ""
 }
 
 async function renderMaterialsPdf(
@@ -522,14 +526,15 @@ async function renderMaterialsPdf(
   items: ObjectMaterial[],
   catalog: MaterialItem[],
   companyName: string,
-  mode: "save" | "base64"
+  mode: "save" | "base64",
+  docTitle = "Смета на материал"
 ): Promise<string | void> {
   return renderPagedPdf(
     (root) => {
       root.id = "pdf-scope-materials"
       root.className = "est-root"
-      root.innerHTML = materialsPdfHtml(object, items, catalog, companyName)
+      root.innerHTML = materialsPdfHtml(object, items, catalog, companyName, docTitle)
     },
-    { filename: `Смета на материал ${object.object_code}.pdf`, mode },
+    { filename: `${docTitle} ${object.object_code}.pdf`, mode },
   )
 }

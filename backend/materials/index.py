@@ -230,7 +230,7 @@ def handler(event: dict, context) -> dict:
 
         if method == 'GET':
             cur.execute(
-                f"SELECT {COLS} FROM materials WHERE company_id = %s ORDER BY created_at DESC",
+                f"SELECT {COLS} FROM materials WHERE company_id = %s AND is_archived = false ORDER BY created_at DESC",
                 (company_id,)
             )
             materials = [dict(zip(KEYS, r)) for r in cur.fetchall()]
@@ -580,17 +580,7 @@ def handler(event: dict, context) -> dict:
             if not row_id:
                 return response(400, {'error': 'Не указан материал'})
             cur.execute(
-                "UPDATE object_materials SET material_id = NULL "
-                "WHERE material_id = %s AND company_id = %s",
-                (row_id, company_id)
-            )
-            if has_offers_table(cur):
-                cur.execute(
-                    "DELETE FROM material_offers WHERE material_id = %s AND company_id = %s",
-                    (row_id, company_id)
-                )
-            cur.execute(
-                "DELETE FROM materials WHERE id = %s AND company_id = %s",
+                "UPDATE materials SET is_archived = true, updated_at = now() WHERE id = %s AND company_id = %s",
                 (row_id, company_id)
             )
             conn.commit()

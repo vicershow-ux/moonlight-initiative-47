@@ -4,6 +4,7 @@ import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { materialsApi } from "@/lib/api"
 import { CONSUMPTION_MODES, ConsumptionMode } from "@/lib/materialConsumption"
+import { ShopFields, useKnownShops } from "@/components/crm/materials/ShopFields"
 
 const UNITS = ["шт", "м²", "м", "м.п.", "м³", "кг", "т", "л", "уп", "рул", "меш", "компл"]
 
@@ -39,6 +40,8 @@ export default function MaterialCreate() {
     consumption_unit: "м²",
     consumption_mode: "coverage" as ConsumptionMode,
   })
+  const [piece, setPiece] = useState(true)
+  const shops = useKnownShops()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
@@ -51,7 +54,7 @@ export default function MaterialCreate() {
       await materialsApi.create({
         ...form,
         price: Number(form.price || 0),
-        consumption: Number(form.consumption || 0),
+        consumption: piece ? 0 : Number(form.consumption || 0),
       })
       navigate("/cabinet/materials")
     } catch (e) {
@@ -126,7 +129,31 @@ export default function MaterialCreate() {
           </div>
         </div>
 
-        <div className="mb-5 mt-7 text-xs uppercase text-white/40">Расход материала</div>
+        <div className="mb-3 mt-7 text-xs uppercase text-white/40">Как добавлять в объект</div>
+        <div className="mb-5 grid gap-2 sm:grid-cols-2">
+          {[
+            { v: true, title: "Штучно, без расчёта", hint: "Розетки, выключатели, светильники — просто указываете количество" },
+            { v: false, title: "С расчётом по площади", hint: "Плитка, краска, смеси — количество считается по помещению" },
+          ].map((o) => (
+            <button
+              key={String(o.v)}
+              type="button"
+              onClick={() => setPiece(o.v)}
+              className={`rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
+                piece === o.v
+                  ? "border-[#D4AF37] bg-[#D4AF37]/10 text-white"
+                  : "border-white/10 bg-[#161616] text-white/60 hover:border-white/25"
+              }`}
+            >
+              <div className="font-medium">{o.title}</div>
+              <div className="mt-0.5 text-xs text-white/40">{o.hint}</div>
+            </button>
+          ))}
+        </div>
+
+        {!piece && (
+          <>
+        <div className="mb-5 mt-2 text-xs uppercase text-white/40">Расход материала</div>
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className={labelCls}>Как считать расход</label>
@@ -199,36 +226,18 @@ export default function MaterialCreate() {
           )}
         </div>
 
+          </>
+        )}
+
         <div className="mb-5 mt-7 text-xs uppercase text-white/40">Магазин</div>
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <div>
-            <label className={labelCls}>Название магазина</label>
-            <input
-              className={inputCls}
-              placeholder="Например: Леруа Мерлен"
-              value={form.shop_name}
-              onChange={(e) => set("shop_name", e.target.value)}
-            />
-          </div>
-          <div>
-            <label className={labelCls}>Адрес магазина</label>
-            <input
-              className={inputCls}
-              placeholder="Город, улица, дом"
-              value={form.shop_address}
-              onChange={(e) => set("shop_address", e.target.value)}
-            />
-          </div>
-          <div>
-            <label className={labelCls}>Телефон</label>
-            <input
-              className={inputCls}
-              type="tel"
-              placeholder="+7"
-              value={form.shop_phone}
-              onChange={(e) => set("shop_phone", e.target.value)}
-            />
-          </div>
+          <ShopFields
+            shops={shops}
+            name={form.shop_name}
+            address={form.shop_address}
+            phone={form.shop_phone}
+            onChange={set}
+          />
           <div>
             <label className={labelCls}>Сайт или ссылка на товар</label>
             <input

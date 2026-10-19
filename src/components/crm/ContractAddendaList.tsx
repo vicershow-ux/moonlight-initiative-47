@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import Icon from "@/components/ui/icon"
 import { addendaApi, ContractAddendum } from "@/lib/api"
+import { addendumDelta } from "@/components/crm/documents/DocumentContractRows"
 
 const money = (v: unknown) => new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(Number(v) || 0) + " ₽"
 const dateLabel = (d: string) => new Date(d).toLocaleDateString("ru-RU")
@@ -47,6 +48,11 @@ export function ContractAddendaList({ objectId, contractId, isClient, compact }:
           )}
         </div>
       )}
+      {compact && (
+        <p className="mb-1.5 mt-3 text-[11px] uppercase tracking-wide text-white/35">
+          Доп. соглашения · {list.length}
+        </p>
+      )}
       {list.length === 0 ? (
         <p className="text-sm text-white/30">Допсоглашений пока нет</p>
       ) : (
@@ -61,9 +67,20 @@ export function ContractAddendaList({ objectId, contractId, isClient, compact }:
                 <Icon name="FileText" size={14} className="text-white/40 shrink-0" />
                 <span className="truncate">
                   ДС № {a.addendum_number} от {dateLabel(a.addendum_date)}
+                  {a.options?.change_deadline && <span className="text-white/35"> · новый срок</span>}
                 </span>
               </span>
               <span className="flex items-center gap-2 shrink-0">
+                {(() => {
+                  const delta = addendumDelta(a)
+                  if (delta === null) return null
+                  return (
+                    <span className={`text-xs ${delta > 0 ? "text-green-300/80" : "text-red-300/80"}`}>
+                      {delta > 0 ? "+" : "−"}
+                      {money(Math.abs(delta))}
+                    </span>
+                  )
+                })()}
                 <span className="text-white/60">{money(a.total_amount)}</span>
                 {isClient && a.status !== "signed" ? (
                   <span className="inline-flex items-center gap-1 rounded-lg bg-[#D4AF37] px-2.5 py-1 text-[11px] font-medium text-[#161616]">
