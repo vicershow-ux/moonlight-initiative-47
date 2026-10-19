@@ -36,6 +36,7 @@ const SUBJECTS = [
 ]
 
 const MODES = [
+  { v: "auto", l: "Автоматически: аванс — «Аванс», остальное — «Полный расчёт»" },
   { v: "full_payment", l: "Полный расчёт" },
   { v: "full_prepayment", l: "Предоплата 100%" },
   { v: "prepayment", l: "Частичная предоплата" },
@@ -266,7 +267,7 @@ export default function Finance() {
                     ))}
                   </select>
                 </Row>
-                <Row label="Признак способа расчёта" hint="Для аванса до начала работ — «Аванс» или «Предоплата 100%»">
+                <Row label="Признак способа расчёта" hint="В режиме «Автоматически» признак берётся из этапа оплаты по договору">
                   <select value={s.payment_mode} onChange={(e) => upd({ payment_mode: e.target.value })} className={field}>
                     {MODES.map((t) => (
                       <option key={t.v} value={t.v}>
@@ -279,6 +280,11 @@ export default function Finance() {
                   <input type="checkbox" checked={s.use_invoice_vat} onChange={(e) => upd({ use_invoice_vat: e.target.checked })} />
                   Брать ставку НДС из счёта (если в счёте выбран НДС)
                 </label>
+                <div className="sm:col-span-2 rounded-lg bg-white/5 px-3 py-2.5 text-xs text-white/60 leading-relaxed">
+                  Наименование в чеке берётся из договора: вид работ и этап оплаты. Например:{" "}
+                  <span className="text-white/90">«Электромонтажные работы — аванс по договору № 46»</span> или{" "}
+                  <span className="text-white/90">«Ремонт квартиры — сдача объекта по договору № 3»</span>. Для счетов по акту в чек попадают позиции акта.
+                </div>
               </div>
             )}
           </div>

@@ -51,7 +51,7 @@ export const defaultOptions: Required<ContractOptions> = {
   doc_delivery: "personal_messengers",
   custom_stages: [
     { label: "Аванс", amount: "", when: "до начала выполнения Работ" },
-    { label: "Этап 1", amount: "", when: "по завершении Работ и подписания Акта сдачи-приёмки" },
+    { label: "Сдача объекта", amount: "", when: "по завершении Работ и подписания Акта сдачи-приёмки" },
   ],
   payment_days: "5",
   payment_days_kind: "working",

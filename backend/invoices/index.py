@@ -247,6 +247,19 @@ def sync_payment(cur, conn, pay_row):
     return status
 
 
+LAST_STAGE = {'advance_4_stages': 'Этап 3', 'advance_3_stages': 'Этап 2', 'advance_2_stages': 'Этап 1'}
+
+
+def contract_last_stage(opts):
+    '''Название последнего этапа в графике договора — в чеке он называется «Сдача объекта»'''
+    if opts.get('payment_order') != 'advance_staged':
+        return ''
+    if opts.get('payment_schedule') == 'custom_schedule':
+        stages = opts.get('custom_stages') or []
+        return str((stages[-1] or {}).get('label') or '') if len(stages) > 1 else ''
+    return LAST_STAGE.get(opts.get('payment_schedule') or 'advance_4_stages', '')
+
+
 def pay_settings(cur, conn, user, method, body, params):
     '''Раздел «Финансы → ЮKassa»: чтение, сохранение и проверка подключения'''
     company_id = user['company_id']
@@ -386,14 +399,20 @@ def handler(event: dict, context) -> dict:
                 return response(400, {'error': 'Онлайн-оплата пока не подключена подрядчиком'})
             body = json.loads(event.get('body') or '{}')
             cur.execute(
-                "SELECT i.id, i.invoice_number, i.total_amount, i.status, o.email, o.object_code, i.items, i.vat_mode "
-                "FROM invoices i JOIN objects o ON o.id = i.object_id WHERE i.id = %s AND i.company_id = %s" + client_filter,
+                "SELECT i.id, i.invoice_number, i.total_amount, i.status, o.email, o.object_code, i.items, i.vat_mode, "
+                "c.contract_number, c.options "
+                "FROM invoices i JOIN objects o ON o.id = i.object_id LEFT JOIN contracts c ON c.id = i.contract_id "
+                "WHERE i.id = %s AND i.company_id = %s" + client_filter,
                 (inv_id, company_id, *client_args)
             )
             row = cur.fetchone()
             if not row:
                 return response(404, {'error': 'Счёт не найден'})
-            _, number, total, status, email, code, inv_items, vat_mode = row
+            _, number, total, status, email, code, inv_items, vat_mode, c_number, c_opts = row
+            contract_info = None
+            if c_number is not None:
+                c_opts = c_opts if isinstance(c_opts, dict) else json.loads(c_opts or '{}')
+                contract_info = {'number': c_number, 'work_subject': c_opts.get('work_subject'), 'last_stage': contract_last_stage(c_opts)}
             if status == 'paid':
                 return response(400, {'error': 'Счёт уже оплачен'})
             amount = round(float(total or 0), 2)
@@ -419,7 +438,7 @@ def handler(event: dict, context) -> dict:
                 receipt_email = str(body.get('receipt_email') or email or '').strip()[:255]
                 if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', receipt_email):
                     return response(400, {'error': 'Укажите почту для электронного чека', 'need_email': True})
-                receipt = yookassa.build_receipt(settings, receipt_email, inv_items if isinstance(inv_items, list) else json.loads(inv_items or '[]'), vat_mode, amount)
+                receipt = yookassa.build_receipt(settings, receipt_email, inv_items if isinstance(inv_items, list) else json.loads(inv_items or '[]'), vat_mode, amount, contract_info)
             data, err = yookassa.create_payment(
                 settings, amount, f'Оплата счёта № {number} по объекту {code}', return_url,
                 {'invoice_id': str(inv_id), 'company_id': str(company_id)}, receipt

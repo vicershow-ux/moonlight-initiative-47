@@ -11,7 +11,7 @@ API = 'https://api.yookassa.ru/v3'
 TAX_SYSTEMS = {0, 1, 2, 3, 4, 5, 6}
 VAT_CODES = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
 SUBJECTS = {'service', 'commodity', 'job', 'payment', 'another'}
-MODES = {'full_payment', 'full_prepayment', 'prepayment', 'advance', 'partial_payment'}
+MODES = {'auto', 'full_payment', 'full_prepayment', 'prepayment', 'advance', 'partial_payment'}
 
 SETTINGS_COLS = ['enabled', 'shop_id', 'secret_key', 'receipts_enabled', 'tax_system_code',
                  'default_vat_code', 'use_invoice_vat', 'payment_subject', 'payment_mode', 'updated_at']
@@ -25,7 +25,7 @@ def load_settings(cur, company_id):
     r = cur.fetchone()
     s = dict(zip(SETTINGS_COLS, r)) if r else {
         'enabled': False, 'shop_id': '', 'secret_key': '', 'receipts_enabled': False, 'tax_system_code': 0,
-        'default_vat_code': 1, 'use_invoice_vat': True, 'payment_subject': 'service', 'payment_mode': 'full_payment',
+        'default_vat_code': 1, 'use_invoice_vat': True, 'payment_subject': 'service', 'payment_mode': 'auto',
         'updated_at': None,
     }
     env_shop = os.environ.get('YOOKASSA_SHOP_ID', '').strip()
@@ -88,7 +88,60 @@ def vat_code_for(settings, vat_mode):
     return int(settings.get('default_vat_code') or 1)
 
 
-def build_receipt(settings, email, items, vat_mode, total):
+SUBJECT_FIXES = {
+    'ремонт квартиры': 'Ремонт квартиры',
+    'Отопление': 'Монтаж отопления',
+    'Благоустройство': 'Благоустройство территории',
+    'Вентиляция и кондиционирование': 'Монтаж вентиляции и кондиционирования',
+}
+
+STAGE_RE = re.compile(r'^(Аванс|Сдача объекта|Этап\s*\d+|Полная стоимость работ|Работы)\b', re.I)
+
+
+def service_title(work_subject):
+    s = (work_subject or '').strip() or 'ремонт квартиры'
+    t = SUBJECT_FIXES.get(s, s)
+    return t[:1].upper() + t[1:]
+
+
+def stage_of(name, last_stage=''):
+    '''Этап оплаты из названия строки счёта: аванс, этап N, сдача объекта'''
+    m = STAGE_RE.match((name or '').strip())
+    if not m:
+        return ''
+    st = re.sub(r'\s+', ' ', m.group(1)).strip()
+    low = st.lower()
+    if low.startswith('аванс'):
+        return 'Аванс'
+    if low.startswith('сдача'):
+        return 'Сдача объекта'
+    if low.startswith('этап'):
+        return 'Сдача объекта' if last_stage and st.lower() == last_stage.lower() else st.capitalize()
+    return 'Оплата работ'
+
+
+def contract_line_name(item_name, contract):
+    '''«Электромонтажные работы — аванс по договору № 46»'''
+    if not contract:
+        return item_name
+    stage = stage_of(item_name, contract.get('last_stage', ''))
+    if not stage:
+        return item_name
+    title = service_title(contract.get('work_subject'))
+    tail = f" по договору № {contract['number']}" if contract.get('number') else ''
+    if stage == 'Оплата работ':
+        return f'{title}{tail}'
+    return f'{title} — {stage[:1].lower() + stage[1:]}{tail}'
+
+
+def mode_for(settings, line_name):
+    mode = settings.get('payment_mode') or 'auto'
+    if mode != 'auto':
+        return mode
+    return 'advance' if ' — аванс' in line_name or line_name.lower().startswith('аванс') else 'full_payment'
+
+
+def build_receipt(settings, email, items, vat_mode, total, contract=None):
     '''Чек 54-ФЗ из позиций счёта; копейки сверяются с суммой платежа'''
     code = vat_code_for(settings, vat_mode)
     m = re.match(r'^on_top(?:_(\d+))?$', vat_mode or '')
@@ -99,8 +152,9 @@ def build_receipt(settings, email, items, vat_mode, total):
         price = round(float(it.get('price') or 0) * k, 2)
         if qty <= 0 or price <= 0:
             continue
-        lines.append({'name': str(it.get('name') or 'Услуга'), 'qty': qty, 'price': price})
-    single = [{'name': 'Оплата по счёту', 'qty': 1.0, 'price': round(total, 2)}]
+        lines.append({'name': contract_line_name(str(it.get('name') or 'Услуга'), contract), 'qty': qty, 'price': price})
+    fallback = service_title(contract.get('work_subject')) + (f" по договору № {contract['number']}" if contract.get('number') else '') if contract else 'Оплата по счёту'
+    single = [{'name': lines[0]['name'] if len(lines) == 1 else fallback, 'qty': 1.0, 'price': round(total, 2)}]
     if not lines or len(lines) > 100:
         lines = single
     diff = round(total - sum(round(ln['qty'] * ln['price'], 2) for ln in lines), 2)
@@ -120,7 +174,7 @@ def build_receipt(settings, email, items, vat_mode, total):
             'amount': {'value': f"{ln['price']:.2f}", 'currency': 'RUB'},
             'vat_code': code,
             'payment_subject': settings.get('payment_subject') or 'service',
-            'payment_mode': settings.get('payment_mode') or 'full_payment',
+            'payment_mode': mode_for(settings, ln['name']),
         } for ln in lines],
     }
     tax = int(settings.get('tax_system_code') or 0)

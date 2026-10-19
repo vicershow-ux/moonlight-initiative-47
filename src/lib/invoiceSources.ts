@@ -9,9 +9,9 @@ export interface ContractPayment {
 }
 
 const PCT: Record<string, [string, number][]> = {
-  advance_4_stages: [["Аванс", 25], ["Этап 1", 25], ["Этап 2", 25], ["Этап 3", 25]],
-  advance_3_stages: [["Аванс", 30], ["Этап 1", 40], ["Этап 2", 30]],
-  advance_2_stages: [["Аванс", 50], ["Этап 1", 50]],
+  advance_4_stages: [["Аванс", 25], ["Этап 1", 25], ["Этап 2", 25], ["Сдача объекта", 25]],
+  advance_3_stages: [["Аванс", 30], ["Этап 1", 40], ["Сдача объекта", 30]],
+  advance_2_stages: [["Аванс", 50], ["Сдача объекта", 50]],
 }
 
 /** Варианты платежей из графика договора */
@@ -40,7 +40,7 @@ export function contractInvoiceItem(c: Contract, p: ContractPayment): InvoiceIte
   const name =
     p.key === "full"
       ? `Работы: ${what} по Договору подряда № ${c.contract_number}`
-      : `${p.label.replace(/\s*\(\d+%\)/, "")} по Договору подряда № ${c.contract_number} (${what})`
+      : `${what.charAt(0).toUpperCase() + what.slice(1)} — ${p.label.replace(/\s*\(\d+%\)/, "").toLowerCase()} по Договору подряда № ${c.contract_number}`
   return { name, unit: "усл.", quantity: 1, price: p.amount, amount: p.amount }
 }
 
