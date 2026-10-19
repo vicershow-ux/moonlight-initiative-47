@@ -241,9 +241,16 @@ def handle(cur, conn, user, method, params, body, response, has_object_access, m
         if is_client:
             where += " AND object_id IN (SELECT object_id FROM object_access WHERE user_id = %s)"
             args.append(user['user_id'])
-        cols = ', '.join(k for k in ADD_KEYS if k != 'content_html')
-        cur.execute(f"SELECT {cols} FROM contract_addenda WHERE {where} ORDER BY created_at", args)
         keys = [k for k in ADD_KEYS if k != 'content_html']
+        cols = ', '.join(f'a.{k}' for k in keys)
+        where = ' AND '.join(f'a.{w.strip()}' for w in where.split(' AND '))
+        cur.execute(
+            f"SELECT {cols}, c.contract_number, o.object_code, o.client_name, a.content_html IS NOT NULL AND a.content_html <> '' "
+            f"FROM contract_addenda a LEFT JOIN contracts c ON c.id = a.contract_id LEFT JOIN objects o ON o.id = a.object_id "
+            f"WHERE {where} ORDER BY a.created_at",
+            args
+        )
+        keys = keys + ['contract_number', 'object_code', 'client_name', 'has_html']
         return response(200, {'addenda': [dict(zip(keys, r)) for r in cur.fetchall()]})
 
     if method == 'POST' and action == 'sign':

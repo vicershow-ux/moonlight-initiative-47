@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useState } from "react"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
-import { estimatesApi, objectsApi, objectStatusesApi, contractsApi, actsApi, materialsApi, Estimate, ObjectItem, ObjectStatus, Contract, Act, MaterialEstimate } from "@/lib/api"
+import { estimatesApi, objectsApi, objectStatusesApi, contractsApi, actsApi, materialsApi, addendaApi, Estimate, ObjectItem, ObjectStatus, Contract, Act, MaterialEstimate, ContractAddendum } from "@/lib/api"
 import { SendDocEmailDialog } from "@/components/crm/SendDocEmailDialog"
 import { printMaterials, downloadMaterialsPdf, materialsPdfBase64 } from "@/lib/printMaterials"
 import { printEstimate, downloadEstimatePdf } from "@/lib/printEstimate"
 import { downloadContractPdf } from "@/lib/downloadContractPdf"
-import { printAct, darkenActHtml } from "@/lib/printAct"
+import { printAct, printAddendum, darkenActHtml } from "@/lib/printAct"
 import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
 import { printHtml } from "@/lib/printHtml"
 import { useAuth } from "@/contexts/AuthContext"
 import { DocumentsToolbar } from "@/components/crm/documents/DocumentsToolbar"
 import { DocumentEstimateRow, DocumentMatEstimateRow } from "@/components/crm/documents/DocumentEstimateRows"
-import { DocumentContractRow, DocumentActRow } from "@/components/crm/documents/DocumentContractRows"
+import { DocumentContractRow, DocumentActRow, DocumentAddendumRow, addendumDelta } from "@/components/crm/documents/DocumentContractRows"
 import { TabKey } from "@/components/crm/documents/constants"
 import { DocumentInvoicesTab } from "@/components/crm/documents/DocumentInvoicesTab"
 import { DocumentMobileCard } from "@/components/crm/documents/DocumentMobileCard"
@@ -23,6 +23,8 @@ export default function Documents() {
   const [estimates, setEstimates] = useState<Estimate[]>([])
   const [contracts, setContracts] = useState<Contract[]>([])
   const [acts, setActs] = useState<Act[]>([])
+  const [addenda, setAddenda] = useState<ContractAddendum[]>([])
+  const [addBusyId, setAddBusyId] = useState<number | null>(null)
   const [matEstimates, setMatEstimates] = useState<MaterialEstimate[]>([])
   const [matBusyId, setMatBusyId] = useState<number | null>(null)
   const [matSendFor, setMatSendFor] = useState<MaterialEstimate | null>(null)
@@ -37,6 +39,10 @@ export default function Documents() {
 
   const load = () => {
     setLoading(true)
+    addendaApi
+      .list({})
+      .then((d) => setAddenda(d.addenda || []))
+      .catch(() => setAddenda([]))
     Promise.all([estimatesApi.listAll(), contractsApi.listAll(), actsApi.listAll(), objectsApi.list(), objectStatusesApi.list(), materialsApi.list()])
       .then(([estData, contractsData, actsData, objData, statusData, matData]) => {
         setEstimates(estData.estimates)
@@ -68,6 +74,22 @@ export default function Documents() {
   const handleDeleteAct = async (id: number) => {
     await actsApi.remove(id)
     load()
+  }
+
+  const handleDeleteAddendum = async (id: number) => {
+    await addendaApi.remove(id)
+    load()
+  }
+
+  const handleAddendum = async (d: ContractAddendum, mode: "print" | "pdf") => {
+    setAddBusyId(mode === "print" ? d.id : -d.id)
+    try {
+      const full = await addendaApi.get(d.id)
+      if (mode === "print") printAddendum({ addendum_number: full.addendum_number, content_html: full.content_html || "" })
+      else await downloadContractPdf(darkenActHtml(full.content_html || ""), `ДС ${full.addendum_number} к договору ${full.contract_number || ""}`.trim())
+    } finally {
+      setAddBusyId(null)
+    }
   }
 
   const handleDownloadActPdf = async (act: Act) => {
@@ -206,6 +228,20 @@ export default function Documents() {
     })
   }, [acts, search])
 
+  const filteredAddenda = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return addenda.filter((d) => {
+      if (!q) return true
+      return (
+        String(d.addendum_number || "").toLowerCase().includes(q) ||
+        String(d.contract_number || "").toLowerCase().includes(q) ||
+        (d.object_code || "").toLowerCase().includes(q) ||
+        (d.client_name || "").toLowerCase().includes(q)
+      )
+    })
+  }, [addenda, search])
+
+  const showAddenda = tab === "all" || tab === "addenda"
   const showEstimates = tab === "all" || tab === "estimates"
   const showMatEstimates = tab === "all" || tab === "material_estimates"
   const showContracts = tab === "all" || tab === "contracts"
@@ -214,10 +250,11 @@ export default function Documents() {
     (showEstimates && filteredEstimates.length > 0) ||
     (showMatEstimates && filteredMatEstimates.length > 0) ||
     (showContracts && filteredContracts.length > 0) ||
-    (showActs && filteredActs.length > 0)
+    (showActs && filteredActs.length > 0) ||
+    (showAddenda && filteredAddenda.length > 0)
 
   return (
-    <CrmLayout title="Реестр документов" subtitle="Единый центр управления сметами, договорами подряда, актами и счетами вашей компании">
+    <CrmLayout title="Реестр документов" subtitle="Единый центр управления сметами, договорами подряда, доп. соглашениями, актами и счетами вашей компании">
       <div className="bg-[#1f1f1f] border border-white/10 rounded-xl overflow-hidden">
         <DocumentsToolbar
           tab={tab}
@@ -239,6 +276,8 @@ export default function Documents() {
             <p className="text-white/30 text-xs mt-1">
               {tab === "contracts"
                 ? "Составьте договор на странице объекта — он появится здесь"
+                : tab === "addenda"
+                ? "Создайте доп. соглашение на странице договора — оно появится здесь"
                 : "Создайте смету на странице объекта — она появится здесь"}
             </p>
           </div>
@@ -327,6 +366,38 @@ export default function Documents() {
               />
             ))}
 
+            {showAddenda && filteredAddenda.map((d) => {
+              const delta = addendumDelta(d)
+              const base = `/cabinet/objects/${d.object_id}/contracts/${d.contract_id}/addenda/${d.id}`
+              return (
+                <DocumentMobileCard
+                  key={`m-add-${d.id}`}
+                  kind="Доп. соглашение"
+                  kindClass="text-cyan-400"
+                  title={`Доп. соглашение № ${d.addendum_number}`}
+                  subtitle={`к договору № ${d.contract_number || "—"}${delta !== null ? ` · ${delta > 0 ? "+" : "−"}${Math.abs(delta).toLocaleString("ru-RU")} ₽` : ""}`}
+                  createdAt={d.addendum_date || d.created_at}
+                  amount={Number(d.total_amount)}
+                  obj={objectsMap[d.object_id]}
+                  objectCode={d.object_code}
+                  clientName={d.client_name}
+                  objectStatuses={objectStatuses}
+                  statusBadge={
+                    <span className={`px-2 py-1 rounded-full text-[11px] ${d.status === "signed" ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"}`}>
+                      {d.status === "signed" ? "подписано" : "черновик"}
+                    </span>
+                  }
+                  viewTo={base}
+                  editTo={d.status !== "signed" ? `${base}/edit` : undefined}
+                  onPrint={() => handleAddendum(d, "print")}
+                  onDownload={() => handleAddendum(d, "pdf")}
+                  printing={addBusyId === d.id}
+                  downloading={addBusyId === -d.id}
+                  deleteButton={<DeleteButton onConfirm={() => handleDeleteAddendum(d.id)} />}
+                />
+              )
+            })}
+
             {showActs && filteredActs.map((a) => (
               <DocumentMobileCard
                 key={`m-act-${a.id}`}
@@ -407,6 +478,19 @@ export default function Documents() {
                     handlePrintContract={handlePrintContract}
                     handleDownloadContractPdf={handleDownloadContractPdf}
                     handleDeleteContract={handleDeleteContract}
+                  />
+                ))}
+
+                {showAddenda && filteredAddenda.map((d) => (
+                  <DocumentAddendumRow
+                    key={`addendum-${d.id}`}
+                    d={d}
+                    obj={objectsMap[d.object_id]}
+                    objectStatuses={objectStatuses}
+                    busyId={addBusyId}
+                    handlePrint={(x) => handleAddendum(x, "print")}
+                    handleDownload={(x) => handleAddendum(x, "pdf")}
+                    handleDelete={handleDeleteAddendum}
                   />
                 ))}
 

@@ -2362,6 +2362,8 @@ export interface ContractAddendum {
   content_html?: string
   total_amount: number
   contract_number?: string
+  object_code?: string | null
+  client_name?: string | null
   signed_at?: string | null
   created_at: string
 }
