@@ -133,10 +133,10 @@ def handler(event: dict, context) -> dict:
         action = params.get('action') or ''
         if action == 'upload' and method == 'POST':
             body = json.loads(event.get('body') or '{}')
-            f, err = files.upload(cid, str(body.get('file_name') or 'file.jpg'), str(body.get('data') or ''))
+            uploaded, err = files.upload(cid, str(body.get("file_name") or "file.jpg"), str(body.get("data") or ""))
             if err:
                 return response(400, {'error': err})
-            return response(200, f)
+            return response(200, uploaded)
         if action == 'export' and method == 'GET':
             month = str(params.get('month') or '')
             if not re.match(r'^\d{4}-(0[1-9]|1[0-2])$', month):
