@@ -12,7 +12,7 @@ def get_conn():
 def cors_headers():
     return {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, X-Authorization',
         'Access-Control-Max-Age': '86400',
     }
@@ -60,8 +60,58 @@ def parse_period(params):
     return period, start
 
 
+CATEGORIES = {
+    'salary': 'Зарплата', 'subcontract': 'Субподряд', 'transport': 'Транспорт', 'tools': 'Инструмент',
+    'materials': 'Материалы (вне объекта)', 'rent': 'Аренда', 'taxes': 'Налоги и сборы', 'office': 'Офис и связь',
+    'ads': 'Реклама', 'other': 'Прочее',
+}
+EXP_KEYS = ['id', 'object_id', 'category', 'amount', 'expense_date', 'description', 'payee', 'created_at', 'object_code', 'client_name']
+
+
+def save_expense(cur, conn, cid, user_id, body, exp_id=None):
+    '''Добавление или правка расхода с проверкой полей'''
+    try:
+        amount = round(float(str(body.get('amount') or 0).replace(',', '.').replace(' ', '')), 2)
+    except ValueError:
+        return response(400, {'error': 'Сумма указана неверно'})
+    if amount <= 0 or amount > 1e10:
+        return response(400, {'error': 'Укажите сумму расхода'})
+    category = str(body.get('category') or 'other')
+    if category not in CATEGORIES:
+        return response(400, {'error': 'Неизвестная категория'})
+    exp_date = str(body.get('expense_date') or date.today().isoformat())[:10]
+    try:
+        date.fromisoformat(exp_date)
+    except ValueError:
+        return response(400, {'error': 'Неверная дата'})
+    object_id = body.get('object_id') or None
+    if object_id:
+        cur.execute("SELECT 1 FROM objects WHERE id = %s AND company_id = %s", (object_id, cid))
+        if not cur.fetchone():
+            return response(400, {'error': 'Объект не найден'})
+    desc = str(body.get('description') or '').strip()[:1000]
+    payee = str(body.get('payee') or '').strip()[:255]
+    if exp_id:
+        cur.execute(
+            "UPDATE company_expenses SET object_id = %s, category = %s, amount = %s, expense_date = %s, description = %s, "
+            "payee = %s, updated_at = NOW() WHERE id = %s AND company_id = %s RETURNING id",
+            (object_id, category, amount, exp_date, desc, payee, exp_id, cid)
+        )
+        if not cur.fetchone():
+            return response(404, {'error': 'Расход не найден'})
+    else:
+        cur.execute(
+            "INSERT INTO company_expenses (company_id, object_id, category, amount, expense_date, description, payee, created_by) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+            (cid, object_id, category, amount, exp_date, desc, payee, user_id)
+        )
+        exp_id = cur.fetchone()[0]
+    conn.commit()
+    return response(200, {'id': exp_id, 'saved': True})
+
+
 def handler(event: dict, context) -> dict:
-    '''Финансы компании: поступления, долги заказчиков, договоры, расходы на материалы, аренда'''
+    '''Финансы компании: поступления, долги заказчиков, договоры, расходы (материалы, зарплаты, транспорт и др.), прибыль'''
     if event.get('httpMethod') == 'OPTIONS':
         return {'statusCode': 200, 'headers': cors_headers(), 'body': ''}
 
@@ -75,6 +125,16 @@ def handler(event: dict, context) -> dict:
             return response(403, {'error': 'Раздел доступен руководителю'})
         cid = user['company_id']
         params = event.get('queryStringParameters') or {}
+        method = event.get('httpMethod', 'GET')
+        if method in ('POST', 'PUT'):
+            body = json.loads(event.get('body') or '{}')
+            return save_expense(cur, conn, cid, user['user_id'], body, params.get('id') if method == 'PUT' else None)
+        if method == 'DELETE':
+            cur.execute("DELETE FROM company_expenses WHERE id = %s AND company_id = %s RETURNING id", (params.get('id'), cid))
+            if not cur.fetchone():
+                return response(404, {'error': 'Расход не найден'})
+            conn.commit()
+            return response(200, {'deleted': True})
         period, start = parse_period(params)
 
         cur.execute(
@@ -114,6 +174,19 @@ def handler(event: dict, context) -> dict:
         rent_income, rent_expense = cur.fetchone()
 
         cur.execute(
+            "SELECT category, SUM(amount) FROM company_expenses WHERE company_id = %s AND expense_date >= %s GROUP BY 1",
+            (cid, start)
+        )
+        exp_by_cat = {k: f(v) for k, v in cur.fetchall()}
+        other_expenses = round(sum(exp_by_cat.values()), 2)
+        cur.execute(
+            "SELECT to_char(date_trunc('month', expense_date), 'YYYY-MM'), SUM(amount) FROM company_expenses "
+            "WHERE company_id = %s AND expense_date >= date_trunc('month', NOW()) - INTERVAL '11 months' GROUP BY 1",
+            (cid,)
+        )
+        exp_by_month = dict(cur.fetchall())
+
+        cur.execute(
             f"SELECT to_char(date_trunc('month', i.paid_at), 'YYYY-MM'), SUM({DUE}) FROM invoices i "
             "WHERE i.company_id = %s AND i.status = 'paid' AND i.paid_at >= date_trunc('month', NOW()) - INTERVAL '11 months' "
             "GROUP BY 1",
@@ -141,7 +214,7 @@ def handler(event: dict, context) -> dict:
                 y -= 1
             key = f'{y}-{m:02d}'
             months.append({'month': key, 'received': f(paid_by_month.get(key)), 'issued': f(issued_by_month.get(key)),
-                           'materials': f(mat_by_month.get(key))})
+                           'materials': f(mat_by_month.get(key)), 'expenses': round(f(mat_by_month.get(key)) + f(exp_by_month.get(key)), 2)})
 
         cur.execute(
             f"""
@@ -151,18 +224,22 @@ def handler(event: dict, context) -> dict:
               COALESCE((SELECT SUM({DUE}) FROM invoices i WHERE i.object_id = o.id AND i.status <> 'paid'), 0),
               COALESCE((SELECT SUM({DUE}) FROM invoices i WHERE i.object_id = o.id AND i.status <> 'paid' AND i.due_date < CURRENT_DATE), 0),
               COALESCE((SELECT SUM(qty * price) FROM object_materials m WHERE m.object_id = o.id), 0),
-              (SELECT MIN(due_date) FROM object_payments p WHERE p.object_id = o.id AND p.paid_amount < p.amount AND p.due_date IS NOT NULL)
+              (SELECT MIN(due_date) FROM object_payments p WHERE p.object_id = o.id AND p.paid_amount < p.amount AND p.due_date IS NOT NULL),
+              COALESCE((SELECT SUM(amount) FROM company_expenses e WHERE e.object_id = o.id), 0)
             FROM objects o WHERE o.company_id = %s
             """,
             (cid,)
         )
         objects = []
-        for oid, code, client, addr, st, contr, paid, out, od, mat, next_due in cur.fetchall():
-            if not (contr or paid or out or mat):
+        for oid, code, client, addr, st, contr, paid, out, od, mat, next_due, exp in cur.fetchall():
+            if not (contr or paid or out or mat or exp):
                 continue
-            contr, paid, out, od, mat = f(contr), f(paid), f(out), f(od), f(mat)
+            contr, paid, out, od, mat, exp = f(contr), f(paid), f(out), f(od), f(mat), f(exp)
+            costs = round(mat + exp, 2)
             objects.append({'id': oid, 'object_code': code, 'client_name': client, 'address': addr, 'status': st,
                             'contracted': contr, 'paid': paid, 'outstanding': out, 'overdue': od, 'materials': mat,
+                            'expenses': exp, 'costs': costs, 'profit': round(paid - costs, 2),
+                            'planned_profit': round(contr - costs, 2) if contr else None,
                             'to_invoice': max(round(contr - paid - out, 2), 0), 'next_due': next_due})
         objects.sort(key=lambda o: (-o['overdue'], -o['outstanding'], -o['contracted']))
 
@@ -196,7 +273,21 @@ def handler(event: dict, context) -> dict:
         for u in upcoming:
             u['amount'] = f(u['amount'])
 
-        expenses = f(materials) + f(rent_expense)
+        cur.execute(
+            "SELECT e.id, e.object_id, e.category, e.amount, e.expense_date, e.description, e.payee, e.created_at, o.object_code, o.client_name "
+            "FROM company_expenses e LEFT JOIN objects o ON o.id = e.object_id "
+            "WHERE e.company_id = %s AND e.expense_date >= %s ORDER BY e.expense_date DESC, e.id DESC LIMIT 500",
+            (cid, start)
+        )
+        expense_list = []
+        for row in cur.fetchall():
+            d = dict(zip(EXP_KEYS, row))
+            d['amount'] = f(d['amount'])
+            expense_list.append(d)
+        cur.execute("SELECT id, object_code, client_name FROM objects WHERE company_id = %s ORDER BY id DESC LIMIT 300", (cid,))
+        object_options = [{'id': a, 'object_code': b, 'client_name': c or ''} for a, b, c in cur.fetchall()]
+
+        expenses = round(f(materials) + f(rent_expense) + other_expenses, 2)
         income = f(received) + f(rent_income)
         return response(200, {
             'period': period, 'start': start,
@@ -207,12 +298,16 @@ def handler(event: dict, context) -> dict:
                 'issued': f(issued), 'auto_paid': f(auto_paid),
                 'contracted': f(contracted), 'contracts_count': contracts_n,
                 'materials': f(materials), 'rent_income': f(rent_income), 'rent_expense': f(rent_expense),
+                'other_expenses': other_expenses, 'expenses_by_category': exp_by_cat,
                 'income': income, 'expenses': expenses, 'margin': round(income - expenses, 2),
             },
             'months': months,
             'objects': objects,
             'invoices': invoices,
             'upcoming': upcoming,
+            'expenses': expense_list,
+            'categories': CATEGORIES,
+            'object_options': object_options,
         })
     finally:
         cur.close()

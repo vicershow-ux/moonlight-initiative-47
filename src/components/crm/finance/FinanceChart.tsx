@@ -6,12 +6,12 @@ import { card, monthRu, rub, shortRub } from "./format"
 const SERIES = [
   { key: "issued", name: "Выставлено", color: "#6b7280" },
   { key: "received", name: "Поступило", color: "#D4AF37" },
-  { key: "materials", name: "Материалы", color: "#ef4444" },
+  { key: "expenses", name: "Расходы", color: "#ef4444" },
 ] as const
 
 export function FinanceChart({ months }: { months: FinanceData["months"] }) {
   const data = months.map((m) => ({ ...m, label: monthRu(m.month) }))
-  const empty = data.every((m) => !m.received && !m.issued && !m.materials)
+  const empty = data.every((m) => !m.received && !m.issued && !m.expenses)
   return (
     <div className={`${card} flex flex-col gap-4`}>
       <p className="font-medium flex items-center gap-2">

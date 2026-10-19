@@ -8,6 +8,7 @@ import { FinanceChart } from "@/components/crm/finance/FinanceChart"
 import { FinanceObjects } from "@/components/crm/finance/FinanceObjects"
 import { FinanceInvoices } from "@/components/crm/finance/FinanceInvoices"
 import { FinanceUpcoming } from "@/components/crm/finance/FinanceUpcoming"
+import { FinanceExpenses } from "@/components/crm/finance/FinanceExpenses"
 
 const PERIODS: { k: FinancePeriod; l: string }[] = [
   { k: "month", l: "Месяц" },
@@ -32,10 +33,12 @@ export default function Finance() {
       .finally(() => setLoading(false))
   }, [period])
 
+  const reload = () => financeApi.get(period).then(setData).catch(() => null)
+
   useEffect(() => {
-    const reload = () => financeApi.get(period).then(setData).catch(() => null)
     window.addEventListener("invoice-paid", reload)
     return () => window.removeEventListener("invoice-paid", reload)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period])
 
   return (
@@ -73,10 +76,11 @@ export default function Finance() {
             <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-4 items-start">
               <FinanceChart months={data.months} />
               <div className="flex flex-col gap-4">
-                <FinanceBalance s={data.summary} />
+                <FinanceBalance s={data.summary} categories={data.categories} />
                 <FinanceUpcoming items={data.upcoming} />
               </div>
             </div>
+            <FinanceExpenses data={data} onChanged={reload} />
             <FinanceObjects objects={data.objects} />
             <FinanceInvoices invoices={data.invoices} />
           </div>

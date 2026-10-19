@@ -2564,8 +2564,34 @@ export interface FinanceObject {
   outstanding: number
   overdue: number
   materials: number
+  expenses: number
+  costs: number
+  profit: number
+  planned_profit: number | null
   to_invoice: number
   next_due: string | null
+}
+
+export interface FinanceExpense {
+  id: number
+  object_id: number | null
+  category: string
+  amount: number
+  expense_date: string
+  description: string
+  payee: string
+  created_at: string
+  object_code: string | null
+  client_name: string | null
+}
+
+export interface ExpensePayload {
+  object_id: number | null
+  category: string
+  amount: number
+  expense_date: string
+  description: string
+  payee: string
 }
 
 export interface FinanceInvoice {
@@ -2603,19 +2629,36 @@ export interface FinanceData {
     materials: number
     rent_income: number
     rent_expense: number
+    other_expenses: number
+    expenses_by_category: Record<string, number>
     income: number
     expenses: number
     margin: number
   }
-  months: { month: string; received: number; issued: number; materials: number }[]
+  months: { month: string; received: number; issued: number; materials: number; expenses: number }[]
   objects: FinanceObject[]
   invoices: FinanceInvoice[]
   upcoming: { id: number; object_id: number; title: string; amount: number; due_date: string; object_code: string; client_name: string }[]
+  expenses: FinanceExpense[]
+  categories: Record<string, string>
+  object_options: { id: number; object_code: string; client_name: string }[]
 }
 
 export const financeApi = {
   async get(period: FinancePeriod) {
     const res = await fetch(`${FINANCE_URL}?period=${period}`, { headers: { ...authHeaders() } })
     return parseResponse(res) as Promise<FinanceData>
+  },
+  async saveExpense(payload: ExpensePayload, id?: number) {
+    const res = await fetch(id ? `${FINANCE_URL}?id=${id}` : FINANCE_URL, {
+      method: id ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<{ id: number; saved: boolean }>
+  },
+  async removeExpense(id: number) {
+    const res = await fetch(`${FINANCE_URL}?id=${id}`, { method: "DELETE", headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ deleted: boolean }>
   },
 }

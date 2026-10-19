@@ -25,9 +25,17 @@ export function FinanceObjects({ objects }: { objects: FinanceObject[] }) {
                     </p>
                     <p className="text-xs text-white/40 truncate">{o.address || "Адрес не указан"}</p>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-semibold">{rub(o.contracted)}</p>
-                    <p className="text-xs text-white/40">по договорам</p>
+                  <div className="flex shrink-0 gap-5 text-right">
+                    <div>
+                      <p className="text-sm font-semibold">{rub(o.contracted)}</p>
+                      <p className="text-xs text-white/40">по договорам</p>
+                    </div>
+                    <div>
+                      <p className={`text-sm font-semibold ${o.profit >= 0 ? "text-green-300" : "text-red-300"}`}>{rub(o.profit)}</p>
+                      <p className="text-xs text-white/40" title="Оплачено заказчиком минус затраты по объекту">
+                        прибыль сейчас
+                      </p>
+                    </div>
                   </div>
                 </div>
                 <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
@@ -38,8 +46,19 @@ export function FinanceObjects({ objects }: { objects: FinanceObject[] }) {
                   {o.outstanding > 0 && <span className="text-[#D4AF37]">Ждём {rub(o.outstanding)}</span>}
                   {o.overdue > 0 && <span className="text-red-300">Просрочено {rub(o.overdue)}</span>}
                   {o.to_invoice > 0 && <span className="text-white/50">Ещё не выставлено {rub(o.to_invoice)}</span>}
-                  {o.materials > 0 && <span className="text-white/50">Материалы {rub(o.materials)}</span>}
+                  {o.costs > 0 && (
+                    <span className="text-white/50">
+                      Затраты {rub(o.costs)}
+                      {o.materials > 0 && o.expenses > 0 && ` (материалы ${rub(o.materials)}, прочее ${rub(o.expenses)})`}
+                    </span>
+                  )}
                   {o.next_due && <span className="text-white/50">Следующий платёж {dateRu(o.next_due)}</span>}
+                  {o.planned_profit !== null && o.costs > 0 && (
+                    <span className={o.planned_profit >= 0 ? "text-white/50" : "text-red-300"}>
+                      Прибыль по договору {rub(o.planned_profit)}
+                      {o.contracted > 0 && ` (${Math.round((o.planned_profit / o.contracted) * 100)}%)`}
+                    </span>
+                  )}
                 </div>
               </Link>
             )
