@@ -4,6 +4,7 @@ from datetime import date
 
 import psycopg2
 import bank_inbox
+import files
 
 
 def get_conn():
@@ -66,7 +67,7 @@ CATEGORIES = {
     'materials': 'Материалы (вне объекта)', 'rent': 'Аренда', 'taxes': 'Налоги и сборы', 'office': 'Офис и связь',
     'ads': 'Реклама', 'other': 'Прочее',
 }
-EXP_KEYS = ['id', 'object_id', 'category', 'amount', 'expense_date', 'description', 'payee', 'created_at', 'object_code', 'client_name', 'from_bank']
+EXP_KEYS = ['id', 'object_id', 'category', 'amount', 'expense_date', 'description', 'payee', 'created_at', 'object_code', 'client_name', 'from_bank', 'attachments']
 
 
 def save_expense(cur, conn, cid, user_id, body, exp_id=None):
@@ -92,19 +93,20 @@ def save_expense(cur, conn, cid, user_id, body, exp_id=None):
             return response(400, {'error': 'Объект не найден'})
     desc = str(body.get('description') or '').strip()[:1000]
     payee = str(body.get('payee') or '').strip()[:255]
+    att = json.dumps(files.clean(cid, body.get('attachments')), ensure_ascii=False)
     if exp_id:
         cur.execute(
             "UPDATE company_expenses SET object_id = %s, category = %s, amount = %s, expense_date = %s, description = %s, "
-            "payee = %s, updated_at = NOW() WHERE id = %s AND company_id = %s RETURNING id",
-            (object_id, category, amount, exp_date, desc, payee, exp_id, cid)
+            "payee = %s, attachments = %s, updated_at = NOW() WHERE id = %s AND company_id = %s RETURNING id",
+            (object_id, category, amount, exp_date, desc, payee, att, exp_id, cid)
         )
         if not cur.fetchone():
             return response(404, {'error': 'Расход не найден'})
     else:
         cur.execute(
-            "INSERT INTO company_expenses (company_id, object_id, category, amount, expense_date, description, payee, created_by) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
-            (cid, object_id, category, amount, exp_date, desc, payee, user_id)
+            "INSERT INTO company_expenses (company_id, object_id, category, amount, expense_date, description, payee, created_by, attachments) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+            (cid, object_id, category, amount, exp_date, desc, payee, user_id, att)
         )
         exp_id = cur.fetchone()[0]
     conn.commit()
@@ -128,6 +130,21 @@ def handler(event: dict, context) -> dict:
         params = event.get('queryStringParameters') or {}
         method = event.get('httpMethod', 'GET')
         action = params.get('action') or ''
+        if action == 'upload' and method == 'POST':
+            body = json.loads(event.get('body') or '{}')
+            f, err = files.upload(cid, str(body.get('file_name') or 'file.jpg'), str(body.get('data') or ''))
+            if err:
+                return response(400, {'error': err})
+            return response(200, f)
+        if action == 'attach' and method == 'POST':
+            body = json.loads(event.get('body') or '{}')
+            att = files.clean(cid, body.get('attachments'))
+            cur.execute("UPDATE company_expenses SET attachments = %s, updated_at = NOW() WHERE id = %s AND company_id = %s RETURNING id",
+                        (json.dumps(att, ensure_ascii=False), params.get('id'), cid))
+            if not cur.fetchone():
+                return response(404, {'error': 'Расход не найден'})
+            conn.commit()
+            return response(200, {'attachments': att})
         if action == 'bank_inbox':
             if method == 'POST':
                 body = json.loads(event.get('body') or '{}')
@@ -294,7 +311,7 @@ def handler(event: dict, context) -> dict:
 
         cur.execute(
             "SELECT e.id, e.object_id, e.category, e.amount, e.expense_date, e.description, e.payee, e.created_at, o.object_code, o.client_name, "
-            "e.bank_operation_id IS NOT NULL "
+            "e.bank_operation_id IS NOT NULL, e.attachments "
             "FROM company_expenses e LEFT JOIN objects o ON o.id = e.object_id "
             "WHERE e.company_id = %s AND e.expense_date >= %s ORDER BY e.expense_date DESC, e.id DESC LIMIT 500",
             (cid, start)

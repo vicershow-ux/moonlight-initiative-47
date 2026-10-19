@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ExpensePayload, FinanceData, FinanceExpense, financeApi } from "@/lib/api"
 import { EXPENSE_ICONS } from "./expenseMeta"
+import { ExpenseFilesField } from "./ExpenseFiles"
 
 const field = "w-full rounded-lg border border-white/10 bg-[#161616] px-3 py-2.5 text-sm text-white outline-none focus:border-[#D4AF37]/50"
 const today = () => new Date().toISOString().slice(0, 10)
@@ -17,7 +18,7 @@ interface Props {
 }
 
 export function ExpenseDialog({ open, onOpenChange, expense, categories, objects, onSaved }: Props) {
-  const [form, setForm] = useState<ExpensePayload>({ object_id: null, category: "salary", amount: 0, expense_date: today(), description: "", payee: "" })
+  const [form, setForm] = useState<ExpensePayload>({ object_id: null, category: "salary", amount: 0, expense_date: today(), description: "", payee: "", attachments: [] })
   const [amount, setAmount] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
@@ -33,10 +34,11 @@ export function ExpenseDialog({ open, onOpenChange, expense, categories, objects
         expense_date: expense.expense_date.slice(0, 10),
         description: expense.description,
         payee: expense.payee,
+        attachments: expense.attachments || [],
       })
       setAmount(String(expense.amount))
     } else {
-      setForm((f) => ({ ...f, amount: 0, expense_date: today(), description: "", payee: "" }))
+      setForm((f) => ({ ...f, amount: 0, expense_date: today(), description: "", payee: "", attachments: [] }))
       setAmount("")
     }
   }, [open, expense])
@@ -64,7 +66,7 @@ export function ExpenseDialog({ open, onOpenChange, expense, categories, objects
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg border-white/10 bg-[#1f1f1f] text-white">
+      <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto border-white/10 bg-[#1f1f1f] text-white">
         <DialogHeader>
           <DialogTitle>{expense ? "Изменить расход" : "Новый расход"}</DialogTitle>
         </DialogHeader>
@@ -118,6 +120,7 @@ export function ExpenseDialog({ open, onOpenChange, expense, categories, objects
             <span className="text-xs text-white/50">Комментарий</span>
             <textarea value={form.description} onChange={(e) => set("description", e.target.value)} rows={2} placeholder="За что расход" className={`${field} resize-none`} />
           </label>
+          <ExpenseFilesField value={form.attachments || []} onChange={(v) => set("attachments", v)} />
           {error && (
             <p className="flex items-center gap-1.5 text-sm text-red-400">
               <Icon name="CircleAlert" size={15} />

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import Icon from "@/components/ui/icon"
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog"
@@ -6,6 +6,7 @@ import { FinanceData, FinanceExpense, financeApi } from "@/lib/api"
 import { ExpenseDialog } from "./ExpenseDialog"
 import { EXPENSE_COLORS, EXPENSE_ICONS } from "./expenseMeta"
 import { card, dateRu, rub } from "./format"
+import { ExpenseFileThumb, useExpenseUpload } from "./ExpenseFiles"
 
 export function FinanceExpenses({ data, onChanged }: { data: FinanceData; onChanged: () => void }) {
   const [open, setOpen] = useState(false)
@@ -13,6 +14,27 @@ export function FinanceExpenses({ data, onChanged }: { data: FinanceData; onChan
   const [removing, setRemoving] = useState<FinanceExpense | null>(null)
   const [cat, setCat] = useState("")
   const [objectId, setObjectId] = useState<string>("")
+  const [noDocs, setNoDocs] = useState(false)
+  const [attachTo, setAttachTo] = useState<FinanceExpense | null>(null)
+  const quickRef = useRef<HTMLInputElement>(null)
+  const { upload, uploading, error: uploadError } = useExpenseUpload()
+
+  const quickAttach = (e: FinanceExpense) => {
+    setAttachTo(e)
+    quickRef.current?.click()
+  }
+
+  const onQuickFiles = async (list: FileList | null) => {
+    const target = attachTo
+    if (!target || !list?.length) return
+    const added = await upload(list)
+    if (quickRef.current) quickRef.current.value = ""
+    if (added.length) {
+      await financeApi.attachExpenseFiles(target.id, [...(target.attachments || []), ...added].slice(0, 10)).catch(() => null)
+      onChanged()
+    }
+    setAttachTo(null)
+  }
 
   const s = data.summary
   const byCat = Object.entries(s.expenses_by_category || {})
@@ -24,13 +46,15 @@ export function FinanceExpenses({ data, onChanged }: { data: FinanceData; onChan
     () =>
       data.expenses.filter((e) => {
         if (cat && e.category !== cat) return false
+        if (noDocs && (e.attachments || []).length) return false
         if (objectId === "none" && e.object_id) return false
         if (objectId && objectId !== "none" && String(e.object_id) !== objectId) return false
         return true
       }),
-    [data.expenses, cat, objectId],
+    [data.expenses, cat, objectId, noDocs],
   )
   const listTotal = list.reduce((a, e) => a + e.amount, 0)
+  const withoutDocs = data.expenses.filter((e) => !(e.attachments || []).length).length
 
   const add = () => {
     setEditing(null)
@@ -79,6 +103,7 @@ export function FinanceExpenses({ data, onChanged }: { data: FinanceData; onChan
       )}
 
       {data.expenses.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
         <select
           value={objectId}
           onChange={(e) => setObjectId(e.target.value)}
@@ -95,7 +120,21 @@ export function FinanceExpenses({ data, onChanged }: { data: FinanceData; onChan
               </option>
             ))}
         </select>
+          {withoutDocs > 0 && (
+            <button
+              onClick={() => setNoDocs((v) => !v)}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+                noDocs ? "bg-amber-500/20 text-amber-200" : "bg-white/5 text-white/60 hover:bg-white/10"
+              }`}
+            >
+              <Icon name="FileWarning" size={14} />
+              Без документов · {withoutDocs}
+            </button>
+          )}
+        </div>
       )}
+      {uploadError && <p className="text-sm text-red-400">{uploadError}</p>}
+      <input ref={quickRef} type="file" accept="image/*,.heic,.pdf" multiple hidden onChange={(e) => onQuickFiles(e.target.files)} />
 
       {list.length === 0 ? (
         <div className="py-8 flex flex-col items-center gap-2 text-center">
@@ -138,8 +177,27 @@ export function FinanceExpenses({ data, onChanged }: { data: FinanceData; onChan
                   {e.description && ` · ${e.description}`}
                 </p>
               </div>
+              <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
+                {(e.attachments || []).slice(0, 3).map((f) => (
+                  <ExpenseFileThumb key={f.url} f={f} size="sm" />
+                ))}
+                {(e.attachments || []).length > 3 && <span className="text-xs text-white/40">+{(e.attachments || []).length - 3}</span>}
+              </div>
+              {(e.attachments || []).length > 0 && (
+                <Icon name="Paperclip" size={13} className="shrink-0 text-white/40 sm:hidden" />
+              )}
               <span className="shrink-0 font-medium text-red-300 whitespace-nowrap">−{rub(e.amount)}</span>
               <div className="flex shrink-0 gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                {!(e.attachments || []).length && (
+                  <button
+                    onClick={() => quickAttach(e)}
+                    disabled={uploading}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 hover:bg-[#D4AF37]/20 hover:text-[#D4AF37]"
+                    title="Прикрепить чек или накладную"
+                  >
+                    <Icon name={uploading && attachTo?.id === e.id ? "Loader2" : "Paperclip"} size={13} className={uploading && attachTo?.id === e.id ? "animate-spin" : ""} />
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setEditing(e)

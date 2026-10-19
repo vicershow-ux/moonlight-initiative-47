@@ -2584,6 +2584,14 @@ export interface FinanceExpense {
   object_code: string | null
   client_name: string | null
   from_bank?: boolean
+  attachments?: ExpenseFile[]
+}
+
+export interface ExpenseFile {
+  name: string
+  url: string
+  type: "photo" | "pdf"
+  size?: number
 }
 
 export interface BankDebit {
@@ -2605,6 +2613,7 @@ export interface ExpensePayload {
   expense_date: string
   description: string
   payee: string
+  attachments?: ExpenseFile[]
 }
 
 export interface FinanceInvoice {
@@ -2669,6 +2678,22 @@ export const financeApi = {
       body: JSON.stringify(payload),
     })
     return parseResponse(res) as Promise<{ id: number; saved: boolean }>
+  },
+  async uploadExpenseFile(fileName: string, data: string) {
+    const res = await fetch(`${FINANCE_URL}?action=upload`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ file_name: fileName, data }),
+    })
+    return parseResponse(res) as Promise<ExpenseFile>
+  },
+  async attachExpenseFiles(id: number, attachments: ExpenseFile[]) {
+    const res = await fetch(`${FINANCE_URL}?action=attach&id=${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ attachments }),
+    })
+    return parseResponse(res) as Promise<{ attachments: ExpenseFile[] }>
   },
   async bankInbox() {
     const res = await fetch(`${FINANCE_URL}?action=bank_inbox`, { headers: { ...authHeaders() } })
