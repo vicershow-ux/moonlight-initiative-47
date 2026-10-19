@@ -2508,3 +2508,74 @@ export const bankApi = {
     return parseResponse(res) as Promise<{ loaded?: number; marked?: number; skipped?: string; error?: string }>
   },
 }
+
+const FINANCE_URL = funcUrl("finance")
+
+export type FinancePeriod = "month" | "quarter" | "year" | "all"
+
+export interface FinanceObject {
+  id: number
+  object_code: string
+  client_name: string
+  address: string
+  status: string
+  contracted: number
+  paid: number
+  outstanding: number
+  overdue: number
+  materials: number
+  to_invoice: number
+  next_due: string | null
+}
+
+export interface FinanceInvoice {
+  id: number
+  object_id: number
+  invoice_number: string
+  invoice_date: string | null
+  due_date: string | null
+  status: string
+  paid_at: string | null
+  paid_online: boolean
+  paid_source: string
+  amount: number
+  object_code: string
+  client_name: string
+  contract_number: string | null
+  act_number: string | null
+  overdue: boolean
+}
+
+export interface FinanceData {
+  period: FinancePeriod
+  start: string
+  summary: {
+    received: number
+    received_count: number
+    outstanding: number
+    outstanding_count: number
+    overdue: number
+    overdue_count: number
+    issued: number
+    auto_paid: number
+    contracted: number
+    contracts_count: number
+    materials: number
+    rent_income: number
+    rent_expense: number
+    income: number
+    expenses: number
+    margin: number
+  }
+  months: { month: string; received: number; issued: number; materials: number }[]
+  objects: FinanceObject[]
+  invoices: FinanceInvoice[]
+  upcoming: { id: number; object_id: number; title: string; amount: number; due_date: string; object_code: string; client_name: string }[]
+}
+
+export const financeApi = {
+  async get(period: FinancePeriod) {
+    const res = await fetch(`${FINANCE_URL}?period=${period}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<FinanceData>
+  },
+}

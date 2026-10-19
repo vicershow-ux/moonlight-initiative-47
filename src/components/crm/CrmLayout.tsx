@@ -32,6 +32,7 @@ const fullNavItems: NavItem[] = [
   { label: "Склад учет", icon: "Warehouse", href: "/cabinet/warehouse", roles: ["owner", "admin", "employee"] },
   { label: "Материалы", icon: "Package", href: "/cabinet/materials", roles: ["owner", "admin", "employee"] },
   { label: "Аренда", icon: "Handshake", href: "/cabinet/rentals", roles: ["owner", "admin", "employee"] },
+  { label: "Финансы", icon: "Wallet", href: "/cabinet/finance", roles: ["owner", "admin"] },
   { label: "Интеграции", icon: "Blocks", href: "/cabinet/integrations", roles: ["owner", "admin"] },
   { label: "Компания", icon: "Building", href: "/cabinet/company", roles: ["owner", "admin", "employee"] },
   { label: "Сайт", icon: "Globe", href: "/cabinet/site", roles: ["owner", "admin", "employee"], siteOnly: true },
