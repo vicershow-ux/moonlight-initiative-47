@@ -69,10 +69,24 @@ def get_current_user(cur, event):
 ACT_KEYS = [
     'id', 'object_id', 'contract_id', 'estimate_id', 'act_number', 'act_date',
     'act_type', 'status', 'options', 'items', 'content_html', 'total_amount',
-    'created_by', 'created_at', 'updated_at',
+    'created_by', 'created_at', 'updated_at', 'signed_at',
 ]
 
 BASE_COLS = ", ".join([f"a.{k}" for k in ACT_KEYS])
+
+
+def apply_client_signature(content, stamp):
+    '''Ставит отметку электронной подписи в поле подписи заказчика'''
+    mark = ('<div style="position:absolute;left:0;bottom:6px;border:2px solid #2e7d32;color:#2e7d32;border-radius:8px;'
+            'padding:6px 10px;font-size:11px;font-weight:700;line-height:1.35;background:#fff">ПОДПИСАНО ЭЛЕКТРОННО<br/>'
+            f'<span style="font-weight:600">{html_lib.escape(stamp)}</span></div>')
+    idx = content.rfind('ОТ ИМЕНИ ЗАКАЗЧИКА')
+    if idx != -1:
+        m = re.compile(r'(<div style="position:relative;height:84px;[^"]*">)(</div>)').search(content, idx)
+        if m:
+            return content[:m.end(1)] + mark + content[m.end(1):]
+    flat = mark.replace('position:absolute;left:0;bottom:6px;', 'display:inline-block;margin-top:12px;')
+    return content + f'<p style="margin-top:16px"><strong>Заказчик:</strong></p>{flat}'
 
 
 
@@ -573,6 +587,36 @@ def handler(event, context):
         act_id = params.get('id')
         action = params.get('action')
         is_client = user['role'] == 'client'
+        if is_client and method == 'POST' and action == 'sign':
+            cur.execute(
+                "SELECT a.object_id, a.act_number, a.signed_at, a.content_html, o.object_code FROM acts a "
+                "JOIN objects o ON o.id = a.object_id WHERE a.id = %s AND a.company_id = %s "
+                "AND a.object_id IN (SELECT object_id FROM object_access WHERE user_id = %s)",
+                (act_id, company_id, user['user_id'])
+            )
+            row = cur.fetchone()
+            if not row:
+                return response(404, {'error': 'Акт не найден'})
+            obj_id, number, signed_at, content, code = row
+            if signed_at:
+                return response(200, {'success': True, 'status': 'signed'})
+            cur.execute("SELECT NOW()")
+            now = cur.fetchone()[0]
+            stamp = f"{user['full_name']}, {now.strftime('%d.%m.%Y %H:%M')}"
+            ip = ((event.get('requestContext') or {}).get('identity') or {}).get('sourceIp', '')
+            cur.execute(
+                "UPDATE acts SET status = 'signed', signed_at = %s, signed_by = %s, signed_ip = %s, content_html = %s, updated_at = NOW() WHERE id = %s",
+                (now, user['user_id'], (ip or '')[:64], apply_client_signature(content or '', stamp), act_id)
+            )
+            cur.execute(
+                "INSERT INTO notifications (company_id, type, title, message, payload) VALUES (%s, %s, %s, %s, %s)",
+                (company_id, 'act_signed', 'Заказчик подписал акт',
+                 f"{user['full_name']} подписал акт № {number} по объекту {code}",
+                 json.dumps({'object_id': obj_id, 'act_id': int(act_id)}))
+            )
+            conn.commit()
+            return response(200, {'success': True, 'status': 'signed', 'signed_at': now})
+
         if is_client and method != 'GET':
             return response(403, {'error': 'Недостаточно прав'})
         client_cond = " AND a.object_id IN (SELECT object_id FROM object_access WHERE user_id = %s)" if is_client else ""
@@ -694,9 +738,12 @@ def handler(event, context):
             if not act_id:
                 return response(400, {'error': 'Не указан id акта'})
             body = json.loads(event.get('body') or '{}')
-            cur.execute("SELECT id FROM acts WHERE id = %s AND company_id = %s", (act_id, company_id))
-            if not cur.fetchone():
+            cur.execute("SELECT id, signed_at FROM acts WHERE id = %s AND company_id = %s", (act_id, company_id))
+            ex = cur.fetchone()
+            if not ex:
                 return response(404, {'error': 'Акт не найден'})
+            if ex[1] and (any(k in body for k in ('content_html', 'total_amount', 'items', 'options', 'act_number', 'act_date', 'act_type')) or body.get('status') == 'draft'):
+                return response(400, {'error': 'Заказчик уже подписал акт онлайн — изменить его нельзя'})
 
             fields = []
             values = []

@@ -8,6 +8,7 @@ import { downloadContractPdf, contractPdfBase64 } from "@/lib/downloadContractPd
 import { SendDocEmailDialog } from "@/components/crm/SendDocEmailDialog"
 import { printAct, darkenActHtml } from "@/lib/printAct"
 import { useAuth } from "@/contexts/AuthContext"
+import { DocSignBar } from "@/components/crm/DocSignBar"
 
 export default function ActView() {
   const { actId } = useParams()
@@ -19,6 +20,10 @@ export default function ActView() {
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState(false)
   const [sendOpen, setSendOpen] = useState(false)
+
+  const reload = () => {
+    if (actId) actsApi.get(Number(actId)).then(setAct)
+  }
 
   useEffect(() => {
     if (!actId) return
@@ -77,6 +82,7 @@ export default function ActView() {
             {act.status === "signed" ? "подписан" : "черновик"}
           </span>
           {!isClient && (<>
+          {!act.signed_at && (
           <Link
             to={`/cabinet/objects/${act.object_id}/acts/${act.id}/edit`}
             className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg"
@@ -84,6 +90,7 @@ export default function ActView() {
             <Icon name="Pencil" size={14} />
             Редактировать
           </Link>
+          )}
           <Link
             to={`/cabinet/objects/${act.object_id}/invoices/new?act_id=${act.id}`}
             className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
@@ -116,6 +123,27 @@ export default function ActView() {
           </button>
         </div>
       </div>
+
+      {isClient ? (
+        <DocSignBar
+          signedAt={act.signed_at}
+          isSigned={act.status === "signed"}
+          docLabel="Акт"
+          docTitle={`акт № ${act.act_number}`}
+          amountLabel="Сумма по акту"
+          amount={Number(act.total_amount)}
+          onSign={() => actsApi.sign(act.id)}
+          onDone={reload}
+        />
+      ) : (
+        act.signed_at && (
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl mb-4 p-4 flex items-center gap-3 max-w-4xl mx-auto text-sm">
+            <Icon name="BadgeCheck" size={20} className="text-emerald-400" />
+            Заказчик подписал акт онлайн{" "}
+            {new Date(act.signed_at).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
+          </div>
+        )
+      )}
 
       <div className="bg-white text-[#161616] rounded-xl p-8 sm:p-12 max-w-4xl mx-auto shadow-lg">
         <div dangerouslySetInnerHTML={{ __html: darkenActHtml(act.content_html) }} />

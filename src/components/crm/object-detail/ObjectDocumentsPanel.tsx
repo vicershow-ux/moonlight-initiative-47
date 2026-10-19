@@ -243,7 +243,7 @@ export function ObjectDocumentsPanel({
       )}
 
       <p className="text-xs text-white/40 uppercase tracking-wide mb-2 mt-6">Акты выполненных работ</p>
-      <ObjectActs objectId={object.id} />
+      <ObjectActs objectId={object.id} isClient={isClient} />
 
       <ObjectInvoices objectId={object.id} isClient={isClient} />
     </div>

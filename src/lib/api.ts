@@ -738,6 +738,7 @@ export interface Act {
   act_date: string
   act_type: string
   status: "draft" | "signed"
+  signed_at?: string | null
   options: ActOptions
   items: ActItem[]
   content_html: string
@@ -769,6 +770,15 @@ export const actsApi = {
   async get(id: number) {
     const res = await fetch(`${ACTS_URL}?id=${id}`, { headers: { ...authHeaders() } })
     return parseResponse(res) as Promise<Act>
+  },
+
+  async sign(id: number) {
+    const res = await fetch(`${ACTS_URL}?id=${id}&action=sign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: "{}",
+    })
+    return parseResponse(res) as Promise<{ success: boolean; status: string }>
   },
 
   async sendEmail(id: number, payload: { email: string; pdf_base64: string; message?: string }) {

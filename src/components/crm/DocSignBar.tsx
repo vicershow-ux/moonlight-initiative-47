@@ -36,7 +36,7 @@ export function DocSignBar({ signedAt, isSigned, docLabel, docTitle, amountLabel
       <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl mb-4 p-4 flex items-center gap-3 max-w-4xl mx-auto">
         <Icon name="BadgeCheck" size={22} className="text-emerald-400 shrink-0" />
         <div className="text-sm">
-          <p className="font-medium">{docLabel} подписан{docLabel === "Договор" ? "" : "о"}</p>
+          <p className="font-medium">{docLabel} подписан{docLabel === "Соглашение" ? "о" : ""}</p>
           {signedAt && (
             <p className="text-white/50 text-xs">
               {new Date(signedAt).toLocaleString("ru-RU", {

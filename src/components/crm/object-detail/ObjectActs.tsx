@@ -8,7 +8,7 @@ import { formatMoney } from "./utils"
 
 const formatDate = (d?: string) => (d ? new Date(d).toLocaleDateString("ru-RU") : "")
 
-export function ObjectActs({ objectId }: { objectId: number }) {
+export function ObjectActs({ objectId, isClient }: { objectId: number; isClient?: boolean }) {
   const [acts, setActs] = useState<Act[]>([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<number | null>(null)
@@ -80,6 +80,15 @@ export function ObjectActs({ objectId }: { objectId: number }) {
             >
               <Icon name={busyId === a.id ? "Loader2" : "Download"} size={15} className={busyId === a.id ? "animate-spin" : ""} />
             </button>
+            {isClient && a.status !== "signed" && (
+              <Link
+                to={`/cabinet/objects/${objectId}/acts/${a.id}`}
+                className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-[#D4AF37] hover:bg-[#B8860B] px-3 py-1.5 text-xs font-medium text-[#161616]"
+              >
+                <Icon name="PenLine" size={14} />
+                Подписать акт
+              </Link>
+            )}
           </div>
         </div>
       ))}
