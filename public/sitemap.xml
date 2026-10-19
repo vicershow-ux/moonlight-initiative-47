@@ -25,7 +25,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://fixkey.ru/uslugi/ventilyaciya-i-kondicionirovanie</loc>
+    <loc>https://fixkey.ru/uslugi/ventilyaciya</loc>
     <lastmod>2026-10-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -56,6 +56,12 @@
   </url>
   <url>
     <loc>https://fixkey.ru/uslugi/kladochnye-raboty</loc>
+    <lastmod>2026-10-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fixkey.ru/uslugi/kondicionirovanie</loc>
     <lastmod>2026-10-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -103,7 +109,19 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://fixkey.ru/uslugi/slabotochnye-raboty</loc>
+    <lastmod>2026-10-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://fixkey.ru/uslugi/stolyarnye-raboty</loc>
+    <lastmod>2026-10-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fixkey.ru/uslugi/umnyy-dom</loc>
     <lastmod>2026-10-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>

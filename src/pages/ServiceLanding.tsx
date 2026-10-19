@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { useParams } from "react-router-dom"
+import { Navigate, useParams } from "react-router-dom"
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import { LeadForm } from "@/components/LeadForm"
@@ -238,6 +238,7 @@ export default function ServiceLanding() {
     )
   }
 
+  if (slug === "ventilyaciya-i-kondicionirovanie") return <Navigate to="/uslugi/ventilyaciya" replace />
   if (!meta) return <PageNotFound />
 
   return (
