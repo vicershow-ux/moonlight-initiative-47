@@ -588,7 +588,7 @@ def handler(event: dict, context) -> dict:
             body = json.loads(event.get('body') or '{}')
             cur.execute(
                 "SELECT i.id, i.invoice_number, i.total_amount, i.status, o.email, o.object_code, i.items, i.vat_mode, "
-                "c.contract_number, c.options "
+                "c.contract_number, c.options, c.estimate_id "
                 "FROM invoices i JOIN objects o ON o.id = i.object_id LEFT JOIN contracts c ON c.id = i.contract_id "
                 "WHERE i.id = %s AND i.company_id = %s" + client_filter,
                 (inv_id, company_id, *client_args)
@@ -596,7 +596,7 @@ def handler(event: dict, context) -> dict:
             row = cur.fetchone()
             if not row:
                 return response(404, {'error': 'Счёт не найден'})
-            _, number, total, status, email, code, inv_items, vat_mode, c_number, c_opts = row
+            _, number, total, status, email, code, inv_items, vat_mode, c_number, c_opts, c_estimate = row
             contract_info = None
             if c_number is not None:
                 c_opts = c_opts if isinstance(c_opts, dict) else json.loads(c_opts or '{}')
@@ -626,7 +626,16 @@ def handler(event: dict, context) -> dict:
                 receipt_email = str(body.get('receipt_email') or email or '').strip()[:255]
                 if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', receipt_email):
                     return response(400, {'error': 'Укажите почту для электронного чека', 'need_email': True})
-                receipt = yookassa.build_receipt(settings, receipt_email, inv_items if isinstance(inv_items, list) else json.loads(inv_items or '[]'), vat_mode, amount, contract_info)
+                est_items = []
+                if c_estimate:
+                    cur.execute(
+                        "SELECT name, quantity, times, amount, category FROM estimate_items "
+                        "WHERE estimate_id = %s AND status = 'approved' ORDER BY id",
+                        (c_estimate,)
+                    )
+                    est_items = [dict(zip(['name', 'quantity', 'times', 'amount', 'category'], x)) for x in cur.fetchall()]
+                receipt = yookassa.build_receipt(settings, receipt_email, inv_items if isinstance(inv_items, list) else json.loads(inv_items or '[]'),
+                                                 vat_mode, amount, contract_info, est_items)
             data, err = yookassa.create_payment(
                 settings, amount, f'Оплата счёта № {number} по объекту {code}', return_url,
                 {'invoice_id': str(inv_id), 'company_id': str(company_id)}, receipt

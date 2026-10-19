@@ -95,7 +95,7 @@ SUBJECT_FIXES = {
     'Вентиляция и кондиционирование': 'Монтаж вентиляции и кондиционирования',
 }
 
-STAGE_RE = re.compile(r'^(Аванс|Сдача объекта|Этап\s*\d+|Полная стоимость работ|Работы)\b', re.I)
+STAGE_RE = re.compile(r'^(Аванс|Сдача объекта|Этап\s*\d+|Полная стоимость работ|Работы(?=:))', re.I)
 
 
 def service_title(work_subject):
@@ -106,7 +106,8 @@ def service_title(work_subject):
 
 def stage_of(name, last_stage=''):
     '''Этап оплаты из названия строки счёта: аванс, этап N, сдача объекта'''
-    m = STAGE_RE.match((name or '').strip())
+    name = (name or '').strip()
+    m = STAGE_RE.match(name) or STAGE_RE.match(name.split(' — ', 1)[1]) if ' — ' in name else STAGE_RE.match(name)
     if not m:
         return ''
     st = re.sub(r'\s+', ' ', m.group(1)).strip()
@@ -134,36 +135,80 @@ def contract_line_name(item_name, contract):
     return f'{title} — {stage[:1].lower() + stage[1:]}{tail}'
 
 
-def mode_for(settings, line_name):
+def mode_for(settings, line_name, stage=''):
     mode = settings.get('payment_mode') or 'auto'
     if mode != 'auto':
         return mode
+    if stage:
+        return 'advance' if stage == 'Аванс' else 'full_payment'
     return 'advance' if ' — аванс' in line_name or line_name.lower().startswith('аванс') else 'full_payment'
 
 
-def build_receipt(settings, email, items, vat_mode, total, contract=None):
-    '''Чек 54-ФЗ из позиций счёта; копейки сверяются с суммой платежа'''
+def _floor2(v):
+    return int(v * 100 + 1e-6) / 100
+
+
+def estimate_lines(estimate_items, total, stage):
+    '''Позиции сметы для чека: количество как в смете, цена пропорциональна сумме платежа'''
+    rows = []
+    for it in estimate_items or []:
+        qty = float(it.get('quantity') or 0) * (float(it.get('times') or 0) or 1)
+        amount = float(it.get('amount') or 0)
+        if qty <= 0 or amount <= 0:
+            continue
+        rows.append({'name': str(it.get('name') or 'Работы').strip(), 'qty': round(qty, 3), 'amount': amount,
+                     'category': str(it.get('category') or '').strip()})
+    base = sum(r['amount'] for r in rows)
+    if not rows or base <= 0:
+        return []
+    if len(rows) > 100:
+        groups = {}
+        for r in rows:
+            g = groups.setdefault(r['category'] or 'Прочие работы', {'name': r['category'] or 'Прочие работы', 'qty': 1.0, 'amount': 0.0})
+            g['amount'] += r['amount']
+        rows = list(groups.values())[:100]
+    k = total / base
+    suffix = f' ({stage.lower()})' if stage and stage != 'Оплата работ' and abs(k - 1) > 0.0001 else ''
+    lines = []
+    for r in rows:
+        price = _floor2(r['amount'] * k / r['qty'])
+        if price <= 0:
+            continue
+        name = r['name'][:128 - len(suffix)] + suffix
+        lines.append({'name': name, 'qty': r['qty'], 'price': price})
+    return lines
+
+
+def build_receipt(settings, email, items, vat_mode, total, contract=None, estimate_items=None):
+    '''Чек 54-ФЗ: перечень работ из сметы (для счетов по договору) или позиции счёта; копейки сверяются с суммой платежа'''
     code = vat_code_for(settings, vat_mode)
     m = re.match(r'^on_top(?:_(\d+))?$', vat_mode or '')
     k = 1 + int(m.group(1) or 20) / 100 if m else 1.0
+    items = [it for it in (items or []) if float(it.get('quantity') or 0) > 0 and float(it.get('price') or 0) > 0]
+    stage = ''
     lines = []
-    for it in items or []:
-        qty = float(it.get('quantity') or 0)
-        price = round(float(it.get('price') or 0) * k, 2)
-        if qty <= 0 or price <= 0:
-            continue
-        lines.append({'name': contract_line_name(str(it.get('name') or 'Услуга'), contract), 'qty': qty, 'price': price})
+    if contract and len(items) == 1:
+        stage = stage_of(str(items[0].get('name') or ''), contract.get('last_stage', ''))
+        if stage and estimate_items:
+            lines = estimate_lines(estimate_items, total, stage)
+    if not lines:
+        for it in items:
+            lines.append({'name': contract_line_name(str(it.get('name') or 'Услуга'), contract),
+                          'qty': float(it.get('quantity')), 'price': round(float(it.get('price')) * k, 2)})
     fallback = service_title(contract.get('work_subject')) + (f" по договору № {contract['number']}" if contract.get('number') else '') if contract else 'Оплата по счёту'
     single = [{'name': lines[0]['name'] if len(lines) == 1 else fallback, 'qty': 1.0, 'price': round(total, 2)}]
     if not lines or len(lines) > 100:
         lines = single
     diff = round(total - sum(round(ln['qty'] * ln['price'], 2) for ln in lines), 2)
     if abs(diff) >= 0.01:
-        last = lines[-1]
-        if last['qty'] == 1 and last['price'] + diff > 0:
-            last['price'] = round(last['price'] + diff, 2)
-        elif diff > 0:
-            lines.append({'name': 'Корректировка округления', 'qty': 1.0, 'price': diff})
+        ones = [ln for ln in lines if ln['qty'] == 1 and ln['price'] + diff > 0]
+        whole = [ln for ln in lines if ln['qty'] > 1 and ln['qty'] == int(ln['qty']) and ln['price'] + diff > 0]
+        if ones:
+            ones[-1]['price'] = round(ones[-1]['price'] + diff, 2)
+        elif whole and len(lines) < 100:
+            ln = whole[-1]
+            ln['qty'] -= 1
+            lines.insert(lines.index(ln) + 1, {'name': ln['name'], 'qty': 1.0, 'price': round(ln['price'] + diff, 2)})
         else:
             lines = single
     receipt = {
@@ -174,7 +219,7 @@ def build_receipt(settings, email, items, vat_mode, total, contract=None):
             'amount': {'value': f"{ln['price']:.2f}", 'currency': 'RUB'},
             'vat_code': code,
             'payment_subject': settings.get('payment_subject') or 'service',
-            'payment_mode': mode_for(settings, ln['name']),
+            'payment_mode': mode_for(settings, ln['name'], stage),
         } for ln in lines],
     }
     tax = int(settings.get('tax_system_code') or 0)
