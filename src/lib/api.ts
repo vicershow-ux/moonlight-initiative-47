@@ -2587,6 +2587,13 @@ export interface FinanceExpense {
   attachments?: ExpenseFile[]
 }
 
+export interface ExpenseExport {
+  month: string
+  company: { name: string; inn: string }
+  categories: Record<string, string>
+  expenses: (FinanceExpense & { payee_inn: string; address: string | null; document_number: string | null; author: string })[]
+}
+
 export interface ExpenseFile {
   name: string
   url: string
@@ -2678,6 +2685,10 @@ export const financeApi = {
       body: JSON.stringify(payload),
     })
     return parseResponse(res) as Promise<{ id: number; saved: boolean }>
+  },
+  async exportMonth(month: string) {
+    const res = await fetch(`${FINANCE_URL}?action=export&month=${month}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<ExpenseExport>
   },
   async uploadExpenseFile(fileName: string, data: string) {
     const res = await fetch(`${FINANCE_URL}?action=upload`, {

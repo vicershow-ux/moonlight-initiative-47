@@ -1,4 +1,5 @@
 import json
+import re
 import os
 from datetime import date
 
@@ -136,6 +137,30 @@ def handler(event: dict, context) -> dict:
             if err:
                 return response(400, {'error': err})
             return response(200, f)
+        if action == 'export' and method == 'GET':
+            month = str(params.get('month') or '')
+            if not re.match(r'^\d{4}-(0[1-9]|1[0-2])$', month):
+                return response(400, {'error': 'Укажите месяц'})
+            cur.execute(
+                "SELECT e.id, e.object_id, e.category, e.amount, e.expense_date, e.description, e.payee, e.created_at, "
+                "o.object_code, o.client_name, e.bank_operation_id IS NOT NULL, e.attachments, e.payee_inn, o.address, "
+                "b.document_number, COALESCE(u.full_name, '') "
+                "FROM company_expenses e LEFT JOIN objects o ON o.id = e.object_id "
+                "LEFT JOIN bank_operations b ON b.id = e.bank_operation_id LEFT JOIN users u ON u.id = e.created_by "
+                "WHERE e.company_id = %s AND e.expense_date >= %s::date AND e.expense_date < (%s::date + INTERVAL '1 month') "
+                "ORDER BY e.expense_date, e.id",
+                (cid, month + '-01', month + '-01')
+            )
+            keys = EXP_KEYS + ['payee_inn', 'address', 'document_number', 'author']
+            rows = []
+            for r in cur.fetchall():
+                d = dict(zip(keys, r))
+                d['amount'] = f(d['amount'])
+                rows.append(d)
+            cur.execute("SELECT name, inn FROM companies WHERE id = %s", (cid,))
+            comp = cur.fetchone() or ('', '')
+            return response(200, {'month': month, 'company': {'name': comp[0] or '', 'inn': comp[1] or ''},
+                                  'categories': CATEGORIES, 'expenses': rows})
         if action == 'attach' and method == 'POST':
             body = json.loads(event.get('body') or '{}')
             att = files.clean(cid, body.get('attachments'))

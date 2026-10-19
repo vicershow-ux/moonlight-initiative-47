@@ -7,6 +7,7 @@ import { ExpenseDialog } from "./ExpenseDialog"
 import { EXPENSE_COLORS, EXPENSE_ICONS } from "./expenseMeta"
 import { card, dateRu, rub } from "./format"
 import { ExpenseFileThumb, useExpenseUpload } from "./ExpenseFiles"
+import { ExpenseExportButton } from "./ExpenseExportButton"
 
 export function FinanceExpenses({ data, onChanged }: { data: FinanceData; onChanged: () => void }) {
   const [open, setOpen] = useState(false)
@@ -68,13 +69,16 @@ export function FinanceExpenses({ data, onChanged }: { data: FinanceData; onChan
           <Icon name="Wallet" size={16} className="text-[#D4AF37]" />
           Расходы
         </p>
-        <button
-          onClick={add}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-[#D4AF37] px-3 py-2 text-sm font-medium text-[#161616] hover:bg-[#B8860B]"
-        >
-          <Icon name="Plus" size={15} />
-          Добавить расход
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <ExpenseExportButton />
+          <button
+            onClick={add}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[#D4AF37] px-3 py-2 text-sm font-medium text-[#161616] hover:bg-[#B8860B]"
+          >
+            <Icon name="Plus" size={15} />
+            Добавить расход
+          </button>
+        </div>
       </div>
 
       {byCat.length > 0 && (
