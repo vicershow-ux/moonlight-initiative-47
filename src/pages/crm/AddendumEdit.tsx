@@ -3,7 +3,8 @@ import { Link, useNavigate, useParams } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { darkenActHtml } from "@/lib/printAct"
-import { addendaApi, AddendumItem, AddendumOptions, contractsApi, Contract, estimatesApi } from "@/lib/api"
+import { addendaApi, AddendumItem, AddendumOptions, contractsApi, Contract, estimatesApi, companyApi, CompanyData } from "@/lib/api"
+import { SignStampToggles } from "@/components/crm/common/SignStampToggles"
 
 const n = (v: unknown) => {
   const x = typeof v === "string" ? parseFloat(v.replace(",", ".").replace(/\s/g, "")) : Number(v)
@@ -76,11 +77,18 @@ export default function AddendumEdit() {
   const [deadline, setDeadline] = useState("")
   const [reason, setReason] = useState("")
   const [custom, setCustom] = useState("")
+  const [applySignature, setApplySignature] = useState(false)
+  const [applyStamp, setApplyStamp] = useState(false)
+  const [company, setCompany] = useState<CompanyData | null>(null)
   const [previewHtml, setPreviewHtml] = useState("")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [importing, setImporting] = useState(false)
   const [error, setError] = useState("")
+
+  useEffect(() => {
+    companyApi.get().then(setCompany).catch(() => null)
+  }, [])
 
   useEffect(() => {
     const cid = Number(contractId)
@@ -102,6 +110,8 @@ export default function AddendumEdit() {
           setDeadline(o.new_deadline || "")
           setReason(o.deadline_reason || "")
           setCustom(o.custom_terms || "")
+          setApplySignature(!!o.apply_signature)
+          setApplyStamp(!!o.apply_stamp)
         } else {
           const last = list.addenda[list.addenda.length - 1]
           setNumber(String(list.addenda.length + 1))
@@ -126,8 +136,10 @@ export default function AddendumEdit() {
       new_deadline: deadline,
       deadline_reason: reason,
       custom_terms: custom,
+      apply_signature: applySignature,
+      apply_stamp: applyStamp,
     }),
-    [items, removed, oldTotal, manual, newTotal, paymentTerms, changeDeadline, deadline, reason, custom],
+    [items, removed, oldTotal, manual, newTotal, paymentTerms, changeDeadline, deadline, reason, custom, applySignature, applyStamp],
   )
 
   const autoTotal =
@@ -227,6 +239,16 @@ export default function AddendumEdit() {
                   <option value="signed">Подписано</option>
                 </select>
               </label>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs text-white/50">Подпись и печать Исполнителя</span>
+              <SignStampToggles
+                signatureUrl={company?.signature_url}
+                stampUrl={company?.stamp_url}
+                applySignature={applySignature}
+                applyStamp={applyStamp}
+                onChange={(k, v) => (k === "apply_signature" ? setApplySignature(v) : setApplyStamp(v))}
+              />
             </div>
           </div>
 

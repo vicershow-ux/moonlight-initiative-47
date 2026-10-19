@@ -2313,6 +2313,8 @@ export interface AddendumOptions {
   new_deadline?: string
   deadline_reason?: string
   custom_terms?: string
+  apply_signature?: boolean
+  apply_stamp?: boolean
 }
 
 export interface ContractAddendum {

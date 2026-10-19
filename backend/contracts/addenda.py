@@ -76,8 +76,11 @@ def group4(v):
     return ' '.join(d[i:i + 4] for i in range(0, len(d), 4))
 
 
-def parties(company, client, signature):
-    comp_name, inn, legal_address, bank_name, bik, account, corr, contact, phone, email = company
+def parties(company, client, signature, opts=None):
+    opts = opts or {}
+    comp_name, inn, legal_address, bank_name, bik, account, corr, contact, phone, email = company[:10]
+    sig_url = company[10] if len(company) > 10 else ''
+    stamp_url = company[11] if len(company) > 11 else ''
     client_name, address, client_phone, client_email = client
     contractor = comp_name or contact or 'Исполнитель'
     short = contact or comp_name
@@ -94,6 +97,14 @@ def parties(company, client, signature):
     cl_rows = ''.join([info_row('Адрес объекта', address), info_row('Телефон', client_phone), info_row('E-mail', client_email)])
     label = 'margin:0 0 6px;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:#4A2E06'
     box = '<div style="position:relative;height:84px;border-bottom:1.5px solid #5C3A11;margin:0 0 4px">{}</div>'
+    exec_sig = ''
+    if opts.get('apply_signature') and sig_url:
+        exec_sig += (f'<img src="{h(sig_url)}" crossorigin="anonymous" alt="" '
+                     'style="position:absolute;left:10px;bottom:4px;height:62px;max-width:200px;object-fit:contain"/>')
+    if opts.get('apply_stamp') and stamp_url:
+        exec_sig += (f'<img src="{h(stamp_url)}" crossorigin="anonymous" alt="" '
+                     'style="position:absolute;right:0;top:20px;height:118px;width:118px;object-fit:contain;opacity:0.9"/>')
+    pad = '60px' if (opts.get('apply_stamp') and stamp_url) else '0'
     client_sig = ''
     if signature:
         client_sig = ('<div style="position:absolute;left:0;bottom:6px;border:2px solid #2e7d32;color:#2e7d32;border-radius:8px;'
@@ -107,7 +118,7 @@ def parties(company, client, signature):
 <table style="width:100%;border-collapse:collapse"><tr><td colspan="2" style="{name_row}">{h(client_name or '')}</td></tr>{cl_rows}
 <tr><td colspan="2" style="height:6px"></td></tr></table></div></td></tr>
 <tr style="page-break-inside:avoid;break-inside:avoid">
-<td style="width:50%;vertical-align:top;padding:36px 24px 0 0"><p style="{label}">ОТ ИМЕНИ ИСПОЛНИТЕЛЯ</p>{box.format('')}
+<td style="width:50%;vertical-align:top;padding:36px 24px {pad} 0"><p style="{label}">ОТ ИМЕНИ ИСПОЛНИТЕЛЯ</p>{box.format(exec_sig)}
 <p style="margin:0">{h(short or '')}</p><p style="font-size:11px;color:#555;margin:2px 0 0">(подпись)</p></td>
 <td style="width:50%;vertical-align:top;padding:36px 0 0 24px"><p style="{label}">ОТ ИМЕНИ ЗАКАЗЧИКА</p>{box.format(client_sig)}
 <p style="margin:0">{h(client_name or '')}</p><p style="font-size:11px;color:#555;margin:2px 0 0">(подпись)</p></td>
@@ -174,7 +185,7 @@ def build_addendum_html(contract, obj, company, opts, number, add_date, money_wo
 совместно именуемые «Стороны», заключили настоящее Дополнительное соглашение (далее — «Соглашение») к договору подряда № {h(str(c_number))} от {h(ru_date(c_date))} (далее — «Договор») о нижеследующем:</p>
 {''.join(parts)}
 <hr style="border:none;border-top:1.5px solid #7A4E10;margin:26px 0 14px" />
-{parties(company, (obj[0], obj[1], obj[2] if len(obj) > 2 else '', obj[3] if len(obj) > 3 else ''), signature)}
+{parties(company, (obj[0], obj[1], obj[2] if len(obj) > 2 else '', obj[3] if len(obj) > 3 else ''), signature, opts)}
 </div>'''
     return html, new_total
 
@@ -190,10 +201,10 @@ def load_context(cur, company_id, contract_id):
     if not r:
         return None
     cur.execute(
-        "SELECT name, inn, legal_address, bank_name, bik, account_number, correspondent_account, contact_full_name, phone, email "
-        "FROM companies WHERE id = %s", (company_id,)
+        "SELECT name, inn, legal_address, bank_name, bik, account_number, correspondent_account, contact_full_name, phone, email, "
+        "signature_url, stamp_url FROM companies WHERE id = %s", (company_id,)
     )
-    comp = tuple(v or '' for v in (cur.fetchone() or ('',) * 10))
+    comp = tuple(v or '' for v in (cur.fetchone() or ('',) * 12))
     return {'contract': (r[0], r[1], r[2]), 'object_id': r[3], 'obj': (r[4], r[5], r[6], r[7]), 'company': comp}
 
 
