@@ -1,4 +1,5 @@
 import json
+import re
 import os
 import base64
 import uuid
@@ -59,6 +60,53 @@ LIST_CONFIG = {
     'expertise': {'table': 'site_expertise_items', 'fields': EXPERTISE_FIELDS, 'text_fields': ['title', 'description', 'icon']},
     'faq': {'table': 'site_faq_items', 'fields': FAQ_FIELDS, 'text_fields': ['question', 'answer']},
 }
+
+
+TRANSLIT = {
+    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e', 'ж': 'zh', 'з': 'z',
+    'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r',
+    'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'c', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+    'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
+}
+
+
+def slugify(value):
+    out = ''.join(TRANSLIT.get(ch, ch) for ch in value.lower().strip())
+    return re.sub(r'[^a-z0-9]+', '-', out).strip('-')
+
+
+def sync_service_seo(cur, conn, company_id):
+    '''Добавляет в SEO страницы для новых направлений из раздела «Услуги»'''
+    cur.execute(
+        "SELECT DISTINCT category FROM services WHERE company_id = %s AND is_active = true "
+        "AND category <> '' AND price > 0", (company_id,)
+    )
+    cats = [r[0] for r in cur.fetchall()]
+    if not cats:
+        return
+    cur.execute("SELECT page_path FROM site_page_seo WHERE company_id = %s", (company_id,))
+    existing = {r[0] for r in cur.fetchall()}
+    cur.execute("SELECT COALESCE(MAX(sort_order), 0) FROM site_page_seo WHERE company_id = %s", (company_id,))
+    order = cur.fetchone()[0]
+    added = False
+    for cat in sorted(cats):
+        path = f"/uslugi/{slugify(cat)}"
+        if path in existing or path == '/uslugi/':
+            continue
+        order += 1
+        cur.execute(
+            "INSERT INTO site_page_seo (company_id, page_path, page_kind, page_label, meta_title, meta_description, "
+            "h1_title, intro_text, sort_order) VALUES (%s, %s, 'service', %s, %s, %s, %s, %s, %s) "
+            "ON CONFLICT (company_id, page_path) DO NOTHING",
+            (company_id, path, cat, f"{cat} в Хабаровске — цены на услуги",
+             f"{cat} в Хабаровске: прайс по каждой позиции, фиксированная смета до начала работ, бесплатный замер, гарантия 3 года.",
+             f"{cat} в Хабаровске",
+             f"Выполняем {cat.lower()} в Хабаровске и районе. Работаем по фиксированной смете, соблюдаем технологию и сдаём результат с гарантией.",
+             order)
+        )
+        added = True
+    if added:
+        conn.commit()
 
 
 def get_conn():
@@ -280,6 +328,7 @@ def handler(event: dict, context) -> dict:
                         'meta_keywords', 'h1_title', 'intro_text', 'og_image', 'is_indexed']
 
             if method == 'GET':
+                sync_service_seo(cur, conn, company_id)
                 cur.execute(
                     "SELECT id, page_path, page_kind, page_label, meta_title, meta_description, "
                     "meta_keywords, h1_title, intro_text, og_image, is_indexed, updated_at "
