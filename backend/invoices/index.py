@@ -230,7 +230,10 @@ def mark_paid_online(cur, conn, company_id, inv_id, payment_row_id, amount):
 def sync_payment(cur, conn, pay_row):
     '''Сверяет статус платежа с ЮKassa и применяет оплату'''
     row_id, company_id, inv_id, provider_id, amount = pay_row
-    data, err = yookassa.get_payment(provider_id)
+    settings = yookassa.load_settings(cur, company_id)
+    if not settings.get('shop_id'):
+        return 'unknown'
+    data, err = yookassa.get_payment(settings, provider_id)
     if err or not data:
         return 'unknown'
     status = data.get('status') or 'pending'
@@ -242,6 +245,79 @@ def sync_payment(cur, conn, pay_row):
         cur.execute("UPDATE invoice_payments SET status = 'canceled' WHERE id = %s AND applied = FALSE", (row_id,))
         conn.commit()
     return status
+
+
+def pay_settings(cur, conn, user, method, body, params):
+    '''Раздел «Финансы → ЮKassa»: чтение, сохранение и проверка подключения'''
+    company_id = user['company_id']
+    s = yookassa.load_settings(cur, company_id)
+
+    def view(extra=None):
+        cur.execute("SELECT 1 FROM company_payment_settings WHERE company_id = %s", (company_id,))
+        out = {k: v for k, v in s.items() if k != 'secret_key'}
+        out['secret_key_masked'] = yookassa.mask(s.get('secret_key'))
+        out['has_secret'] = bool(s.get('secret_key'))
+        out['from_env'] = not cur.fetchone() and bool(s.get('secret_key'))
+        cur.execute(
+            "SELECT p.amount, p.status, p.created_at, p.paid_at, p.receipt_sent, i.invoice_number, o.object_code "
+            "FROM invoice_payments p JOIN invoices i ON i.id = p.invoice_id JOIN objects o ON o.id = i.object_id "
+            "WHERE p.company_id = %s ORDER BY p.id DESC LIMIT 20",
+            (company_id,)
+        )
+        keys = ['amount', 'status', 'created_at', 'paid_at', 'receipt_sent', 'invoice_number', 'object_code']
+        out['recent'] = [dict(zip(keys, r)) for r in cur.fetchall()]
+        if extra:
+            out.update(extra)
+        return response(200, out)
+
+    if method == 'GET':
+        return view()
+
+    if method == 'POST' and params.get('check') == '1':
+        if not s.get('shop_id') or not s.get('secret_key'):
+            return response(400, {'error': 'Сначала укажите shopId и секретный ключ'})
+        ok, err, info = yookassa.check_credentials(s)
+        if not ok:
+            return response(200, {'check': {'ok': False, 'error': err}})
+        fiscal = bool((info or {}).get('fiscalization_enabled') or (info or {}).get('fiscalization', {}).get('enabled'))
+        return response(200, {'check': {'ok': True, 'test': bool((info or {}).get('test')), 'fiscalization': fiscal,
+                                        'account_id': (info or {}).get('account_id', '')}})
+
+    if method == 'PUT':
+        shop_id = str(body.get('shop_id') if body.get('shop_id') is not None else s['shop_id']).strip()[:50]
+        if shop_id and not shop_id.isdigit():
+            return response(400, {'error': 'shopId состоит только из цифр'})
+        secret = str(body.get('secret_key') or '').strip()
+        if secret and not re.match(r'^(live|test)_[A-Za-z0-9_\-]{10,}$', secret):
+            return response(400, {'error': 'Секретный ключ должен начинаться с live_ или test_'})
+        secret = secret or s.get('secret_key') or ''
+        tax = int(body.get('tax_system_code', s['tax_system_code']) or 0)
+        vat = int(body.get('default_vat_code', s['default_vat_code']) or 1)
+        subject = str(body.get('payment_subject') or s['payment_subject'])
+        mode = str(body.get('payment_mode') or s['payment_mode'])
+        if tax not in yookassa.TAX_SYSTEMS or vat not in yookassa.VAT_CODES or subject not in yookassa.SUBJECTS or mode not in yookassa.MODES:
+            return response(400, {'error': 'Проверьте параметры чека'})
+        enabled = bool(body.get('enabled', s['enabled']))
+        receipts = bool(body.get('receipts_enabled', s['receipts_enabled']))
+        if enabled and (not shop_id or not secret):
+            return response(400, {'error': 'Для включения оплаты укажите shopId и секретный ключ'})
+        cur.execute(
+            "INSERT INTO company_payment_settings (company_id, enabled, shop_id, secret_key, receipts_enabled, tax_system_code, "
+            "default_vat_code, use_invoice_vat, payment_subject, payment_mode, updated_at, updated_by) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), %s) ON CONFLICT (company_id) DO UPDATE SET "
+            "enabled = EXCLUDED.enabled, shop_id = EXCLUDED.shop_id, secret_key = EXCLUDED.secret_key, "
+            "receipts_enabled = EXCLUDED.receipts_enabled, tax_system_code = EXCLUDED.tax_system_code, "
+            "default_vat_code = EXCLUDED.default_vat_code, use_invoice_vat = EXCLUDED.use_invoice_vat, "
+            "payment_subject = EXCLUDED.payment_subject, payment_mode = EXCLUDED.payment_mode, updated_at = NOW(), updated_by = EXCLUDED.updated_by",
+            (company_id, enabled, shop_id, secret, receipts, tax, vat, bool(body.get('use_invoice_vat', s['use_invoice_vat'])),
+             subject, mode, user['user_id'])
+        )
+        conn.commit()
+        s = yookassa.load_settings(cur, company_id)
+        return view({'saved': True})
+
+    return response(405, {'error': 'Метод не поддерживается'})
+
 
 
 def handle_webhook(event):
@@ -297,24 +373,33 @@ def handler(event: dict, context) -> dict:
         action = params.get('action')
 
         if method == 'GET' and action == 'pay_config':
-            return response(200, {'online': yookassa.configured()})
+            return response(200, {'online': yookassa.configured(yookassa.load_settings(cur, company_id))})
+
+        if action == 'pay_settings':
+            if user['role'] not in ('owner', 'admin'):
+                return response(403, {'error': 'Настройки кассы доступны руководителю'})
+            return pay_settings(cur, conn, user, method, json.loads(event.get('body') or '{}') if method in ('PUT', 'POST') else {}, params)
 
         if method == 'POST' and action == 'pay':
-            if not yookassa.configured():
+            settings = yookassa.load_settings(cur, company_id)
+            if not yookassa.configured(settings):
                 return response(400, {'error': 'Онлайн-оплата пока не подключена подрядчиком'})
             body = json.loads(event.get('body') or '{}')
             cur.execute(
-                "SELECT i.id, i.invoice_number, i.total_amount, i.status, o.email, o.object_code "
+                "SELECT i.id, i.invoice_number, i.total_amount, i.status, o.email, o.object_code, i.items, i.vat_mode "
                 "FROM invoices i JOIN objects o ON o.id = i.object_id WHERE i.id = %s AND i.company_id = %s" + client_filter,
                 (inv_id, company_id, *client_args)
             )
             row = cur.fetchone()
             if not row:
                 return response(404, {'error': 'Счёт не найден'})
-            _, number, total, status, email, code = row
+            _, number, total, status, email, code, inv_items, vat_mode = row
             if status == 'paid':
                 return response(400, {'error': 'Счёт уже оплачен'})
             amount = round(float(total or 0), 2)
+            m = re.match(r'^on_top(?:_(\d+))?$', vat_mode or '')
+            if m:
+                amount = round(amount * (1 + int(m.group(1) or 20) / 100), 2)
             if amount <= 0:
                 return response(400, {'error': 'В счёте нет суммы к оплате'})
             return_url = str(body.get('return_url') or '')
@@ -322,24 +407,31 @@ def handler(event: dict, context) -> dict:
                 return response(400, {'error': 'Некорректный адрес возврата'})
             cur.execute(
                 "SELECT confirmation_url FROM invoice_payments WHERE invoice_id = %s AND status = 'pending' "
-                "AND amount = %s AND created_at > NOW() - INTERVAL '50 minutes' ORDER BY id DESC LIMIT 1",
-                (inv_id, amount)
+                "AND amount = %s AND receipt_sent = %s AND created_at > NOW() - INTERVAL '50 minutes' ORDER BY id DESC LIMIT 1",
+                (inv_id, amount, bool(settings.get('receipts_enabled')))
             )
             fresh = cur.fetchone()
             if fresh and fresh[0]:
                 return response(200, {'confirmation_url': fresh[0]})
+            receipt = None
+            receipt_email = ''
+            if settings.get('receipts_enabled'):
+                receipt_email = str(body.get('receipt_email') or email or '').strip()[:255]
+                if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', receipt_email):
+                    return response(400, {'error': 'Укажите почту для электронного чека', 'need_email': True})
+                receipt = yookassa.build_receipt(settings, receipt_email, inv_items if isinstance(inv_items, list) else json.loads(inv_items or '[]'), vat_mode, amount)
             data, err = yookassa.create_payment(
-                amount, f'Оплата счёта № {number} по объекту {code}', return_url,
-                {'invoice_id': str(inv_id), 'company_id': str(company_id)}, (email or '').strip()
+                settings, amount, f'Оплата счёта № {number} по объекту {code}', return_url,
+                {'invoice_id': str(inv_id), 'company_id': str(company_id)}, receipt
             )
             if err or not data:
                 print(f'yookassa create failed: {err}')
                 return response(502, {'error': f'Не удалось создать платёж: {err}'})
             url = ((data.get('confirmation') or {}).get('confirmation_url')) or ''
             cur.execute(
-                "INSERT INTO invoice_payments (company_id, invoice_id, user_id, provider_payment_id, amount, status, confirmation_url) "
-                "VALUES (%s, %s, %s, %s, %s, 'pending', %s) ON CONFLICT DO NOTHING",
-                (company_id, inv_id, user['user_id'], data['id'], amount, url)
+                "INSERT INTO invoice_payments (company_id, invoice_id, user_id, provider_payment_id, amount, status, confirmation_url, receipt_email, receipt_sent) "
+                "VALUES (%s, %s, %s, %s, %s, 'pending', %s, %s, %s) ON CONFLICT DO NOTHING",
+                (company_id, inv_id, user['user_id'], data['id'], amount, url, receipt_email, bool(receipt))
             )
             conn.commit()
             return response(200, {'confirmation_url': url})

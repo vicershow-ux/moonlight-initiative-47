@@ -2189,11 +2189,11 @@ export const invoicesApi = {
     return parseResponse(res) as Promise<{ online: boolean }>
   },
 
-  async pay(id: number, returnUrl: string) {
+  async pay(id: number, returnUrl: string, receiptEmail?: string) {
     const res = await fetch(`${INVOICES_URL}?action=pay&id=${id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify({ return_url: returnUrl }),
+      body: JSON.stringify({ return_url: returnUrl, receipt_email: receiptEmail }),
     })
     return parseResponse(res) as Promise<{ confirmation_url: string }>
   },
@@ -2405,3 +2405,44 @@ export const addendaApi = {
     return parseResponse(res)
   },
 }
+
+export interface PaySettings {
+  enabled: boolean
+  shop_id: string
+  secret_key_masked: string
+  has_secret: boolean
+  from_env: boolean
+  receipts_enabled: boolean
+  tax_system_code: number
+  default_vat_code: number
+  use_invoice_vat: boolean
+  payment_subject: string
+  payment_mode: string
+  updated_at: string | null
+  recent: { amount: number; status: string; created_at: string; paid_at: string | null; receipt_sent: boolean; invoice_number: string; object_code: string }[]
+}
+
+export const paySettingsApi = {
+  async get() {
+    const res = await fetch(`${INVOICES_URL}?action=pay_settings`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<PaySettings>
+  },
+  async save(payload: Partial<PaySettings> & { secret_key?: string }) {
+    const res = await fetch(`${INVOICES_URL}?action=pay_settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<PaySettings>
+  },
+  async check() {
+    const res = await fetch(`${INVOICES_URL}?action=pay_settings&check=1`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: "{}",
+    })
+    return parseResponse(res) as Promise<{ check: { ok: boolean; error?: string; test?: boolean; fiscalization?: boolean; account_id?: string } }>
+  },
+}
+
+export const INVOICES_WEBHOOK_URL = `${INVOICES_URL}?action=yookassa_webhook`

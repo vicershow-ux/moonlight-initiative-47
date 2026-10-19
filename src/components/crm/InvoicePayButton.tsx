@@ -75,6 +75,8 @@ export function InvoicePayButton({ invoiceId, amountLabel, className = "" }: { i
   const [enabled, setEnabled] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
+  const [askEmail, setAskEmail] = useState(false)
+  const [email, setEmail] = useState("")
 
   useEffect(() => {
     onlineEnabled().then(setEnabled)
@@ -88,11 +90,17 @@ export function InvoicePayButton({ invoiceId, amountLabel, className = "" }: { i
     try {
       const url = new URL(window.location.href)
       url.searchParams.set("paid_invoice", String(invoiceId))
-      const { confirmation_url } = await invoicesApi.pay(invoiceId, url.toString())
+      const { confirmation_url } = await invoicesApi.pay(invoiceId, url.toString(), askEmail ? email.trim() : undefined)
       sessionStorage.setItem(PENDING_KEY, String(invoiceId))
       window.location.href = confirmation_url
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось перейти к оплате")
+      const msg = e instanceof Error ? e.message : "Не удалось перейти к оплате"
+      if (msg.includes("почту для электронного чека")) {
+        setAskEmail(true)
+        if (askEmail) setError("Проверьте адрес почты")
+      } else {
+        setError(msg)
+      }
       setBusy(false)
     }
   }
@@ -107,6 +115,27 @@ export function InvoicePayButton({ invoiceId, amountLabel, className = "" }: { i
         <Icon name={busy ? "Loader2" : "CreditCard"} size={14} className={busy ? "animate-spin" : ""} />
         Оплатить онлайн{amountLabel ? ` ${amountLabel}` : ""}
       </button>
+      {askEmail && (
+        <div className="flex flex-col gap-1 mt-1">
+          <p className="text-xs text-white/50">Куда прислать электронный чек?</p>
+          <div className="flex gap-1">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@mail.ru"
+              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-[#161616] px-2.5 py-1.5 text-sm outline-none focus:border-emerald-500/60"
+            />
+            <button
+              onClick={pay}
+              disabled={busy || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())}
+              className="rounded-lg bg-emerald-500 px-3 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
+            >
+              Далее
+            </button>
+          </div>
+        </div>
+      )}
       {error && <p className="text-xs text-red-400">{error}</p>}
     </div>
   )
