@@ -44,6 +44,10 @@ export const actPrintStyles = `
   ${docBrandStyles}
 `
 
+export function printAddendum(doc: { addendum_number: string; content_html: string }): void {
+  printHtml(`Доп. соглашение № ${doc.addendum_number}`, `${docBrandHeader("")}${darkenActHtml(doc.content_html)}`, actPrintStyles, { paginate: true })
+}
+
 export function printAct(act: { act_number: string; content_html: string }): void {
   printHtml(`Акт № ${act.act_number}`, `${docBrandHeader("")}${darkenActHtml(act.content_html)}`, actPrintStyles, { paginate: true })
 }

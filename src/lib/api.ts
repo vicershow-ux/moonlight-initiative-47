@@ -2306,6 +2306,7 @@ export interface ContractAddendum {
   content_html?: string
   total_amount: number
   contract_number?: string
+  signed_at?: string | null
   created_at: string
 }
 
@@ -2344,6 +2345,14 @@ export const addendaApi = {
       body: JSON.stringify(payload),
     })
     return parseResponse(res) as Promise<{ id: number; object_id: number }>
+  },
+  async sign(id: number) {
+    const res = await fetch(`${CONTRACTS_URL}?entity=addendum&action=sign&id=${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: "{}",
+    })
+    return parseResponse(res) as Promise<{ success: boolean; status: string }>
   },
   async remove(id: number) {
     const res = await fetch(`${CONTRACTS_URL}?entity=addendum&id=${id}`, { method: "DELETE", headers: { ...authHeaders() } })

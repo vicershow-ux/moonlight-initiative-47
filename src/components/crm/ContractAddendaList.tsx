@@ -65,13 +65,20 @@ export function ContractAddendaList({ objectId, contractId, isClient, compact }:
               </span>
               <span className="flex items-center gap-2 shrink-0">
                 <span className="text-white/60">{money(a.total_amount)}</span>
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] ${
-                    a.status === "signed" ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"
-                  }`}
-                >
-                  {a.status === "signed" ? "Подписано" : "Черновик"}
-                </span>
+                {isClient && a.status !== "signed" ? (
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-[#D4AF37] px-2.5 py-1 text-[11px] font-medium text-[#161616]">
+                    <Icon name="PenLine" size={12} />
+                    Подписать
+                  </span>
+                ) : (
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] ${
+                      a.status === "signed" ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"
+                    }`}
+                  >
+                    {a.status === "signed" ? "Подписано" : "Черновик"}
+                  </span>
+                )}
               </span>
             </Link>
           ))}

@@ -347,7 +347,8 @@ def handler(event: dict, context) -> dict:
 
         if params.get('entity') == 'addendum':
             body = json.loads(event.get('body') or '{}') if method in ('POST', 'PUT') else {}
-            return addenda.handle(cur, conn, user, method, params, body, response, has_object_access, money_words)
+            ip = ((event.get('requestContext') or {}).get('identity') or {}).get('sourceIp', '')
+            return addenda.handle(cur, conn, user, method, params, body, response, has_object_access, money_words, ip)
 
         if is_client and method != 'GET':
             return response(403, {'error': 'Недостаточно прав'})

@@ -4,8 +4,8 @@ import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { addendaApi, ContractAddendum } from "@/lib/api"
 import { downloadContractPdf } from "@/lib/downloadContractPdf"
-import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
-import { printHtml } from "@/lib/printHtml"
+import { printAddendum, darkenActHtml } from "@/lib/printAct"
+import { AddendumSignBar } from "@/components/crm/addendum/AddendumSignBar"
 import { useAuth } from "@/contexts/AuthContext"
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog"
 
@@ -19,11 +19,14 @@ export default function AddendumView() {
   const [downloading, setDownloading] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  useEffect(() => {
+  const load = () =>
     addendaApi
       .get(Number(addendumId))
       .then(setDoc)
       .catch(() => navigate(`/cabinet/objects/${objectId}`))
+
+  useEffect(() => {
+    load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addendumId])
 
@@ -38,7 +41,7 @@ export default function AddendumView() {
   }
 
   const title = `Доп. соглашение № ${doc.addendum_number}`
-  const html = doc.content_html || ""
+  const html = darkenActHtml(doc.content_html || "")
 
   const download = async () => {
     setDownloading(true)
@@ -67,7 +70,7 @@ export default function AddendumView() {
           >
             {doc.status === "signed" ? "подписано" : "черновик"}
           </span>
-          {!isClient && (
+          {!isClient && !doc.signed_at && (
             <>
               <Link
                 to={`/cabinet/objects/${objectId}/contracts/${contractId}/addenda/${doc.id}/edit`}
@@ -86,7 +89,7 @@ export default function AddendumView() {
             </>
           )}
           <button
-            onClick={() => printHtml(title, `${docBrandHeader("")}${html}`, docBrandStyles)}
+            onClick={() => printAddendum({ addendum_number: doc.addendum_number, content_html: doc.content_html || "" })}
             title="Печать"
             className="flex items-center justify-center w-9 h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg"
           >
@@ -103,8 +106,19 @@ export default function AddendumView() {
         </div>
       </div>
 
-      <div className="bg-white text-[#161616] rounded-xl p-8 sm:p-12 max-w-4xl mx-auto shadow-lg">
-        <div className="contract-content leading-relaxed text-sm" dangerouslySetInnerHTML={{ __html: html }} />
+      {isClient ? (
+        <AddendumSignBar doc={doc} onDone={load} />
+      ) : (
+        doc.signed_at && (
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl mb-4 p-4 flex items-center gap-3 max-w-4xl mx-auto text-sm">
+            <Icon name="BadgeCheck" size={20} className="text-emerald-400" />
+            Заказчик подписал онлайн {new Date(doc.signed_at).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
+          </div>
+        )
+      )}
+
+      <div className="bg-white rounded-xl p-6 md:p-10 max-w-4xl mx-auto shadow-xl overflow-x-auto">
+        <div dangerouslySetInnerHTML={{ __html: html }} />
       </div>
 
       <ConfirmDeleteDialog

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
+import { darkenActHtml } from "@/lib/printAct"
 import { addendaApi, AddendumItem, AddendumOptions, contractsApi, Contract, estimatesApi } from "@/lib/api"
 
 const n = (v: unknown) => {
@@ -339,7 +340,7 @@ export default function AddendumEdit() {
           <p className="text-xs text-white/40 uppercase tracking-wide mb-2">Предпросмотр</p>
           <div className="bg-white text-[#161616] rounded-xl p-6 sm:p-8 shadow-lg max-h-[85vh] overflow-y-auto">
             {previewHtml ? (
-              <div className="contract-content leading-relaxed text-sm" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+              <div dangerouslySetInnerHTML={{ __html: darkenActHtml(previewHtml) }} />
             ) : (
               <div className="flex justify-center py-16">
                 <Icon name="Loader2" size={22} className="animate-spin text-black/30" />

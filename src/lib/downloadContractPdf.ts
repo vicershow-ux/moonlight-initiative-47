@@ -11,8 +11,9 @@ export async function contractPdfBase64(contentHtml: string, contractNumber: str
 }
 
 async function renderContractPdf(contentHtml: string, contractNumber: string, mode: "save" | "base64"): Promise<string | void> {
-  const isNamed = /^(Акт|Счёт) /.test(contractNumber)
-  const title = contractNumber.startsWith("Акт") ? contractNumber : `Договор № ${contractNumber}`
+  const isNamed = /^(Акт|Счёт|ДС) /.test(contractNumber)
+  const isAddendum = contractNumber.startsWith("ДС ")
+  const title = contractNumber.startsWith("Акт") || isAddendum ? contractNumber : `Договор № ${contractNumber}`
   return renderPagedPdf(
     (root) => {
       root.style.color = "#161616"
@@ -24,7 +25,7 @@ async function renderContractPdf(contentHtml: string, contractNumber: string, mo
     .pdf-doc h3 { margin: 20px 0 8px; }
     .pdf-doc h2 { margin: 24px 0 10px; }
     ${docBrandStyles}
-  </style>${docBrandHeader(contractNumber.startsWith("Акт") ? title : "")}<div class="pdf-doc">${contentHtml}</div>`
+  </style>${docBrandHeader(contractNumber.startsWith("Акт") || isAddendum ? title : "")}<div class="pdf-doc">${contentHtml}</div>`
     },
     { filename: isNamed ? `${contractNumber}.pdf` : `Договор №${contractNumber}.pdf`, mode },
   )
