@@ -17,6 +17,7 @@ export function useBankAutoSync(enabled: boolean) {
         .autosync()
         .then((r) => {
           if (r.marked) window.dispatchEvent(new Event("invoice-paid"))
+          if (r.debits) window.dispatchEvent(new Event("bank-debits"))
         })
         .catch(() => null)
     }

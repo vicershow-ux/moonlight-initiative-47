@@ -459,7 +459,7 @@ def open_invoices(cur, company_id):
 
 
 def bank_sync(cur, conn, company_id, force=False):
-    '''Загружает новые поступления из Т-Банка и сопоставляет их со счетами'''
+    '''Загружает операции из Т-Банка: поступления сопоставляет со счетами, списания оставляет на разбор в расходы'''
     s = tbank.load_settings(cur, company_id)
     if not tbank.configured(s):
         return {'skipped': 'not_configured'}
@@ -473,16 +473,20 @@ def bank_sync(cur, conn, company_id, force=False):
         conn.commit()
         return {'error': err}
     new_ops = []
+    debits = 0
     for op in ops:
         cur.execute(
-            "INSERT INTO bank_operations (company_id, operation_id, account_number, operation_date, amount, purpose, payer_name, payer_inn, document_number) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (company_id, provider, operation_id) DO NOTHING RETURNING id",
+            "INSERT INTO bank_operations (company_id, operation_id, account_number, operation_date, amount, purpose, payer_name, payer_inn, document_number, direction) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (company_id, provider, operation_id) DO NOTHING RETURNING id",
             (company_id, op['operation_id'], s['account_number'], op['date'], op['amount'], op['purpose'],
-             op['payer_name'], op['payer_inn'], op['document_number'])
+             op['payer_name'], op['payer_inn'], op['document_number'], op['direction'])
         )
         r = cur.fetchone()
         if r:
-            new_ops.append((r[0], op))
+            if op['direction'] == 'credit':
+                new_ops.append((r[0], op))
+            else:
+                debits += 1
     conn.commit()
     marked = 0
     invoices = open_invoices(cur, company_id)
@@ -501,7 +505,7 @@ def bank_sync(cur, conn, company_id, force=False):
         )
     cur.execute("UPDATE company_bank_settings SET last_synced_at = NOW(), last_error = '' WHERE company_id = %s", (company_id,))
     conn.commit()
-    return {'loaded': len(new_ops), 'marked': marked}
+    return {'loaded': len(new_ops), 'marked': marked, 'debits': debits}
 
 
 def bank_settings(cur, conn, user, method, body, params):
@@ -518,7 +522,7 @@ def bank_settings(cur, conn, user, method, body, params):
             "SELECT b.id, b.operation_date, b.amount, b.purpose, b.payer_name, b.match_status, b.match_reason, "
             "b.invoice_id, i.invoice_number, i.status "
             "FROM bank_operations b LEFT JOIN invoices i ON i.id = b.invoice_id "
-            "WHERE b.company_id = %s ORDER BY b.operation_date DESC NULLS LAST, b.id DESC LIMIT 50",
+            "WHERE b.company_id = %s AND b.direction = 'credit' ORDER BY b.operation_date DESC NULLS LAST, b.id DESC LIMIT 50",
             (company_id,)
         )
         keys = ['id', 'operation_date', 'amount', 'purpose', 'payer_name', 'match_status', 'match_reason',
@@ -551,7 +555,7 @@ def bank_settings(cur, conn, user, method, body, params):
     if method == 'POST' and sub == 'match':
         op_id = body.get('operation_id')
         inv_id = body.get('invoice_id')
-        cur.execute("SELECT amount, payer_name, match_status FROM bank_operations WHERE id = %s AND company_id = %s", (op_id, company_id))
+        cur.execute("SELECT amount, payer_name, match_status FROM bank_operations WHERE id = %s AND company_id = %s AND direction = 'credit'", (op_id, company_id))
         op = cur.fetchone()
         if not op:
             return response(404, {'error': 'Операция не найдена'})

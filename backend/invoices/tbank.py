@@ -72,7 +72,7 @@ def list_accounts(token):
 
 
 def fetch_credits(token, account, since):
-    '''Входящие подтверждённые операции по счёту начиная с даты since'''
+    '''Подтверждённые операции по счёту начиная с даты since: поступления (credit) и списания (debit)'''
     params = {
         'accountNumber': account,
         'from': since.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
@@ -85,13 +85,19 @@ def fetch_credits(token, account, since):
         if err:
             return None, err
         for op in (data or {}).get('operations') or []:
-            if op.get('typeOfOperation') != 'Credit':
+            kind = op.get('typeOfOperation')
+            if kind not in ('Credit', 'Debit'):
                 continue
-            payer = op.get('payer') or op.get('counterParty') or {}
+            if kind == 'Credit':
+                payer = op.get('payer') or op.get('counterParty') or {}
+            else:
+                payer = op.get('receiver') or op.get('counterParty') or {}
             result.append({
+                'direction': 'credit' if kind == 'Credit' else 'debit',
+                'category': str(op.get('category') or '')[:100],
                 'operation_id': str(op.get('operationId') or '')[:100],
                 'date': op.get('operationDate') or op.get('trxnPostDate') or op.get('chargeDate'),
-                'amount': float(op.get('accountAmount') or op.get('operationAmount') or op.get('rubleAmount') or 0),
+                'amount': abs(float(op.get('accountAmount') or op.get('operationAmount') or op.get('rubleAmount') or 0)),
                 'purpose': str(op.get('payPurpose') or op.get('description') or '')[:2000],
                 'payer_name': str(payer.get('name') or '')[:500],
                 'payer_inn': str(payer.get('inn') or '')[:20],

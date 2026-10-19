@@ -2540,12 +2540,12 @@ export const bankApi = {
   },
   accounts: (token?: string) =>
     bankPost("accounts", { token }) as Promise<{ accounts: { account_number: string; name: string; main: boolean }[] }>,
-  sync: () => bankPost("sync") as Promise<BankSettings>,
+  sync: () => bankPost("sync") as Promise<BankSettings & { sync?: { loaded: number; marked: number; debits?: number } }>,
   match: (operation_id: number, invoice_id: number) => bankPost("match", { operation_id, invoice_id }) as Promise<BankSettings>,
   ignore: (operation_id: number) => bankPost("ignore", { operation_id }) as Promise<BankSettings>,
   async autosync() {
     const res = await fetch(`${INVOICES_URL}?action=bank_autosync`, { headers: { ...authHeaders() } })
-    return parseResponse(res) as Promise<{ loaded?: number; marked?: number; skipped?: string; error?: string }>
+    return parseResponse(res) as Promise<{ loaded?: number; marked?: number; debits?: number; skipped?: string; error?: string }>
   },
 }
 
@@ -2583,6 +2583,19 @@ export interface FinanceExpense {
   created_at: string
   object_code: string | null
   client_name: string | null
+  from_bank?: boolean
+}
+
+export interface BankDebit {
+  id: number
+  operation_date: string | null
+  amount: number
+  purpose: string
+  payee: string
+  payee_inn: string
+  category: string
+  object_id: number | null
+  remembered: boolean
 }
 
 export interface ExpensePayload {
@@ -2656,6 +2669,26 @@ export const financeApi = {
       body: JSON.stringify(payload),
     })
     return parseResponse(res) as Promise<{ id: number; saved: boolean }>
+  },
+  async bankInbox() {
+    const res = await fetch(`${FINANCE_URL}?action=bank_inbox`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ connected: boolean; last_synced_at: string | null; items: BankDebit[] }>
+  },
+  async acceptDebits(items: { id: number; category: string; object_id: number | null }[]) {
+    const res = await fetch(`${FINANCE_URL}?action=bank_inbox`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ items }),
+    })
+    return parseResponse(res) as Promise<{ accepted: number }>
+  },
+  async skipDebits(ids: number[]) {
+    const res = await fetch(`${FINANCE_URL}?action=bank_inbox`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ skip: ids }),
+    })
+    return parseResponse(res) as Promise<{ skipped: number }>
   },
   async removeExpense(id: number) {
     const res = await fetch(`${FINANCE_URL}?id=${id}`, { method: "DELETE", headers: { ...authHeaders() } })

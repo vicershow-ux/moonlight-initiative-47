@@ -9,6 +9,7 @@ import { FinanceObjects } from "@/components/crm/finance/FinanceObjects"
 import { FinanceInvoices } from "@/components/crm/finance/FinanceInvoices"
 import { FinanceUpcoming } from "@/components/crm/finance/FinanceUpcoming"
 import { FinanceExpenses } from "@/components/crm/finance/FinanceExpenses"
+import { BankDebitsInbox } from "@/components/crm/finance/BankDebitsInbox"
 
 const PERIODS: { k: FinancePeriod; l: string }[] = [
   { k: "month", l: "Месяц" },
@@ -80,6 +81,7 @@ export default function Finance() {
                 <FinanceUpcoming items={data.upcoming} />
               </div>
             </div>
+            <BankDebitsInbox data={data} onChanged={reload} />
             <FinanceExpenses data={data} onChanged={reload} />
             <FinanceObjects objects={data.objects} />
             <FinanceInvoices invoices={data.invoices} />

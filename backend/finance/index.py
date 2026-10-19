@@ -3,6 +3,7 @@ import os
 from datetime import date
 
 import psycopg2
+import bank_inbox
 
 
 def get_conn():
@@ -65,7 +66,7 @@ CATEGORIES = {
     'materials': 'Материалы (вне объекта)', 'rent': 'Аренда', 'taxes': 'Налоги и сборы', 'office': 'Офис и связь',
     'ads': 'Реклама', 'other': 'Прочее',
 }
-EXP_KEYS = ['id', 'object_id', 'category', 'amount', 'expense_date', 'description', 'payee', 'created_at', 'object_code', 'client_name']
+EXP_KEYS = ['id', 'object_id', 'category', 'amount', 'expense_date', 'description', 'payee', 'created_at', 'object_code', 'client_name', 'from_bank']
 
 
 def save_expense(cur, conn, cid, user_id, body, exp_id=None):
@@ -126,13 +127,31 @@ def handler(event: dict, context) -> dict:
         cid = user['company_id']
         params = event.get('queryStringParameters') or {}
         method = event.get('httpMethod', 'GET')
+        action = params.get('action') or ''
+        if action == 'bank_inbox':
+            if method == 'POST':
+                body = json.loads(event.get('body') or '{}')
+                if body.get('skip'):
+                    bank_inbox.skip(cur, conn, cid, body['skip'])
+                    return response(200, {'skipped': len(body['skip'])})
+                done = bank_inbox.accept(cur, conn, cid, user['user_id'], body.get('items'), CATEGORIES)
+                return response(200, {'accepted': done})
+            cur.execute("SELECT enabled, last_synced_at FROM company_bank_settings WHERE company_id = %s", (cid,))
+            bs = cur.fetchone()
+            return response(200, {
+                'connected': bool(bs and bs[0]), 'last_synced_at': bs[1] if bs else None,
+                'items': bank_inbox.inbox(cur, cid, bank_inbox.remembered(cur, cid)),
+            })
         if method in ('POST', 'PUT'):
             body = json.loads(event.get('body') or '{}')
             return save_expense(cur, conn, cid, user['user_id'], body, params.get('id') if method == 'PUT' else None)
         if method == 'DELETE':
-            cur.execute("DELETE FROM company_expenses WHERE id = %s AND company_id = %s RETURNING id", (params.get('id'), cid))
-            if not cur.fetchone():
+            cur.execute("DELETE FROM company_expenses WHERE id = %s AND company_id = %s RETURNING bank_operation_id", (params.get('id'), cid))
+            row = cur.fetchone()
+            if not row:
                 return response(404, {'error': 'Расход не найден'})
+            if row[0]:
+                cur.execute("UPDATE bank_operations SET expense_id = NULL, match_status = 'unmatched' WHERE id = %s", (row[0],))
             conn.commit()
             return response(200, {'deleted': True})
         period, start = parse_period(params)
@@ -274,7 +293,8 @@ def handler(event: dict, context) -> dict:
             u['amount'] = f(u['amount'])
 
         cur.execute(
-            "SELECT e.id, e.object_id, e.category, e.amount, e.expense_date, e.description, e.payee, e.created_at, o.object_code, o.client_name "
+            "SELECT e.id, e.object_id, e.category, e.amount, e.expense_date, e.description, e.payee, e.created_at, o.object_code, o.client_name, "
+            "e.bank_operation_id IS NOT NULL "
             "FROM company_expenses e LEFT JOIN objects o ON o.id = e.object_id "
             "WHERE e.company_id = %s AND e.expense_date >= %s ORDER BY e.expense_date DESC, e.id DESC LIMIT 500",
             (cid, start)

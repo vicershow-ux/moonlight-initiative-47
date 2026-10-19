@@ -117,6 +117,12 @@ export function FinanceExpenses({ data, onChanged }: { data: FinanceData; onChan
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm">
                   {data.categories[e.category] || e.category}
+                  {e.from_bank && (
+                    <span className="ml-1.5 inline-flex translate-y-[-1px] items-center gap-0.5 rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/50">
+                      <Icon name="Landmark" size={10} />
+                      банк
+                    </span>
+                  )}
                   {e.payee && <span className="text-white/60"> · {e.payee}</span>}
                 </p>
                 <p className="truncate text-xs text-white/40">
