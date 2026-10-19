@@ -191,7 +191,7 @@ export function ObjectDocumentsPanel({
                 >
                   <Icon name="Eye" size={15} />
                 </Link>
-                {!isClient && (
+                {!isClient && !c.signed_at && (
                   <Link
                     to={`/cabinet/objects/${object.id}/contracts/${c.id}/edit`}
                     className="text-white/40 hover:text-white transition-colors"
@@ -227,6 +227,15 @@ export function ObjectDocumentsPanel({
                   <DeleteButton onConfirm={() => onDeleteContract(c.id)} />
                 )}
               </div>
+              {isClient && c.status !== "signed" && (
+                <Link
+                  to={`/cabinet/objects/${object.id}/contracts/${c.id}`}
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[#D4AF37] hover:bg-[#B8860B] px-3 py-1.5 text-xs font-medium text-[#161616]"
+                >
+                  <Icon name="PenLine" size={14} />
+                  Подписать договор
+                </Link>
+              )}
               <ContractAddendaList objectId={object.id} contractId={c.id} isClient={isClient} compact />
             </div>
           ))}

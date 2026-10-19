@@ -11,6 +11,7 @@ import { contractTitle, titleFromHtml } from "@/lib/contractSubject"
 import { SendContractEmailDialog } from "@/components/crm/SendContractEmailDialog"
 import { useAuth } from "@/contexts/AuthContext"
 import { ContractAddendaList } from "@/components/crm/ContractAddendaList"
+import { DocSignBar } from "@/components/crm/DocSignBar"
 
 export default function ContractView() {
   const { id, contractId } = useParams()
@@ -23,6 +24,10 @@ export default function ContractView() {
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState(false)
   const [sendOpen, setSendOpen] = useState(false)
+
+  const reload = () => {
+    if (contractId) contractsApi.get(Number(contractId)).then(setContract)
+  }
 
   useEffect(() => {
     if (!contractId) return
@@ -86,6 +91,7 @@ export default function ContractView() {
             {contract.status === "signed" ? "подписан" : "черновик"}
           </span>
           {!isClient && (<>
+          {!contract.signed_at && (
           <Link
             to={`/cabinet/objects/${objectId}/contracts/${contract.id}/edit`}
             className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg"
@@ -93,6 +99,7 @@ export default function ContractView() {
             <Icon name="Pencil" size={14} />
             Редактировать
           </Link>
+          )}
           <Link
             to={`/cabinet/objects/${objectId}/contracts/${contract.id}/addenda/new`}
             className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
@@ -139,6 +146,27 @@ export default function ContractView() {
           </button>
         </div>
       </div>
+
+      {isClient ? (
+        <DocSignBar
+          signedAt={contract.signed_at}
+          isSigned={contract.status === "signed"}
+          docLabel="Договор"
+          docTitle={`договор № ${contract.contract_number}`}
+          amountLabel="Цена договора"
+          amount={Number(contract.total_amount)}
+          onSign={() => contractsApi.sign(contract.id)}
+          onDone={reload}
+        />
+      ) : (
+        contract.signed_at && (
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl mb-4 p-4 flex items-center gap-3 max-w-4xl mx-auto text-sm">
+            <Icon name="BadgeCheck" size={20} className="text-emerald-400" />
+            Заказчик подписал договор онлайн{" "}
+            {new Date(contract.signed_at).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
+          </div>
+        )
+      )}
 
       <ContractAddendaList objectId={objectId} contractId={contract.id} isClient={isClient} />
 

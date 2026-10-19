@@ -57,8 +57,25 @@ def has_object_access(cur, user, object_id):
 CONTRACT_KEYS = [
     'id', 'object_id', 'estimate_id', 'contract_number', 'contract_date',
     'status', 'template_key', 'options', 'content_html', 'total_amount',
-    'created_by', 'created_at', 'updated_at',
+    'created_by', 'created_at', 'updated_at', 'signed_at',
 ]
+
+
+def sign_mark(stamp):
+    return ('<span class="client-esign" style="display:inline-block;margin:6px 0;border:2px solid #2e7d32;color:#2e7d32;'
+            'border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;line-height:1.35">ПОДПИСАНО ЭЛЕКТРОННО<br/>'
+            f'<span style="font-weight:600">{html_lib.escape(stamp)}</span></span>')
+
+
+def apply_client_signature(content, stamp):
+    '''Ставит отметку электронной подписи в блок заказчика (последнее поле подписи в документе)'''
+    mark = sign_mark(stamp)
+    idx = content.rfind('ЗАКАЗЧИК')
+    if idx != -1:
+        m = re.compile(r'Подпись:\s*_+').search(content, idx)
+        if m:
+            return content[:m.start()] + mark + content[m.end():]
+    return content + f'<p style="margin-top:16px"><strong>Заказчик:</strong></p>{mark}'
 
 
 UNITS_M = ["", "один", "два", "три", "четыре", "пять", "шесть", "семь", "восемь", "девять"]
@@ -350,6 +367,36 @@ def handler(event: dict, context) -> dict:
             ip = ((event.get('requestContext') or {}).get('identity') or {}).get('sourceIp', '')
             return addenda.handle(cur, conn, user, method, params, body, response, has_object_access, money_words, ip)
 
+        if is_client and method == 'POST' and action == 'sign':
+            cur.execute(
+                "SELECT object_id, contract_number, signed_at, content_html FROM contracts WHERE id = %s AND company_id = %s",
+                (contract_id, company_id)
+            )
+            row = cur.fetchone()
+            if not row or not has_object_access(cur, user, row[0]):
+                return response(404, {'error': 'Договор не найден'})
+            obj_id, number, signed_at, content = row
+            if signed_at:
+                return response(200, {'success': True, 'status': 'signed'})
+            cur.execute("SELECT NOW()")
+            now = cur.fetchone()[0]
+            stamp = f"{user['full_name']}, {now.strftime('%d.%m.%Y %H:%M')}"
+            ip = ((event.get('requestContext') or {}).get('identity') or {}).get('sourceIp', '')
+            cur.execute(
+                "UPDATE contracts SET status = 'signed', signed_at = %s, signed_by = %s, signed_ip = %s, content_html = %s, updated_at = NOW() WHERE id = %s",
+                (now, user['user_id'], (ip or '')[:64], apply_client_signature(content or '', stamp), contract_id)
+            )
+            cur.execute("SELECT object_code FROM objects WHERE id = %s", (obj_id,))
+            code = (cur.fetchone() or [''])[0]
+            cur.execute(
+                "INSERT INTO notifications (company_id, type, title, message, payload) VALUES (%s, %s, %s, %s, %s)",
+                (company_id, 'contract_signed', 'Заказчик подписал договор',
+                 f"{user['full_name']} подписал договор № {number} по объекту {code}",
+                 json.dumps({'object_id': obj_id, 'contract_id': int(contract_id)}))
+            )
+            conn.commit()
+            return response(200, {'success': True, 'status': 'signed', 'signed_at': now})
+
         if is_client and method != 'GET':
             return response(403, {'error': 'Недостаточно прав'})
 
@@ -535,10 +582,14 @@ def handler(event: dict, context) -> dict:
                 return response(400, {'error': 'Не указан ID договора'})
             body = json.loads(event.get('body') or '{}')
 
-            cur.execute("SELECT object_id FROM contracts WHERE id = %s AND company_id = %s", (contract_id, company_id))
+            cur.execute("SELECT object_id, signed_at FROM contracts WHERE id = %s AND company_id = %s", (contract_id, company_id))
             existing = cur.fetchone()
             if not existing:
                 return response(404, {'error': 'Договор не найден'})
+            if existing[1] and any(k in body for k in ('content_html', 'total_amount', 'options', 'contract_number', 'contract_date')):
+                return response(400, {'error': 'Заказчик уже подписал договор — менять его нельзя. Оформите изменения допсоглашением.'})
+            if existing[1] and body.get('status') == 'draft':
+                return response(400, {'error': 'Договор подписан заказчиком онлайн — вернуть в черновик нельзя'})
 
             fields = []
             values = []

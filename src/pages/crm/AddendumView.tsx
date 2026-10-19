@@ -5,7 +5,7 @@ import Icon from "@/components/ui/icon"
 import { addendaApi, ContractAddendum } from "@/lib/api"
 import { downloadContractPdf } from "@/lib/downloadContractPdf"
 import { printAddendum, darkenActHtml } from "@/lib/printAct"
-import { AddendumSignBar } from "@/components/crm/addendum/AddendumSignBar"
+import { DocSignBar } from "@/components/crm/DocSignBar"
 import { useAuth } from "@/contexts/AuthContext"
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog"
 
@@ -107,7 +107,16 @@ export default function AddendumView() {
       </div>
 
       {isClient ? (
-        <AddendumSignBar doc={doc} onDone={load} />
+        <DocSignBar
+          signedAt={doc.signed_at}
+          isSigned={doc.status === "signed"}
+          docLabel="Соглашение"
+          docTitle={`допсоглашение № ${doc.addendum_number}`}
+          amountLabel="Новая цена договора"
+          amount={Number(doc.total_amount)}
+          onSign={() => addendaApi.sign(doc.id)}
+          onDone={load}
+        />
       ) : (
         doc.signed_at && (
           <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl mb-4 p-4 flex items-center gap-3 max-w-4xl mx-auto text-sm">

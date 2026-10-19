@@ -599,6 +599,7 @@ export interface Contract {
   created_by?: number | null
   created_at: string
   updated_at: string
+  signed_at?: string | null
   object_code?: string
   client_name?: string
   address?: string
@@ -618,6 +619,15 @@ export const contractsApi = {
   async get(id: number) {
     const res = await fetch(`${CONTRACTS_URL}?id=${id}`, { headers: { ...authHeaders() } })
     return parseResponse(res) as Promise<Contract>
+  },
+
+  async sign(id: number) {
+    const res = await fetch(`${CONTRACTS_URL}?id=${id}&action=sign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: "{}",
+    })
+    return parseResponse(res) as Promise<{ success: boolean; status: string }>
   },
 
   async sendEmail(id: number, payload: { email: string; pdf_base64: string; title: string; message?: string }) {
