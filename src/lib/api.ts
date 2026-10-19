@@ -2161,6 +2161,7 @@ export interface Invoice {
   customer?: { name: string; phone: string; email: string; address: string; object_code: string }
   contract?: { contract_number: string; contract_date: string; options: ContractOptions } | null
   act?: { act_number: string; act_date: string } | null
+  breakdown?: { stage: string; items: InvoiceItem[] } | null
 }
 
 export type InvoicePayload = Partial<

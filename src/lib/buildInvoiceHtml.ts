@@ -81,7 +81,9 @@ export function buildInvoiceHtml(inv: Invoice): string {
         ? `<tr><td class="lbl">В том числе НДС ${rate}%:</td><td class="val">${money(vat)}</td></tr>`
         : `<tr><td class="lbl" colspan="2">Без налога (НДС)</td></tr>`
 
-  const rows = (inv.items || [])
+  const lines = inv.breakdown?.items?.length ? inv.breakdown.items : inv.items || []
+  const stageTitle = inv.breakdown?.items?.length ? (inv.items?.[0]?.name || "").replace(/\s*\(\d+%\)/, "") : ""
+  const rows = lines
     .map(
       (it, i) => `<tr>
 <td class="c">${i + 1}</td>
@@ -165,6 +167,7 @@ export function buildInvoiceHtml(inv: Invoice): string {
 .invoice-doc .card .v { font-weight: 600; word-break: break-word; }
 .invoice-doc .basis { margin: 12px 0 0; padding: 9px 14px; background: #D3C2A2; border: 1.2px solid #6B4508; border-left: 4px solid #5C3A11; border-radius: 10px; font-size: 12.5px; color: #161616; }
 .invoice-doc .items-wrap { margin-top: 14px; }
+.invoice-doc .stage { margin: 14px 0 -6px; font-weight: 700; font-size: 12.5px; color: #5C3A11; }
 .invoice-doc .items th { background: #5C3A11; color: #fff; border: 1.2px solid #6B4508; padding: 7px 6px; font-size: 11.5px; }
 .invoice-doc .items td { border: 1.2px solid #6B4508; padding: 6px; }
 .invoice-doc .pdf-rt { border: 1.2px solid #6B4508; border-radius: 10px; overflow: hidden; box-sizing: border-box; }
@@ -214,6 +217,7 @@ export function buildInvoiceHtml(inv: Invoice): string {
 </div>
 ${purpose ? `<div class="basis"><b>Основание:</b> ${esc(purpose)}</div>` : ""}
 
+${stageTitle ? `<div class="stage">${esc(stageTitle)} — перечень работ по смете</div>` : ""}
 <div class="pdf-rt items-wrap"><table class="items">
 <thead><tr>
   <th style="width:5%">№</th><th>Товары (работы, услуги)</th><th style="width:9%">Кол-во</th>
@@ -228,7 +232,7 @@ ${vatLine}
 <tr class="grand"><td class="lbl">Всего к оплате:</td><td class="val">${money(total)} ₽</td></tr>
 </table>
 
-<div class="words">Всего наименований ${(inv.items || []).length}, на сумму ${money(total)} руб.<br/>
+<div class="words">Всего наименований ${lines.length}, на сумму ${money(total)} руб.<br/>
 <b>${esc(capitalize(moneyInWords(Math.floor(total))))} ${kopecks(total)} ${kopWord(Number(kopecks(total)))}</b></div>
 <div class="note">
 ${paymentNote ? `<b>Назначение платежа:</b> ${esc(paymentNote)}` : ""}

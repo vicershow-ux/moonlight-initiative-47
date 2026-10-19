@@ -87,6 +87,39 @@ def next_number(cur, company_id):
     return str((cur.fetchone()[0] or 0) + 1)
 
 
+def estimate_rows(cur, estimate_id):
+    if not estimate_id:
+        return []
+    cur.execute(
+        "SELECT name, unit, quantity, times, amount, category FROM estimate_items "
+        "WHERE estimate_id = %s AND status = 'approved' ORDER BY id",
+        (estimate_id,)
+    )
+    return [dict(zip(['name', 'unit', 'quantity', 'times', 'amount', 'category'], x)) for x in cur.fetchall()]
+
+
+def contract_info_of(number, opts):
+    opts = opts if isinstance(opts, dict) else json.loads(opts or '{}')
+    return {'number': number, 'work_subject': opts.get('work_subject'), 'last_stage': contract_last_stage(opts)}
+
+
+def invoice_breakdown(cur, inv, number, opts, estimate_id):
+    '''Перечень работ из сметы для счёта по договору — те же строки, что уйдут в чек (без НДС сверху)'''
+    items = inv.get('items') if isinstance(inv.get('items'), list) else json.loads(inv.get('items') or '[]')
+    total = round(sum(float(it.get('quantity') or 0) * float(it.get('price') or 0) for it in items), 2)
+    if total <= 0:
+        return None
+    lines, stage, from_estimate = yookassa.receipt_lines(items, inv.get('vat_mode'), total, contract_info_of(number, opts),
+                                                         estimate_rows(cur, estimate_id), with_vat=False)
+    if not from_estimate:
+        return None
+    return {
+        'stage': stage,
+        'items': [{'name': ln['name'], 'unit': ln.get('unit') or 'усл.', 'quantity': ln['qty'], 'price': ln['price'],
+                   'amount': round(ln['qty'] * ln['price'], 2)} for ln in lines],
+    }
+
+
 def load_extra(cur, company_id, inv):
     '''Реквизиты исполнителя, данные заказчика и основания — для печатной формы'''
     cur.execute(f"SELECT {', '.join(COMPANY_KEYS)} FROM companies WHERE id = %s", (company_id,))
@@ -99,11 +132,13 @@ def load_extra(cur, company_id, inv):
     o = cur.fetchone() or ('', '', '', '', '')
     inv['customer'] = {'name': o[0] or '', 'phone': o[1] or '', 'email': o[2] or '', 'address': o[3] or '', 'object_code': o[4] or ''}
     inv['contract'] = None
+    inv['breakdown'] = None
     if inv.get('contract_id'):
-        cur.execute("SELECT contract_number, contract_date, options FROM contracts WHERE id = %s", (inv['contract_id'],))
+        cur.execute("SELECT contract_number, contract_date, options, estimate_id FROM contracts WHERE id = %s", (inv['contract_id'],))
         c = cur.fetchone()
         if c:
             inv['contract'] = {'contract_number': c[0], 'contract_date': c[1], 'options': c[2] or {}}
+            inv['breakdown'] = invoice_breakdown(cur, inv, c[0], c[2] or {}, c[3])
     inv['act'] = None
     if inv.get('act_id'):
         cur.execute("SELECT act_number, act_date FROM acts WHERE id = %s", (inv['act_id'],))
@@ -597,10 +632,7 @@ def handler(event: dict, context) -> dict:
             if not row:
                 return response(404, {'error': 'Счёт не найден'})
             _, number, total, status, email, code, inv_items, vat_mode, c_number, c_opts, c_estimate = row
-            contract_info = None
-            if c_number is not None:
-                c_opts = c_opts if isinstance(c_opts, dict) else json.loads(c_opts or '{}')
-                contract_info = {'number': c_number, 'work_subject': c_opts.get('work_subject'), 'last_stage': contract_last_stage(c_opts)}
+            contract_info = contract_info_of(c_number, c_opts) if c_number is not None else None
             if status == 'paid':
                 return response(400, {'error': 'Счёт уже оплачен'})
             amount = round(float(total or 0), 2)
@@ -626,14 +658,7 @@ def handler(event: dict, context) -> dict:
                 receipt_email = str(body.get('receipt_email') or email or '').strip()[:255]
                 if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', receipt_email):
                     return response(400, {'error': 'Укажите почту для электронного чека', 'need_email': True})
-                est_items = []
-                if c_estimate:
-                    cur.execute(
-                        "SELECT name, quantity, times, amount, category FROM estimate_items "
-                        "WHERE estimate_id = %s AND status = 'approved' ORDER BY id",
-                        (c_estimate,)
-                    )
-                    est_items = [dict(zip(['name', 'quantity', 'times', 'amount', 'category'], x)) for x in cur.fetchall()]
+                est_items = estimate_rows(cur, c_estimate)
                 receipt = yookassa.build_receipt(settings, receipt_email, inv_items if isinstance(inv_items, list) else json.loads(inv_items or '[]'),
                                                  vat_mode, amount, contract_info, est_items)
             data, err = yookassa.create_payment(

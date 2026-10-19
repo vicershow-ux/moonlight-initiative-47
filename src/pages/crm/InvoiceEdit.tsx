@@ -425,6 +425,12 @@ export default function InvoiceEdit() {
 
         <div className="xl:sticky xl:top-4 xl:self-start">
           <p className="mb-2 text-xs uppercase tracking-wide text-white/40">Предпросмотр</p>
+          {contractId && items.length === 1 && (
+            <p className="mb-2 flex items-start gap-1.5 text-xs text-white/50">
+              <Icon name="Info" size={13} className="mt-0.5 shrink-0" />
+              Если у договора есть смета, после сохранения в счёте будет полный перечень работ с количеством и ценой — как в чеке. Сумма не изменится.
+            </p>
+          )}
           <div className="rounded-xl bg-white p-6 text-[#161616] shadow-lg sm:p-8">
             <div dangerouslySetInnerHTML={{ __html: buildInvoiceHtml({ ...preview, purpose: purpose || autoPurpose }) }} />
           </div>
