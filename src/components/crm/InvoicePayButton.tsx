@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import Icon from "@/components/ui/icon"
-import { invoicesApi } from "@/lib/api"
+import { invoicesApi, ReceiptLine } from "@/lib/api"
+import { ReceiptLines } from "@/components/crm/ReceiptLines"
 
 const PENDING_KEY = "fixkey_pending_invoice_pay"
 
@@ -77,10 +78,20 @@ export function InvoicePayButton({ invoiceId, amountLabel, className = "" }: { i
   const [error, setError] = useState("")
   const [askEmail, setAskEmail] = useState(false)
   const [email, setEmail] = useState("")
+  const [receipt, setReceipt] = useState<ReceiptLine[] | null>(null)
+  const [showReceipt, setShowReceipt] = useState(false)
 
   useEffect(() => {
     onlineEnabled().then(setEnabled)
   }, [])
+
+  useEffect(() => {
+    if (!enabled) return
+    invoicesApi
+      .payPreview(invoiceId)
+      .then((d) => setReceipt(d.receipts && d.items.length ? d.items : null))
+      .catch(() => null)
+  }, [enabled, invoiceId])
 
   if (!enabled) return null
 
@@ -115,6 +126,27 @@ export function InvoicePayButton({ invoiceId, amountLabel, className = "" }: { i
         <Icon name={busy ? "Loader2" : "CreditCard"} size={14} className={busy ? "animate-spin" : ""} />
         Оплатить онлайн{amountLabel ? ` ${amountLabel}` : ""}
       </button>
+      {receipt && (
+        <div className="mt-1">
+          <button
+            type="button"
+            onClick={() => setShowReceipt((v) => !v)}
+            className="flex items-center gap-1 text-xs text-white/50 hover:text-white"
+          >
+            <Icon name="ReceiptText" size={12} />
+            Что будет в чеке ({receipt.length} поз.)
+            <Icon name={showReceipt ? "ChevronUp" : "ChevronDown"} size={12} />
+          </button>
+          {showReceipt && (
+            <div className="mt-2 max-h-72 overflow-y-auto rounded-lg border border-white/10 bg-[#161616] p-3">
+              <ReceiptLines items={receipt} compact />
+              <p className="mt-2 text-[11px] text-white/40">
+                Электронный чек с этим перечнем придёт на почту после оплаты. На странице ЮKassa показывается только итоговая сумма.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
       {askEmail && (
         <div className="flex flex-col gap-1 mt-1">
           <p className="text-xs text-white/50">Куда прислать электронный чек?</p>

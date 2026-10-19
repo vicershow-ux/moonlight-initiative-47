@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react"
 import Icon from "@/components/ui/icon"
 import { useAuth } from "@/contexts/AuthContext"
-import { INVOICES_WEBHOOK_URL, paySettingsApi, PaySettings } from "@/lib/api"
+import { INVOICES_WEBHOOK_URL, paySettingsApi, PaySettings, ReceiptCheck, ReceiptLine } from "@/lib/api"
+import { ReceiptLines } from "@/components/crm/ReceiptLines"
 import { Switch } from "@/components/ui/switch"
 
 const TAX_SYSTEMS = [
@@ -62,6 +63,42 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
   )
 }
 
+const REG: Record<string, string> = {
+  succeeded: "Чек зарегистрирован в налоговой",
+  pending: "Чек в очереди на регистрацию",
+  canceled: "Чек не пробит — проверьте настройки онлайн-кассы в ЮKassa",
+}
+
+function ReceiptDetails({ check, saved }: { check: ReceiptCheck | null | "loading"; saved: ReceiptLine[] | null }) {
+  if (check === "loading") {
+    return (
+      <div className="flex items-center gap-2 text-xs text-white/40">
+        <Icon name="Loader2" size={13} className="animate-spin" />
+        Запрашиваю чек в ЮKassa…
+      </div>
+    )
+  }
+  const reg = check?.registered?.find((r) => r.type === "payment") || check?.registered?.[0]
+  const lines = reg?.items?.length ? reg.items : check?.sent?.length ? check.sent : saved || []
+  return (
+    <div className="rounded-lg border border-white/10 bg-[#161616] p-3 flex flex-col gap-2">
+      <p className="text-xs text-white/60 flex items-center gap-1.5">
+        <Icon name="ReceiptText" size={13} className="text-[#D4AF37]" />
+        {reg ? `Пробитый чек${reg.fiscal_document_number ? ` · ФД № ${reg.fiscal_document_number}` : ""}` : "Отправлено в ЮKassa"}
+        {check && check.registration ? ` · ${REG[check.registration] || check.registration}` : ""}
+      </p>
+      {lines.length ? (
+        <ReceiptLines items={lines} compact />
+      ) : (
+        <p className="text-xs text-white/40">
+          Состав этого чека не сохранился — платёж создан до обновления. Для новых платежей перечень будет виден здесь.
+        </p>
+      )}
+      {check && check.error && <p className="text-xs text-white/40">ЮKassa: {check.error}</p>}
+    </div>
+  )
+}
+
 export function YookassaSettings({ onChange }: { onChange?: (s: PaySettings) => void }) {
   const { user } = useAuth()
   const canEdit = user?.role === "owner" || user?.role === "admin"
@@ -73,6 +110,21 @@ export function YookassaSettings({ onChange }: { onChange?: (s: PaySettings) => 
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState("")
+  const [receiptOpen, setReceiptOpen] = useState<number | null>(null)
+  const [receiptData, setReceiptData] = useState<ReceiptCheck | null | "loading">(null)
+
+  const openReceipt = (id: number) => {
+    if (receiptOpen === id) {
+      setReceiptOpen(null)
+      return
+    }
+    setReceiptOpen(id)
+    setReceiptData("loading")
+    paySettingsApi
+      .receipt(id)
+      .then(setReceiptData)
+      .catch(() => setReceiptData(null))
+  }
 
   useEffect(() => {
     if (!canEdit) return
@@ -328,7 +380,8 @@ export function YookassaSettings({ onChange }: { onChange?: (s: PaySettings) => 
               {s.recent.map((p, i) => {
                 const st = STATUS[p.status] || STATUS.pending
                 return (
-                  <div key={i} className="py-2.5 flex items-center justify-between gap-3 text-sm">
+                  <div key={i} className="py-2.5 flex flex-col gap-2 text-sm">
+                  <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate">
                         Счёт № {p.invoice_number} · {p.object_code}
@@ -336,12 +389,20 @@ export function YookassaSettings({ onChange }: { onChange?: (s: PaySettings) => 
                       <p className="text-xs text-white/40">
                         {new Date(p.paid_at || p.created_at).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                         {p.receipt_sent ? " · с чеком" : ""}
+                        {p.receipt_status === "succeeded" ? " · чек пробит" : p.receipt_status === "canceled" ? " · чек не пробит" : ""}
                       </p>
+                      {p.receipt_sent && (
+                        <button onClick={() => openReceipt(p.id)} className="mt-0.5 text-xs text-[#D4AF37] hover:underline">
+                          {receiptOpen === p.id ? "Скрыть чек" : "Состав чека"}
+                        </button>
+                      )}
                     </div>
                     <div className="text-right shrink-0">
                       <p className="font-medium">{money(p.amount)}</p>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] ${st.c}`}>{st.l}</span>
                     </div>
+                  </div>
+                  {receiptOpen === p.id && <ReceiptDetails check={receiptData} saved={p.receipt_items} />}
                   </div>
                 )
               })}

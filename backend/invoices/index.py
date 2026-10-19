@@ -263,6 +263,21 @@ def mark_paid_online(cur, conn, company_id, inv_id, payment_row_id, amount):
     return True
 
 
+MODE_LABELS = {'advance': 'Аванс', 'full_payment': 'Полный расчёт', 'full_prepayment': 'Предоплата 100%',
+               'prepayment': 'Предоплата', 'partial_payment': 'Частичный расчёт'}
+
+
+def receipt_view(receipt):
+    '''Строки чека в удобном для показа виде'''
+    out = []
+    for it in (receipt or {}).get('items') or []:
+        qty = float(it['quantity'])
+        price = float(it['amount']['value'])
+        out.append({'name': it['description'], 'quantity': qty, 'price': price, 'amount': round(qty * price, 2),
+                    'mode': MODE_LABELS.get(it.get('payment_mode'), '')})
+    return out
+
+
 def sync_payment(cur, conn, pay_row):
     '''Сверяет статус платежа с ЮKassa и применяет оплату'''
     row_id, company_id, inv_id, provider_id, amount = pay_row
@@ -273,6 +288,10 @@ def sync_payment(cur, conn, pay_row):
     if err or not data:
         return 'unknown'
     status = data.get('status') or 'pending'
+    reg = str(data.get('receipt_registration') or '')[:20]
+    if reg:
+        cur.execute("UPDATE invoice_payments SET receipt_status = %s WHERE id = %s", (reg, row_id))
+        conn.commit()
     paid_value = float((data.get('amount') or {}).get('value') or 0)
     if status == 'succeeded' and data.get('paid') and abs(paid_value - float(amount)) < 0.01:
         mark_paid_online(cur, conn, company_id, inv_id, row_id, amount)
@@ -308,12 +327,14 @@ def pay_settings(cur, conn, user, method, body, params):
         out['has_secret'] = bool(s.get('secret_key'))
         out['from_env'] = not cur.fetchone() and bool(s.get('secret_key'))
         cur.execute(
-            "SELECT p.amount, p.status, p.created_at, p.paid_at, p.receipt_sent, i.invoice_number, o.object_code "
+            "SELECT p.id, p.amount, p.status, p.created_at, p.paid_at, p.receipt_sent, i.invoice_number, o.object_code, "
+            "p.receipt_status, p.receipt_items, p.receipt_email "
             "FROM invoice_payments p JOIN invoices i ON i.id = p.invoice_id JOIN objects o ON o.id = i.object_id "
             "WHERE p.company_id = %s ORDER BY p.id DESC LIMIT 20",
             (company_id,)
         )
-        keys = ['amount', 'status', 'created_at', 'paid_at', 'receipt_sent', 'invoice_number', 'object_code']
+        keys = ['id', 'amount', 'status', 'created_at', 'paid_at', 'receipt_sent', 'invoice_number', 'object_code',
+                'receipt_status', 'receipt_items', 'receipt_email']
         out['recent'] = [dict(zip(keys, r)) for r in cur.fetchall()]
         if extra:
             out.update(extra)
@@ -321,6 +342,30 @@ def pay_settings(cur, conn, user, method, body, params):
 
     if method == 'GET':
         return view()
+
+    if method == 'GET' and params.get('receipt'):
+        cur.execute("SELECT provider_payment_id, receipt_items, receipt_status FROM invoice_payments WHERE id = %s AND company_id = %s",
+                    (params.get('receipt'), company_id))
+        row = cur.fetchone()
+        if not row:
+            return response(404, {'error': 'Платёж не найден'})
+        pid, saved, reg = row
+        data, err = yookassa.get_payment(s, pid)
+        if data and data.get('receipt_registration'):
+            reg = str(data['receipt_registration'])[:20]
+            cur.execute("UPDATE invoice_payments SET receipt_status = %s WHERE id = %s", (reg, params.get('receipt')))
+            conn.commit()
+        rec, rerr = yookassa.get_receipts(s, pid)
+        registered = []
+        for r in (rec or {}).get('items') or []:
+            registered.append({
+                'type': r.get('type'), 'status': r.get('status'), 'fiscal_document_number': r.get('fiscal_document_number'),
+                'items': [{'name': it.get('description'), 'quantity': float(it.get('quantity') or 0),
+                           'price': float((it.get('amount') or {}).get('value') or 0),
+                           'mode': MODE_LABELS.get(it.get('payment_mode'), '')} for it in r.get('items') or []],
+            })
+        return response(200, {'sent': saved or [], 'registration': reg or '', 'registered': registered,
+                              'error': err or rerr or ''})
 
     if method == 'POST' and params.get('check') == '1':
         if not s.get('shop_id') or not s.get('secret_key'):
@@ -616,6 +661,28 @@ def handler(event: dict, context) -> dict:
                 return response(403, {'error': 'Настройки кассы доступны руководителю'})
             return pay_settings(cur, conn, user, method, json.loads(event.get('body') or '{}') if method in ('PUT', 'POST') else {}, params)
 
+        if method == 'GET' and action == 'pay_preview':
+            settings = yookassa.load_settings(cur, company_id)
+            cur.execute(
+                "SELECT i.total_amount, i.items, i.vat_mode, c.contract_number, c.options, c.estimate_id, o.email "
+                "FROM invoices i JOIN objects o ON o.id = i.object_id LEFT JOIN contracts c ON c.id = i.contract_id "
+                "WHERE i.id = %s AND i.company_id = %s" + client_filter,
+                (inv_id, company_id, *client_args)
+            )
+            row = cur.fetchone()
+            if not row:
+                return response(404, {'error': 'Счёт не найден'})
+            total, inv_items, vat_mode, c_number, c_opts, c_estimate, email = row
+            amount = round(float(total or 0), 2)
+            m = re.match(r'^on_top(?:_(\d+))?$', vat_mode or '')
+            if m:
+                amount = round(amount * (1 + int(m.group(1) or 20) / 100), 2)
+            receipt = yookassa.build_receipt(
+                settings, email or 'preview@example.com', inv_items if isinstance(inv_items, list) else json.loads(inv_items or '[]'),
+                vat_mode, amount, contract_info_of(c_number, c_opts) if c_number is not None else None, estimate_rows(cur, c_estimate))
+            return response(200, {'receipts': bool(settings.get('receipts_enabled')), 'email': email or '',
+                                  'amount': amount, 'items': receipt_view(receipt)})
+
         if method == 'POST' and action == 'pay':
             settings = yookassa.load_settings(cur, company_id)
             if not yookassa.configured(settings):
@@ -644,14 +711,6 @@ def handler(event: dict, context) -> dict:
             return_url = str(body.get('return_url') or '')
             if not return_url.startswith('https://'):
                 return response(400, {'error': 'Некорректный адрес возврата'})
-            cur.execute(
-                "SELECT confirmation_url FROM invoice_payments WHERE invoice_id = %s AND status = 'pending' "
-                "AND amount = %s AND receipt_sent = %s AND created_at > NOW() - INTERVAL '50 minutes' ORDER BY id DESC LIMIT 1",
-                (inv_id, amount, bool(settings.get('receipts_enabled')))
-            )
-            fresh = cur.fetchone()
-            if fresh and fresh[0]:
-                return response(200, {'confirmation_url': fresh[0]})
             receipt = None
             receipt_email = ''
             if settings.get('receipts_enabled'):
@@ -661,8 +720,23 @@ def handler(event: dict, context) -> dict:
                 est_items = estimate_rows(cur, c_estimate)
                 receipt = yookassa.build_receipt(settings, receipt_email, inv_items if isinstance(inv_items, list) else json.loads(inv_items or '[]'),
                                                  vat_mode, amount, contract_info, est_items)
+            view = json.dumps(receipt_view(receipt), ensure_ascii=False) if receipt else None
+            cur.execute(
+                "SELECT confirmation_url, receipt_items FROM invoice_payments WHERE invoice_id = %s AND status = 'pending' "
+                "AND amount = %s AND receipt_sent = %s AND created_at > NOW() - INTERVAL '50 minutes' ORDER BY id DESC LIMIT 1",
+                (inv_id, amount, bool(receipt))
+            )
+            fresh = cur.fetchone()
+            if fresh and fresh[0] and (not receipt or json.dumps(fresh[1], ensure_ascii=False) == view):
+                return response(200, {'confirmation_url': fresh[0]})
+            lines = receipt_view(receipt) if receipt else []
+            desc = f'Счёт № {number}, объект {code}'
+            if lines:
+                first = lines[0]['name']
+                more = f' и ещё {len(lines) - 1} поз.' if len(lines) > 1 else ''
+                desc = f'{desc}: {first[:max(10, 120 - len(desc) - len(more))]}{more}'
             data, err = yookassa.create_payment(
-                settings, amount, f'Оплата счёта № {number} по объекту {code}', return_url,
+                settings, amount, desc[:128], return_url,
                 {'invoice_id': str(inv_id), 'company_id': str(company_id)}, receipt
             )
             if err or not data:
@@ -670,9 +744,10 @@ def handler(event: dict, context) -> dict:
                 return response(502, {'error': f'Не удалось создать платёж: {err}'})
             url = ((data.get('confirmation') or {}).get('confirmation_url')) or ''
             cur.execute(
-                "INSERT INTO invoice_payments (company_id, invoice_id, user_id, provider_payment_id, amount, status, confirmation_url, receipt_email, receipt_sent) "
-                "VALUES (%s, %s, %s, %s, %s, 'pending', %s, %s, %s) ON CONFLICT DO NOTHING",
-                (company_id, inv_id, user['user_id'], data['id'], amount, url, receipt_email, bool(receipt))
+                "INSERT INTO invoice_payments (company_id, invoice_id, user_id, provider_payment_id, amount, status, confirmation_url, receipt_email, receipt_sent, receipt_items) "
+                "VALUES (%s, %s, %s, %s, %s, 'pending', %s, %s, %s, %s) ON CONFLICT DO NOTHING",
+                (company_id, inv_id, user['user_id'], data['id'], amount, url, receipt_email, bool(receipt),
+                 view)
             )
             conn.commit()
             return response(200, {'confirmation_url': url})

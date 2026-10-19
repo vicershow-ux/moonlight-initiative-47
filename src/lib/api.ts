@@ -2194,6 +2194,11 @@ export const invoicesApi = {
     return parseResponse(res) as Promise<{ online: boolean }>
   },
 
+  async payPreview(id: number) {
+    const res = await fetch(`${INVOICES_URL}?action=pay_preview&id=${id}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ receipts: boolean; email: string; amount: number; items: ReceiptLine[] }>
+  },
+
   async pay(id: number, returnUrl: string, receiptEmail?: string) {
     const res = await fetch(`${INVOICES_URL}?action=pay&id=${id}`, {
       method: "POST",
@@ -2424,7 +2429,34 @@ export interface PaySettings {
   payment_subject: string
   payment_mode: string
   updated_at: string | null
-  recent: { amount: number; status: string; created_at: string; paid_at: string | null; receipt_sent: boolean; invoice_number: string; object_code: string }[]
+  recent: {
+    id: number
+    amount: number
+    status: string
+    created_at: string
+    paid_at: string | null
+    receipt_sent: boolean
+    invoice_number: string
+    object_code: string
+    receipt_status: string
+    receipt_items: ReceiptLine[] | null
+    receipt_email: string
+  }[]
+}
+
+export interface ReceiptLine {
+  name: string
+  quantity: number
+  price: number
+  amount?: number
+  mode: string
+}
+
+export interface ReceiptCheck {
+  sent: ReceiptLine[]
+  registration: string
+  registered: { type: string; status: string; fiscal_document_number?: string; items: ReceiptLine[] }[]
+  error: string
 }
 
 export const paySettingsApi = {
@@ -2447,6 +2479,10 @@ export const paySettingsApi = {
       body: "{}",
     })
     return parseResponse(res) as Promise<{ check: { ok: boolean; error?: string; test?: boolean; fiscalization?: boolean; account_id?: string } }>
+  },
+  async receipt(paymentId: number) {
+    const res = await fetch(`${INVOICES_URL}?action=pay_settings&receipt=${paymentId}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<ReceiptCheck>
   },
 }
 

@@ -249,5 +249,10 @@ def create_payment(settings, amount, description, return_url, metadata, receipt=
     return _request(settings, 'POST', '/payments', payload, str(uuid.uuid4()))
 
 
+def get_receipts(settings, payment_id):
+    '''Чеки, которые ЮKassa зарегистрировала по платежу'''
+    return _request(settings, 'GET', f'/receipts?payment_id={payment_id}')
+
+
 def get_payment(settings, payment_id):
     return _request(settings, 'GET', f'/payments/{payment_id}')

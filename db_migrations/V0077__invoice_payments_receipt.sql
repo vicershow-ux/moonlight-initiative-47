@@ -1,0 +1,2 @@
+ALTER TABLE invoice_payments ADD COLUMN IF NOT EXISTS receipt_items JSONB NULL;
+ALTER TABLE invoice_payments ADD COLUMN IF NOT EXISTS receipt_status VARCHAR(20) NOT NULL DEFAULT '';
