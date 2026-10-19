@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react"
-import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { useAuth } from "@/contexts/AuthContext"
 import { INVOICES_WEBHOOK_URL, paySettingsApi, PaySettings } from "@/lib/api"
@@ -63,7 +62,7 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
   )
 }
 
-export default function Finance() {
+export function YookassaSettings({ onChange }: { onChange?: (s: PaySettings) => void }) {
   const { user } = useAuth()
   const canEdit = user?.role === "owner" || user?.role === "admin"
   const [s, setS] = useState<PaySettings | null>(null)
@@ -77,7 +76,8 @@ export default function Finance() {
 
   useEffect(() => {
     if (!canEdit) return
-    paySettingsApi.get().then(setS).catch((e) => setError(e instanceof Error ? e.message : "Ошибка загрузки"))
+    paySettingsApi.get().then((d) => { setS(d); onChange?.(d) }).catch((e) => setError(e instanceof Error ? e.message : "Ошибка загрузки"))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canEdit])
 
   const upd = (patch: Partial<PaySettings>) => setS((p) => (p ? { ...p, ...patch } : p))
@@ -99,6 +99,7 @@ export default function Finance() {
         payment_mode: s.payment_mode,
       })
       setS(res)
+      onChange?.(res)
       setSecret("")
       setMsg({ ok: true, text: "Настройки сохранены" })
     } catch (e) {
@@ -136,15 +137,13 @@ export default function Finance() {
 
   if (!canEdit) {
     return (
-      <CrmLayout title="Финансы">
-        <p className="text-white/50">Раздел доступен руководителю компании.</p>
-      </CrmLayout>
+      <p className="text-white/50">Раздел доступен руководителю компании.</p>
     )
   }
 
   if (!s) {
     return (
-      <CrmLayout title="Финансы">
+      <>
         {error ? (
           <p className="text-red-400 text-sm">{error}</p>
         ) : (
@@ -152,14 +151,14 @@ export default function Finance() {
             <Icon name="Loader2" size={28} className="animate-spin text-white/40" />
           </div>
         )}
-      </CrmLayout>
+      </>
     )
   }
 
   const card = "rounded-xl border border-white/10 bg-[#1f1f1f] p-5 flex flex-col gap-4"
 
   return (
-    <CrmLayout title="Финансы" subtitle="Интеграции и онлайн-оплата">
+    <>
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-4 items-start">
         <div className="flex flex-col gap-4">
           <div className={card}>
@@ -349,6 +348,8 @@ export default function Finance() {
           )}
         </div>
       </div>
-    </CrmLayout>
+    </>
   )
 }
+
+export default YookassaSettings
