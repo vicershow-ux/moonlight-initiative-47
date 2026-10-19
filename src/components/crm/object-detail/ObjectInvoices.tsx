@@ -100,6 +100,9 @@ export function ObjectInvoices({ objectId, isClient = false }: { objectId: numbe
                     {inv.status === "paid" && inv.paid_online && (
                       <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-300">онлайн</span>
                     )}
+                    {inv.status === "paid" && inv.paid_source === "bank" && (
+                      <span className="rounded-full bg-[#FFDD2D]/15 px-2 py-0.5 text-xs text-[#FFDD2D]">по выписке</span>
+                    )}
                     {isOverdue(inv) && <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-xs text-red-300">просрочен</span>}
                   </div>
                 </div>

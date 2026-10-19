@@ -2,8 +2,9 @@ import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
-import { paySettingsApi, PaySettings } from "@/lib/api"
+import { bankApi, BankSettings, paySettingsApi, PaySettings } from "@/lib/api"
 import { YookassaSettings } from "@/components/crm/integrations/YookassaSettings"
+import { TbankSettings } from "@/components/crm/integrations/TbankSettings"
 
 type Status = "on" | "off" | "soon"
 
@@ -40,10 +41,10 @@ const INTEGRATIONS: IntegrationDef[] = [
     slug: "tbank",
     name: "Т-Банк Бизнес",
     category: "Банк",
-    description: "Автоматическая отметка оплаты счетов по выписке из расчётного счёта.",
+    description: "Счета автоматически отмечаются оплаченными по поступлениям на расчётный счёт.",
     icon: "Landmark",
     color: "#FFDD2D",
-    available: false,
+    available: true,
   },
   {
     slug: "moysklad",
@@ -65,14 +66,18 @@ const STATUS: Record<Status, { label: string; cls: string }> = {
 export default function Integrations() {
   const { slug } = useParams()
   const [yk, setYk] = useState<PaySettings | null>(null)
+  const [bank, setBank] = useState<BankSettings | null>(null)
 
   useEffect(() => {
-    if (!slug) paySettingsApi.get().then(setYk).catch(() => null)
+    if (slug) return
+    paySettingsApi.get().then(setYk).catch(() => null)
+    bankApi.get().then(setBank).catch(() => null)
   }, [slug])
 
   const statusOf = (it: IntegrationDef): Status => {
     if (!it.available) return "soon"
     if (it.slug === "yookassa") return yk?.enabled && yk.shop_id && yk.has_secret ? "on" : "off"
+    if (it.slug === "tbank") return bank?.enabled && bank.has_token && bank.account_number ? "on" : "off"
     return "off"
   }
 
@@ -86,6 +91,7 @@ export default function Integrations() {
           Все интеграции
         </Link>
         {current.slug === "yookassa" && <YookassaSettings onChange={setYk} />}
+        {current.slug === "tbank" && <TbankSettings onChange={setBank} />}
       </CrmLayout>
     )
   }

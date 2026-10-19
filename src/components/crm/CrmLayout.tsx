@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/lib/utils"
 import { NotificationBell } from "@/components/crm/NotificationBell"
 import { hasHrefAccess, hasPosition } from "@/lib/positions"
+import { useBankAutoSync } from "@/hooks/useBankAutoSync"
 
 interface CrmLayoutProps {
   children: ReactNode
@@ -44,6 +45,7 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
+  useBankAutoSync(user?.role === "owner" || user?.role === "admin")
 
   useEffect(() => {
     document.title = `${title} — FixKey`

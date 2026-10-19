@@ -2151,6 +2151,7 @@ export interface Invoice {
   updated_at: string
   paid_at?: string | null
   paid_online?: boolean
+  paid_source?: string
   object_code?: string
   client_name?: string
   address?: string
@@ -2446,3 +2447,64 @@ export const paySettingsApi = {
 }
 
 export const INVOICES_WEBHOOK_URL = `${INVOICES_URL}?action=yookassa_webhook`
+
+export interface BankOperation {
+  id: number
+  operation_date: string | null
+  amount: number
+  purpose: string
+  payer_name: string
+  match_status: "unmatched" | "suggested" | "auto" | "manual" | "ignored"
+  match_reason: string
+  invoice_id: number | null
+  invoice_number: string | null
+  invoice_status: string | null
+}
+
+export interface BankSettings {
+  enabled: boolean
+  account_number: string
+  auto_mark: boolean
+  match_by_amount: boolean
+  last_synced_at: string | null
+  last_error: string
+  token_masked: string
+  has_token: boolean
+  operations: BankOperation[]
+  open_invoices: { id: number; number: string; due: number; client_name: string }[]
+  sync?: { loaded?: number; marked?: number }
+}
+
+const bankUrl = (sub = "") => `${INVOICES_URL}?action=bank_settings${sub ? `&sub=${sub}` : ""}`
+const bankPost = async (sub: string, body: object = {}) => {
+  const res = await fetch(bankUrl(sub), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(body),
+  })
+  return parseResponse(res)
+}
+
+export const bankApi = {
+  async get() {
+    const res = await fetch(bankUrl(), { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<BankSettings>
+  },
+  async save(payload: { enabled?: boolean; token?: string; account_number?: string; auto_mark?: boolean; match_by_amount?: boolean }) {
+    const res = await fetch(bankUrl(), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<BankSettings>
+  },
+  accounts: (token?: string) =>
+    bankPost("accounts", { token }) as Promise<{ accounts: { account_number: string; name: string; main: boolean }[] }>,
+  sync: () => bankPost("sync") as Promise<BankSettings>,
+  match: (operation_id: number, invoice_id: number) => bankPost("match", { operation_id, invoice_id }) as Promise<BankSettings>,
+  ignore: (operation_id: number) => bankPost("ignore", { operation_id }) as Promise<BankSettings>,
+  async autosync() {
+    const res = await fetch(`${INVOICES_URL}?action=bank_autosync`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ loaded?: number; marked?: number; skipped?: string; error?: string }>
+  },
+}

@@ -7,6 +7,7 @@ from datetime import date
 import psycopg2
 from mailer import send_document_email
 import yookassa
+import tbank
 
 
 def get_conn():
@@ -49,7 +50,7 @@ def get_current_user(cur, event):
 INVOICE_KEYS = [
     'id', 'object_id', 'contract_id', 'act_id', 'invoice_number', 'invoice_date', 'due_date',
     'purpose', 'items', 'vat_mode', 'total_amount', 'apply_signature', 'apply_stamp', 'notes', 'payment_note',
-    'status', 'created_at', 'updated_at', 'paid_at', 'paid_online',
+    'status', 'created_at', 'updated_at', 'paid_at', 'paid_online', 'paid_source',
 ]
 COLS = ', '.join(f'i.{k}' for k in INVOICE_KEYS)
 LIST_SQL = (
@@ -333,6 +334,186 @@ def pay_settings(cur, conn, user, method, body, params):
 
 
 
+def mark_paid_bank(cur, conn, company_id, inv_id, op_row_id, amount, payer, auto):
+    '''Отмечает счёт оплаченным по поступлению на расчётный счёт'''
+    cur.execute(
+        "UPDATE invoices SET status = 'paid', paid_at = NOW(), paid_source = 'bank', updated_at = NOW() "
+        "WHERE id = %s AND company_id = %s AND status <> 'paid' RETURNING object_id, invoice_number",
+        (inv_id, company_id)
+    )
+    row = cur.fetchone()
+    if not row:
+        return False
+    object_id, number = row
+    cur.execute("UPDATE bank_operations SET invoice_id = %s, match_status = %s WHERE id = %s",
+                (inv_id, 'auto' if auto else 'manual', op_row_id))
+    apply_to_schedule(cur, company_id, object_id, amount)
+    cur.execute("SELECT object_code, client_name FROM objects WHERE id = %s", (object_id,))
+    code, client = cur.fetchone() or ('', '')
+    cur.execute(
+        "INSERT INTO notifications (company_id, type, title, message, payload) VALUES (%s, %s, %s, %s, %s)",
+        (company_id, 'invoice_paid', 'Оплата поступила на расчётный счёт',
+         f'{payer or client} оплатил счёт № {number} на {fmt_rub(amount)} по объекту {code} (выписка Т-Банка)',
+         json.dumps({'object_id': object_id, 'invoice_id': int(inv_id)}))
+    )
+    conn.commit()
+    send_thanks(cur, company_id, inv_id)
+    conn.commit()
+    return True
+
+
+def open_invoices(cur, company_id):
+    cur.execute(
+        "SELECT i.id, i.invoice_number, i.total_amount, i.vat_mode, o.client_name, '' "
+        "FROM invoices i JOIN objects o ON o.id = i.object_id WHERE i.company_id = %s AND i.status <> 'paid'",
+        (company_id,)
+    )
+    out = []
+    for iid, num, total, vat_mode, client, inn in cur.fetchall():
+        due = float(total or 0)
+        m = re.match(r'^on_top(?:_(\d+))?$', vat_mode or '')
+        if m:
+            due = round(due * (1 + int(m.group(1) or 20) / 100), 2)
+        out.append({'id': iid, 'number': num, 'due': due, 'client_name': client or '', 'client_inn': inn or ''})
+    return out
+
+
+def bank_sync(cur, conn, company_id, force=False):
+    '''Загружает новые поступления из Т-Банка и сопоставляет их со счетами'''
+    s = tbank.load_settings(cur, company_id)
+    if not tbank.configured(s):
+        return {'skipped': 'not_configured'}
+    if not force and s['last_synced_at']:
+        cur.execute("SELECT NOW() - %s < INTERVAL '10 minutes'", (s['last_synced_at'],))
+        if cur.fetchone()[0]:
+            return {'skipped': 'recent'}
+    ops, err = tbank.fetch_credits(s['token'], s['account_number'], tbank.default_since(s['last_synced_at']))
+    if err:
+        cur.execute("UPDATE company_bank_settings SET last_error = %s WHERE company_id = %s", (err[:500], company_id))
+        conn.commit()
+        return {'error': err}
+    new_ops = []
+    for op in ops:
+        cur.execute(
+            "INSERT INTO bank_operations (company_id, operation_id, account_number, operation_date, amount, purpose, payer_name, payer_inn, document_number) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (company_id, provider, operation_id) DO NOTHING RETURNING id",
+            (company_id, op['operation_id'], s['account_number'], op['date'], op['amount'], op['purpose'],
+             op['payer_name'], op['payer_inn'], op['document_number'])
+        )
+        r = cur.fetchone()
+        if r:
+            new_ops.append((r[0], op))
+    conn.commit()
+    marked = 0
+    invoices = open_invoices(cur, company_id)
+    for row_id, op in new_ops:
+        inv, reason = tbank.match_invoice(op, invoices, s['match_by_amount'])
+        sure = bool(inv) and not reason.startswith('Похоже')
+        if sure and s['auto_mark']:
+            if mark_paid_bank(cur, conn, company_id, inv['id'], row_id, op['amount'], op['payer_name'], True):
+                marked += 1
+                invoices = [i for i in invoices if i['id'] != inv['id']]
+                cur.execute("UPDATE bank_operations SET match_reason = %s WHERE id = %s", (reason, row_id))
+                continue
+        cur.execute(
+            "UPDATE bank_operations SET match_status = %s, match_reason = %s, invoice_id = %s WHERE id = %s",
+            ('suggested' if inv else 'unmatched', reason, inv['id'] if inv else None, row_id)
+        )
+    cur.execute("UPDATE company_bank_settings SET last_synced_at = NOW(), last_error = '' WHERE company_id = %s", (company_id,))
+    conn.commit()
+    return {'loaded': len(new_ops), 'marked': marked}
+
+
+def bank_settings(cur, conn, user, method, body, params):
+    '''Раздел «Интеграции → Т-Банк Бизнес»'''
+    company_id = user['company_id']
+    s = tbank.load_settings(cur, company_id)
+    sub = params.get('sub') or ''
+
+    def view(extra=None):
+        out = {k: v for k, v in s.items() if k != 'token'}
+        out['token_masked'] = tbank.mask(s.get('token'))
+        out['has_token'] = bool(s.get('token'))
+        cur.execute(
+            "SELECT b.id, b.operation_date, b.amount, b.purpose, b.payer_name, b.match_status, b.match_reason, "
+            "b.invoice_id, i.invoice_number, i.status "
+            "FROM bank_operations b LEFT JOIN invoices i ON i.id = b.invoice_id "
+            "WHERE b.company_id = %s ORDER BY b.operation_date DESC NULLS LAST, b.id DESC LIMIT 50",
+            (company_id,)
+        )
+        keys = ['id', 'operation_date', 'amount', 'purpose', 'payer_name', 'match_status', 'match_reason',
+                'invoice_id', 'invoice_number', 'invoice_status']
+        out['operations'] = [dict(zip(keys, r)) for r in cur.fetchall()]
+        out['open_invoices'] = open_invoices(cur, company_id)
+        if extra:
+            out.update(extra)
+        return response(200, out)
+
+    if method == 'GET':
+        return view()
+
+    if method == 'POST' and sub == 'accounts':
+        token = str(body.get('token') or '').strip() or s.get('token')
+        if not token:
+            return response(400, {'error': 'Вставьте токен Т-Бизнеса'})
+        accounts, err = tbank.list_accounts(token)
+        if err:
+            return response(400, {'error': err})
+        return response(200, {'accounts': accounts})
+
+    if method == 'POST' and sub == 'sync':
+        res = bank_sync(cur, conn, company_id, force=True)
+        if res.get('error'):
+            return response(400, {'error': res['error']})
+        s = tbank.load_settings(cur, company_id)
+        return view({'sync': res})
+
+    if method == 'POST' and sub == 'match':
+        op_id = body.get('operation_id')
+        inv_id = body.get('invoice_id')
+        cur.execute("SELECT amount, payer_name, match_status FROM bank_operations WHERE id = %s AND company_id = %s", (op_id, company_id))
+        op = cur.fetchone()
+        if not op:
+            return response(404, {'error': 'Операция не найдена'})
+        if op[2] in ('auto', 'manual'):
+            return response(400, {'error': 'Операция уже привязана к счёту'})
+        if not mark_paid_bank(cur, conn, company_id, inv_id, op_id, float(op[0]), op[1], False):
+            return response(400, {'error': 'Счёт не найден или уже оплачен'})
+        s = tbank.load_settings(cur, company_id)
+        return view({'matched': True})
+
+    if method == 'POST' and sub == 'ignore':
+        cur.execute("UPDATE bank_operations SET match_status = 'ignored' WHERE id = %s AND company_id = %s AND match_status NOT IN ('auto', 'manual')",
+                    (body.get('operation_id'), company_id))
+        conn.commit()
+        return view()
+
+    if method == 'PUT':
+        token = str(body.get('token') or '').strip()
+        if token and (len(token) < 20 or ' ' in token):
+            return response(400, {'error': 'Похоже, токен скопирован не полностью'})
+        token = token or s.get('token') or ''
+        account = re.sub(r'\D', '', str(body.get('account_number') if body.get('account_number') is not None else s['account_number']))
+        if account and len(account) != 20:
+            return response(400, {'error': 'Номер расчётного счёта — 20 цифр'})
+        enabled = bool(body.get('enabled', s['enabled']))
+        if enabled and (not token or not account):
+            return response(400, {'error': 'Для включения укажите токен и расчётный счёт'})
+        cur.execute(
+            "INSERT INTO company_bank_settings (company_id, enabled, token, account_number, auto_mark, match_by_amount, updated_at, updated_by) "
+            "VALUES (%s, %s, %s, %s, %s, %s, NOW(), %s) ON CONFLICT (company_id) DO UPDATE SET enabled = EXCLUDED.enabled, "
+            "token = EXCLUDED.token, account_number = EXCLUDED.account_number, auto_mark = EXCLUDED.auto_mark, "
+            "match_by_amount = EXCLUDED.match_by_amount, updated_at = NOW(), updated_by = EXCLUDED.updated_by",
+            (company_id, enabled, token, account, bool(body.get('auto_mark', s['auto_mark'])),
+             bool(body.get('match_by_amount', s['match_by_amount'])), user['user_id'])
+        )
+        conn.commit()
+        s = tbank.load_settings(cur, company_id)
+        return view({'saved': True})
+
+    return response(405, {'error': 'Метод не поддерживается'})
+
+
 def handle_webhook(event):
     '''Уведомление ЮKassa: статус перепроверяется запросом в API, телу запроса не доверяем'''
     try:
@@ -387,6 +568,13 @@ def handler(event: dict, context) -> dict:
 
         if method == 'GET' and action == 'pay_config':
             return response(200, {'online': yookassa.configured(yookassa.load_settings(cur, company_id))})
+
+        if action in ('bank_settings', 'bank_autosync'):
+            if user['role'] not in ('owner', 'admin'):
+                return response(403, {'error': 'Интеграция с банком доступна руководителю'})
+            if action == 'bank_autosync':
+                return response(200, bank_sync(cur, conn, company_id))
+            return bank_settings(cur, conn, user, method, json.loads(event.get('body') or '{}') if method in ('PUT', 'POST') else {}, params)
 
         if action == 'pay_settings':
             if user['role'] not in ('owner', 'admin'):
