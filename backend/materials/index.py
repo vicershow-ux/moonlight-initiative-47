@@ -76,7 +76,7 @@ def has_offers_table(cur):
     справочник должен работать по-старому, а не падать с ошибкой.
     """
     cur.execute(
-        "SELECT to_regclass('public.material_offers') IS NOT NULL"
+        "SELECT to_regclass('material_offers') IS NOT NULL"
     )
     row = cur.fetchone()
     return bool(row and row[0])
