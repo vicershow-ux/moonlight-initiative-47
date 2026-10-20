@@ -1,9 +1,33 @@
+import { useState } from "react"
 import { Link } from "react-router-dom"
 import Icon from "@/components/ui/icon"
 import { ObjectItem, ObjectRoom } from "@/lib/api"
 import { yesNo, capitalizeFirst } from "./utils"
 import { num2 } from "@/lib/formatNumber"
 import { LeadToEstimateButton } from "./LeadToEstimateButton"
+
+function LeadRequestCard({ objectId, text, isClient }: { objectId: number; text: string; isClient?: boolean }) {
+  const [open, setOpen] = useState(false)
+  const count = (text.match(/^\s*\d+\.\s/gm) || []).length
+  return (
+    <div className="bg-[#1f1f1f] border border-[#D4AF37]/30 rounded-xl p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="font-medium flex items-center gap-2 text-left hover:text-[#D4AF37] transition-colors"
+        >
+          <Icon name="ShoppingCart" size={16} className="text-[#D4AF37]" />
+          Заявка клиента с сайта
+          {count > 0 && <span className="text-xs text-white/40 font-normal">({count} поз.)</span>}
+          <Icon name="ChevronDown" size={16} className={`text-white/50 transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+        {!isClient && /\d+\.\s/.test(text) && <LeadToEstimateButton objectId={objectId} />}
+      </div>
+      {open && <p className="mt-3 text-sm text-white/70 whitespace-pre-wrap">{text}</p>}
+    </div>
+  )
+}
 
 interface ObjectInfoPanelsProps {
   object: ObjectItem
@@ -100,16 +124,7 @@ export function ObjectInfoPanels({ object, rooms, roomsLoading, isClient }: Obje
       </div>
 
       {object.lead_request && (
-        <div className="bg-[#1f1f1f] border border-[#D4AF37]/30 rounded-xl p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-            <p className="font-medium flex items-center gap-2">
-              <Icon name="ShoppingCart" size={16} className="text-[#D4AF37]" />
-              Заявка клиента с сайта
-            </p>
-            {!isClient && /\d+\.\s/.test(object.lead_request) && <LeadToEstimateButton objectId={object.id} />}
-          </div>
-          <p className="text-sm text-white/70 whitespace-pre-wrap">{object.lead_request}</p>
-        </div>
+        <LeadRequestCard objectId={object.id} text={object.lead_request} isClient={isClient} />
       )}
 
       {object.measurer_comment && (

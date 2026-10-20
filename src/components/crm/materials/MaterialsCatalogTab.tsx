@@ -42,7 +42,7 @@ export function MaterialsCatalogTab({
           />
           <input
             className={`${inputCls} pl-9`}
-            placeholder="Поиск: материал, категория, магазин, адрес"
+            placeholder="Поиск: материал, магазин, адрес"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -77,7 +77,6 @@ export function MaterialsCatalogTab({
             <thead>
               <tr className="border-b border-white/10 text-xs uppercase text-white/40">
                 <th className="py-2 pr-4 text-left font-medium">Материал</th>
-                <th className="py-2 pr-4 text-left font-medium">Категория</th>
                 <th className="py-2 pr-4 text-left font-medium">Ед. изм.</th>
                 <th className="py-2 pr-4 text-left font-medium">Цена</th>
                 <th className="py-2 pr-4 text-left font-medium">Расход</th>
@@ -94,7 +93,6 @@ export function MaterialsCatalogTab({
                     {m.name}
                     {m.note && <div className="text-xs text-white/30">{m.note}</div>}
                   </td>
-                  <td className="py-3 pr-4 text-white/60">{m.category || "—"}</td>
                   <td className="py-3 pr-4 text-white/60">{m.unit}</td>
                   <td className="whitespace-nowrap py-3 pr-4 text-[#D4AF37]">
                     {money(num(m.price))}

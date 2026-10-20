@@ -93,15 +93,6 @@ export default function MaterialCreate() {
             />
           </div>
           <div>
-            <label className={labelCls}>Категория</label>
-            <input
-              className={inputCls}
-              placeholder="Например: Черновые материалы"
-              value={form.category}
-              onChange={(e) => set("category", e.target.value)}
-            />
-          </div>
-          <div>
             <label className={labelCls}>Единица измерения</label>
             <select
               className={inputCls}
