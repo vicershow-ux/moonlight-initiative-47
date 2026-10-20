@@ -9,6 +9,14 @@ import { printHtml } from "@/lib/printHtml"
 import { useAuth } from "@/contexts/AuthContext"
 import { TabKey } from "@/components/crm/documents/constants"
 
+async function safeDelete(fn: () => Promise<unknown>) {
+  try {
+    await fn()
+  } catch (e) {
+    window.alert((e as Error)?.message || "Не удалось удалить документ")
+  }
+}
+
 export function useDocumentsData() {
   const { user } = useAuth()
   const [estimates, setEstimates] = useState<Estimate[]>([])
@@ -53,22 +61,22 @@ export function useDocumentsData() {
   }, [])
 
   const handleDelete = async (id: number) => {
-    await estimatesApi.remove(id)
+    await safeDelete(() => estimatesApi.remove(id))
     load()
   }
 
   const handleDeleteContract = async (id: number) => {
-    await contractsApi.remove(id)
+    await safeDelete(() => contractsApi.remove(id))
     load()
   }
 
   const handleDeleteAct = async (id: number) => {
-    await actsApi.remove(id)
+    await safeDelete(() => actsApi.remove(id))
     load()
   }
 
   const handleDeleteAddendum = async (id: number) => {
-    await addendaApi.remove(id)
+    await safeDelete(() => addendaApi.remove(id))
     load()
   }
 
@@ -158,7 +166,7 @@ export function useDocumentsData() {
   }, [matEstimates, search])
 
   const handleDeleteMatEstimate = async (id: number) => {
-    await materialsApi.removeEstimate(id)
+    await safeDelete(() => materialsApi.removeEstimate(id))
     load()
   }
 

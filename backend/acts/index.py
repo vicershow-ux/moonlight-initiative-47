@@ -772,6 +772,10 @@ def handler(event, context):
         if method == 'DELETE':
             if not act_id:
                 return response(400, {'error': 'Не указан id акта'})
+            cur.execute("SELECT id FROM acts WHERE id = %s AND company_id = %s", (act_id, company_id))
+            if not cur.fetchone():
+                return response(404, {'error': 'Акт не найден'})
+            cur.execute("UPDATE invoices SET act_id = NULL WHERE act_id = %s", (act_id,))
             cur.execute("DELETE FROM acts WHERE id = %s AND company_id = %s", (act_id, company_id))
             conn.commit()
             return response(200, {'success': True})

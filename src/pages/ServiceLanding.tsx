@@ -11,6 +11,7 @@ import { useServiceLandings } from "@/hooks/useServiceLandings"
 import { usePageSeo } from "@/hooks/usePageSeo"
 import { getServiceFaq } from "@/lib/serviceFaq"
 import Icon from "@/components/ui/icon"
+import { serviceImage } from "@/lib/serviceImages"
 import PageNotFound from "@/pages/PageNotFound"
 import { reachGoal } from "@/lib/metrika"
 import { WorkQtyControl } from "@/components/services/WorkQtyControl"
@@ -305,6 +306,19 @@ export default function ServiceLanding() {
                 </div>
               </div>
 
+              <div className="w-full flex flex-col gap-5">
+              <div className="relative aspect-[16/10] rounded-2xl overflow-hidden bg-[#161616] group">
+                <img
+                  src={serviceImage(meta.slug)}
+                  alt={meta.category}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <span className="absolute bottom-4 left-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm text-white text-xs">
+                  <Icon name={meta.icon} fallback="Wrench" size={14} className="text-[#D4AF37]" />
+                  {meta.navLabel}
+                </span>
+              </div>
               <div className="bg-foreground text-primary-foreground rounded-2xl p-6 md:p-8 w-full">
                 <p className="text-primary-foreground/60 text-xs tracking-[0.2em] uppercase mb-4">
                   Кратко
@@ -333,6 +347,7 @@ export default function ServiceLanding() {
                     <span className="font-medium">Бесплатно</span>
                   </div>
                 </div>
+              </div>
               </div>
             </div>
           </div>

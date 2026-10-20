@@ -678,6 +678,11 @@ def handler(event: dict, context) -> dict:
                 return response(403, {'error': 'Недостаточно прав'})
             if not estimate_id:
                 return response(400, {'error': 'Не указан id сметы'})
+            cur.execute("SELECT id FROM estimates WHERE id = %s AND company_id = %s", (estimate_id, company_id))
+            if not cur.fetchone():
+                return response(404, {'error': 'Смета не найдена'})
+            cur.execute("UPDATE acts SET estimate_id = NULL WHERE estimate_id = %s", (estimate_id,))
+            cur.execute("UPDATE contracts SET estimate_id = NULL WHERE estimate_id = %s", (estimate_id,))
             cur.execute("DELETE FROM estimate_items WHERE estimate_id = %s", (estimate_id,))
             cur.execute("DELETE FROM estimates WHERE id = %s AND company_id = %s", (estimate_id, company_id))
             conn.commit()

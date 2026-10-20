@@ -51,10 +51,51 @@ export default function Objects() {
     objectHubApi.unread().then((d) => setUnread(d.unread || {})).catch(() => {})
   }, [])
 
+  const [view, setView] = useState<"active" | "closed">("active")
+  const [error, setError] = useState("")
+  const closedCount = objects.filter((o) => o.is_closed).length
+  const visible = objects.filter((o) => (view === "closed" ? o.is_closed : !o.is_closed))
+
   const handleDelete = async (id: number) => {
-    await objectsApi.remove(id)
-    load()
+    setError("")
+    try {
+      await objectsApi.remove(id)
+      load()
+    } catch (e) {
+      setError((e as Error)?.message || "Не удалось удалить объект")
+    }
   }
+
+  const toggleClosed = async (obj: ObjectItem) => {
+    setError("")
+    try {
+      await objectsApi.update(obj.id, { is_closed: !obj.is_closed })
+      load()
+    } catch (e) {
+      setError((e as Error)?.message || "Не удалось изменить объект")
+    }
+  }
+
+  const closeBtn = (obj: ObjectItem, mobile = false) => (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        toggleClosed(obj)
+      }}
+      title={obj.is_closed ? "Вернуть в работу" : "Завершить объект — убрать в архив"}
+      className={
+        mobile
+          ? "w-10 h-10 flex items-center justify-center rounded-lg bg-white/5 active:bg-white/10 text-white/60 shrink-0"
+          : "text-white/40 hover:text-emerald-400 transition-colors"
+      }
+    >
+      <Icon name={obj.is_closed ? "ArchiveRestore" : "CircleCheckBig"} size={mobile ? 17 : 15} fallback="Archive" />
+    </button>
+  )
+
+  const deleteText =
+    "Объект будет удалён вместе со сметами, договорами, актами, счетами, фото и чатом. Доходы и расходы останутся в финансах, но без привязки к объекту. Это нельзя отменить."
 
   const handleStatusChange = async (id: number, newStatus: string) => {
     await objectsApi.update(id, { status: newStatus })
@@ -63,8 +104,23 @@ export default function Objects() {
 
   return (
     <CrmLayout title="Объекты" subtitle={isClient ? "Ваши объекты" : "Все объекты вашей компании"}>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div className="inline-flex rounded-lg border border-white/10 bg-[#1f1f1f] p-1 text-sm">
+          {([
+            ["active", `В работе (${objects.length - closedCount})`],
+            ["closed", `Завершённые (${closedCount})`],
+          ] as const).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setView(key)}
+              className={`px-3 py-1.5 rounded-md transition-colors ${view === key ? "bg-[#D4AF37] text-[#161616]" : "text-white/60 hover:text-white"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       {!isClient && (
-        <div className="flex justify-end mb-6">
           <Link
             to="/cabinet/objects/new"
             className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg"
@@ -72,7 +128,11 @@ export default function Objects() {
             <Icon name="Plus" size={16} />
             Создать объект
           </Link>
-        </div>
+      )}
+      </div>
+
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>
       )}
 
       <div className="md:bg-[#1f1f1f] md:border md:border-white/10 md:rounded-xl md:p-5">
@@ -80,14 +140,16 @@ export default function Objects() {
           <div className="flex justify-center py-16">
             <Icon name="Loader2" size={24} className="animate-spin text-white/40" />
           </div>
-        ) : objects.length === 0 ? (
+        ) : visible.length === 0 ? (
           <div className="text-center py-16 text-white/30 text-sm">
-            Пока нет объектов — создайте первый
+            {view === "closed"
+              ? "Завершённых объектов нет. Нажмите галочку у объекта, чтобы убрать его сюда после сдачи"
+              : objects.length === 0 ? "Пока нет объектов — создайте первый" : "Все объекты завершены"}
           </div>
         ) : (
           <>
           <div className="md:hidden flex flex-col gap-3">
-            {objects.map((obj) => (
+            {visible.map((obj) => (
               <MobileCard
                 key={obj.id}
                 title={obj.client_name}
@@ -124,8 +186,9 @@ export default function Objects() {
                       >
                         <Icon name="Pencil" size={17} />
                       </Link>
+                      {closeBtn(obj, true)}
                       <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/5 shrink-0">
-                        <DeleteButton onConfirm={() => handleDelete(obj.id)} />
+                        <DeleteButton title="Удалить объект целиком?" description={deleteText} onConfirm={() => handleDelete(obj.id)} />
                       </div>
                     </>
                   )
@@ -147,7 +210,7 @@ export default function Objects() {
                 </tr>
               </thead>
               <tbody>
-                {objects.map((obj) => (
+                {visible.map((obj) => (
                   <tr key={obj.id} className="border-b border-white/5 last:border-0">
                     <td className="py-3 pr-4 text-[#D4AF37]">{obj.object_code}{unread[obj.id] ? <UnreadBadge count={unread[obj.id]} /> : null}</td>
                     <td className="py-3 pr-4">
@@ -193,8 +256,9 @@ export default function Objects() {
                             <Icon name="Pencil" size={15} />
                           </Link>
                         )}
+                        {!isClient && closeBtn(obj)}
                         {!isClient && (
-                          <DeleteButton onConfirm={() => handleDelete(obj.id)} />
+                          <DeleteButton title="Удалить объект целиком?" description={deleteText} onConfirm={() => handleDelete(obj.id)} />
                         )}
                       </div>
                     </td>

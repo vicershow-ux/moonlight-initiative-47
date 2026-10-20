@@ -5,6 +5,7 @@ import { DeleteButton } from "@/components/ui/delete-button"
 import { materialsApi, MaterialItem } from "@/lib/api"
 import { money, num, inputCls, goldBtn } from "./constants"
 import { CatalogEditModal } from "./CatalogEditModal"
+import { PriceParserModal } from "./PriceParserModal"
 import { consumptionLabel, getMode } from "@/lib/materialConsumption"
 
 interface MaterialsCatalogTabProps {
@@ -30,6 +31,7 @@ export function MaterialsCatalogTab({
 }: MaterialsCatalogTabProps) {
   const [editingId, setEditingId] = useState<number | null>(null)
   const editing = materials.find((m) => m.id === editingId) || null
+  const [showParser, setShowParser] = useState(false)
 
   return (
     <div className="rounded-xl border border-white/10 bg-[#1f1f1f] p-5">
@@ -59,6 +61,14 @@ export function MaterialsCatalogTab({
             </option>
           ))}
         </select>
+        <button
+          type="button"
+          onClick={() => setShowParser(true)}
+          className="flex items-center gap-2 rounded-lg border border-[#D4AF37]/40 px-4 py-2.5 text-sm text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10"
+        >
+          <Icon name="RefreshCw" size={16} />
+          Обновить цены
+        </button>
         <Link to="/cabinet/materials/new" className={goldBtn}>
           <Icon name="Plus" size={16} />
           Добавить материал
@@ -203,6 +213,9 @@ export function MaterialsCatalogTab({
         </div>
       )}
 
+      {showParser && (
+        <PriceParserModal onClose={() => setShowParser(false)} onUpdated={() => run(async () => {})} />
+      )}
       {editing && (
         <CatalogEditModal
           key={editing.id}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
+import { DeleteButton } from "@/components/ui/delete-button"
 import { objectsApi, objectStatusesApi, estimatesApi, objectRoomsApi, contractsApi, materialsApi, Estimate, ObjectItem, ObjectRoom, ObjectStatus, Contract } from "@/lib/api"
 import { EstimatesListModal } from "@/components/crm/EstimatesListModal"
 import { CreateContractModal } from "@/components/crm/CreateContractModal"
@@ -120,6 +121,22 @@ export default function ObjectDetail() {
     }
   }
 
+  const toggleClosed = async () => {
+    if (!object) return
+    await objectsApi.update(object.id, { is_closed: !object.is_closed })
+    load()
+  }
+
+  const handleDeleteObject = async () => {
+    if (!object) return
+    try {
+      await objectsApi.remove(object.id)
+      navigate("/cabinet/objects")
+    } catch (e) {
+      window.alert((e as Error)?.message || "Не удалось удалить объект")
+    }
+  }
+
   const handleDeleteEstimate = async (estimateId: number) => {
     await estimatesApi.remove(estimateId)
     setEstimates((prev) => prev.filter((e) => e.id !== estimateId))
@@ -160,6 +177,9 @@ export default function ObjectDetail() {
           <span className={`px-2 py-0.5 rounded-full text-xs ${getStatusBadgeClass(statuses.find((s) => s.name === object.status)?.color)}`}>
             {object.status}
           </span>
+          {object.is_closed && (
+            <span className="px-2 py-0.5 rounded-full text-xs bg-emerald-500/15 text-emerald-300">Завершён</span>
+          )}
         </div>
         {!isClient && (
           <div className="flex items-center gap-2">
@@ -184,6 +204,22 @@ export default function ObjectDetail() {
               <Icon name="Pencil" size={16} />
               Редактировать
             </Link>
+            <button
+              type="button"
+              onClick={toggleClosed}
+              title={object.is_closed ? "Вернуть объект в работу" : "Объект сдан — убрать в завершённые"}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 transition-colors text-sm px-4 min-h-[44px] rounded-lg"
+            >
+              <Icon name={object.is_closed ? "ArchiveRestore" : "CircleCheckBig"} size={16} fallback="Archive" />
+              {object.is_closed ? "Вернуть в работу" : "Завершить"}
+            </button>
+            <div className="flex items-center justify-center min-h-[44px] px-3 rounded-lg bg-white/5">
+              <DeleteButton
+                title="Удалить объект целиком?"
+                description="Объект будет удалён вместе со сметами, договорами, актами, счетами, фото и чатом. Доходы и расходы останутся в финансах без привязки к объекту. Это нельзя отменить."
+                onConfirm={handleDeleteObject}
+              />
+            </div>
           </div>
         )}
       </div>

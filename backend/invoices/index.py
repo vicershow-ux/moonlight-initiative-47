@@ -910,6 +910,11 @@ def handler(event: dict, context) -> dict:
         if method == 'DELETE':
             if not inv_id:
                 return response(400, {'error': 'Не указан счёт'})
+            cur.execute("SELECT id FROM invoices WHERE id = %s AND company_id = %s", (inv_id, company_id))
+            if not cur.fetchone():
+                return response(404, {'error': 'Счёт не найден'})
+            cur.execute("UPDATE bank_operations SET invoice_id = NULL WHERE invoice_id = %s", (inv_id,))
+            cur.execute("DELETE FROM invoice_payments WHERE invoice_id = %s", (inv_id,))
             cur.execute("DELETE FROM invoices WHERE id = %s AND company_id = %s", (inv_id, company_id))
             conn.commit()
             return response(200, {'success': True})

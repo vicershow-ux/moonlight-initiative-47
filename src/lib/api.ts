@@ -195,6 +195,8 @@ export interface ObjectItem {
   lead_request?: string
   lead_works?: string
   created_at: string
+  is_closed?: boolean
+  closed_at?: string | null
   updated_at: string
 }
 
@@ -1699,6 +1701,12 @@ export interface MaterialItem {
   offers?: MaterialOffer[]
 }
 
+export interface ParserInfo {
+  state: { strategy: string; last_check_at: string | null; last_ok: boolean; last_message: string; last_run_at: string | null }
+  strategies: { key: string; label: string }[]
+  items: { id: number; name: string; parsed_at: string | null; parse_status: string; parse_message: string }[]
+}
+
 export interface MaterialOffer {
   id: number
   material_id: number
@@ -1877,6 +1885,29 @@ export const materialsApi = {
       body: JSON.stringify(payload),
     })
     return parseResponse(res)
+  },
+
+  async parserInfo() {
+    const res = await fetch(`${MATERIALS_URL}?entity=parser`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<ParserInfo>
+  },
+
+  async parserCheck(payload: { strategy?: string; url?: string; save_fail?: boolean }) {
+    const res = await fetch(`${MATERIALS_URL}?entity=parser&action=check`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<{ ok: boolean; strategy: string; message: string; url?: string }>
+  },
+
+  async parserUpdate(id: number) {
+    const res = await fetch(`${MATERIALS_URL}?entity=parser&action=update&id=${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: "{}",
+    })
+    return parseResponse(res) as Promise<{ ok: boolean; message: string; price?: number }>
   },
 
   async removeOffer(id: number) {

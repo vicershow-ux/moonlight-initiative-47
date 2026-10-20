@@ -13,7 +13,7 @@ FIELDS = [
     'measurer_comment', 'design_project',
 ]
 
-ALL_KEYS = ['id', 'object_code'] + FIELDS + ['lead_request', 'lead_works', 'created_at', 'updated_at']
+ALL_KEYS = ['id', 'object_code'] + FIELDS + ['lead_request', 'lead_works', 'created_at', 'updated_at', 'is_closed', 'closed_at']
 
 
 def get_conn():
@@ -62,6 +62,36 @@ def split_positions(main, extra):
         if p and p not in out:
             out.append(p)
     return out
+
+
+OBJ_SUB = "SELECT id FROM {t} WHERE object_id = %s"
+
+
+def purge_object(cur, oid):
+    """Полностью убирает объект со всеми документами. Деньги и склад остаются, просто отвязываются."""
+    inv = OBJ_SUB.format(t='invoices')
+    act = OBJ_SUB.format(t='acts')
+    con = OBJ_SUB.format(t='contracts')
+    est = OBJ_SUB.format(t='estimates')
+    cur.execute(f"UPDATE bank_operations SET invoice_id = NULL WHERE invoice_id IN ({inv})", (oid,))
+    cur.execute(f"DELETE FROM invoice_payments WHERE invoice_id IN ({inv})", (oid,))
+    cur.execute(f"UPDATE invoices SET act_id = NULL WHERE act_id IN ({act})", (oid,))
+    cur.execute(f"UPDATE invoices SET contract_id = NULL WHERE contract_id IN ({con})", (oid,))
+    cur.execute("DELETE FROM invoices WHERE object_id = %s", (oid,))
+    cur.execute(f"DELETE FROM contract_addenda WHERE object_id = %s OR contract_id IN ({con})", (oid, oid))
+    cur.execute(f"UPDATE acts SET contract_id = NULL WHERE contract_id IN ({con})", (oid,))
+    cur.execute(f"UPDATE acts SET estimate_id = NULL WHERE estimate_id IN ({est})", (oid,))
+    cur.execute("DELETE FROM acts WHERE object_id = %s", (oid,))
+    cur.execute(f"UPDATE contracts SET estimate_id = NULL WHERE estimate_id IN ({est})", (oid,))
+    cur.execute("DELETE FROM contracts WHERE object_id = %s", (oid,))
+    cur.execute(f"DELETE FROM estimate_items WHERE estimate_id IN ({est})", (oid,))
+    cur.execute("DELETE FROM estimates WHERE object_id = %s", (oid,))
+    for t in ['company_expenses', 'company_incomes', 'documents', 'rentals', 'warehouse_items']:
+        cur.execute(f"UPDATE {t} SET object_id = NULL WHERE object_id = %s", (oid,))
+    for t in ['material_estimates', 'object_access', 'object_files', 'object_materials',
+              'object_message_reads', 'object_messages', 'object_payments',
+              'object_photo_reports', 'object_plans', 'object_rooms']:
+        cur.execute(f"DELETE FROM {t} WHERE object_id = %s", (oid,))
 
 
 def handler(event: dict, context) -> dict:
@@ -207,6 +237,11 @@ def handler(event: dict, context) -> dict:
                         value = json.dumps(value, ensure_ascii=False)
                     fields.append(f"{key} = %s")
                     values.append(value)
+            if 'is_closed' in body:
+                closed = bool(body.get('is_closed'))
+                fields.append("is_closed = %s")
+                values.append(closed)
+                fields.append("closed_at = NOW()" if closed else "closed_at = NULL")
 
             if fields:
                 fields.append("updated_at = NOW()")
@@ -227,16 +262,7 @@ def handler(event: dict, context) -> dict:
             if not cur.fetchone():
                 return response(404, {'error': 'Объект не найден'})
 
-            cur.execute("DELETE FROM acts WHERE object_id = %s AND company_id = %s", (object_id, company_id))
-            cur.execute("DELETE FROM contracts WHERE object_id = %s AND company_id = %s", (object_id, company_id))
-            cur.execute(
-                "DELETE FROM estimate_items WHERE estimate_id IN "
-                "(SELECT id FROM estimates WHERE object_id = %s AND company_id = %s)",
-                (object_id, company_id)
-            )
-            cur.execute("DELETE FROM estimates WHERE object_id = %s AND company_id = %s", (object_id, company_id))
-            cur.execute("DELETE FROM object_rooms WHERE object_id = %s", (object_id,))
-            cur.execute("DELETE FROM object_access WHERE object_id = %s", (object_id,))
+            purge_object(cur, int(object_id))
             cur.execute("DELETE FROM objects WHERE id = %s AND company_id = %s", (object_id, company_id))
             conn.commit()
             return response(200, {'success': True})

@@ -5,6 +5,7 @@ import re
 import html as html_lib
 import psycopg2
 from mailer import send_document_email
+from price_parser import STRATEGIES, STRATEGY_ORDER, is_product_url, try_url
 
 
 def get_conn():
@@ -122,6 +123,150 @@ def build_doc_email(brand, phones, client_name, label, note):
     return html_body, text_body
 
 
+def parser_state(cur, company_id):
+    cur.execute(
+        "SELECT strategy, last_check_at, last_ok, last_message, last_run_at "
+        "FROM material_parser_state WHERE company_id = %s", (company_id,)
+    )
+    r = cur.fetchone()
+    if not r:
+        return {'strategy': 'desktop', 'last_check_at': None, 'last_ok': False,
+                'last_message': 'Проверка ещё не запускалась', 'last_run_at': None}
+    return {'strategy': r[0], 'last_check_at': r[1], 'last_ok': r[2],
+            'last_message': r[3], 'last_run_at': r[4]}
+
+
+def save_state(cur, company_id, **kw):
+    cur.execute(
+        "INSERT INTO material_parser_state (company_id) VALUES (%s) ON CONFLICT (company_id) DO NOTHING",
+        (company_id,)
+    )
+    for k, v in kw.items():
+        if k in ('last_check_at', 'last_run_at'):
+            cur.execute(f"UPDATE material_parser_state SET {k} = NOW() WHERE company_id = %s", (company_id,))
+        else:
+            cur.execute(f"UPDATE material_parser_state SET {k} = %s WHERE company_id = %s", (v, company_id))
+
+
+def material_links(cur, company_id, material_id):
+    """Все ссылки на товар у материала: из магазинов и из самого материала."""
+    links = []
+    if has_offers_table(cur):
+        cur.execute(
+            "SELECT id, shop_url FROM material_offers WHERE material_id = %s AND company_id = %s",
+            (material_id, company_id)
+        )
+        links = [(r[0], r[1]) for r in cur.fetchall() if is_product_url(r[1])]
+    if not links:
+        cur.execute("SELECT shop_url FROM materials WHERE id = %s AND company_id = %s", (material_id, company_id))
+        r = cur.fetchone()
+        if r and is_product_url(r[0]):
+            links = [(None, r[0])]
+    return links
+
+
+def handle_parser(cur, conn, company_id, method, params, body):
+    action = params.get('action') or ''
+    if method == 'GET':
+        cur.execute(
+            "SELECT m.id, m.name, m.shop_url, m.parsed_at, m.parse_status, m.parse_message FROM materials m "
+            "WHERE m.company_id = %s AND COALESCE(m.is_archived, false) = false ORDER BY m.name",
+            (company_id,)
+        )
+        rows = cur.fetchall()
+        items = []
+        for r in rows:
+            if material_links(cur, company_id, r[0]):
+                items.append({'id': r[0], 'name': r[1], 'parsed_at': r[3],
+                              'parse_status': r[4], 'parse_message': r[5]})
+        return response(200, {
+            'state': parser_state(cur, company_id),
+            'strategies': [{'key': k, 'label': STRATEGIES[k]['label']} for k in STRATEGY_ORDER],
+            'items': items,
+        })
+
+    if method == 'POST' and action == 'check':
+        strategy = body.get('strategy') or parser_state(cur, company_id)['strategy']
+        if strategy not in STRATEGIES:
+            return response(400, {'error': 'Неизвестный способ загрузки'})
+        url = (body.get('url') or '').strip()
+        if not url:
+            cur.execute(
+                "SELECT id FROM materials WHERE company_id = %s AND COALESCE(is_archived, false) = false ORDER BY id",
+                (company_id,)
+            )
+            for (mid,) in cur.fetchall():
+                links = material_links(cur, company_id, mid)
+                if links:
+                    url = links[0][1]
+                    break
+        if not url:
+            return response(200, {'ok': False, 'strategy': strategy,
+                                  'message': 'В справочнике нет материалов со ссылкой на страницу товара'})
+        ok, res = try_url(url, strategy)
+        label = STRATEGIES[strategy]['label']
+        if ok:
+            msg = f'Работает ({label}): цена {res["price"]} ₽ найдена — {res["source"]}'
+        else:
+            msg = f'{label}: {res}'
+        if ok or body.get('save_fail'):
+            save_state(cur, company_id, strategy=strategy if ok else parser_state(cur, company_id)['strategy'],
+                       last_ok=ok, last_message=msg, last_check_at=True)
+            conn.commit()
+        return response(200, {'ok': ok, 'strategy': strategy, 'message': msg, 'url': url,
+                              'result': res if ok else None})
+
+    if method == 'POST' and action == 'update':
+        material_id = params.get('id') or body.get('material_id')
+        if not material_id:
+            return response(400, {'error': 'Не указан материал'})
+        strategy = parser_state(cur, company_id)['strategy']
+        links = material_links(cur, company_id, material_id)
+        if not links:
+            return response(200, {'ok': False, 'message': 'Нет ссылки на товар'})
+        updated = 0
+        last_err = ''
+        new_price = None
+        for offer_id, url in links[:3]:
+            ok, res = try_url(url, strategy)
+            if not ok:
+                last_err = res
+                continue
+            updated += 1
+            new_price = res['price']
+            stock = res.get('stock')
+            avail = res.get('available')
+            if offer_id:
+                if stock is not None:
+                    cur.execute(
+                        "UPDATE material_offers SET price = %s, stock = %s, stock_known = true, "
+                        "checked_at = NOW(), updated_at = NOW() WHERE id = %s",
+                        (res['price'], stock, offer_id))
+                elif avail is False:
+                    cur.execute(
+                        "UPDATE material_offers SET price = %s, stock = 0, stock_known = true, "
+                        "checked_at = NOW(), updated_at = NOW() WHERE id = %s", (res['price'], offer_id))
+                else:
+                    cur.execute(
+                        "UPDATE material_offers SET price = %s, checked_at = NOW(), updated_at = NOW() WHERE id = %s",
+                        (res['price'], offer_id))
+            else:
+                cur.execute("UPDATE materials SET price = %s, updated_at = NOW() WHERE id = %s AND company_id = %s",
+                            (res['price'], material_id, company_id))
+        if updated and links[0][0]:
+            sync_material_best(cur, material_id, company_id)
+        status = 'ok' if updated else 'error'
+        msg = f'Цена обновлена: {new_price} ₽' if updated else last_err
+        cur.execute(
+            "UPDATE materials SET parsed_at = NOW(), parse_status = %s, parse_message = %s "
+            "WHERE id = %s AND company_id = %s", (status, msg, material_id, company_id))
+        save_state(cur, company_id, last_run_at=True)
+        conn.commit()
+        return response(200, {'ok': bool(updated), 'message': msg, 'price': new_price})
+
+    return response(405, {'error': 'Метод не поддерживается'})
+
+
 def handler(event: dict, context) -> dict:
     '''Справочник материалов: цены, магазины и адреса поставщиков'''
     method = event.get('httpMethod', 'GET')
@@ -207,6 +352,10 @@ def handler(event: dict, context) -> dict:
             if not ok:
                 return response(502, {'error': err})
             return response(200, {'success': True})
+
+        if entity == 'parser' and not is_client:
+            pbody = json.loads(event.get('body') or '{}') if method == 'POST' else {}
+            return handle_parser(cur, conn, company_id, method, params, pbody)
 
         if method == 'GET' and entity == 'estimate' and row_id:
             cur.execute(

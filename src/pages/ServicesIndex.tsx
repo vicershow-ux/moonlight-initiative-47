@@ -6,6 +6,7 @@ import { useSiteContent } from "@/hooks/useSiteContent"
 import { useServiceLandings } from "@/hooks/useServiceLandings"
 import { usePageSeo } from "@/hooks/usePageSeo"
 import Icon from "@/components/ui/icon"
+import { serviceImage } from "@/lib/serviceImages"
 import { reachGoal } from "@/lib/metrika"
 import { WorkCartBar } from "@/components/services/WorkCartBar"
 
@@ -109,17 +110,26 @@ export default function ServicesIndex() {
                   <a
                     key={c.slug}
                     href={`/uslugi/${c.slug}`}
-                    className="group flex flex-col p-6 rounded-2xl border border-border hover:border-[#D4AF37] transition-colors"
+                    className="group flex flex-col rounded-2xl border border-border overflow-hidden hover:border-[#D4AF37] hover:-translate-y-1 hover:shadow-[0_20px_40px_-20px_rgba(212,175,55,0.45)] transition-all duration-300"
                   >
-                    <span className="w-11 h-11 rounded-full bg-[#D4AF37]/15 flex items-center justify-center mb-5">
-                      <Icon
-                        name={c.icon}
-                        fallback="Wrench"
-                        size={19}
-                        className="text-[#D4AF37]"
+                    <div className="relative aspect-[16/10] overflow-hidden bg-[#161616]">
+                      <img
+                        src={serviceImage(c.slug)}
+                        alt={c.category}
+                        loading="lazy"
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       />
-                    </span>
-
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+                      <span className="absolute top-4 left-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm border border-[#D4AF37]/40 flex items-center justify-center">
+                        <Icon name={c.icon} fallback="Wrench" size={18} className="text-[#D4AF37]" />
+                      </span>
+                      {stat?.min_price ? (
+                        <span className="absolute bottom-4 right-4 px-3 py-1 rounded-full bg-[#D4AF37] text-[#161616] text-xs font-semibold">
+                          от {formatPrice(stat.min_price)} ₽
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-col flex-1 p-6">
                     <h2 className="text-lg font-medium mb-2 group-hover:text-[#D4AF37] transition-colors">
                       {c.category}
                     </h2>
@@ -136,6 +146,7 @@ export default function ServicesIndex() {
                       ) : (
                         <Icon name="ArrowRight" size={16} className="text-[#D4AF37]" />
                       )}
+                    </div>
                     </div>
                   </a>
                 )
