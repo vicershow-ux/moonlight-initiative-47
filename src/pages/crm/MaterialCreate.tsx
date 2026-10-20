@@ -35,6 +35,7 @@ export default function MaterialCreate() {
     shop_address: "",
     shop_phone: "",
     shop_url: "",
+    stock: "",
     note: "",
     consumption: "",
     consumption_unit: "м²",
@@ -54,6 +55,7 @@ export default function MaterialCreate() {
       await materialsApi.create({
         ...form,
         price: Number(form.price || 0),
+        stock: form.stock.trim() === "" ? undefined : Number(form.stock),
         consumption: piece ? 0 : Number(form.consumption || 0),
       })
       navigate("/cabinet/materials")
@@ -238,7 +240,20 @@ export default function MaterialCreate() {
               onChange={(e) => set("shop_url", e.target.value)}
             />
           </div>
-          <div className="sm:col-span-2">
+          <div>
+            <label className={labelCls}>Сколько есть в магазине, {form.unit}</label>
+            <input
+              className={inputCls}
+              type="number"
+              min="0"
+              step="any"
+              placeholder="Не знаю — оставить пустым"
+              value={form.stock}
+              onChange={(e) => set("stock", e.target.value)}
+            />
+            <div className="mt-1 text-xs text-white/30">Парсер обновит сам, если магазин показывает остаток</div>
+          </div>
+          <div className="sm:col-span-1">
             <label className={labelCls}>Примечание</label>
             <input
               className={inputCls}

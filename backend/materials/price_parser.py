@@ -139,10 +139,31 @@ def parse_product(text):
                 price = p
                 source = 'текст страницы'
 
+    plain = re.sub(r'<(?:script|style)[^>]*>.*?</(?:script|style)>', ' ', text, flags=re.S | re.I)
+    plain = re.sub(r'<(?:ins|b|strong|span|em|i)\b[^>]*>|</(?:ins|b|strong|span|em|i)>', '', plain, flags=re.I)
+    plain = re.sub(r'<[^>]+>', ' | ', plain)
+    plain = html_lib.unescape(plain).replace('\u00a0', ' ')
+    plain = re.sub(r'\s+', ' ', plain)
+    num_re = r'(\d{1,3}(?: \d{3})*|\d+)'
+    unit_re = r'(?:шт|уп|меш|рул|кг|л|м²|м2|м|пог)\b'
+    stop_re = r'(?! ?(?:₽|руб|р\b|магазин|пункт|час|дн|мин|%))'
+
+    if stock is None:
+        for pat in [
+            r'[Вв] наличии:? (?:более |больше |свыше |от )?' + num_re + stop_re,
+            r'[Оо]стат(?:ок|ки)(?: на складе)?:? ' + num_re + stop_re,
+            r'[Дд]оступно(?: к заказу)?:? ' + num_re + stop_re,
+            num_re + ' ?' + unit_re + r'\.? (?:в наличии|на складе)',
+        ]:
+            m = re.search(pat, plain)
+            if m:
+                stock = to_float(m.group(1))
+                break
+
     if stock is None:
         for pat in [
             r'"(?:stock|availableQuantity|quantity|stockQuantity|stock_qty)"\s*:\s*"?(\d+(?:\.\d+)?)',
-            r'[Вв]\s*наличии[^<\d]{0,30}?(\d[\d\s]{0,6})\s*(?:шт|уп|м|кг|л)',
+            r'[Вв]\s*наличии[^<\d]{0,30}?(\d[\d\s]{0,6})\s*(?:шт|уп|кг|л)\b',
         ]:
             m = re.search(pat, text)
             if m:
@@ -151,7 +172,7 @@ def parse_product(text):
 
     if available is None:
         low = text.lower()
-        if 'нет в наличии' in low or 'outofstock' in low:
+        if 'нет в наличии' in low or 'outofstock' in low or 'под заказ' in low:
             available = False
         elif 'в наличии' in low or 'instock' in low:
             available = True

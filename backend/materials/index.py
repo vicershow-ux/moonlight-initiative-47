@@ -148,6 +148,34 @@ def save_state(cur, company_id, **kw):
             cur.execute(f"UPDATE material_parser_state SET {k} = %s WHERE company_id = %s", (v, company_id))
 
 
+def ensure_offer(cur, company_id, material_id):
+    """Возвращает id основного магазина материала, создавая его из полей материала при необходимости."""
+    cur.execute(
+        "SELECT o.id FROM material_offers o JOIN materials m ON m.id = o.material_id "
+        "WHERE o.material_id = %s AND o.company_id = %s "
+        "ORDER BY (o.shop_url = m.shop_url AND m.shop_url <> '') DESC, (o.shop_name = m.shop_name) DESC, o.id LIMIT 1",
+        (material_id, company_id)
+    )
+    r = cur.fetchone()
+    if r:
+        return r[0]
+    cur.execute(
+        "INSERT INTO material_offers (company_id, material_id, shop_name, shop_address, shop_phone, shop_url, price) "
+        "SELECT company_id, id, shop_name, shop_address, shop_phone, shop_url, price FROM materials "
+        "WHERE id = %s AND company_id = %s RETURNING id",
+        (material_id, company_id)
+    )
+    r = cur.fetchone()
+    return r[0] if r else None
+
+
+def stock_values(body):
+    raw = body.get('stock')
+    if raw is None or str(raw).strip() == '':
+        return None
+    return to_num(raw)
+
+
 def material_links(cur, company_id, material_id):
     """Все ссылки на товар у материала: из магазинов и из самого материала."""
     links = []
@@ -225,9 +253,12 @@ def handle_parser(cur, conn, company_id, method, params, body):
         if not links:
             return response(200, {'ok': False, 'message': 'Нет ссылки на товар'})
         updated = 0
+        last_stock, last_avail = None, None
         last_err = ''
         new_price = None
         for offer_id, url in links[:3]:
+            if not offer_id and has_offers_table(cur):
+                offer_id = ensure_offer(cur, company_id, material_id)
             ok, res = try_url(url, strategy)
             if not ok:
                 last_err = res
@@ -236,6 +267,7 @@ def handle_parser(cur, conn, company_id, method, params, body):
             new_price = res['price']
             stock = res.get('stock')
             avail = res.get('available')
+            last_stock, last_avail = stock, avail
             if offer_id:
                 if stock is not None:
                     cur.execute(
@@ -253,10 +285,14 @@ def handle_parser(cur, conn, company_id, method, params, body):
             else:
                 cur.execute("UPDATE materials SET price = %s, updated_at = NOW() WHERE id = %s AND company_id = %s",
                             (res['price'], material_id, company_id))
-        if updated and links[0][0]:
+        if updated and has_offers_table(cur):
             sync_material_best(cur, material_id, company_id)
         status = 'ok' if updated else 'error'
-        msg = f'Цена обновлена: {new_price} ₽' if updated else last_err
+        if updated:
+            msg = f'Цена {new_price} ₽'
+            msg += f', в наличии {last_stock:g}' if last_stock is not None else (', наличие на сайте не указано' if last_avail is None else (', есть в наличии' if last_avail else ', нет в наличии'))
+        else:
+            msg = last_err
         cur.execute(
             "UPDATE materials SET parsed_at = NOW(), parse_status = %s, parse_message = %s "
             "WHERE id = %s AND company_id = %s", (status, msg, material_id, company_id))
@@ -690,16 +726,17 @@ def handler(event: dict, context) -> dict:
             new_id = cur.fetchone()[0]
 
             shop_name = (body.get('shop_name') or '').strip()
-            if (shop_name or to_num(body.get('price')) > 0) and has_offers_table(cur):
+            if (shop_name or to_num(body.get('price')) > 0 or stock_values(body) is not None) and has_offers_table(cur):
                 cur.execute(
                     "INSERT INTO material_offers (company_id, material_id, shop_name, "
-                    "shop_address, shop_phone, shop_url, price) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                    "shop_address, shop_phone, shop_url, price, stock, stock_known) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     (company_id, new_id, shop_name,
                      (body.get('shop_address') or '').strip(),
                      (body.get('shop_phone') or '').strip(),
                      (body.get('shop_url') or '').strip(),
-                     to_num(body.get('price')))
+                     to_num(body.get('price')),
+                     stock_values(body) or 0, stock_values(body) is not None)
                 )
             conn.commit()
             return response(200, {'success': True, 'id': new_id})
@@ -722,7 +759,22 @@ def handler(event: dict, context) -> dict:
                     "WHERE id = %s AND company_id = %s",
                     values
                 )
-                conn.commit()
+            if has_offers_table(cur) and ('stock' in body or 'price' in body or 'shop_url' in body):
+                offer_id = ensure_offer(cur, company_id, row_id)
+                if offer_id:
+                    sets = ["shop_name = m.shop_name", "shop_address = m.shop_address", "shop_phone = m.shop_phone",
+                            "shop_url = m.shop_url", "price = m.price", "checked_at = now()", "updated_at = now()"]
+                    args = []
+                    if 'stock' in body:
+                        sv = stock_values(body)
+                        sets += ["stock = %s", "stock_known = %s"]
+                        args += [sv or 0, sv is not None]
+                    cur.execute(
+                        f"UPDATE material_offers o SET {', '.join(sets)} FROM materials m "
+                        "WHERE o.id = %s AND m.id = o.material_id",
+                        args + [offer_id]
+                    )
+            conn.commit()
             return response(200, {'success': True})
 
         if method == 'DELETE':
