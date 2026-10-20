@@ -6,6 +6,7 @@ import { materialsApi, MaterialItem } from "@/lib/api"
 import { money, num, inputCls, goldBtn } from "./constants"
 import { CatalogEditModal } from "./CatalogEditModal"
 import { PriceParserModal } from "./PriceParserModal"
+import { ShopsViewModal } from "./ShopsViewModal"
 import { consumptionLabel, getMode } from "@/lib/materialConsumption"
 
 interface MaterialsCatalogTabProps {
@@ -32,6 +33,8 @@ export function MaterialsCatalogTab({
   const [editingId, setEditingId] = useState<number | null>(null)
   const editing = materials.find((m) => m.id === editingId) || null
   const [showParser, setShowParser] = useState(false)
+  const [viewingId, setViewingId] = useState<number | null>(null)
+  const viewing = materials.find((m) => m.id === viewingId) || null
 
   return (
     <div className="rounded-xl border border-white/10 bg-[#1f1f1f] p-5">
@@ -198,6 +201,13 @@ export function MaterialsCatalogTab({
                     <div className="flex items-center gap-1">
                       <button
                         className="rounded-lg p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-[#D4AF37]"
+                        title="Магазины и телефоны"
+                        onClick={() => setViewingId(m.id)}
+                      >
+                        <Icon name="Store" size={15} />
+                      </button>
+                      <button
+                        className="rounded-lg p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-[#D4AF37]"
                         title="Редактировать материал"
                         onClick={() => setEditingId(m.id)}
                       >
@@ -216,6 +226,7 @@ export function MaterialsCatalogTab({
       {showParser && (
         <PriceParserModal onClose={() => setShowParser(false)} onUpdated={() => run(async () => {})} />
       )}
+      {viewing && <ShopsViewModal material={viewing} onClose={() => setViewingId(null)} />}
       {editing && (
         <CatalogEditModal
           key={editing.id}
