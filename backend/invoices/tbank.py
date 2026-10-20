@@ -1,4 +1,6 @@
 import json
+import os
+import ssl
 import re
 import urllib.error
 import urllib.parse
@@ -8,6 +10,19 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 API = 'https://business.tbank.ru/openapi'
+
+_CA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'russian_trusted_ca.pem')
+
+
+def _ssl_context():
+    '''Т-Банк использует сертификат Минцифры — добавляем его к стандартным доверенным'''
+    ctx = ssl.create_default_context()
+    if os.path.exists(_CA):
+        ctx.load_verify_locations(_CA)
+    return ctx
+
+
+SSL_CTX = _ssl_context()
 SETTINGS_COLS = ['enabled', 'token', 'account_number', 'auto_mark', 'match_by_amount', 'last_synced_at', 'last_error', 'updated_at']
 
 
@@ -35,7 +50,7 @@ def _get(token, path, params=None):
         'Authorization': f'Bearer {token}', 'X-Request-Id': str(uuid.uuid4()), 'Accept': 'application/json',
     })
     try:
-        with urllib.request.urlopen(req, timeout=3.5) as r:
+        with urllib.request.urlopen(req, timeout=3.5, context=SSL_CTX) as r:
             return json.loads(r.read().decode() or '{}'), None
     except urllib.error.HTTPError as e:
         raw = e.read().decode(errors='ignore')
