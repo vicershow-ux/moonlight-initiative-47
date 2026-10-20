@@ -5,20 +5,17 @@ import re
 import urllib.error
 import urllib.parse
 import urllib.request
+from russian_ca import RUSSIAN_TRUSTED_CA
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
 
 API = 'https://business.tbank.ru/openapi'
 
-_CA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'russian_trusted_ca.pem')
-
-
 def _ssl_context():
     '''Т-Банк использует сертификат Минцифры — добавляем его к стандартным доверенным'''
     ctx = ssl.create_default_context()
-    if os.path.exists(_CA):
-        ctx.load_verify_locations(_CA)
+    ctx.load_verify_locations(cadata=RUSSIAN_TRUSTED_CA)
     return ctx
 
 
