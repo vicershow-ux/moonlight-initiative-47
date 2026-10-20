@@ -2,3 +2,6 @@ node_modules
 
 # warmup/handoff артефакты
 tmp/
+
+__pycache__/
+*.pyc
