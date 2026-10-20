@@ -1,0 +1,8 @@
+ALTER TABLE materials ALTER COLUMN shop_url TYPE TEXT;
+ALTER TABLE material_offers ALTER COLUMN shop_url TYPE TEXT;
+ALTER TABLE materials ALTER COLUMN shop_address TYPE TEXT;
+ALTER TABLE material_offers ALTER COLUMN shop_address TYPE TEXT;
+ALTER TABLE materials ALTER COLUMN note TYPE TEXT;
+ALTER TABLE material_offers ALTER COLUMN note TYPE TEXT;
+ALTER TABLE materials ALTER COLUMN shop_phone TYPE VARCHAR(100);
+ALTER TABLE material_offers ALTER COLUMN shop_phone TYPE VARCHAR(100);
