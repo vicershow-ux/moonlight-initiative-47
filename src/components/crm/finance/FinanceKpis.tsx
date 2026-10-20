@@ -12,7 +12,14 @@ interface Kpi {
 
 export function FinanceKpis({ s }: { s: FinanceData["summary"] }) {
   const items: Kpi[] = [
-    { label: "Поступило", value: s.received, hint: `${s.received_count} оплаченных счетов`, icon: "ArrowDownToLine", tone: "text-green-300 bg-green-500/15" },
+    {
+      label: "Доходы",
+      value: s.income,
+      hint: `${s.received_count} оплаченных счетов${s.other_income ? ` · без счёта ${rub(s.other_income)}` : ""}`,
+      icon: "ArrowDownToLine",
+      tone: "text-green-300 bg-green-500/15",
+    },
+    { label: "Расходы", value: s.expenses, hint: "Материалы, аренда и все внесённые расходы", icon: "ArrowUpFromLine", tone: "text-red-300 bg-red-500/15" },
     { label: "Ожидаем оплату", value: s.outstanding, hint: `${s.outstanding_count} неоплаченных счетов`, icon: "Hourglass", tone: "text-[#D4AF37] bg-[#D4AF37]/15" },
     {
       label: "Просрочено",
@@ -24,13 +31,13 @@ export function FinanceKpis({ s }: { s: FinanceData["summary"] }) {
     {
       label: "Прибыль",
       value: s.margin,
-      hint: `Расходы ${rub(s.expenses)} · договоров на ${rub(s.contracted)}`,
+      hint: `Доходы минус расходы · договоров на ${rub(s.contracted)}`,
       icon: "TrendingUp",
       tone: s.margin >= 0 ? "text-sky-300 bg-sky-500/15" : "text-red-300 bg-red-500/15",
     },
   ]
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-4">
       {items.map((k) => (
         <div key={k.label} className={`${card} flex flex-col gap-3`}>
           <div className="flex items-center justify-between">
@@ -47,10 +54,21 @@ export function FinanceKpis({ s }: { s: FinanceData["summary"] }) {
   )
 }
 
-export function FinanceBalance({ s, categories }: { s: FinanceData["summary"]; categories: FinanceData["categories"] }) {
+export function FinanceBalance({
+  s,
+  categories,
+  incomeCategories = {},
+}: {
+  s: FinanceData["summary"]
+  categories: FinanceData["categories"]
+  incomeCategories?: FinanceData["income_categories"]
+}) {
   const rows = [
     { l: "Оплаты по счетам", v: s.received, sign: 1 },
     { l: "Доход от аренды", v: s.rent_income, sign: 1 },
+    ...Object.entries(s.income_by_category || {})
+      .sort((a, b) => b[1] - a[1])
+      .map(([k, v]) => ({ l: incomeCategories[k] || k, v, sign: 1 })),
     { l: "Материалы на объекты", v: s.materials, sign: -1 },
     { l: "Аренда у поставщиков", v: s.rent_expense, sign: -1 },
     ...Object.entries(s.expenses_by_category || {})
@@ -88,7 +106,7 @@ export function FinanceBalance({ s, categories }: { s: FinanceData["summary"]; c
         <span className={`font-semibold ${s.margin >= 0 ? "text-green-300" : "text-red-300"}`}>{rub(s.margin)}</span>
       </div>
       <p className="text-xs text-white/40">
-        Считается по поступившим деньгам: оплаты минус материалы объектов, аренда и все внесённые расходы.
+        Считается по поступившим деньгам: все доходы минус материалы объектов, аренда и все внесённые расходы.
         {s.received > 0 && ` Через ЮKassa и выписку банка пришло ${autoShare}% оплат.`}
       </p>
     </div>

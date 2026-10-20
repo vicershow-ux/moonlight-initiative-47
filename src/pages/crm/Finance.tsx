@@ -9,6 +9,7 @@ import { FinanceObjects } from "@/components/crm/finance/FinanceObjects"
 import { FinanceInvoices } from "@/components/crm/finance/FinanceInvoices"
 import { FinanceUpcoming } from "@/components/crm/finance/FinanceUpcoming"
 import { FinanceExpenses } from "@/components/crm/finance/FinanceExpenses"
+import { FinanceIncomes } from "@/components/crm/finance/FinanceIncomes"
 import { BankDebitsInbox } from "@/components/crm/finance/BankDebitsInbox"
 
 const PERIODS: { k: FinancePeriod; l: string }[] = [
@@ -43,7 +44,7 @@ export default function Finance() {
   }, [period])
 
   return (
-    <CrmLayout title="Финансы" subtitle="Поступления, долги заказчиков и расчёты по объектам">
+    <CrmLayout title="Финансы" subtitle="Доходы, расходы, долги заказчиков и прибыль по объектам">
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex rounded-lg bg-white/5 p-0.5 text-sm">
@@ -77,12 +78,15 @@ export default function Finance() {
             <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-4 items-start">
               <FinanceChart months={data.months} />
               <div className="flex flex-col gap-4">
-                <FinanceBalance s={data.summary} categories={data.categories} />
+                <FinanceBalance s={data.summary} categories={data.categories} incomeCategories={data.income_categories} />
                 <FinanceUpcoming items={data.upcoming} />
               </div>
             </div>
             <BankDebitsInbox data={data} onChanged={reload} />
-            <FinanceExpenses data={data} onChanged={reload} />
+            <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4 items-start">
+              <FinanceIncomes data={data} onChanged={reload} />
+              <FinanceExpenses data={data} onChanged={reload} />
+            </div>
             <FinanceObjects objects={data.objects} />
             <FinanceInvoices invoices={data.invoices} />
           </div>

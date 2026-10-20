@@ -5,7 +5,7 @@ import { card, monthRu, rub, shortRub } from "./format"
 
 const SERIES = [
   { key: "issued", name: "Выставлено", color: "#6b7280" },
-  { key: "received", name: "Поступило", color: "#D4AF37" },
+  { key: "received", name: "Доходы", color: "#22c55e" },
   { key: "expenses", name: "Расходы", color: "#ef4444" },
 ] as const
 

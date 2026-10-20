@@ -2662,6 +2662,8 @@ export interface FinanceData {
     rent_expense: number
     other_expenses: number
     expenses_by_category: Record<string, number>
+    other_income: number
+    income_by_category: Record<string, number>
     income: number
     expenses: number
     margin: number
@@ -2672,7 +2674,32 @@ export interface FinanceData {
   upcoming: { id: number; object_id: number; title: string; amount: number; due_date: string; object_code: string; client_name: string }[]
   expenses: FinanceExpense[]
   categories: Record<string, string>
+  incomes: FinanceIncome[]
+  income_categories: Record<string, string>
   object_options: { id: number; object_code: string; client_name: string }[]
+}
+
+export interface FinanceIncome {
+  kind: "invoice" | "rent" | "manual"
+  id: number
+  object_id: number | null
+  income_date: string
+  amount: number
+  category: string
+  description: string
+  payer: string
+  object_code: string | null
+  client_name: string | null
+  source: "online" | "bank" | "manual"
+}
+
+export interface IncomePayload {
+  object_id: number | null
+  category: string
+  amount: number
+  income_date: string
+  description: string
+  payer: string
 }
 
 export const financeApi = {
@@ -2687,6 +2714,18 @@ export const financeApi = {
       body: JSON.stringify(payload),
     })
     return parseResponse(res) as Promise<{ id: number; saved: boolean }>
+  },
+  async saveIncome(payload: IncomePayload, id?: number) {
+    const res = await fetch(`${FINANCE_URL}?entity=income${id ? `&id=${id}` : ""}`, {
+      method: id ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<{ id: number; saved: boolean }>
+  },
+  async removeIncome(id: number) {
+    const res = await fetch(`${FINANCE_URL}?entity=income&id=${id}`, { method: "DELETE", headers: { ...authHeaders() } })
+    return parseResponse(res)
   },
   async exportMonth(month: string) {
     const res = await fetch(`${FINANCE_URL}?action=export&month=${month}`, { headers: { ...authHeaders() } })
