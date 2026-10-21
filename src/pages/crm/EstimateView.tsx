@@ -153,14 +153,14 @@ export default function EstimateView() {
           К объекту
         </Link>
 
-        <div className="flex items-center gap-2">
-          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getEstimateStatusColor(estimate.status)}`}>
+        <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:items-center sm:w-auto">
+          <span className={`col-span-2 justify-self-start px-2.5 py-1 rounded-full text-xs font-medium ${getEstimateStatusColor(estimate.status)}`}>
             {getEstimateStatusLabel(estimate.status)}
           </span>
           {!isClient && (
             <Link
               to={`/cabinet/objects/${objectId}/estimates/${estimate.id}/edit`}
-              className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg"
+              className="flex items-center justify-center min-h-[44px] sm:min-h-0 gap-1.5 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg"
             >
               <Icon name="Pencil" size={14} />
               Редактировать
@@ -169,7 +169,7 @@ export default function EstimateView() {
           {!isClient && (
             <button
               onClick={() => setSendOpen(true)}
-              className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
+              className="flex items-center justify-center min-h-[44px] sm:min-h-0 gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
             >
               <Icon name="Mail" size={14} />
               Отправить на почту
@@ -179,26 +179,29 @@ export default function EstimateView() {
             onClick={handlePrint}
             disabled={printing}
             title="Печать"
-            className="flex items-center justify-center w-9 h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg disabled:opacity-60"
+            className="flex items-center justify-center gap-1.5 text-sm w-full h-11 sm:w-9 sm:h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg disabled:opacity-60"
           >
             {printing ? <Icon name="Loader2" size={15} className="animate-spin" /> : <Icon name="Printer" size={15} />}
+            <span className="sm:hidden">Печать</span>
           </button>
           <button
             onClick={handleDownloadPdf}
             disabled={downloading}
             title="Скачать PDF"
-            className="flex items-center justify-center w-9 h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg disabled:opacity-60"
+            className="flex items-center justify-center gap-1.5 text-sm w-full h-11 sm:w-9 sm:h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg disabled:opacity-60"
           >
             {downloading ? <Icon name="Loader2" size={15} className="animate-spin" /> : <Icon name="Download" size={15} />}
+            <span className="sm:hidden">PDF</span>
           </button>
           {!isClient && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   title="Ещё"
-                  className="flex items-center justify-center w-9 h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg"
+                  className="col-span-2 flex items-center justify-center gap-1.5 text-sm w-full h-11 sm:w-9 sm:h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg"
                 >
                   <Icon name="MoreVertical" size={15} />
+                  <span className="sm:hidden">Ещё</span>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -220,7 +223,7 @@ export default function EstimateView() {
       </div>
 
       {!isClient && (
-        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl mb-4 p-5">
+        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl mb-4 p-3 sm:p-5">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <p className="text-sm font-medium flex items-center gap-2">
@@ -233,13 +236,13 @@ export default function EstimateView() {
                 Сформирована {formatDateTime(estimate.created_at)}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <Select
                 value={estimate.status || "ready"}
                 onValueChange={(v) => handleStatusChange(v as EstimateStatus)}
                 disabled={savingStatus}
               >
-                <SelectTrigger className="w-[200px] bg-[#161616] border-white/10 text-white">
+                <SelectTrigger className="w-full sm:w-[200px] min-h-[44px] sm:min-h-0 bg-[#161616] border-white/10 text-white">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -259,7 +262,7 @@ export default function EstimateView() {
         <div className="bg-[#1f1f1f] border border-white/10 rounded-xl mb-4 overflow-hidden">
           <button
             onClick={() => setHistoryOpen((v) => !v)}
-            className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-white/5 transition-colors"
+            className="w-full flex items-center justify-between gap-2 px-3 sm:px-5 py-3.5 text-left hover:bg-white/5 transition-colors"
           >
             <span className="text-sm text-white/60 flex items-center gap-2">
               <Icon name="History" size={15} />
@@ -273,9 +276,9 @@ export default function EstimateView() {
                 <Link
                   key={rev.id}
                   to={`/cabinet/objects/${objectId}/estimates/${rev.id}`}
-                  className={`flex items-center justify-between px-5 py-3 text-sm hover:bg-white/5 transition-colors ${rev.id === estimate.id ? "bg-white/5" : ""}`}
+                  className={`flex flex-col items-start sm:flex-row sm:items-center justify-between gap-1 px-3 sm:px-5 py-3 text-sm hover:bg-white/5 transition-colors ${rev.id === estimate.id ? "bg-white/5" : ""}`}
                 >
-                  <span className="flex items-center gap-2">
+                  <span className="flex flex-wrap items-center gap-2">
                     Редакция №{rev.revision_number}
                     {rev.id === estimate.id && <span className="text-[#D4AF37] text-xs">(текущая)</span>}
                     <span className={`px-2 py-0.5 rounded-full text-[10px] ${getEstimateStatusColor(rev.status)}`}>
@@ -293,7 +296,7 @@ export default function EstimateView() {
       {isClient && <ClientApproveBar estimate={estimate} onDone={() => load(true)} />}
       <ExtraWorksPanel estimate={estimate} isClient={isClient} onChanged={() => load(true)} />
 
-      <div className="bg-white rounded-xl p-6 md:p-10 max-w-4xl mx-auto shadow-xl overflow-x-auto">
+      <div className="bg-white rounded-xl p-3 sm:p-6 md:p-10 max-w-4xl mx-auto shadow-xl overflow-x-auto">
         <div
           dangerouslySetInnerHTML={{
             __html: estimatePreviewHtml(estimate, estObject(estimate), estimate.company_name || user?.company_name || ""),

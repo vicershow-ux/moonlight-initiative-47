@@ -173,7 +173,7 @@ export default function ObjectDetail() {
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 -mt-2">
         <div className="flex items-center gap-3 flex-wrap">
-          <h2 className="text-xl md:text-2xl font-semibold tracking-tight">{object.object_code}</h2>
+          <h2 className="text-xl md:text-2xl font-semibold tracking-tight break-all">{object.object_code}</h2>
           <span className={`px-2 py-0.5 rounded-full text-xs ${getStatusBadgeClass(statuses.find((s) => s.name === object.status)?.color)}`}>
             {object.status}
           </span>
@@ -182,7 +182,7 @@ export default function ObjectDetail() {
           )}
         </div>
         {!isClient && (
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
             <Link
               to={`/cabinet/objects/${object.id}/planner`}
               className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 min-h-[44px] rounded-lg"

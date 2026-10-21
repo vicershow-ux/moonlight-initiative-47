@@ -9,6 +9,7 @@ import {
 import { TeamMember } from "@/lib/api"
 import { positionOptions, getPositionLabel, getPositionColor, PositionKey } from "@/lib/positions"
 import { DeleteButton } from "@/components/ui/delete-button"
+import { TeamMemberMobileList } from "./TeamMemberMobileList"
 
 export type RoleFilter = "all" | PositionKey
 export type StatusFilter = "all" | "active" | "inactive" | "never"
@@ -72,7 +73,7 @@ export function TeamMembersPanel({
 }: TeamMembersPanelProps) {
   if (tab === "invites") {
     return (
-      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
         {members.filter((m) => m.role !== "owner").length === 0 ? (
           <div className="text-center py-16 text-white/30 text-sm">Пока нет добавленных сотрудников</div>
         ) : (
@@ -80,14 +81,14 @@ export function TeamMembersPanel({
             {members
               .filter((m) => m.role !== "owner")
               .map((m) => (
-                <div key={m.id} className="flex items-center justify-between bg-[#161616] border border-white/10 rounded-lg px-4 py-3">
-                  <div className="flex items-center gap-3">
+                <div key={m.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 bg-[#161616] border border-white/10 rounded-lg px-3 sm:px-4 py-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-medium">
                       {initials(m.full_name)}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">{m.full_name}</p>
-                      <p className="text-xs text-white/40">{m.email}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{m.full_name}</p>
+                      <p className="text-xs text-white/40 truncate">{m.email}</p>
                     </div>
                   </div>
                   <p className="text-xs text-white/40">Добавлен {formatDate(m.created_at)}</p>
@@ -101,7 +102,7 @@ export function TeamMembersPanel({
 
   return (
     <>
-      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5 mb-4">
+      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5 mb-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="text-xs text-white/50 mb-1.5 block">Поиск сотрудника</label>
@@ -159,14 +160,14 @@ export function TeamMembersPanel({
         <div className="flex items-center justify-between mt-4 flex-wrap gap-2">
           <p className="text-xs text-white/40">Найдено сотрудников: {filtered.length}</p>
           <div className="flex items-center gap-3">
-            <button onClick={resetFilters} className="text-xs text-[#D4AF37] hover:underline">
+            <button onClick={resetFilters} className="min-h-[40px] sm:min-h-0 text-xs text-[#D4AF37] hover:underline">
               Сбросить фильтры
             </button>
           </div>
         </div>
       </div>
 
-      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+      <div className="md:bg-[#1f1f1f] md:border md:border-white/10 md:rounded-xl md:p-5">
         {loading ? (
           <div className="flex justify-center py-16">
             <Icon name="Loader2" size={24} className="animate-spin text-white/40" />
@@ -178,14 +179,27 @@ export function TeamMembersPanel({
             {canManage && (
               <button
                 onClick={() => setOpen(true)}
-                className="bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg"
+                className="w-full sm:w-auto min-h-[44px] sm:min-h-0 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg"
               >
                 Пригласить первого сотрудника
               </button>
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <TeamMemberMobileList
+            members={filtered}
+            canManage={canManage}
+            togglingId={togglingId}
+            handleToggleActive={handleToggleActive}
+            handleChangePosition={handleChangePosition}
+            handleDelete={handleDelete}
+            setPasswordFor={setPasswordFor}
+            setRolesFor={setRolesFor}
+            formatDate={formatDate}
+            formatDateTime={formatDateTime}
+          />
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-white/40 text-xs uppercase border-b border-white/10">
@@ -285,6 +299,7 @@ export function TeamMembersPanel({
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
     </>

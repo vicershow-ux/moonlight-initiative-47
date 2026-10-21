@@ -238,9 +238,9 @@ export default function Materials() {
         </div>
       ) : (
         <Tabs defaultValue="objects">
-          <TabsList className="mb-6 h-auto flex-wrap border border-white/10 bg-[#1f1f1f]">
-            <TabsTrigger value="objects">Объекты</TabsTrigger>
-            <TabsTrigger value="catalog">Справочник</TabsTrigger>
+          <TabsList className="mb-6 flex h-auto w-full justify-start overflow-x-auto whitespace-nowrap border border-white/10 bg-[#1f1f1f] md:inline-flex md:w-auto md:flex-wrap md:justify-center md:overflow-visible">
+            <TabsTrigger value="objects" className="min-h-[40px] flex-1 md:min-h-0 md:flex-none">Объекты</TabsTrigger>
+            <TabsTrigger value="catalog" className="min-h-[40px] flex-1 md:min-h-0 md:flex-none">Справочник</TabsTrigger>
           </TabsList>
 
           <TabsContent value="objects">

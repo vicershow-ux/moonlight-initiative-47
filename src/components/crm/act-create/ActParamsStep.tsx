@@ -52,7 +52,7 @@ export function ActParamsStep({
   goToWorks,
 }: ActParamsStepProps) {
   return (
-    <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-6 flex flex-col gap-5">
+    <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-6 flex flex-col gap-5">
       <div className="flex flex-col gap-1.5">
         <label className="text-xs text-white/50">Договор</label>
         <input
@@ -76,7 +76,7 @@ export function ActParamsStep({
         </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs text-white/50">Номер акта</label>
           <input
@@ -92,13 +92,13 @@ export function ActParamsStep({
         </div>
       </div>
 
-      <div className="border border-white/10 rounded-lg p-4">
+      <div className="border border-white/10 rounded-lg p-3 sm:p-4">
         <p className="text-sm font-medium mb-1">Параметры сдачи и приёмки</p>
         <p className="text-xs text-white/40 mb-4">
           Выбранные варианты попадут в акт. Перед выгрузкой их можно проверить и отредактировать в предпросмотре.
         </p>
 
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-xs text-white/50">Период с (необязательно)</label>
             <input type="date" value={options.period_from} onChange={(e) => setOpt("period_from", e.target.value)} className={fieldClass} />
@@ -258,7 +258,7 @@ export function ActParamsStep({
       <button
         onClick={goToWorks}
         disabled={saving}
-        className="flex items-center justify-center gap-2 bg-white text-[#161616] text-sm font-medium px-5 py-3 rounded-lg hover:bg-white/90 transition-colors disabled:opacity-60"
+        className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white text-[#161616] text-sm font-medium px-5 py-3 rounded-lg hover:bg-white/90 transition-colors disabled:opacity-60"
       >
         {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : null}
         Далее: подобрать работы

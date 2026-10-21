@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon"
 import { DeleteButton } from "@/components/ui/delete-button"
 import { warehouseApi, WarehouseItem, WarehouseObject, WarehouseRow } from "@/lib/api"
 import { money, num, inputCls, goldBtn, kindBadge, ItemForm } from "./constants"
+import { WarehouseLedgerMobileList } from "./WarehouseLedgerMobileList"
 
 interface SearchResult {
   item: WarehouseItem
@@ -79,16 +80,16 @@ export function WarehouseLedgerTab({
   run,
 }: WarehouseLedgerTabProps) {
   return (
-    <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[240px] flex-1">
+    <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
+      <div className="mb-4 flex flex-col items-stretch gap-3 md:flex-row md:flex-wrap md:items-center">
+        <div className="relative w-full md:w-auto md:min-w-[240px] md:flex-1">
           <Icon
             name="Search"
             size={16}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30"
           />
           <input
-            className={`${inputCls} pl-9`}
+            className={`${inputCls} min-h-[44px] pl-9 pr-9 md:min-h-0`}
             placeholder="Поиск по всем складам: материал, инструмент, ответственный, телефон"
             value={globalSearch}
             onChange={(e) => setGlobalSearch(e.target.value)}
@@ -102,14 +103,14 @@ export function WarehouseLedgerTab({
             </button>
           )}
         </div>
-        <button className={goldBtn} onClick={() => setShowItemForm((v) => !v)}>
+        <button className={`${goldBtn} min-h-[44px] justify-center md:min-h-0 md:justify-start`} onClick={() => setShowItemForm((v) => !v)}>
           <Icon name={showItemForm ? "X" : "Plus"} size={16} />
           {showItemForm ? "Отмена" : "Добавить позицию"}
         </button>
       </div>
 
       {globalSearch.trim().length > 0 && (
-        <div className="mb-5 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4">
+        <div className="mb-5 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-3 sm:p-4">
           <div className="mb-3 flex items-center gap-2 text-sm text-white/70">
             <Icon name="Search" size={15} className="text-[#D4AF37]" />
             Найдено: {searchResults.length}
@@ -127,7 +128,7 @@ export function WarehouseLedgerTab({
                   className="rounded-lg border border-white/10 bg-[#1f1f1f] p-3"
                 >
                   <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <span className="text-sm">{r.item.name}</span>
+                    <span className="break-words text-sm">{r.item.name}</span>
                     {kindBadge(r.item.kind)}
                     <span className="text-sm text-white/50">
                       {num(r.item.qty)} {r.item.unit}
@@ -138,7 +139,7 @@ export function WarehouseLedgerTab({
                       </span>
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-white/50">
+                  <div className="flex flex-col gap-1 break-words text-xs text-white/50 sm:flex-row sm:flex-wrap sm:gap-x-5">
                     <span className="flex items-center gap-1.5">
                       <Icon name="Warehouse" size={13} className="text-[#D4AF37]" />
                       {r.wh?.name || "Склад не указан"}
@@ -173,7 +174,7 @@ export function WarehouseLedgerTab({
 
 
       {showItemForm && (
-        <div className="mb-5 grid gap-3 rounded-lg border border-white/10 bg-[#161616] p-4 md:grid-cols-4">
+        <div className="mb-5 grid grid-cols-1 gap-3 rounded-lg border border-white/10 bg-[#161616] p-3 sm:p-4 md:grid-cols-4">
           <input
             className={inputCls}
             placeholder="Название"
@@ -222,7 +223,7 @@ export function WarehouseLedgerTab({
             value={itemForm.price}
             onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })}
           />
-          <button className={goldBtn} onClick={addItem} disabled={itemForm.name.length < 2}>
+          <button className={`${goldBtn} min-h-[44px] justify-center md:min-h-0 md:justify-start`} onClick={addItem} disabled={itemForm.name.length < 2}>
             <Icon name="Check" size={16} />
             Сохранить
           </button>
@@ -230,7 +231,7 @@ export function WarehouseLedgerTab({
       )}
 
       {editItem && (
-        <div className="mb-5 grid gap-3 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4 md:grid-cols-3">
+        <div className="mb-5 grid grid-cols-1 gap-3 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-3 sm:p-4 md:grid-cols-3">
           <div className="text-sm text-white/70 md:col-span-3">
             Редактирование позиции «{editItem.name}»
           </div>
@@ -292,7 +293,7 @@ export function WarehouseLedgerTab({
             onChange={(e) => setEditItemForm({ ...editItemForm, price: e.target.value })}
           />
           <button
-            className={goldBtn}
+            className={`${goldBtn} min-h-[44px] justify-center md:min-h-0 md:justify-start`}
             onClick={submitEditItem}
             disabled={editItemForm.name.trim().length < 2}
           >
@@ -300,7 +301,7 @@ export function WarehouseLedgerTab({
             Сохранить
           </button>
           <button
-            className="rounded-lg border border-white/10 px-4 py-2.5 text-sm text-white/60 transition-colors hover:text-white"
+            className="min-h-[44px] rounded-lg border border-white/10 px-4 py-2.5 text-sm text-white/60 transition-colors hover:text-white md:min-h-0"
             onClick={() => setEditItem(null)}
           >
             Отмена
@@ -309,7 +310,7 @@ export function WarehouseLedgerTab({
       )}
 
       {restockFor && (
-        <div className="mb-5 grid gap-3 rounded-lg border border-emerald-500/30 bg-[#161616] p-4 md:grid-cols-4">
+        <div className="mb-5 grid grid-cols-1 gap-3 rounded-lg border border-emerald-500/30 bg-[#161616] p-3 sm:p-4 md:grid-cols-4">
           <div className="flex items-center text-sm text-white/70 md:col-span-4">
             Приход «{restockFor.name}» — сейчас на складе {num(restockFor.qty)} {restockFor.unit}
           </div>
@@ -328,7 +329,7 @@ export function WarehouseLedgerTab({
             onChange={(e) => setRestockPrice(e.target.value)}
           />
           <button
-            className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm text-white transition-colors hover:bg-emerald-700 disabled:opacity-40"
+            className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 md:min-h-0 md:justify-start text-sm text-white transition-colors hover:bg-emerald-700 disabled:opacity-40"
             onClick={submitRestock}
             disabled={Number(restockQty) <= 0}
           >
@@ -336,7 +337,7 @@ export function WarehouseLedgerTab({
             Оприходовать
           </button>
           <button
-            className="rounded-lg border border-white/10 px-4 py-2.5 text-sm text-white/60 transition-colors hover:text-white"
+            className="min-h-[44px] rounded-lg border border-white/10 px-4 py-2.5 text-sm text-white/60 transition-colors hover:text-white md:min-h-0"
             onClick={() => setRestockFor(null)}
           >
             Отмена
@@ -345,7 +346,7 @@ export function WarehouseLedgerTab({
       )}
 
       {issueFor && (
-        <div className="mb-5 grid gap-3 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4 md:grid-cols-4">
+        <div className="mb-5 grid grid-cols-1 gap-3 rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-3 sm:p-4 md:grid-cols-4">
           <div className="flex items-center text-sm text-white/70 md:col-span-4">
             Выдать «{issueFor.name}» — на складе {num(issueFor.qty)} {issueFor.unit}
           </div>
@@ -369,7 +370,7 @@ export function WarehouseLedgerTab({
             onChange={(e) => setIssueQty(e.target.value)}
           />
           <button
-            className={goldBtn}
+            className={`${goldBtn} min-h-[44px] justify-center md:min-h-0 md:justify-start`}
             onClick={submitIssue}
             disabled={!issueObject || Number(issueQty) <= 0}
           >
@@ -377,7 +378,7 @@ export function WarehouseLedgerTab({
             Выдать
           </button>
           <button
-            className="rounded-lg border border-white/10 px-4 py-2.5 text-sm text-white/60 transition-colors hover:text-white"
+            className="min-h-[44px] rounded-lg border border-white/10 px-4 py-2.5 text-sm text-white/60 transition-colors hover:text-white md:min-h-0"
             onClick={() => setIssueFor(null)}
           >
             Отмена
@@ -390,7 +391,25 @@ export function WarehouseLedgerTab({
           Позиций пока нет — добавьте материал или инструмент
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <>
+        <WarehouseLedgerMobileList
+          items={stockItems}
+          editItem={editItem}
+          onRestock={(i) => {
+            setEditItem(null)
+            setRestockFor(i)
+            setRestockQty("")
+            setRestockPrice("")
+          }}
+          onIssue={(i) => {
+            setEditItem(null)
+            setIssueFor(i)
+            setIssueQty(String(num(i.qty)))
+          }}
+          onEdit={(i) => (editItem?.id === i.id ? setEditItem(null) : startEditItem(i))}
+          onDelete={(i) => run(() => warehouseApi.removeItem(i.id))}
+        />
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/10 text-xs uppercase text-white/40">
@@ -457,6 +476,7 @@ export function WarehouseLedgerTab({
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   )

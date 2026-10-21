@@ -83,9 +83,9 @@ export default function ContractView() {
           {isClient ? "К объекту" : "К документам"}
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:items-center sm:w-auto">
           <span className={cn(
-            "px-2.5 py-1 rounded-full text-xs font-medium",
+            "col-span-2 justify-self-start px-2.5 py-1 rounded-full text-xs font-medium",
             contract.status === "signed" ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"
           )}>
             {contract.status === "signed" ? "подписан" : "черновик"}
@@ -94,7 +94,7 @@ export default function ContractView() {
           {!contract.signed_at && (
           <Link
             to={`/cabinet/objects/${objectId}/contracts/${contract.id}/edit`}
-            className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg"
+            className="flex items-center justify-center min-h-[44px] sm:min-h-0 gap-1.5 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg"
           >
             <Icon name="Pencil" size={14} />
             Редактировать
@@ -102,28 +102,28 @@ export default function ContractView() {
           )}
           <Link
             to={`/cabinet/objects/${objectId}/contracts/${contract.id}/addenda/new`}
-            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
+            className="flex items-center justify-center min-h-[44px] sm:min-h-0 gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
           >
             <Icon name="FilePlus2" size={14} />
             Допсоглашение
           </Link>
           <Link
             to={`/cabinet/objects/${objectId}/acts/new?contract_id=${contract.id}`}
-            className="flex items-center gap-1.5 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-3 py-2 rounded-lg"
+            className="flex items-center justify-center min-h-[44px] sm:min-h-0 gap-1.5 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-3 py-2 rounded-lg"
           >
             <Icon name="Plus" size={14} />
             Составить акт
           </Link>
           <Link
             to={`/cabinet/objects/${objectId}/invoices/new?contract_id=${contract.id}`}
-            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
+            className="flex items-center justify-center min-h-[44px] sm:min-h-0 gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
           >
             <Icon name="Receipt" size={14} />
             Выставить счёт
           </Link>
           <button
             onClick={() => setSendOpen(true)}
-            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
+            className="flex items-center justify-center min-h-[44px] sm:min-h-0 gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
           >
             <Icon name="Mail" size={14} />
             Отправить на почту
@@ -132,17 +132,19 @@ export default function ContractView() {
           <button
             onClick={handlePrint}
             title="Печать"
-            className="flex items-center justify-center w-9 h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg"
+            className="flex items-center justify-center gap-1.5 text-sm w-full h-11 sm:w-9 sm:h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg"
           >
             <Icon name="Printer" size={15} />
+            <span className="sm:hidden">Печать</span>
           </button>
           <button
             onClick={handleDownload}
             disabled={downloading}
             title="Скачать PDF"
-            className="flex items-center justify-center w-9 h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg disabled:opacity-60"
+            className="flex items-center justify-center gap-1.5 text-sm w-full h-11 sm:w-9 sm:h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg disabled:opacity-60"
           >
             {downloading ? <Icon name="Loader2" size={15} className="animate-spin" /> : <Icon name="Download" size={15} />}
+            <span className="sm:hidden">PDF</span>
           </button>
         </div>
       </div>
@@ -160,7 +162,7 @@ export default function ContractView() {
         />
       ) : (
         contract.signed_at && (
-          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl mb-4 p-4 flex items-center gap-3 max-w-4xl mx-auto text-sm">
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl mb-4 p-3 sm:p-4 flex items-center gap-3 max-w-4xl mx-auto text-sm">
             <Icon name="BadgeCheck" size={20} className="text-emerald-400" />
             Заказчик подписал договор онлайн{" "}
             {new Date(contract.signed_at).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
@@ -170,11 +172,13 @@ export default function ContractView() {
 
       <ContractAddendaList objectId={objectId} contractId={contract.id} isClient={isClient} />
 
-      <div className="bg-white text-[#161616] rounded-xl p-8 sm:p-12 max-w-4xl mx-auto shadow-lg">
+      <div className="overflow-x-auto md:overflow-visible max-w-4xl mx-auto">
+      <div className="bg-white text-[#161616] rounded-xl p-4 sm:p-12 max-w-4xl mx-auto shadow-lg break-words">
         <div
           className="contract-content leading-relaxed text-sm"
           dangerouslySetInnerHTML={{ __html: contract.content_html }}
         />
+      </div>
       </div>
       <SendContractEmailDialog open={sendOpen} onOpenChange={setSendOpen} contract={contract} title={docTitle} />
     </CrmLayout>

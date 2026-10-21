@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useState } from "react"
-import { NavLink, useNavigate } from "react-router-dom"
+import { NavLink, useLocation, useNavigate } from "react-router-dom"
 import Icon from "@/components/ui/icon"
 import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/lib/utils"
@@ -45,6 +45,7 @@ const tabHrefs = ["/cabinet", "/cabinet/objects", "/cabinet/documents", "/cabine
 export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
   useBankAutoSync(user?.role === "owner" || user?.role === "admin")
 
@@ -87,25 +88,39 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
   const today = new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
 
   const tabItems = navItems.filter((i) => tabHrefs.includes(i.href) && !i.locked)
+  const isTabPage = fullNavItems.some((i) => i.href === location.pathname)
+  const canGoBack = !isTabPage && window.history.length > 1
+
+  useEffect(() => {
+    if (!mobileOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [mobileOpen])
 
   return (
-    <div className="min-h-screen bg-[#161616] text-white flex">
+    <div className="min-h-screen bg-[#161616] text-white flex overflow-x-hidden">
       <header className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-[#1a1a1a]/95 backdrop-blur border-b border-white/10 flex items-center gap-2 px-2">
-        <button
-          className="w-11 h-11 flex items-center justify-center rounded-lg text-white/70 active:bg-white/10"
-          onClick={() => setMobileOpen(true)}
-          aria-label="Меню"
-        >
-          <Icon name="Menu" size={22} />
-        </button>
+        {canGoBack ? (
+          <button
+            className="w-11 h-11 flex items-center justify-center rounded-lg text-white/70 active:bg-white/10"
+            onClick={() => navigate(-1)}
+            aria-label="Назад"
+          >
+            <Icon name="ChevronLeft" size={24} />
+          </button>
+        ) : (
+          <img src="/logo-112.png" alt="FixKey" className="w-9 h-9 ml-1 object-contain" />
+        )}
         <p className="flex-1 text-base font-medium truncate">{title}</p>
         {showNotifications && <NotificationBell />}
       </header>
 
       <aside
         className={cn(
-          "fixed top-0 left-0 z-40 h-screen w-64 bg-[#1a1a1a] border-r border-white/10 flex flex-col transition-transform duration-300",
-          mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+          "hidden md:flex fixed top-0 left-0 z-40 h-screen w-64 bg-[#1a1a1a] border-r border-white/10 flex-col"
         )}
       >
         <div className="px-5 py-6 flex items-center gap-2 border-b border-white/10">
@@ -197,16 +212,79 @@ export function CrmLayout({ children, title, subtitle }: CrmLayoutProps) {
       </aside>
 
       {mobileOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 z-30 md:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
+        <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/70 animate-in fade-in" onClick={() => setMobileOpen(false)} />
+          <div className="relative bg-[#1a1a1a] border-t border-white/10 rounded-t-2xl max-h-[85vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+12px)] animate-in slide-in-from-bottom duration-200">
+            <div className="sticky top-0 bg-[#1a1a1a] pt-2 pb-3 px-4 border-b border-white/10">
+              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20" />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#D4AF37]/15 text-[#D4AF37] flex items-center justify-center text-sm font-medium shrink-0">
+                  {user?.full_name?.slice(0, 2).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{user?.full_name}</p>
+                  <p className="text-xs text-white/40 truncate">{user?.company_name}</p>
+                </div>
+                <button
+                  className="w-10 h-10 flex items-center justify-center rounded-lg text-white/60 active:bg-white/10"
+                  onClick={() => setMobileOpen(false)}
+                  aria-label="Закрыть меню"
+                >
+                  <Icon name="X" size={20} />
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2 p-4">
+              {navItems.map((item) =>
+                item.locked ? (
+                  <div
+                    key={item.href}
+                    className="flex flex-col items-center justify-center gap-2 rounded-xl bg-white/[0.03] px-2 py-4 text-xs text-white/25"
+                  >
+                    <div className="relative">
+                      <Icon name={item.icon} size={22} />
+                      <Icon name="Lock" size={11} className="absolute -right-2 -bottom-1" />
+                    </div>
+                    <span className="text-center leading-tight">{item.label}</span>
+                  </div>
+                ) : (
+                  <NavLink
+                    key={item.href}
+                    to={item.href}
+                    end={item.href === "/cabinet"}
+                    onClick={() => setMobileOpen(false)}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex flex-col items-center justify-center gap-2 rounded-xl px-2 py-4 text-xs transition-colors",
+                        isActive
+                          ? "bg-[#D4AF37] text-[#161616]"
+                          : "bg-white/5 text-white/80 active:bg-white/10"
+                      )
+                    }
+                  >
+                    <Icon name={item.icon} size={22} />
+                    <span className="text-center leading-tight">{item.label}</span>
+                  </NavLink>
+                )
+              )}
+            </div>
+            <div className="px-4">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl bg-white/5 text-sm text-white/70 active:bg-white/10"
+              >
+                <Icon name="LogOut" size={17} />
+                Выйти
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
-      <main className="flex-1 min-h-screen overflow-y-auto md:ml-64 pt-14 md:pt-0 pb-20 md:pb-0">
-        <div className="px-4 sm:px-6 md:px-10 py-5 md:py-10 max-w-[1600px] mx-auto">
-          <div className="mb-6 md:mb-8 flex items-start justify-between gap-4">
-            <div>
+      <main className="flex-1 min-w-0 min-h-screen md:ml-64 pt-14 md:pt-0 pb-[calc(env(safe-area-inset-bottom)+72px)] md:pb-0">
+        <div className="px-3 sm:px-6 md:px-10 py-4 md:py-10 max-w-[1600px] mx-auto">
+          <div className="mb-4 md:mb-8 flex items-start justify-between gap-4">
+            <div className="min-w-0">
               <h1 className="hidden md:block text-2xl md:text-3xl font-semibold tracking-tight">{title}</h1>
               <p className="text-sm text-white/40 md:mt-1">{subtitle || today}</p>
             </div>

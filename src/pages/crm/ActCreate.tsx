@@ -269,10 +269,10 @@ export default function ActCreate() {
   return (
     <CrmLayout title={editingActId ? "Редактирование акта" : "Составление акта"}>
       <div className={step === 2 ? "max-w-4xl mx-auto" : "max-w-2xl mx-auto"}>
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-4 sm:mb-6">
           <button
             onClick={() => (step > 1 ? setStep(step - 1) : navigate(-1))}
-            className="text-white/50 hover:text-white transition-colors"
+            className="w-10 h-10 -ml-2 sm:w-auto sm:h-auto sm:ml-0 flex items-center justify-center shrink-0 text-white/50 hover:text-white transition-colors"
           >
             <Icon name="ArrowLeft" size={20} />
           </button>

@@ -38,7 +38,7 @@ export function DocumentsMobileList({ docs }: { docs: DocumentsData }) {
   } = docs
 
   return (
-    <div className="md:hidden flex flex-col gap-3">
+    <div className="md:hidden flex flex-col gap-3 p-3">
       {showEstimates && filteredEstimates.map((e) => (
         <DocumentMobileCard
           key={`m-est-${e.id}`}

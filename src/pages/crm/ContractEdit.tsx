@@ -226,10 +226,10 @@ export default function ContractEdit() {
   return (
     <CrmLayout title="Конструктор договора" subtitle={`Объект: ${object.object_code} · ${object.client_name}`}>
       {/* Панель действий */}
-      <div className="flex items-center justify-between gap-4 mb-6 sticky top-0 z-10 bg-[#161616]/95 backdrop-blur py-2 -mx-2 px-2 rounded-lg">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 mb-4 sm:mb-6 sticky top-0 z-10 bg-[#161616]/95 backdrop-blur py-2 -mx-2 px-2 rounded-lg">
         <button
           onClick={() => navigate(`/cabinet/objects/${objectId}`)}
-          className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors"
+          className="inline-flex self-start items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors min-h-[36px] sm:min-h-0"
         >
           <Icon name="ChevronLeft" size={16} />
           К документу
@@ -239,18 +239,18 @@ export default function ContractEdit() {
           <div className="h-full bg-[#D4AF37] transition-all duration-300" style={{ width: "100%" }} />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
           <button
             onClick={doSave}
             disabled={saving}
-            className="px-4 py-2 rounded-lg text-sm text-white/70 hover:text-white transition-colors disabled:opacity-60"
+            className="min-h-[44px] sm:min-h-0 bg-white/5 sm:bg-transparent px-4 py-2 rounded-lg text-sm text-white/70 hover:text-white transition-colors disabled:opacity-60"
           >
             Сохранить
           </button>
           <button
             onClick={handleSaveAndClose}
             disabled={saving}
-            className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] font-medium text-sm px-4 py-2 rounded-lg disabled:opacity-60"
+            className="flex items-center justify-center min-h-[44px] sm:min-h-0 gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] font-medium text-sm px-3 sm:px-4 py-2 rounded-lg disabled:opacity-60"
           >
             {saving && <Icon name="Loader2" size={15} className="animate-spin" />}
             Сохранить и закрыть
@@ -259,7 +259,7 @@ export default function ContractEdit() {
       </div>
 
       {/* Живой документ */}
-      <div className="max-w-3xl mx-auto bg-[#1c1c1c] border border-white/10 rounded-2xl px-6 sm:px-10 py-8 text-[15px] leading-relaxed text-white/80 contract-live">
+      <div className="max-w-3xl mx-auto bg-[#1c1c1c] border border-white/10 rounded-2xl px-3 sm:px-10 py-5 sm:py-8 text-[14px] sm:text-[15px] break-words md:break-normal overflow-hidden md:overflow-visible leading-relaxed text-white/80 contract-live">
         <ContractPartiesSection
           contractNumber={contractNumber}
           setContractNumber={setContractNumber}

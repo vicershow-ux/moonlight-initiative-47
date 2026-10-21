@@ -65,7 +65,7 @@ export function SendDocEmailDialog({ open, onOpenChange, docName, objectId, file
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="border-white/10 bg-[#1f1f1f] text-white sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Отправить {docName} заказчику</DialogTitle>
+          <DialogTitle className="pr-6 break-words">Отправить {docName} заказчику</DialogTitle>
         </DialogHeader>
         {sent ? (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
@@ -81,7 +81,7 @@ export function SendDocEmailDialog({ open, onOpenChange, docName, objectId, file
             )}
             <button
               onClick={() => onOpenChange(false)}
-              className="mt-2 rounded-lg bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/15"
+              className="mt-2 w-full sm:w-auto min-h-[44px] sm:min-h-0 rounded-lg bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/15"
             >
               Закрыть
             </button>
@@ -95,7 +95,7 @@ export function SendDocEmailDialog({ open, onOpenChange, docName, objectId, file
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="client@mail.ru"
-                className="rounded-lg border border-white/15 bg-[#161616] px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
+                className="rounded-lg border border-white/15 bg-[#161616] px-3 py-2.5 text-base sm:text-sm outline-none focus:border-[#D4AF37]/50"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -105,11 +105,11 @@ export function SendDocEmailDialog({ open, onOpenChange, docName, objectId, file
                 onChange={(e) => setMessage(e.target.value)}
                 rows={3}
                 placeholder="Например: подпишите, пожалуйста, и пришлите скан в ответ"
-                className="resize-none rounded-lg border border-white/15 bg-[#161616] px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
+                className="resize-none rounded-lg border border-white/15 bg-[#161616] px-3 py-2.5 text-base sm:text-sm outline-none focus:border-[#D4AF37]/50"
               />
             </div>
-            <p className="flex items-center gap-1.5 text-xs text-white/40">
-              <Icon name="Paperclip" size={13} />
+            <p className="flex items-start gap-1.5 text-xs text-white/40 break-all">
+              <Icon name="Paperclip" size={13} className="shrink-0 mt-0.5" />
               Вложения: {[fileName, ...extraFiles].join(", ")}
             </p>
             {error && (
@@ -121,7 +121,7 @@ export function SendDocEmailDialog({ open, onOpenChange, docName, objectId, file
             <button
               onClick={submit}
               disabled={sending}
-              className="flex items-center justify-center gap-2 rounded-lg bg-[#D4AF37] px-4 py-2.5 text-sm font-medium text-[#161616] transition-colors hover:bg-[#B8860B] disabled:opacity-60"
+              className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-[#D4AF37] px-4 py-2.5 text-sm font-medium text-[#161616] transition-colors hover:bg-[#B8860B] disabled:opacity-60"
             >
               {sending ? <Icon name="Loader2" size={15} className="animate-spin" /> : <Icon name="Send" size={15} />}
               {sending ? "Отправляю…" : "Отправить"}

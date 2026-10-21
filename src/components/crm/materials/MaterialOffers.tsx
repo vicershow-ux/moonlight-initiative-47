@@ -103,7 +103,7 @@ export function MaterialOffers({ materialId, unit, offers, onChanged }: Material
   }
 
   const editor = (
-    <div className="rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-4">
+    <div className="rounded-lg border border-[#D4AF37]/30 bg-[#161616] p-3 sm:p-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label className={labelCls}>Цена за 1 {unit}, ₽</label>
@@ -170,9 +170,9 @@ export function MaterialOffers({ materialId, unit, offers, onChanged }: Material
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <div className="mt-4 flex flex-col-reverse items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <button
-          className="flex items-center gap-2 rounded-lg bg-[#D4AF37] px-4 py-2 text-sm text-[#161616] transition-colors hover:bg-[#B8860B] disabled:opacity-40"
+          className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-[#D4AF37] px-4 py-2 text-sm sm:min-h-0 sm:w-auto sm:justify-start text-[#161616] transition-colors hover:bg-[#B8860B] disabled:opacity-40"
           onClick={save}
           disabled={busy || form.shop_name.trim().length < 2}
         >
@@ -180,7 +180,7 @@ export function MaterialOffers({ materialId, unit, offers, onChanged }: Material
           {editingId ? "Сохранить магазин" : "Добавить магазин"}
         </button>
         <button
-          className="rounded-lg border border-white/10 px-4 py-2 text-sm text-white/60 transition-colors hover:text-white"
+          className="min-h-[44px] w-full rounded-lg border border-white/10 px-4 py-2 text-sm text-white/60 transition-colors hover:text-white sm:min-h-0 sm:w-auto"
           onClick={cancel}
         >
           Отмена
@@ -200,7 +200,7 @@ export function MaterialOffers({ materialId, unit, offers, onChanged }: Material
         </div>
         {!adding && editingId === null && (
           <button
-            className="flex items-center gap-1.5 rounded-lg border border-[#D4AF37]/40 px-3 py-1.5 text-sm text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10"
+            className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg border border-[#D4AF37]/40 px-3 py-1.5 text-sm sm:min-h-0 sm:w-auto sm:justify-start text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10"
             onClick={startAdd}
           >
             <Icon name="Plus" size={15} />
@@ -228,10 +228,10 @@ export function MaterialOffers({ materialId, unit, offers, onChanged }: Material
           ) : (
             <div
               key={o.id}
-              className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-white/10 bg-[#161616] px-4 py-3"
+              className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-white/10 bg-[#161616] px-3 py-3 sm:px-4"
             >
-              <div className="min-w-[150px] flex-1">
-                <div className="flex items-center gap-2 text-sm">
+              <div className="w-full min-w-0 sm:w-auto sm:min-w-[150px] sm:flex-1">
+                <div className="flex flex-wrap items-center gap-2 break-words text-sm">
                   {o.shop_url ? (
                     <a
                       href={o.shop_url}
@@ -251,7 +251,7 @@ export function MaterialOffers({ materialId, unit, offers, onChanged }: Material
                   )}
                 </div>
                 {o.shop_address && (
-                  <div className="mt-0.5 text-xs text-white/30">{o.shop_address}</div>
+                  <div className="mt-0.5 break-words text-xs text-white/30">{o.shop_address}</div>
                 )}
                 {o.note && <div className="mt-0.5 text-xs text-white/30">{o.note}</div>}
               </div>
@@ -283,9 +283,9 @@ export function MaterialOffers({ materialId, unit, offers, onChanged }: Material
                 </a>
               )}
 
-              <div className="flex items-center gap-1">
+              <div className="ml-auto flex items-center gap-1 sm:ml-0">
                 <button
-                  className="rounded-lg p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-[#D4AF37]"
+                  className="flex h-10 w-10 items-center justify-center rounded-lg p-2 text-white/40 sm:h-auto sm:w-auto transition-colors hover:bg-white/5 hover:text-[#D4AF37]"
                   title="Изменить магазин"
                   onClick={() => startEdit(o)}
                 >

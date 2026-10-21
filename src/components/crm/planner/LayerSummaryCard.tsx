@@ -94,6 +94,7 @@ export function LayerSummaryCard({
                   {isElectric ? "Кабель по сечениям" : "Труба по диаметрам"}
                 </div>
                 {isElectric ? (
+                  <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-xs text-white/30">
@@ -119,6 +120,7 @@ export function LayerSummaryCard({
                       </tr>
                     </tbody>
                   </table>
+                  </div>
                 ) : (
                   <div className="space-y-1">
                     {Object.entries(totalsBySpec).map(([spec, c]) => (

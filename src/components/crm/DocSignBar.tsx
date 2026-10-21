@@ -33,7 +33,7 @@ export function DocSignBar({ signedAt, isSigned, docLabel, docTitle, amountLabel
 
   if (signedAt || isSigned) {
     return (
-      <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl mb-4 p-4 flex items-center gap-3 max-w-4xl mx-auto">
+      <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl mb-4 p-3 sm:p-4 flex items-center gap-3 max-w-4xl mx-auto">
         <Icon name="BadgeCheck" size={22} className="text-emerald-400 shrink-0" />
         <div className="text-sm">
           <p className="font-medium">{docLabel} подписан{docLabel === "Соглашение" ? "о" : ""}</p>
@@ -68,7 +68,7 @@ export function DocSignBar({ signedAt, isSigned, docLabel, docTitle, amountLabel
   }
 
   return (
-    <div className="bg-[#D4AF37]/10 border border-[#D4AF37]/30 rounded-xl mb-4 p-4 flex flex-wrap items-center justify-between gap-3 max-w-4xl mx-auto">
+    <div className="bg-[#D4AF37]/10 border border-[#D4AF37]/30 rounded-xl mb-4 p-3 sm:p-4 flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3 max-w-4xl mx-auto">
       <div className="text-sm">
         <p className="font-medium">Ознакомьтесь с документом и подпишите его онлайн</p>
         <p className="text-white/50 text-xs">{amountLabel}: {money(amount)}</p>
@@ -79,14 +79,14 @@ export function DocSignBar({ signedAt, isSigned, docLabel, docTitle, amountLabel
           setAgree(false)
           setOpen(true)
         }}
-        className="inline-flex items-center gap-2 rounded-lg bg-[#D4AF37] hover:bg-[#B8860B] px-4 py-2.5 text-sm font-medium text-[#161616]"
+        className="inline-flex w-full sm:w-auto min-h-[44px] sm:min-h-0 justify-center items-center gap-2 rounded-lg bg-[#D4AF37] hover:bg-[#B8860B] px-4 py-2.5 text-sm font-medium text-[#161616]"
       >
         <Icon name="PenLine" size={16} />
         Подписать
       </button>
 
       <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[calc(100%-1.5rem)] sm:w-full max-h-[88vh] overflow-y-auto p-4 sm:p-6 rounded-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>Подписать {docTitle}?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -99,13 +99,14 @@ export function DocSignBar({ signedAt, isSigned, docLabel, docTitle, amountLabel
             Я ознакомился с текстом документа и согласен с его условиями
           </label>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={saving}>Отмена</AlertDialogCancel>
+            <AlertDialogCancel disabled={saving} className="min-h-[44px] sm:min-h-0">Отмена</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault()
                 sign()
               }}
               disabled={saving || !agree}
+              className="min-h-[44px] sm:min-h-0"
             >
               {saving ? "Подписываем…" : "Подписать"}
             </AlertDialogAction>

@@ -8,6 +8,7 @@ import { CatalogEditModal } from "./CatalogEditModal"
 import { PriceParserModal } from "./PriceParserModal"
 import { ShopsViewModal } from "./ShopsViewModal"
 import { consumptionLabel, getMode } from "@/lib/materialConsumption"
+import { MaterialsCatalogMobileList } from "./MaterialsCatalogMobileList"
 
 interface MaterialsCatalogTabProps {
   materials: MaterialItem[]
@@ -37,23 +38,23 @@ export function MaterialsCatalogTab({
   const viewing = materials.find((m) => m.id === viewingId) || null
 
   return (
-    <div className="rounded-xl border border-white/10 bg-[#1f1f1f] p-5">
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[220px] flex-1">
+    <div className="rounded-xl border border-white/10 bg-[#1f1f1f] p-3 sm:p-5">
+      <div className="mb-4 flex flex-col items-stretch gap-3 md:flex-row md:flex-wrap md:items-center">
+        <div className="relative w-full md:w-auto md:min-w-[220px] md:flex-1">
           <Icon
             name="Search"
             size={16}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30"
           />
           <input
-            className={`${inputCls} pl-9`}
+            className={`${inputCls} min-h-[44px] pl-9 md:min-h-0`}
             placeholder="Поиск: материал, магазин, адрес"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
         <select
-          className={`${inputCls} max-w-[200px]`}
+          className={`${inputCls} min-h-[44px] md:min-h-0 md:max-w-[200px]`}
           value={shopFilter}
           onChange={(e) => setShopFilter(e.target.value)}
         >
@@ -64,18 +65,23 @@ export function MaterialsCatalogTab({
             </option>
           ))}
         </select>
+        <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 md:contents">
         <button
           type="button"
           onClick={() => setShowParser(true)}
-          className="flex items-center gap-2 rounded-lg border border-[#D4AF37]/40 px-4 py-2.5 text-sm text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10"
+          className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-[#D4AF37]/40 px-4 py-2.5 text-sm text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10 md:min-h-0 md:justify-start"
         >
           <Icon name="RefreshCw" size={16} />
           Обновить цены
         </button>
-        <Link to="/cabinet/materials/new" className={goldBtn}>
+        <Link
+          to="/cabinet/materials/new"
+          className={`${goldBtn} min-h-[44px] justify-center md:min-h-0 md:justify-start`}
+        >
           <Icon name="Plus" size={16} />
           Добавить материал
         </Link>
+        </div>
       </div>
 
       {filtered.length === 0 ? (
@@ -85,7 +91,14 @@ export function MaterialsCatalogTab({
             : "Ничего не найдено по заданным условиям"}
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <>
+        <MaterialsCatalogMobileList
+          items={filtered}
+          onViewShops={setViewingId}
+          onEdit={setEditingId}
+          onDelete={(id) => run(() => materialsApi.remove(id))}
+        />
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/10 text-xs uppercase text-white/40">
@@ -221,6 +234,7 @@ export function MaterialsCatalogTab({
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {showParser && (

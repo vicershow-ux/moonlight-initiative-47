@@ -78,12 +78,12 @@ export function PhilosophyTab() {
 
   return (
     <div className="max-w-2xl space-y-3">
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between gap-3 mb-1">
         <p className="text-sm text-white/40">Преимущества компании в блоке «О компании»</p>
         <button
           onClick={handleAdd}
           disabled={creating}
-          className="flex items-center gap-1.5 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-3 py-2 rounded-lg disabled:opacity-60"
+          className="shrink-0 min-h-[44px] sm:min-h-0 flex items-center gap-1.5 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-3 py-2 rounded-lg disabled:opacity-60"
         >
           <Icon name="Plus" size={14} />
           Добавить пункт
@@ -117,12 +117,12 @@ export function PhilosophyTab() {
                 <button
                   onClick={() => handleSave(item)}
                   disabled={savingId === item.id}
-                  className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-xs px-3 py-1.5 rounded-lg disabled:opacity-60"
+                  className="min-h-[40px] sm:min-h-0 flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-xs px-3 py-1.5 rounded-lg disabled:opacity-60"
                 >
                   {savingId === item.id && <Icon name="Loader2" size={12} className="animate-spin" />}
                   Сохранить
                 </button>
-                <button onClick={() => setConfirmId(item.id)} className="text-red-400 hover:underline text-xs">
+                <button onClick={() => setConfirmId(item.id)} className="min-h-[40px] sm:min-h-0 px-2 sm:px-0 text-red-400 hover:underline text-xs">
                   Удалить
                 </button>
               </div>

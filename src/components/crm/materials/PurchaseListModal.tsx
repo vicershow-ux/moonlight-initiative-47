@@ -4,6 +4,7 @@ import { materialsApi, MaterialItem, MaterialObject, ObjectMaterial } from "@/li
 import { buildPurchasePlan } from "@/lib/purchaseList"
 import { printPurchaseList } from "@/lib/printPurchaseList"
 import { money, num } from "./constants"
+import { MobileCard } from "@/components/crm/MobileCard"
 
 interface PurchaseListModalProps {
   object: MaterialObject
@@ -47,17 +48,17 @@ export function PurchaseListModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overflow-x-hidden bg-black/70 p-2 backdrop-blur-sm sm:p-4"
       onClick={onClose}
     >
       <div
-        className="my-8 w-full max-w-4xl rounded-xl border border-white/10 bg-[#1f1f1f] p-6"
+        className="my-2 w-full min-w-0 max-w-4xl rounded-xl border border-white/10 bg-[#1f1f1f] p-4 sm:my-8 sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <div className="text-base font-medium">Список на закупку</div>
-            <div className="mt-0.5 text-xs text-white/40">
+            <div className="mt-0.5 break-words text-xs text-white/40">
               Объект № {object.object_code} · {object.client_name}
             </div>
           </div>
@@ -69,23 +70,23 @@ export function PurchaseListModal({
           </button>
         </div>
 
-        <div className="mb-5 flex flex-wrap gap-3">
-          <div className="min-w-[130px] flex-1 rounded-lg border border-white/10 bg-[#161616] px-4 py-3">
+        <div className="mb-5 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
+          <div className="min-w-0 rounded-lg border border-white/10 bg-[#161616] px-3 py-3 sm:min-w-[130px] sm:flex-1 sm:px-4">
             <div className="text-xs text-white/40">Итого закупка</div>
             <div className="mt-1 text-lg text-[#D4AF37]">{money(plan.total)}</div>
           </div>
-          <div className="min-w-[130px] flex-1 rounded-lg border border-white/10 bg-[#161616] px-4 py-3">
+          <div className="min-w-0 rounded-lg border border-white/10 bg-[#161616] px-3 py-3 sm:min-w-[130px] sm:flex-1 sm:px-4">
             <div className="text-xs text-white/40">Магазинов</div>
             <div className="mt-1 text-lg">{plan.shops.length}</div>
           </div>
           {plan.saved > 0 && (
-            <div className="min-w-[130px] flex-1 rounded-lg border border-emerald-500/30 bg-[#161616] px-4 py-3">
+            <div className="min-w-0 rounded-lg border border-emerald-500/30 bg-[#161616] px-3 py-3 sm:min-w-[130px] sm:flex-1 sm:px-4">
               <div className="text-xs text-white/40">Экономия на выборе</div>
               <div className="mt-1 text-lg text-emerald-400">{money(plan.saved)}</div>
             </div>
           )}
           {plan.shortageCount > 0 && (
-            <div className="min-w-[130px] flex-1 rounded-lg border border-red-500/30 bg-[#161616] px-4 py-3">
+            <div className="min-w-0 rounded-lg border border-red-500/30 bg-[#161616] px-3 py-3 sm:min-w-[130px] sm:flex-1 sm:px-4">
               <div className="text-xs text-white/40">Не хватает</div>
               <div className="mt-1 text-lg text-red-400">{plan.shortageCount} поз.</div>
             </div>
@@ -100,9 +101,9 @@ export function PurchaseListModal({
           <div className="space-y-4">
             {plan.shops.map((shop) => (
               <div key={shop.name} className="rounded-lg border border-white/10 bg-[#161616]">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-                  <div>
-                    <div className="flex items-center gap-2 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-3 py-3 sm:px-4">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 break-words text-sm">
                       {shop.name}
                       {shop.hasShortage && (
                         <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] uppercase text-red-400">
@@ -111,7 +112,7 @@ export function PurchaseListModal({
                       )}
                     </div>
                     {(shop.address || shop.phone) && (
-                      <div className="mt-0.5 text-xs text-white/30">
+                      <div className="mt-0.5 break-words text-xs text-white/30">
                         {shop.address}
                         {shop.address && shop.phone ? " · " : ""}
                         {shop.phone && (
@@ -127,7 +128,51 @@ export function PurchaseListModal({
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="flex flex-col gap-3 p-3 md:hidden">
+                  {shop.lines.map((line, i) => (
+                    <MobileCard
+                      key={i}
+                      title={line.name}
+                      subtitle={line.roomName || undefined}
+                      badge={
+                        <span className="whitespace-nowrap text-sm text-[#D4AF37]">{money(line.sum)}</span>
+                      }
+                      rows={[
+                        { label: "Нужно", value: `${line.qty} ${line.unit}` },
+                        { label: "Цена", value: money(num(line.price)) },
+                        {
+                          label: "Наличие",
+                          value:
+                            line.stock === null ? (
+                              <span className="text-white/30">не указано</span>
+                            ) : line.enough ? (
+                              <span className="text-emerald-400">
+                                есть {line.stock} {line.unit}
+                              </span>
+                            ) : (
+                              <span className="text-red-400">
+                                есть {line.stock}, не хватает {line.missing}
+                              </span>
+                            ),
+                        },
+                      ]}
+                      actions={
+                        line.shopUrl ? (
+                          <a
+                            href={line.shopUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex min-h-[40px] flex-1 items-center justify-center gap-1.5 rounded-lg bg-white/5 text-xs text-white/70 active:bg-white/10"
+                          >
+                            <Icon name="ExternalLink" size={16} />
+                            Открыть в магазине
+                          </a>
+                        ) : undefined
+                      }
+                    />
+                  ))}
+                </div>
+                <div className="hidden overflow-x-auto md:block">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-white/5 text-xs uppercase text-white/40">
@@ -199,9 +244,9 @@ export function PurchaseListModal({
           </div>
         )}
 
-        <div className="mt-6 flex flex-wrap items-center gap-3">
+        <div className="mt-6 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <button
-            className="flex items-center gap-2 rounded-lg border border-[#D4AF37]/40 px-5 py-2.5 text-sm text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10 disabled:opacity-40"
+            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-[#D4AF37]/40 px-5 py-2.5 text-sm text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10 disabled:opacity-40 sm:min-h-0 sm:w-auto sm:justify-start"
             disabled={items.length === 0 || saving}
             onClick={saveToDocs}
           >
@@ -209,7 +254,7 @@ export function PurchaseListModal({
             Сохранить в документы
           </button>
           <button
-            className="flex items-center gap-2 rounded-lg bg-[#D4AF37] px-5 py-2.5 text-sm text-[#161616] transition-colors hover:bg-[#B8860B] disabled:opacity-40"
+            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-[#D4AF37] px-5 py-2.5 text-sm text-[#161616] transition-colors hover:bg-[#B8860B] disabled:opacity-40 sm:min-h-0 sm:w-auto sm:justify-start"
             disabled={plan.shops.length === 0}
             onClick={() => printPurchaseList(object, items, catalog, companyName, true)}
           >
@@ -217,7 +262,7 @@ export function PurchaseListModal({
             Распечатать список
           </button>
           <button
-            className="flex items-center gap-2 rounded-lg border border-white/10 px-5 py-2.5 text-sm text-white/60 transition-colors hover:text-white disabled:opacity-40"
+            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-white/10 px-5 py-2.5 text-sm text-white/60 transition-colors hover:text-white disabled:opacity-40 sm:min-h-0 sm:w-auto sm:justify-start"
             disabled={plan.shops.length === 0}
             onClick={() => printPurchaseList(object, items, catalog, companyName, false)}
           >

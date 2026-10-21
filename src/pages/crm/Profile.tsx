@@ -160,7 +160,7 @@ export default function Profile() {
   return (
     <CrmLayout title="Настройки" subtitle="Управление профилем и настройками аккаунта">
       <div className="max-w-3xl space-y-6">
-        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-6">
+        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-4 sm:p-6">
           <div className="mb-5">
             <h2 className="text-base font-semibold">Личная информация</h2>
             <p className="text-sm text-white/40 mt-0.5">Обновите имя и адрес электронной почты</p>
@@ -192,11 +192,11 @@ export default function Profile() {
               </p>
             )}
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <button
                 onClick={handleSaveInfo}
                 disabled={savingInfo}
-                className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60"
+                className="w-full sm:w-auto justify-center sm:justify-start min-h-[44px] sm:min-h-0 flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60"
               >
                 {savingInfo ? <Icon name="Loader2" size={14} className="animate-spin" /> : null}
                 Сохранить
@@ -206,7 +206,7 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-6">
+        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-4 sm:p-6">
           <div className="mb-5">
             <h2 className="text-base font-semibold">Пароль</h2>
             <p className="text-sm text-white/40 mt-0.5">Убедитесь, что ваш аккаунт защищён длинным случайным паролем</p>
@@ -248,11 +248,11 @@ export default function Profile() {
               </p>
             )}
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <button
                 onClick={handleSavePassword}
                 disabled={savingPassword}
-                className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60"
+                className="w-full sm:w-auto justify-center sm:justify-start min-h-[44px] sm:min-h-0 flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60"
               >
                 {savingPassword ? <Icon name="Loader2" size={14} className="animate-spin" /> : null}
                 Сохранить
@@ -262,7 +262,7 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-6">
+        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-4 sm:p-6">
           <div className="mb-4">
             <h2 className="text-base font-semibold">Двухфакторная аутентификация</h2>
             <p className="text-sm text-[#D4AF37]/80 mt-0.5">Управление настройками двухфакторной аутентификации</p>
@@ -285,7 +285,7 @@ export default function Profile() {
             <button
               onClick={handleStartSetup}
               disabled={setupLoading}
-              className="flex items-center gap-2 bg-white/5 hover:bg-white/10 transition-colors text-sm px-4 py-2.5 rounded-lg disabled:opacity-60"
+              className="w-full sm:w-auto justify-center sm:justify-start min-h-[44px] sm:min-h-0 flex items-center gap-2 bg-white/5 hover:bg-white/10 transition-colors text-sm px-4 py-2.5 rounded-lg disabled:opacity-60"
             >
               {setupLoading ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="ShieldCheck" size={14} />}
               Включить 2FA
@@ -293,7 +293,7 @@ export default function Profile() {
           ) : (
             <AlertDialog open={disableOpen} onOpenChange={setDisableOpen}>
               <AlertDialogTrigger asChild>
-                <button className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors text-sm px-4 py-2.5 rounded-lg">
+                <button className="w-full sm:w-auto justify-center sm:justify-start min-h-[44px] sm:min-h-0 flex items-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors text-sm px-4 py-2.5 rounded-lg">
                   <Icon name="ShieldOff" size={14} />
                   Отключить 2FA
                 </button>
@@ -363,11 +363,11 @@ export default function Profile() {
                 </p>
               )}
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <button
                   onClick={handleConfirmSetup}
                   disabled={setupLoading}
-                  className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60"
+                  className="w-full sm:w-auto justify-center sm:justify-start min-h-[44px] sm:min-h-0 flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60"
                 >
                   {setupLoading ? <Icon name="Loader2" size={14} className="animate-spin" /> : null}
                   Подтвердить
@@ -383,7 +383,7 @@ export default function Profile() {
           )}
         </div>
 
-        <div className="bg-[#1f1f1f] border border-red-500/20 rounded-xl p-6">
+        <div className="bg-[#1f1f1f] border border-red-500/20 rounded-xl p-4 sm:p-6">
           <div className="mb-4">
             <h2 className="text-base font-semibold">Удаление аккаунта</h2>
             <p className="text-sm text-white/40 mt-0.5">Удалить аккаунт и все связанные с ним данные</p>
@@ -398,7 +398,7 @@ export default function Profile() {
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <button className="flex items-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white text-sm font-medium px-4 py-2.5 rounded-lg">
+              <button className="w-full sm:w-auto justify-center sm:justify-start min-h-[44px] sm:min-h-0 flex items-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white text-sm font-medium px-4 py-2.5 rounded-lg">
                 <Icon name="Trash2" size={14} />
                 Удалить аккаунт
               </button>

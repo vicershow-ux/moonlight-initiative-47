@@ -30,9 +30,9 @@ export function ContractAddendaList({ objectId, contractId, isClient, compact }:
   if (compact && list.length === 0) return null
 
   return (
-    <div className={compact ? "mt-2" : "bg-[#1f1f1f] border border-white/10 rounded-xl p-5 max-w-4xl mx-auto mb-4"}>
+    <div className={compact ? "mt-2" : "bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5 max-w-4xl mx-auto mb-4"}>
       {!compact && (
-        <div className="flex items-center justify-between mb-3 gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-3">
           <p className="font-medium flex items-center gap-2">
             <Icon name="FilePlus2" size={16} className="text-[#D4AF37]" />
             Дополнительные соглашения
@@ -40,7 +40,7 @@ export function ContractAddendaList({ objectId, contractId, isClient, compact }:
           {!isClient && contractId && (
             <Link
               to={`/cabinet/objects/${objectId}/contracts/${contractId}/addenda/new`}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#D4AF37] hover:bg-[#B8860B] px-3 py-2 text-sm font-medium text-[#161616]"
+              className="inline-flex w-full sm:w-auto min-h-[44px] sm:min-h-0 justify-center items-center gap-1.5 rounded-lg bg-[#D4AF37] hover:bg-[#B8860B] px-3 py-2 text-sm font-medium text-[#161616]"
             >
               <Icon name="Plus" size={14} />
               Составить допсоглашение
@@ -61,7 +61,7 @@ export function ContractAddendaList({ objectId, contractId, isClient, compact }:
             <Link
               key={a.id}
               to={`/cabinet/objects/${objectId}/contracts/${a.contract_id}/addenda/${a.id}`}
-              className="flex items-center justify-between gap-3 rounded-lg bg-[#161616] border border-white/10 px-3 py-2 text-sm hover:border-[#D4AF37]/40"
+              className="flex flex-col items-stretch sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 rounded-lg bg-[#161616] border border-white/10 px-3 py-2.5 sm:py-2 text-sm hover:border-[#D4AF37]/40"
             >
               <span className="flex items-center gap-2 min-w-0">
                 <Icon name="FileText" size={14} className="text-white/40 shrink-0" />
@@ -70,7 +70,7 @@ export function ContractAddendaList({ objectId, contractId, isClient, compact }:
                   {a.options?.change_deadline && <span className="text-white/35"> · новый срок</span>}
                 </span>
               </span>
-              <span className="flex items-center gap-2 shrink-0">
+              <span className="flex flex-wrap items-center gap-2 shrink-0">
                 {(() => {
                   const delta = addendumDelta(a)
                   if (delta === null) return null

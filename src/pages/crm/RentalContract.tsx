@@ -219,7 +219,7 @@ export default function RentalContractPage() {
       {missing.length > 0 && (
         <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
           <Icon name="TriangleAlert" size={16} className="mt-0.5 shrink-0" />
-          <div>
+          <div className="min-w-0 break-words">
             В договоре останутся пропуски — у контрагента не заполнено: {missing.join(", ")}.{" "}
             <button
               onClick={() => navigate("/cabinet/rentals")}
@@ -246,7 +246,7 @@ export default function RentalContractPage() {
       )}
 
       <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           <ContractOptionsPanel
             options={options}
             onChange={(patch) => setOptions((o) => ({ ...o, ...patch }))}

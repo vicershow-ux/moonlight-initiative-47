@@ -70,7 +70,7 @@ export default function ServiceCreate() {
         Назад к списку
       </Link>
 
-      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-6 max-w-4xl">
+      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-4 sm:p-6 max-w-4xl">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div className="flex flex-col gap-1.5">
             <label className="text-xs text-white/50">
@@ -153,17 +153,17 @@ export default function ServiceCreate() {
           </p>
         )}
 
-        <div className="flex items-center justify-end gap-3 mt-6 pt-5 border-t border-white/10">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-3 mt-6 pt-5 border-t border-white/10">
           <Link
             to="/cabinet/services"
-            className="px-4 py-2.5 rounded-lg text-sm bg-white/5 hover:bg-white/10 transition-colors"
+            className="w-full sm:w-auto min-h-[44px] sm:min-h-0 flex sm:block items-center justify-center px-4 py-2.5 rounded-lg text-sm bg-white/5 hover:bg-white/10 transition-colors"
           >
             Отмена
           </Link>
           <button
             onClick={handleSubmit}
             disabled={saving}
-            className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-5 py-2.5 rounded-lg disabled:opacity-60"
+            className="w-full sm:w-auto min-h-[44px] sm:min-h-0 justify-center sm:justify-start flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-5 py-2.5 rounded-lg disabled:opacity-60"
           >
             {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : null}
             Создать услугу

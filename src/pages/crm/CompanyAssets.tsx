@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
+import { MobileCard } from "@/components/crm/MobileCard"
 import {
   companyApi,
   warehouseApi,
@@ -36,11 +37,11 @@ function Field({ label, value, href }: { label: string; value?: string; href?: s
     <div>
       <div className="mb-0.5 text-xs text-white/40">{label}</div>
       {href ? (
-        <a href={href} className="text-sm text-white/90 hover:text-[#D4AF37]">
+        <a href={href} className="break-words text-sm text-white/90 hover:text-[#D4AF37]">
           {value}
         </a>
       ) : (
-        <div className="text-sm text-white/90">{value}</div>
+        <div className="break-words text-sm text-white/90">{value}</div>
       )}
     </div>
   )
@@ -106,7 +107,7 @@ export default function CompanyAssets() {
     [tech]
   )
 
-  const card = "rounded-xl border border-white/10 bg-[#1f1f1f] p-5"
+  const card = "rounded-xl border border-white/10 bg-[#1f1f1f] p-3 sm:p-5"
 
   if (loading) {
     return (
@@ -148,7 +149,7 @@ export default function CompanyAssets() {
             </div>
           ) : (
             <>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <Field label="Название" value={company.name} />
                 <Field
                   label="Тип субъекта"
@@ -170,9 +171,9 @@ export default function CompanyAssets() {
               </div>
 
               {hasRequisites && (
-                <div className="mt-5 rounded-lg border border-white/10 p-4">
+                <div className="mt-5 rounded-lg border border-white/10 p-3 sm:p-4">
                   <div className="mb-3 text-xs uppercase text-white/40">Реквизиты</div>
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <Field label="ИНН" value={company.inn} />
                     <Field label="Юридический адрес" value={company.legal_address} />
                     <Field label="Банк" value={company.bank_name} />
@@ -186,7 +187,7 @@ export default function CompanyAssets() {
           )}
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <div className={card}>
             <div className="text-xs text-white/40">Складов</div>
             <div className="text-2xl text-[#D4AF37]">{warehouses.length}</div>
@@ -197,11 +198,11 @@ export default function CompanyAssets() {
           </div>
           <div className={card}>
             <div className="text-xs text-white/40">Техника и оборудование</div>
-            <div className="text-2xl text-[#7FB5E8]">{money(techSum)}</div>
+            <div className="break-words text-xl text-[#7FB5E8] sm:text-2xl">{money(techSum)}</div>
           </div>
           <div className={card}>
             <div className="text-xs text-white/40">Всего имущества</div>
-            <div className="text-2xl text-[#D4AF37]">{money(stockSum + issuedSum)}</div>
+            <div className="break-words text-xl text-[#D4AF37] sm:text-2xl">{money(stockSum + issuedSum)}</div>
           </div>
         </div>
 
@@ -219,7 +220,37 @@ export default function CompanyAssets() {
               </Link>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="flex flex-col gap-3 md:hidden">
+              {warehouses.map((w) => {
+                const sum = stock
+                  .filter((i) => i.warehouse_id === w.id)
+                  .reduce((s, i) => s + num(i.qty) * num(i.price), 0)
+                return (
+                  <MobileCard
+                    key={w.id}
+                    title={w.name}
+                    subtitle={w.address || undefined}
+                    badge={<span className="text-sm text-[#D4AF37]">{money(sum)}</span>}
+                    rows={[
+                      { label: "Ответственный", value: w.responsible || "—" },
+                      {
+                        label: "Телефон",
+                        value: w.phone ? (
+                          <a href={`tel:${w.phone}`} className="text-[#D4AF37]">
+                            {w.phone}
+                          </a>
+                        ) : (
+                          "—"
+                        ),
+                      },
+                      { label: "Позиций", value: w.positions },
+                    ]}
+                  />
+                )
+              })}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/10 text-xs uppercase text-white/40">
@@ -258,6 +289,7 @@ export default function CompanyAssets() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
 
@@ -267,7 +299,7 @@ export default function CompanyAssets() {
               <Icon name="ChartPie" size={17} className="text-[#D4AF37]" />
               Имущество по категориям
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {byKind.map(([kind, v]) => {
                 const st = kindOf(kind)
                 return (
@@ -298,7 +330,36 @@ export default function CompanyAssets() {
               Инструменты и оборудование пока не заведены
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="flex flex-col gap-3 md:hidden">
+              {tech.map((i) => {
+                const st = kindOf(i.kind)
+                const q = i.object_id ? num(i.issued_qty) - num(i.used_qty) : num(i.qty)
+                return (
+                  <MobileCard
+                    key={i.id}
+                    title={i.name}
+                    badge={
+                      <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs ${st.cls}`}>
+                        <Icon name={st.icon} size={12} />
+                        {i.kind}
+                      </span>
+                    }
+                    rows={[
+                      { label: "Кол-во", value: `${q} ${i.unit}` },
+                      {
+                        label: "Где находится",
+                        value: i.object_id
+                          ? i.object_code
+                          : i.warehouse_name || "Склад не указан",
+                      },
+                      { label: "Стоимость", value: money(q * num(i.price)) },
+                    ]}
+                  />
+                )
+              })}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/10 text-xs uppercase text-white/40">
@@ -347,6 +408,7 @@ export default function CompanyAssets() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
       </div>

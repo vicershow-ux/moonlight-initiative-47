@@ -57,17 +57,17 @@ export function ShopsViewModal({ material, onClose }: ShopsViewModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overflow-x-hidden bg-black/70 p-2 backdrop-blur-sm sm:p-4"
       onClick={onClose}
     >
       <div
-        className="my-8 w-full max-w-2xl rounded-xl border border-white/10 bg-[#1f1f1f] p-6"
+        className="my-2 w-full min-w-0 max-w-2xl rounded-xl border border-white/10 bg-[#1f1f1f] p-4 sm:my-8 sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <div className="text-xs uppercase text-white/40">Магазины</div>
-            <div className="mt-1 text-lg">{material.name}</div>
+            <div className="mt-1 break-words text-lg">{material.name}</div>
           </div>
           <button
             className="rounded-lg p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white"
@@ -88,14 +88,14 @@ export function ShopsViewModal({ material, onClose }: ShopsViewModalProps) {
               return (
                 <div
                   key={o.id || i}
-                  className={`rounded-lg border bg-[#161616] p-4 ${
+                  className={`rounded-lg border bg-[#161616] p-3 sm:p-4 ${
                     best ? "border-[#D4AF37]/40" : "border-white/10"
                   }`}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">{o.shop_name || "Без названия"}</span>
+                        <span className="break-words font-medium">{o.shop_name || "Без названия"}</span>
                         {best && (
                           <span className="rounded bg-[#D4AF37]/15 px-1.5 py-0.5 text-[10px] uppercase text-[#D4AF37]">
                             дешевле всех
@@ -107,7 +107,7 @@ export function ShopsViewModal({ material, onClose }: ShopsViewModalProps) {
                           href={mapHref(o.shop_address)}
                           target="_blank"
                           rel="noreferrer"
-                          className="mt-1 flex items-center gap-1.5 text-sm text-white/60 hover:text-[#D4AF37]"
+                          className="mt-1 flex items-center gap-1.5 break-words text-sm text-white/60 hover:text-[#D4AF37]"
                         >
                           <Icon name="MapPin" size={14} />
                           {o.shop_address}
@@ -138,7 +138,7 @@ export function ShopsViewModal({ material, onClose }: ShopsViewModalProps) {
                     {o.shop_phone && (
                       <a
                         href={telHref(o.shop_phone)}
-                        className="flex items-center gap-1.5 rounded-lg bg-[#D4AF37] px-3 py-2 text-sm text-[#161616] transition-colors hover:bg-[#B8860B]"
+                        className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg bg-[#D4AF37] px-3 py-2 text-sm sm:min-h-0 sm:w-auto sm:justify-start text-[#161616] transition-colors hover:bg-[#B8860B]"
                       >
                         <Icon name="Phone" size={14} />
                         {o.shop_phone}
@@ -149,14 +149,14 @@ export function ShopsViewModal({ material, onClose }: ShopsViewModalProps) {
                         href={o.shop_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-sm text-white/70 transition-colors hover:border-[#D4AF37]/50 hover:text-[#D4AF37]"
+                        className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-sm sm:min-h-0 sm:w-auto sm:justify-start text-white/70 transition-colors hover:border-[#D4AF37]/50 hover:text-[#D4AF37]"
                       >
                         <Icon name="ExternalLink" size={14} />
                         Товар на сайте
                       </a>
                     )}
                     {o.checked_at && (
-                      <span className="ml-auto text-xs text-white/30">
+                      <span className="text-xs text-white/30 sm:ml-auto">
                         обновлено {formatDate(o.checked_at)}
                       </span>
                     )}

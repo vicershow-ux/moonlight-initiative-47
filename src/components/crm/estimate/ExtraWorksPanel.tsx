@@ -102,7 +102,7 @@ export function ExtraWorksPanel({ estimate, isClient, onChanged }: Props) {
   const pendingSum = extras.filter((x) => x.status === "pending").reduce((s, x) => s + Number(x.amount || 0), 0)
 
   return (
-    <div className="bg-[#1f1f1f] border border-white/10 rounded-xl mb-4 p-5">
+    <div className="bg-[#1f1f1f] border border-white/10 rounded-xl mb-4 p-3 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
         <div>
           <p className="font-medium flex items-center gap-2">
@@ -118,7 +118,7 @@ export function ExtraWorksPanel({ estimate, isClient, onChanged }: Props) {
         {isClient && !adding && (
           <button
             onClick={() => setAdding(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#D4AF37] hover:bg-[#B8860B] px-3.5 py-2 text-sm font-medium text-[#161616] transition-colors"
+            className="inline-flex w-full sm:w-auto justify-center min-h-[44px] sm:min-h-0 items-center gap-2 rounded-lg bg-[#D4AF37] hover:bg-[#B8860B] px-3.5 py-2 text-sm font-medium text-[#161616] transition-colors"
           >
             <Icon name="Plus" size={16} />
             Добавить работу
@@ -127,7 +127,7 @@ export function ExtraWorksPanel({ estimate, isClient, onChanged }: Props) {
       </div>
 
       {adding && (
-        <div className="rounded-lg border border-white/10 bg-[#161616] p-4 mb-3 flex flex-col gap-3">
+        <div className="rounded-lg border border-white/10 bg-[#161616] p-3 sm:p-4 mb-3 flex flex-col gap-3">
           {!picked && !custom && (
             <>
               <input
@@ -146,7 +146,7 @@ export function ExtraWorksPanel({ estimate, isClient, onChanged }: Props) {
                       className="w-full flex items-start justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-white/5"
                     >
                       <span className="min-w-0">
-                        <span className="block">{s.name}</span>
+                        <span className="block break-words">{s.name}</span>
                         <span className="block text-xs text-white/40">{s.category}</span>
                       </span>
                       <span className="whitespace-nowrap text-white/70">
@@ -180,7 +180,7 @@ export function ExtraWorksPanel({ estimate, isClient, onChanged }: Props) {
           )}
 
           {custom && !picked && (
-            <div className="grid grid-cols-[1fr_90px] gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_90px] gap-2">
               <input
                 autoFocus
                 value={name}
@@ -194,7 +194,7 @@ export function ExtraWorksPanel({ estimate, isClient, onChanged }: Props) {
                 placeholder="ед."
                 className="bg-[#1f1f1f] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
               />
-              <p className="col-span-2 text-xs text-white/40">Стоимость рассчитает прораб при согласовании</p>
+              <p className="sm:col-span-2 text-xs text-white/40">Стоимость рассчитает прораб при согласовании</p>
             </div>
           )}
 
@@ -231,18 +231,18 @@ export function ExtraWorksPanel({ estimate, isClient, onChanged }: Props) {
             </p>
           )}
 
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             {(picked || custom) && (
               <button
                 onClick={submit}
                 disabled={saving}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#D4AF37] hover:bg-[#B8860B] px-4 py-2 text-sm font-medium text-[#161616] disabled:opacity-60"
+                className="inline-flex w-full sm:w-auto justify-center min-h-[44px] sm:min-h-0 items-center gap-2 rounded-lg bg-[#D4AF37] hover:bg-[#B8860B] px-4 py-2 text-sm font-medium text-[#161616] disabled:opacity-60"
               >
                 {saving && <Icon name="Loader2" size={15} className="animate-spin" />}
                 Отправить на согласование
               </button>
             )}
-            <button onClick={reset} className="rounded-lg bg-white/5 hover:bg-white/10 px-4 py-2 text-sm">
+            <button onClick={reset} className="w-full sm:w-auto min-h-[44px] sm:min-h-0 rounded-lg bg-white/5 hover:bg-white/10 px-4 py-2 text-sm">
               Отмена
             </button>
           </div>
@@ -256,32 +256,32 @@ export function ExtraWorksPanel({ estimate, isClient, onChanged }: Props) {
             return (
               <div key={it.id} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
                 <div className="min-w-0">
-                  <p className="text-sm">{it.name}</p>
+                  <p className="text-sm break-words">{it.name}</p>
                   <p className="text-xs text-white/40">
                     {Number(it.quantity)} {it.unit}
                     {Number(it.price) > 0 ? ` × ${money(it.price)}` : " · цена уточняется"}
                     {!isClient && it.proposed_by_name ? ` · от ${it.proposed_by_name}` : ""}
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                   <span className="text-sm font-medium whitespace-nowrap">{Number(it.amount) > 0 ? money(it.amount) : "—"}</span>
                   <span className={`px-2 py-0.5 rounded-full text-xs ${st.cls}`}>{st.label}</span>
                   {!isClient && it.status === "pending" && it.id && (
-                    <span className="flex gap-1 items-center">
+                    <span className="flex gap-1 items-center w-full sm:w-auto">
                       {Number(it.price) <= 0 && (
                         <input
                           value={prices[it.id] ?? ""}
                           inputMode="decimal"
                           onChange={(e) => setPrices((p) => ({ ...p, [it.id as number]: e.target.value.replace(/[^\d.,]/g, "") }))}
                           placeholder={`цена за ${it.unit}`}
-                          className="w-28 bg-[#161616] border border-white/10 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-[#D4AF37]/50"
+                          className="flex-1 sm:flex-none min-w-0 sm:w-28 min-h-[44px] sm:min-h-0 bg-[#161616] border border-white/10 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-[#D4AF37]/50"
                         />
                       )}
                       <button
                         onClick={() => moderate(it.id as number, true, Number(it.price) <= 0)}
                         disabled={busyId === it.id}
                         title="Согласовать"
-                        className="w-8 h-8 rounded-lg bg-green-500/15 text-green-300 hover:bg-green-500/25 flex items-center justify-center disabled:opacity-50"
+                        className="w-11 h-11 sm:w-8 sm:h-8 rounded-lg bg-green-500/15 text-green-300 hover:bg-green-500/25 flex items-center justify-center disabled:opacity-50"
                       >
                         <Icon name="Check" size={15} />
                       </button>
@@ -289,7 +289,7 @@ export function ExtraWorksPanel({ estimate, isClient, onChanged }: Props) {
                         onClick={() => moderate(it.id as number, false)}
                         disabled={busyId === it.id}
                         title="Отклонить"
-                        className="w-8 h-8 rounded-lg bg-red-500/15 text-red-300 hover:bg-red-500/25 flex items-center justify-center disabled:opacity-50"
+                        className="w-11 h-11 sm:w-8 sm:h-8 rounded-lg bg-red-500/15 text-red-300 hover:bg-red-500/25 flex items-center justify-center disabled:opacity-50"
                       >
                         <Icon name="X" size={15} />
                       </button>

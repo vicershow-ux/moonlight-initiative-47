@@ -93,7 +93,7 @@ export function TransitionsEditor({
               <button
                 onClick={onSaveTransitions}
                 disabled={savingTransitions}
-                className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg disabled:opacity-60 shrink-0"
+                className="w-full sm:w-auto justify-center min-h-[44px] sm:min-h-0 flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg disabled:opacity-60 shrink-0"
               >
                 {savingTransitions && <Icon name="Loader2" size={14} className="animate-spin" />}
                 Сохранить переходы

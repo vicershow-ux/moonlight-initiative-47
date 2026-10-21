@@ -6,6 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import Icon from "@/components/ui/icon"
+import { MobileCard, CardAction } from "@/components/crm/MobileCard"
 import { estimatesApi, Estimate, ObjectItem } from "@/lib/api"
 import { printEstimate } from "@/lib/printEstimate"
 import { useAuth } from "@/contexts/AuthContext"
@@ -179,7 +180,7 @@ export function EstimatesListModal({ open, onOpenChange, object }: EstimatesList
               <div key={est.id} className="border border-white/10 rounded-lg overflow-hidden">
                 <button
                   onClick={() => toggleExpand(est.id)}
-                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors"
+                  className="w-full flex items-center justify-between gap-2 px-3 sm:px-4 py-3 hover:bg-white/5 transition-colors"
                 >
                   <div className="text-left">
                     <p className="text-sm font-medium">{formatMoney(est.total_amount)}</p>
@@ -192,7 +193,7 @@ export function EstimatesListModal({ open, onOpenChange, object }: EstimatesList
                       <Icon
                         name="Printer"
                         size={15}
-                        className="text-white/30 hover:text-white transition-colors"
+                        className="text-white/30 hover:text-white transition-colors box-content p-2 -m-2 sm:p-0 sm:m-0"
                         onClick={(e) => {
                           e.stopPropagation()
                           handlePrint(est.id)
@@ -202,7 +203,7 @@ export function EstimatesListModal({ open, onOpenChange, object }: EstimatesList
                     {!isClient && (
                       <DeleteButton
                         size={15}
-                        className="text-white/30"
+                        className="text-white/30 p-2 -m-2 sm:p-0 sm:m-0"
                         title="Удалить смету?"
                         description="Смета и все её позиции будут удалены безвозвратно."
                         onConfirm={() => handleDelete(est.id)}
@@ -213,7 +214,46 @@ export function EstimatesListModal({ open, onOpenChange, object }: EstimatesList
                 </button>
 
                 {expandedId === est.id && expandedData && (
-                  <div className="px-4 pb-3 border-t border-white/10">
+                  <div className="px-3 sm:px-4 pb-3 border-t border-white/10">
+                    <div className="md:hidden flex flex-col gap-3 mt-3">
+                      {expandedData.items?.map((it) => (
+                        <MobileCard
+                          key={it.id}
+                          className="bg-[#161616] p-3"
+                          title={<span className="whitespace-normal break-words">{it.name}</span>}
+                          subtitle={it.proposed_by_name ? `от ${it.proposed_by_name}` : undefined}
+                          badge={
+                            it.status && it.status !== "approved" ? (
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] ${statusColors[it.status]}`}>{statusLabels[it.status]}</span>
+                            ) : undefined
+                          }
+                          rows={[
+                            { label: "Кол-во", value: `${it.quantity} ${it.unit}` },
+                            { label: "Цена", value: formatMoney(it.price) },
+                            { label: "Сумма", value: <span className="font-medium text-white">{formatMoney(it.amount)}</span> },
+                          ]}
+                          actions={
+                            canModerate && it.status === "pending" && it.id ? (
+                              <>
+                                <CardAction
+                                  className="min-h-[44px] text-[#D4AF37]"
+                                  icon={<Icon name="Check" size={16} />}
+                                  label="Подтвердить"
+                                  onClick={() => handleApprove(it.id as number, est.id)}
+                                />
+                                <CardAction
+                                  className="min-h-[44px] text-red-400"
+                                  icon={<Icon name="X" size={16} />}
+                                  label="Отклонить"
+                                  onClick={() => handleReject(it.id as number, est.id)}
+                                />
+                              </>
+                            ) : undefined
+                          }
+                        />
+                      ))}
+                    </div>
+                    <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-xs mt-2">
                       <thead>
                         <tr className="text-white/40">
@@ -267,6 +307,7 @@ export function EstimatesListModal({ open, onOpenChange, object }: EstimatesList
                         ))}
                       </tbody>
                     </table>
+                    </div>
 
                     {isClient && (
                       <div className="mt-3 pt-3 border-t border-white/5">
@@ -278,7 +319,7 @@ export function EstimatesListModal({ open, onOpenChange, object }: EstimatesList
                               placeholder="Название работы"
                               className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2 text-xs outline-none focus:border-[#D4AF37]/50"
                             />
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                               <input
                                 value={proposeUnit}
                                 onChange={(e) => setProposeUnit(e.target.value)}
@@ -306,17 +347,17 @@ export function EstimatesListModal({ open, onOpenChange, object }: EstimatesList
                                 {proposeError}
                               </p>
                             )}
-                            <div className="flex gap-2">
+                            <div className="flex flex-col sm:flex-row gap-2">
                               <button
                                 onClick={() => handlePropose(est.id)}
                                 disabled={proposing}
-                                className="flex-1 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-xs px-3 py-2 rounded-lg disabled:opacity-60 flex items-center justify-center gap-1.5"
+                                className="flex-1 min-h-[44px] sm:min-h-0 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-xs px-3 py-2 rounded-lg disabled:opacity-60 flex items-center justify-center gap-1.5"
                               >
                                 {proposing ? <Icon name="Loader2" size={13} className="animate-spin" /> : "Отправить на согласование"}
                               </button>
                               <button
                                 onClick={() => setProposeOpenFor(null)}
-                                className="px-3 py-2 rounded-lg text-xs text-white/50 hover:text-white transition-colors"
+                                className="min-h-[44px] sm:min-h-0 px-3 py-2 rounded-lg text-xs text-white/50 hover:text-white transition-colors"
                               >
                                 Отмена
                               </button>
@@ -325,7 +366,7 @@ export function EstimatesListModal({ open, onOpenChange, object }: EstimatesList
                         ) : (
                           <button
                             onClick={() => openPropose(est.id)}
-                            className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white transition-colors"
+                            className="flex items-center gap-1.5 min-h-[40px] sm:min-h-0 text-xs text-white/50 hover:text-white transition-colors"
                           >
                             <Icon name="Plus" size={13} />
                             Предложить дополнительную работу

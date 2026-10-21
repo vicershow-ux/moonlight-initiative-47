@@ -104,8 +104,8 @@ export default function Objects() {
 
   return (
     <CrmLayout title="Объекты" subtitle={isClient ? "Ваши объекты" : "Все объекты вашей компании"}>
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <div className="inline-flex rounded-lg border border-white/10 bg-[#1f1f1f] p-1 text-sm">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3 mb-6">
+        <div className="flex sm:inline-flex rounded-lg border border-white/10 bg-[#1f1f1f] p-1 text-sm">
           {([
             ["active", `В работе (${objects.length - closedCount})`],
             ["closed", `Завершённые (${closedCount})`],
@@ -114,7 +114,7 @@ export default function Objects() {
               key={key}
               type="button"
               onClick={() => setView(key)}
-              className={`px-3 py-1.5 rounded-md transition-colors ${view === key ? "bg-[#D4AF37] text-[#161616]" : "text-white/60 hover:text-white"}`}
+              className={`flex-1 sm:flex-none min-h-[40px] sm:min-h-0 px-3 py-1.5 rounded-md transition-colors ${view === key ? "bg-[#D4AF37] text-[#161616]" : "text-white/60 hover:text-white"}`}
             >
               {label}
             </button>
@@ -123,7 +123,7 @@ export default function Objects() {
       {!isClient && (
           <Link
             to="/cabinet/objects/new"
-            className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg"
+            className="flex items-center justify-center gap-2 min-h-[44px] sm:min-h-0 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg"
           >
             <Icon name="Plus" size={16} />
             Создать объект

@@ -153,7 +153,7 @@ export default function ObjectEdit() {
         Назад к объекту
       </Link>
 
-      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-6 max-w-4xl flex flex-col gap-8">
+      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-4 sm:p-6 max-w-4xl flex flex-col gap-6 sm:gap-8">
         <ObjectCreateStep1
           objectType={objectType}
           setObjectType={setObjectType}
@@ -173,7 +173,7 @@ export default function ObjectEdit() {
           setMeasurerComment={setMeasurerComment}
         />
 
-        <div className="border-t border-white/10 pt-8">
+        <div className="border-t border-white/10 pt-6 sm:pt-8">
           <ObjectCreateStep2
             clientName={clientName}
             setClientName={setClientName}
@@ -184,7 +184,7 @@ export default function ObjectEdit() {
           />
         </div>
 
-        <div className="border-t border-white/10 pt-8">
+        <div className="border-t border-white/10 pt-6 sm:pt-8">
           <ObjectCreateStep3
             hasElevator={hasElevator}
             setHasElevator={setHasElevator}
@@ -210,17 +210,17 @@ export default function ObjectEdit() {
           </p>
         )}
 
-        <div className="flex items-center justify-end gap-3 pt-5 border-t border-white/10">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-3 pt-5 border-t border-white/10">
           <Link
             to={`/cabinet/objects/${objectId}`}
-            className="px-4 py-2.5 rounded-lg text-sm bg-white/5 hover:bg-white/10 transition-colors"
+            className="w-full sm:w-auto text-center min-h-[44px] sm:min-h-0 flex sm:block items-center justify-center px-4 py-2.5 rounded-lg text-sm bg-white/5 hover:bg-white/10 transition-colors"
           >
             Отмена
           </Link>
           <button
             onClick={handleSubmit}
             disabled={saving}
-            className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-5 py-2.5 rounded-lg disabled:opacity-60"
+            className="w-full sm:w-auto justify-center sm:justify-start min-h-[44px] sm:min-h-0 flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-5 py-2.5 rounded-lg disabled:opacity-60"
           >
             {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : null}
             Сохранить изменения

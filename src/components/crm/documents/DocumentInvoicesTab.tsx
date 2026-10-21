@@ -10,6 +10,7 @@ import { notifyThanks } from "@/lib/invoiceThanks"
 import { exportInvoicesXlsx } from "@/lib/exportInvoicesXlsx"
 import { contractPdfBase64 } from "@/lib/downloadContractPdf"
 import { SendDocEmailDialog } from "@/components/crm/SendDocEmailDialog"
+import { MobileCard, CardAction } from "@/components/crm/MobileCard"
 import { formatDate, formatMoney } from "./constants"
 
 const STATUS: Record<Invoice["status"], { label: string; cls: string }> = {
@@ -108,7 +109,7 @@ export function DocumentInvoicesTab({ search }: { search: string }) {
       key={key}
       onClick={() => setFilter(key)}
       className={cn(
-        "rounded-lg px-3 py-1.5 text-xs transition-colors",
+        "flex-1 sm:flex-none min-h-[40px] sm:min-h-0 rounded-lg px-3 py-1.5 text-xs whitespace-nowrap transition-colors",
         filter === key ? "bg-[#D4AF37] text-[#161616]" : "bg-white/5 text-white/60 hover:text-white",
       )}
     >
@@ -157,18 +158,18 @@ export function DocumentInvoicesTab({ search }: { search: string }) {
 
   return (
     <div>
-      <div className="grid grid-cols-2 gap-3 border-b border-white/10 p-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 border-b border-white/10 p-3 sm:gap-3 sm:p-4 md:grid-cols-4">
         <div className="rounded-lg bg-[#161616] p-3">
           <p className="text-xs text-white/40">Выставлено</p>
-          <p className="text-lg font-semibold">{formatMoney(totals.all)}</p>
+          <p className="text-base sm:text-lg font-semibold break-words">{formatMoney(totals.all)}</p>
         </div>
         <div className="rounded-lg bg-[#161616] p-3">
           <p className="text-xs text-white/40">Оплачено</p>
-          <p className="text-lg font-semibold text-green-400">{formatMoney(totals.paid)}</p>
+          <p className="text-base sm:text-lg font-semibold break-words text-green-400">{formatMoney(totals.paid)}</p>
         </div>
         <div className="rounded-lg bg-[#161616] p-3">
           <p className="text-xs text-white/40">Ожидает оплаты</p>
-          <p className="text-lg font-semibold text-[#D4AF37]">{formatMoney(totals.unpaid)}</p>
+          <p className="text-base sm:text-lg font-semibold break-words text-[#D4AF37]">{formatMoney(totals.unpaid)}</p>
         </div>
         <div className="rounded-lg bg-[#161616] p-3">
           <p className="text-xs text-white/40">Просрочено счетов</p>
@@ -176,7 +177,7 @@ export function DocumentInvoicesTab({ search }: { search: string }) {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 px-4 pt-4">
+      <div className="flex flex-wrap items-center gap-2 px-3 pt-3 sm:px-4 sm:pt-4">
         {filterBtn("all", "Все")}
         {filterBtn("unpaid", "Не оплачены")}
         {filterBtn("paid", "Оплачены")}
@@ -184,7 +185,7 @@ export function DocumentInvoicesTab({ search }: { search: string }) {
           onClick={exportXlsx}
           disabled={exporting || filtered.length === 0}
           title="Выгрузить показанные счета в Excel"
-          className="ml-auto flex items-center gap-1.5 rounded-lg bg-green-700 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-green-800 disabled:opacity-50"
+          className="flex w-full min-h-[44px] items-center justify-center gap-1.5 rounded-lg bg-green-700 px-3 py-1.5 sm:ml-auto sm:w-auto sm:min-h-0 text-xs font-medium text-white transition-colors hover:bg-green-800 disabled:opacity-50"
         >
           <Icon name={exporting ? "Loader2" : "FileSpreadsheet"} size={14} className={exporting ? "animate-spin" : ""} />
           Выгрузить в Excel
@@ -199,25 +200,50 @@ export function DocumentInvoicesTab({ search }: { search: string }) {
         </div>
       ) : (
         <>
-          <div className="flex flex-col gap-3 p-4 md:hidden">
+          <div className="flex flex-col gap-3 p-3 md:hidden">
             {filtered.map((inv) => (
-              <div key={inv.id} className="rounded-lg border border-white/10 bg-[#161616] p-4">
-                <div className="mb-1 flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-xs font-medium text-[#7FC8A9]">Счёт на оплату</p>
-                    <p className="font-medium">
-                      № {inv.invoice_number} <span className="text-white/40">от {formatDate(inv.invoice_date)}</span>
-                    </p>
+              <MobileCard
+                key={inv.id}
+                className="bg-[#161616]"
+                title={
+                  <>
+                    № {inv.invoice_number} <span className="text-white/40">от {formatDate(inv.invoice_date)}</span>
+                  </>
+                }
+                subtitle={<span className="text-[#7FC8A9]">Счёт на оплату</span>}
+                badge={statusBadge(inv)}
+                rows={[
+                  { label: "Сумма", value: <span className="font-semibold text-white">{formatMoney(Number(inv.total_amount))}</span> },
+                  { label: "Оплатить до", value: <span className={isOverdue(inv) ? "text-red-300" : ""}>{inv.due_date ? formatDate(inv.due_date) : "—"}</span> },
+                  { label: "Объект", value: inv.object_code || "—" },
+                  { label: "Заказчик", value: inv.client_name || "—" },
+                  { label: "Основание", value: basis(inv) },
+                ]}
+                actions={
+                  <div className="grid w-full grid-cols-2 gap-2">
+                    <Link
+                      to={`/cabinet/objects/${inv.object_id}/invoices/${inv.id}`}
+                      className="flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg bg-white/5 text-xs text-white/70 active:bg-white/10"
+                    >
+                      <Icon name="Eye" size={16} />
+                      Открыть
+                    </Link>
+                    <CardAction
+                      className="min-h-[44px]"
+                      icon={<Icon name={busyId === inv.id ? "Loader2" : "Printer"} size={16} className={busyId === inv.id ? "animate-spin" : ""} />}
+                      label="Печать"
+                      onClick={() => print(inv)}
+                    />
+                    <CardAction className="min-h-[44px]" icon={<Icon name="Mail" size={16} />} label="На почту" onClick={() => setSendFor(inv)} />
+                    <CardAction
+                      className={cn("min-h-[44px]", inv.status === "paid" && "text-green-400")}
+                      icon={<Icon name="BadgeCheck" size={16} />}
+                      label={inv.status === "paid" ? "Снять оплату" : "Оплачен"}
+                      onClick={() => togglePaid(inv)}
+                    />
                   </div>
-                  {statusBadge(inv)}
-                </div>
-                <p className="text-xs text-white/40">
-                  {inv.object_code || "—"} · {inv.client_name || "—"}
-                </p>
-                <p className="text-xs text-white/40">{basis(inv)}</p>
-                <p className="my-2 text-lg font-semibold">{formatMoney(Number(inv.total_amount))}</p>
-                <div className="flex items-center gap-5">{actions(inv, 17)}</div>
-              </div>
+                }
+              />
             ))}
           </div>
 

@@ -122,12 +122,12 @@ export default function Site() {
         <p className="text-sm text-white/40">
           Изменения на вкладках «Бренд», «Главная и о нас», «Контакты» применяются после нажатия «Сохранить». Списки (объекты, услуги, вопросы) сохраняются отдельно по каждой карточке.
         </p>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex w-full sm:w-auto items-center gap-3 shrink-0">
           {saved && <span className="text-xs text-green-400 flex items-center gap-1"><Icon name="CheckCircle2" size={14} />Сохранено</span>}
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60"
+            className="flex-1 sm:flex-none justify-center sm:justify-start min-h-[44px] sm:min-h-0 flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60"
           >
             {saving ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Check" size={14} />}
             Сохранить
@@ -136,7 +136,7 @@ export default function Site() {
       </div>
 
       <Tabs defaultValue="brand">
-        <TabsList className="bg-[#1f1f1f] border border-white/10 mb-6 flex-wrap h-auto">
+        <TabsList className="bg-[#1f1f1f] border border-white/10 mb-6 h-auto flex w-full justify-start overflow-x-auto whitespace-nowrap [&>*]:shrink-0 sm:inline-flex sm:w-auto sm:justify-center sm:flex-wrap sm:overflow-visible sm:whitespace-normal">
           <TabsTrigger value="brand">Бренд</TabsTrigger>
           <TabsTrigger value="hero">Главная и о нас</TabsTrigger>
           <TabsTrigger value="philosophy">Преимущества</TabsTrigger>

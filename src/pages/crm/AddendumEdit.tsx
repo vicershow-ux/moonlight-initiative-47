@@ -36,19 +36,20 @@ function ItemsTable({
       <p className="text-xs text-white/40 mb-2">{hint}</p>
       <div className="flex flex-col gap-2">
         {rows.map((r, i) => (
-          <div key={i} className="grid grid-cols-[1fr_70px_80px_100px_32px] gap-2 items-center">
-            <input value={r.name} onChange={(e) => upd(i, { name: e.target.value })} placeholder="Наименование работ" className={input} />
+          <div key={i} className="grid grid-cols-3 sm:grid-cols-[1fr_70px_80px_100px_32px] gap-2 items-center rounded-lg border border-white/10 p-2.5 sm:border-0 sm:p-0">
+            <input value={r.name} onChange={(e) => upd(i, { name: e.target.value })} placeholder="Наименование работ" className={`${input} col-span-3 sm:col-span-1`} />
             <input value={r.unit} onChange={(e) => upd(i, { unit: e.target.value })} placeholder="ед." className={input} />
             <input value={String(r.quantity)} inputMode="decimal" onChange={(e) => upd(i, { quantity: e.target.value })} placeholder="кол-во" className={input} />
             <input value={String(r.price)} inputMode="decimal" onChange={(e) => upd(i, { price: e.target.value })} placeholder="цена" className={input} />
-            <button onClick={() => onChange(rows.filter((_, j) => j !== i))} className="text-white/40 hover:text-red-400" title="Удалить строку">
+            <button onClick={() => onChange(rows.filter((_, j) => j !== i))} className="col-span-3 sm:col-span-1 flex items-center justify-center gap-1.5 min-h-[44px] sm:min-h-0 rounded-lg bg-white/5 sm:bg-transparent text-white/40 hover:text-red-400" title="Удалить строку">
               <Icon name="Trash2" size={15} />
+              <span className="text-xs sm:hidden">Удалить строку</span>
             </button>
           </div>
         ))}
       </div>
-      <div className="flex items-center justify-between mt-2">
-        <button onClick={() => onChange([...rows, blank()])} className="inline-flex items-center gap-1.5 text-sm text-[#D4AF37] hover:underline">
+      <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
+        <button onClick={() => onChange([...rows, blank()])} className="min-h-[40px] sm:min-h-0 inline-flex items-center gap-1.5 text-sm text-[#D4AF37] hover:underline">
           <Icon name="Plus" size={14} />
           Добавить строку
         </button>
@@ -208,7 +209,7 @@ export default function AddendumEdit() {
     )
   }
 
-  const card = "bg-[#1f1f1f] border border-white/10 rounded-xl p-5 flex flex-col gap-4"
+  const card = "bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5 flex flex-col gap-4 min-w-0"
 
   return (
     <CrmLayout title={`Доп. соглашение к договору № ${contract.contract_number}`} subtitle={addendumId ? "Редактирование" : "Новое соглашение"}>
@@ -223,7 +224,7 @@ export default function AddendumEdit() {
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4 items-start">
         <div className="flex flex-col gap-4">
           <div className={card}>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <label className="flex flex-col gap-1 text-xs text-white/50">
                 Номер
                 <input value={number} onChange={(e) => setNumber(e.target.value)} className={input} />
@@ -261,7 +262,7 @@ export default function AddendumEdit() {
               <button
                 onClick={importPending}
                 disabled={importing}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 hover:bg-white/10 px-3 py-1.5 text-xs disabled:opacity-60"
+                className="inline-flex w-full sm:w-auto justify-center min-h-[44px] sm:min-h-0 items-center gap-1.5 rounded-lg bg-white/5 hover:bg-white/10 px-3 py-1.5 text-xs disabled:opacity-60"
               >
                 <Icon name={importing ? "Loader2" : "Download"} size={14} className={importing ? "animate-spin" : ""} />
                 Подставить согласованные доп. работы
@@ -276,7 +277,7 @@ export default function AddendumEdit() {
               <Icon name="Wallet" size={16} className="text-[#D4AF37]" />
               Цена договора
             </p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label className="flex flex-col gap-1 text-xs text-white/50">
                 Действующая цена, ₽
                 <input value={oldTotal} inputMode="decimal" onChange={(e) => setOldTotal(e.target.value)} className={input} />
@@ -310,7 +311,7 @@ export default function AddendumEdit() {
               Изменить срок окончания работ
             </label>
             {changeDeadline && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="flex flex-col gap-1 text-xs text-white/50">
                   Новый срок
                   <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className={input} />
@@ -343,24 +344,24 @@ export default function AddendumEdit() {
               {error}
             </p>
           )}
-          <div className="flex gap-2">
+          <div className="flex flex-col-reverse sm:flex-row gap-2">
             <button
               onClick={save}
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-lg bg-[#D4AF37] hover:bg-[#B8860B] px-5 py-2.5 text-sm font-medium text-[#161616] disabled:opacity-60"
+              className="inline-flex w-full sm:w-auto justify-center min-h-[44px] sm:min-h-0 items-center gap-2 rounded-lg bg-[#D4AF37] hover:bg-[#B8860B] px-5 py-2.5 text-sm font-medium text-[#161616] disabled:opacity-60"
             >
               {saving && <Icon name="Loader2" size={15} className="animate-spin" />}
               Сохранить соглашение
             </button>
-            <Link to={`/cabinet/objects/${objectId}/contracts/${contract.id}`} className="rounded-lg bg-white/5 hover:bg-white/10 px-5 py-2.5 text-sm">
+            <Link to={`/cabinet/objects/${objectId}/contracts/${contract.id}`} className="w-full sm:w-auto flex items-center justify-center min-h-[44px] sm:min-h-0 rounded-lg bg-white/5 hover:bg-white/10 px-5 py-2.5 text-sm">
               Отмена
             </Link>
           </div>
         </div>
 
-        <div className="xl:sticky xl:top-4">
+        <div className="xl:sticky xl:top-4 min-w-0">
           <p className="text-xs text-white/40 uppercase tracking-wide mb-2">Предпросмотр</p>
-          <div className="bg-white text-[#161616] rounded-xl p-6 sm:p-8 shadow-lg max-h-[85vh] overflow-y-auto">
+          <div className="bg-white text-[#161616] rounded-xl p-3 sm:p-8 shadow-lg max-h-[85vh] overflow-y-auto overflow-x-auto break-words">
             {previewHtml ? (
               <div dangerouslySetInnerHTML={{ __html: darkenActHtml(previewHtml) }} />
             ) : (

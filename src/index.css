@@ -140,3 +140,15 @@
   margin-top: 1.75rem;
   margin-bottom: 0.75rem;
 }
+
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+  [role="dialog"] {
+    max-height: calc(100dvh - 16px);
+    overflow-y: auto;
+  }
+}

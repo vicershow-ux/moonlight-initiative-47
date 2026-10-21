@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon"
 import { ServiceItem, ObjectRoom } from "@/lib/api"
 import { ServicePickerModal } from "@/components/crm/estimate-create/ServicePickerModal"
 import { DeleteButton } from "@/components/ui/delete-button"
+import { EstimateWorkMobileCard } from "@/components/crm/estimate-create/EstimateWorkMobileCard"
 import { num2 } from "@/lib/formatNumber"
 
 export interface RoomWorkItem {
@@ -116,14 +117,14 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
   }
 
   return (
-    <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+    <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <p className="text-base font-medium">{room.name || "Помещение"}</p>
-        <div className="flex items-center gap-2 flex-wrap">
+        <p className="text-base font-medium break-words min-w-0">{room.name || "Помещение"}</p>
+        <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:items-center sm:flex-wrap sm:w-auto">
           <div className="relative" ref={templateRef}>
             <button
               onClick={() => setTemplateOpen((v) => !v)}
-              className="flex items-center gap-1.5 text-sm text-white/70 hover:text-white bg-white/5 hover:bg-white/10 transition-colors px-3 py-1.5 rounded-lg"
+              className="w-full sm:w-auto justify-center min-h-[44px] sm:min-h-0 flex items-center gap-1.5 text-sm text-white/70 hover:text-white bg-white/5 hover:bg-white/10 transition-colors px-3 py-1.5 rounded-lg"
             >
               <Icon name="LayoutTemplate" size={14} />
               Эталон из объекта
@@ -154,7 +155,7 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
 
           <button
             onClick={() => setServicePickerOpen(true)}
-            className="flex items-center gap-1.5 text-sm text-white bg-blue-500 hover:bg-blue-600 transition-colors px-3 py-1.5 rounded-lg"
+            className="col-span-2 order-first sm:order-none justify-center min-h-[44px] sm:min-h-0 flex items-center gap-1.5 text-sm text-white bg-blue-500 hover:bg-blue-600 transition-colors px-3 py-1.5 rounded-lg"
           >
             <Icon name="Plus" size={14} />
             Добавить из справочника
@@ -162,7 +163,7 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
 
           <button
             onClick={addCustomWork}
-            className="flex items-center gap-1.5 text-sm text-white/70 hover:text-white bg-white/5 hover:bg-white/10 transition-colors px-3 py-1.5 rounded-lg"
+            className="justify-center min-h-[44px] sm:min-h-0 flex items-center gap-1.5 text-sm text-white/70 hover:text-white bg-white/5 hover:bg-white/10 transition-colors px-3 py-1.5 rounded-lg"
           >
             <Icon name="PenLine" size={14} />
             Своя работа
@@ -170,7 +171,7 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
 
           <DeleteButton
             size={16}
-            className="text-white/30 ml-1"
+            className="col-span-2 sm:col-span-1 flex justify-center items-center min-h-[44px] sm:min-h-0 rounded-lg bg-white/5 sm:bg-transparent text-white/30 sm:ml-1"
             label=""
             title="Удалить помещение?"
             description="Помещение и все добавленные в него работы будут удалены из сметы."
@@ -219,7 +220,12 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
         </div>
       ) : (
         <>
-          <div className="border border-white/10 rounded-lg overflow-hidden">
+          <div className="md:hidden flex flex-col gap-3">
+            {room.works.map((w) => (
+              <EstimateWorkMobileCard key={w.key} work={w} updateWork={updateWork} removeWork={removeWork} />
+            ))}
+          </div>
+          <div className="hidden md:block overflow-x-auto border border-white/10 rounded-lg">
             <table className="w-full text-sm table-fixed">
               <colgroup>
                 <col className="w-auto" />
@@ -332,7 +338,7 @@ export function EstimateRoomBlock({ room, objectRooms, services, onChange, onRem
             </table>
           </div>
           {room.works.some((w) => w.quantity > 0 && w.times > 0 && w.price > 0) && (
-            <div className="flex items-center justify-end gap-2 mt-2 text-sm">
+            <div className="flex flex-wrap items-center justify-end gap-2 mt-2 text-sm">
               <span className="text-white/40">Итого по помещению:</span>
               <span className="font-semibold">
                 {formatMoney(

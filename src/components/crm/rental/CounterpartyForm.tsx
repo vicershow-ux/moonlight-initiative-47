@@ -64,7 +64,7 @@ export function CounterpartyForm({ value, onChange }: Props) {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field
           label="Как отображать в списке"
           value={value.display_name}
@@ -89,7 +89,7 @@ export function CounterpartyForm({ value, onChange }: Props) {
       {isOrg ? (
         <div className="rounded-lg border border-white/10 p-4">
           <div className="mb-3 text-xs uppercase text-white/40">Реквизиты для договора</div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field
               label={kind === "legal" ? "Полное название" : "ФИО предпринимателя"}
               value={kind === "legal" ? value.org_name : value.full_name}
@@ -150,7 +150,7 @@ export function CounterpartyForm({ value, onChange }: Props) {
       ) : (
         <div className="rounded-lg border border-white/10 p-4">
           <div className="mb-3 text-xs uppercase text-white/40">Паспортные данные для договора</div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field
               label="ФИО полностью"
               value={value.full_name}

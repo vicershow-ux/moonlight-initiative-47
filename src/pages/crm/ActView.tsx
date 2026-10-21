@@ -74,9 +74,9 @@ export default function ActView() {
           {isClient ? "К объекту" : "К документам"}
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:items-center sm:w-auto">
           <span className={cn(
-            "px-2.5 py-1 rounded-full text-xs font-medium",
+            "col-span-2 justify-self-start px-2.5 py-1 rounded-full text-xs font-medium",
             act.status === "signed" ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"
           )}>
             {act.status === "signed" ? "подписан" : "черновик"}
@@ -85,7 +85,7 @@ export default function ActView() {
           {!act.signed_at && (
           <Link
             to={`/cabinet/objects/${act.object_id}/acts/${act.id}/edit`}
-            className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg"
+            className="flex items-center justify-center min-h-[44px] sm:min-h-0 gap-1.5 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg"
           >
             <Icon name="Pencil" size={14} />
             Редактировать
@@ -93,14 +93,14 @@ export default function ActView() {
           )}
           <Link
             to={`/cabinet/objects/${act.object_id}/invoices/new?act_id=${act.id}`}
-            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
+            className="flex items-center justify-center min-h-[44px] sm:min-h-0 gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
           >
             <Icon name="Receipt" size={14} />
             Выставить счёт
           </Link>
           <button
             onClick={() => setSendOpen(true)}
-            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
+            className="flex items-center justify-center min-h-[44px] sm:min-h-0 gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
           >
             <Icon name="Mail" size={14} />
             Отправить на почту
@@ -109,17 +109,19 @@ export default function ActView() {
           <button
             onClick={handlePrint}
             title="Печать"
-            className="flex items-center justify-center w-9 h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg"
+            className="flex items-center justify-center gap-1.5 text-sm w-full h-11 sm:w-9 sm:h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg"
           >
             <Icon name="Printer" size={15} />
+            <span className="sm:hidden">Печать</span>
           </button>
           <button
             onClick={handleDownload}
             disabled={downloading}
             title="Скачать PDF"
-            className="flex items-center justify-center w-9 h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg disabled:opacity-60"
+            className="flex items-center justify-center gap-1.5 text-sm w-full h-11 sm:w-9 sm:h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg disabled:opacity-60"
           >
             {downloading ? <Icon name="Loader2" size={15} className="animate-spin" /> : <Icon name="Download" size={15} />}
+            <span className="sm:hidden">PDF</span>
           </button>
         </div>
       </div>
@@ -137,7 +139,7 @@ export default function ActView() {
         />
       ) : (
         act.signed_at && (
-          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl mb-4 p-4 flex items-center gap-3 max-w-4xl mx-auto text-sm">
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl mb-4 p-3 sm:p-4 flex items-center gap-3 max-w-4xl mx-auto text-sm">
             <Icon name="BadgeCheck" size={20} className="text-emerald-400" />
             Заказчик подписал акт онлайн{" "}
             {new Date(act.signed_at).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
@@ -145,8 +147,10 @@ export default function ActView() {
         )
       )}
 
-      <div className="bg-white text-[#161616] rounded-xl p-8 sm:p-12 max-w-4xl mx-auto shadow-lg">
+      <div className="overflow-x-auto md:overflow-visible max-w-4xl mx-auto">
+      <div className="bg-white text-[#161616] rounded-xl p-4 sm:p-12 max-w-4xl mx-auto shadow-lg break-words">
         <div dangerouslySetInnerHTML={{ __html: darkenActHtml(act.content_html) }} />
+      </div>
       </div>
       <SendDocEmailDialog
         open={sendOpen}

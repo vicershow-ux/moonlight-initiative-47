@@ -27,19 +27,19 @@ export function MaterialEditModal({
 }: MaterialEditModalProps) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-2 sm:p-4"
       onClick={() => setEditRow(null)}
     >
       <div
-        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-white/10 bg-[#1f1f1f] p-6"
+        className="max-h-[94vh] w-full min-w-0 max-w-2xl overflow-y-auto overflow-x-hidden rounded-xl border border-white/10 bg-[#1f1f1f] p-4 sm:max-h-[90vh] sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-1 text-base">Редактирование позиции</div>
-        <div className="mb-5 text-xs text-white/40">
+        <div className="mb-5 break-words text-xs text-white/40">
           {activeObject?.object_code} — {activeObject?.client_name}
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className="mb-1.5 block text-xs text-white/50">Материал из справочника</label>
             <select
@@ -148,20 +148,20 @@ export function MaterialEditModal({
           </div>
         </div>
 
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          <button className={goldBtn} onClick={() => saveEdit(false)}>
+        <div className="mt-6 flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <button className={`${goldBtn} min-h-[44px] w-full justify-center sm:min-h-0 sm:w-auto sm:justify-start`} onClick={() => saveEdit(false)}>
             <Icon name="Check" size={16} />
             Сохранить
           </button>
           <button
-            className="flex items-center gap-2 rounded-lg border border-[#D4AF37]/40 px-4 py-2.5 text-sm text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10"
+            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-[#D4AF37]/40 px-4 py-2.5 text-sm text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10 sm:min-h-0 sm:w-auto sm:justify-start"
             onClick={() => saveEdit(true)}
           >
             <Icon name="Printer" size={16} />
             Сохранить и печать
           </button>
           <button
-            className="rounded-lg border border-white/10 px-4 py-2.5 text-sm text-white/60 transition-colors hover:text-white"
+            className="min-h-[44px] w-full rounded-lg border border-white/10 px-4 py-2.5 text-sm text-white/60 transition-colors hover:text-white sm:min-h-0 sm:w-auto"
             onClick={() => setEditRow(null)}
           >
             Отмена

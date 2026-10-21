@@ -60,22 +60,22 @@ export function ObjectActs({ objectId, isClient }: { objectId: number; isClient?
               {a.status === "signed" ? "Подписан" : "Черновик"}
             </span>
           </div>
-          <p className="text-lg font-semibold mb-2">{formatMoney(a.total_amount)}</p>
-          <div className="flex items-center gap-3">
+          <p className="text-lg font-semibold mb-2 break-words">{formatMoney(a.total_amount)}</p>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <Link
               to={`/cabinet/objects/${objectId}/acts/${a.id}`}
-              className="text-white/40 hover:text-[#D4AF37] transition-colors"
+              className="text-white/40 hover:text-[#D4AF37] transition-colors w-10 h-10 sm:w-auto sm:h-auto flex items-center justify-center rounded-lg bg-white/5 sm:bg-transparent"
               title="Просмотр"
             >
               <Icon name="Eye" size={15} />
             </Link>
-            <button onClick={() => printAct(a)} className="text-white/40 hover:text-white transition-colors" title="Печать">
+            <button onClick={() => printAct(a)} className="text-white/40 hover:text-white transition-colors w-10 h-10 sm:w-auto sm:h-auto flex items-center justify-center rounded-lg bg-white/5 sm:bg-transparent" title="Печать">
               <Icon name="Printer" size={15} />
             </button>
             <button
               onClick={() => download(a)}
               disabled={busyId === a.id}
-              className="text-white/40 hover:text-white transition-colors"
+              className="text-white/40 hover:text-white transition-colors w-10 h-10 sm:w-auto sm:h-auto flex items-center justify-center rounded-lg bg-white/5 sm:bg-transparent"
               title="Скачать PDF"
             >
               <Icon name={busyId === a.id ? "Loader2" : "Download"} size={15} className={busyId === a.id ? "animate-spin" : ""} />

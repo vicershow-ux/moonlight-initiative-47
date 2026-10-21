@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import Icon from "@/components/ui/icon"
+import { MobileCard } from "@/components/crm/MobileCard"
 import { chaseTotals, elevationRows, elevationSvg, roomElevations } from "@/lib/planner/elevation"
 import { toMm } from "@/lib/planner/geometry"
 import { ceilingPlan, ceilingRows, ceilingSvg } from "@/lib/planner/ceiling"
@@ -37,16 +38,16 @@ export function WallElevationsDialog({ open, onOpenChange, scheme, roomId, wallI
         onOpenChange(v)
       }}
     >
-      <DialogContent className="max-w-4xl border-white/10 bg-[#1a1a1a] text-white">
+      <DialogContent className="max-w-4xl border-white/10 bg-[#1a1a1a] text-white overflow-x-hidden">
         <DialogHeader>
-          <DialogTitle>Развёртки стен · {room.name}</DialogTitle>
+          <DialogTitle className="pr-6 break-words">Развёртки стен · {room.name}</DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-wrap gap-1.5">
+        <div className="-mx-4 flex gap-1.5 overflow-x-auto whitespace-nowrap px-4 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:whitespace-normal sm:px-0">
           {ceiling && (
             <button
               onClick={() => setPicked("ceiling")}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors ${
+              className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors ${
                 showCeiling ? "bg-[#D4AF37] text-[#161616]" : "bg-white/5 text-white/70 hover:bg-white/10"
               }`}
             >
@@ -61,7 +62,7 @@ export function WallElevationsDialog({ open, onOpenChange, scheme, roomId, wallI
             <button
               key={x.wall.id}
               onClick={() => setPicked(x.wall.id)}
-              className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-sm transition-colors ${
                 !showCeiling && x.wall.id === e.wall.id ? "bg-[#D4AF37] text-[#161616]" : "bg-white/5 text-white/70 hover:bg-white/10"
               }`}
             >
@@ -87,7 +88,24 @@ export function WallElevationsDialog({ open, onOpenChange, scheme, roomId, wallI
                 На потолке нет светильников, спотов и распаечных коробок.
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              <div className="md:hidden flex flex-col gap-3">
+                {ceilingRows(ceiling).map((r) => (
+                  <MobileCard
+                    key={r.no}
+                    title={r.name}
+                    badge={<span className="font-semibold text-[#D4AF37]">№ {r.no}</span>}
+                    rows={[
+                      { label: "От левой стены", value: <span className="font-semibold text-[#D4AF37]">{r.fromLeft}</span> },
+                      { label: "От верхней стены", value: <span className="font-semibold text-[#D4AF37]">{r.fromTop}</span> },
+                      { label: "До правой", value: r.fromRight },
+                      { label: "До нижней", value: r.fromBottom },
+                      { label: "Высота", value: r.height },
+                    ]}
+                  />
+                ))}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs text-white/40">
@@ -115,6 +133,7 @@ export function WallElevationsDialog({ open, onOpenChange, scheme, roomId, wallI
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </>
         ) : (
@@ -130,7 +149,24 @@ export function WallElevationsDialog({ open, onOpenChange, scheme, roomId, wallI
             На этой стене нет розеток, выключателей и щитов.
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="md:hidden flex flex-col gap-3">
+            {rows.map((r) => (
+              <MobileCard
+                key={r.no}
+                title={r.name}
+                subtitle={r.note ? <span className="text-amber-400/80">{r.note}</span> : undefined}
+                badge={<span className="font-semibold text-[#D4AF37]">№ {r.no}</span>}
+                rows={[
+                  { label: "От левого угла", value: r.fromLeft },
+                  { label: "От правого угла", value: r.fromRight },
+                  { label: "От пола", value: <span className="font-semibold text-[#D4AF37]">{r.fromFloor}</span> },
+                  { label: "До потолка", value: r.toCeiling },
+                ]}
+              />
+            ))}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-white/40">
@@ -159,6 +195,7 @@ export function WallElevationsDialog({ open, onOpenChange, scheme, roomId, wallI
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         </>

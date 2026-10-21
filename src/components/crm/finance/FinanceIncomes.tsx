@@ -51,7 +51,7 @@ export function FinanceIncomes({ data, onChanged }: { data: FinanceData; onChang
             setEditing(null)
             setOpen(true)
           }}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-[#D4AF37] px-3 py-2 text-sm font-medium text-[#161616] hover:bg-[#B8860B]"
+          className="inline-flex justify-center min-h-[44px] sm:min-h-0 w-full sm:w-auto items-center gap-1.5 rounded-lg bg-[#D4AF37] px-3 py-2 text-sm font-medium text-[#161616] hover:bg-[#B8860B]"
         >
           <Icon name="Plus" size={15} />
           Добавить доход
@@ -114,7 +114,7 @@ export function FinanceIncomes({ data, onChanged }: { data: FinanceData; onChang
       ) : (
         <div className="flex flex-col divide-y divide-white/5 -my-1">
           {list.map((i) => (
-            <div key={`${i.kind}-${i.id}`} className="group flex items-center gap-3 py-2.5">
+            <div key={`${i.kind}-${i.id}`} className="group flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 py-2.5">
               <span
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
                 style={{ background: `${INCOME_COLORS[i.category] || "#6b7280"}26`, color: INCOME_COLORS[i.category] || "#9ca3af" }}
@@ -147,20 +147,20 @@ export function FinanceIncomes({ data, onChanged }: { data: FinanceData; onChang
               </div>
               <span className="shrink-0 font-medium text-green-300 whitespace-nowrap">+{rub(i.amount)}</span>
               {i.kind === "manual" ? (
-                <div className="flex shrink-0 gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                <div className="flex w-full sm:w-auto justify-end shrink-0 gap-2 sm:gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => {
                       setEditing(i)
                       setOpen(true)
                     }}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 hover:bg-white/10"
+                    className="flex h-10 w-10 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-white/5 hover:bg-white/10"
                     title="Изменить"
                   >
                     <Icon name="Pencil" size={13} />
                   </button>
                   <button
                     onClick={() => setRemoving(i)}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 hover:bg-red-500/20 hover:text-red-300"
+                    className="flex h-10 w-10 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-white/5 hover:bg-red-500/20 hover:text-red-300"
                     title="Удалить"
                   >
                     <Icon name="Trash2" size={13} />

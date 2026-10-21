@@ -24,9 +24,9 @@ export function StatusListPanel({
   onDelete,
 }: StatusListPanelProps) {
   return (
-    <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5 mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <div>
+    <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5 mb-6">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="min-w-0">
           <p className="font-medium">Список статусов</p>
           <p className="text-xs text-white/40 mt-0.5">
             Статусы сортируются перетаскиванием мышью. Используемые статусы удаляются через архив.
@@ -35,7 +35,7 @@ export function StatusListPanel({
         {canManage && (
           <button
             onClick={onCreateClick}
-            className="w-9 h-9 flex items-center justify-center bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] rounded-lg shrink-0"
+            className="w-11 h-11 sm:w-9 sm:h-9 flex items-center justify-center bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] rounded-lg shrink-0"
             title="Добавить статус"
           >
             <Icon name="Plus" size={16} />
@@ -51,7 +51,7 @@ export function StatusListPanel({
             onDragStart={() => onDragStart(s.id)}
             onDragOver={(e) => e.preventDefault()}
             onDrop={() => onDrop(s.id)}
-            className={`flex items-center justify-between bg-[#161616] border border-white/10 rounded-lg px-4 py-3 ${s.is_archived ? "opacity-50" : ""}`}
+            className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0 bg-[#161616] border border-white/10 rounded-lg px-3 sm:px-4 py-3 ${s.is_archived ? "opacity-50" : ""}`}
           >
             <div className="flex items-center gap-3">
               {canManage && <Icon name="GripVertical" size={16} className="text-white/25 cursor-grab shrink-0" />}
@@ -72,15 +72,15 @@ export function StatusListPanel({
             </div>
 
             {canManage && (
-              <div className="flex items-center gap-4 text-sm shrink-0">
-                <button onClick={() => onEdit(s)} className="text-blue-400 hover:underline">
+              <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-4 text-sm shrink-0">
+                <button onClick={() => onEdit(s)} className="text-blue-400 hover:underline min-h-[40px] sm:min-h-0 rounded-lg bg-white/5 sm:bg-transparent">
                   Изменить
                 </button>
-                <button onClick={() => onToggleArchive(s)} className="text-blue-400 hover:underline">
+                <button onClick={() => onToggleArchive(s)} className="text-blue-400 hover:underline min-h-[40px] sm:min-h-0 rounded-lg bg-white/5 sm:bg-transparent">
                   {s.is_archived ? "Вернуть" : "В архив"}
                 </button>
                 {!s.is_default && (
-                  <button onClick={() => onDelete(s)} className="text-red-400 hover:underline">
+                  <button onClick={() => onDelete(s)} className="text-red-400 hover:underline min-h-[40px] sm:min-h-0 rounded-lg bg-white/5 sm:bg-transparent">
                     Удалить
                   </button>
                 )}

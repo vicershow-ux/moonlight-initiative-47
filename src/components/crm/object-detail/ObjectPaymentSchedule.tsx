@@ -86,7 +86,7 @@ export function ObjectPaymentSchedule({ objectId, isClient, suggestedTotal }: { 
   const input = "bg-[#161616] border border-white/10 rounded-lg px-2.5 py-2 text-sm outline-none focus:border-[#D4AF37]/50 w-full"
 
   return (
-    <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+    <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <p className="font-medium flex items-center gap-2">
           <Icon name="CalendarClock" size={17} className="text-[#D4AF37]" />
@@ -192,15 +192,15 @@ export function ObjectPaymentSchedule({ objectId, isClient, suggestedTotal }: { 
           <div className="grid grid-cols-3 gap-3 mb-3">
             <div>
               <p className="text-xs text-white/40">Всего</p>
-              <p className="font-semibold">{money(total)}</p>
+              <p className="font-semibold text-sm sm:text-base break-words">{money(total)}</p>
             </div>
             <div>
               <p className="text-xs text-white/40">Оплачено</p>
-              <p className="font-semibold text-green-300">{money(paid)}</p>
+              <p className="font-semibold text-sm sm:text-base break-words text-green-300">{money(paid)}</p>
             </div>
             <div>
               <p className="text-xs text-white/40">Осталось</p>
-              <p className="font-semibold text-[#D4AF37]">{money(left)}</p>
+              <p className="font-semibold text-sm sm:text-base break-words text-[#D4AF37]">{money(left)}</p>
             </div>
           </div>
           <div className="h-2 rounded-full bg-white/10 overflow-hidden mb-4">

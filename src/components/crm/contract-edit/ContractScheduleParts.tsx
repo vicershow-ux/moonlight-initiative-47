@@ -89,7 +89,7 @@ export function CustomSchedule({ stages, onChange }: { stages: CustomStage[]; on
               <button
                 type="button"
                 onClick={() => remove(i)}
-                className="ml-1 text-white/30 hover:text-[#D4AF37] opacity-0 group-hover:opacity-100 transition"
+                className="ml-1 text-white/30 hover:text-[#D4AF37] md:opacity-0 md:group-hover:opacity-100 transition"
                 title="Удалить этап"
               >
                 <Icon name="X" size={15} />
@@ -119,20 +119,20 @@ export function WorkStages({ stages, onChange }: { stages: string[]; onChange: (
     <div className="space-y-2">
       <p className="mb-1">1.4. Работы выполняются поэтапно в соответствии со следующим графиком:</p>
       {stages.map((s, i) => (
-        <div key={i} className="group flex items-start gap-2">
+        <div key={i} className="group flex flex-wrap sm:flex-nowrap items-start gap-2">
           <span className="pt-2 shrink-0 whitespace-nowrap">1.4.{i + 1}. Этап {i + 1} —</span>
           <textarea
             value={s}
             onChange={(e) => update(i, e.target.value)}
             placeholder="Опишите работы этапа..."
             rows={2}
-            className="flex-1 bg-[#161616] border border-[#D4AF37]/40 rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]/40 placeholder:text-white/30 resize-y"
+            className="flex-1 min-w-0 basis-full sm:basis-auto order-3 sm:order-none bg-[#161616] border border-[#D4AF37]/40 rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]/40 placeholder:text-white/30 resize-y"
           />
           {stages.length > 1 && (
             <button
               type="button"
               onClick={() => remove(i)}
-              className="pt-2 text-white/30 hover:text-[#D4AF37] opacity-0 group-hover:opacity-100 transition shrink-0"
+              className="ml-auto sm:ml-0 pt-2 text-white/30 hover:text-[#D4AF37] md:opacity-0 md:group-hover:opacity-100 transition shrink-0"
               title="Удалить этап"
             >
               <Icon name="X" size={16} />

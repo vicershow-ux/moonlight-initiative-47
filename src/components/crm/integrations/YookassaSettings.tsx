@@ -207,16 +207,16 @@ export function YookassaSettings({ onChange }: { onChange?: (s: PaySettings) => 
     )
   }
 
-  const card = "rounded-xl border border-white/10 bg-[#1f1f1f] p-5 flex flex-col gap-4"
+  const card = "rounded-xl border border-white/10 bg-[#1f1f1f] p-3 sm:p-5 flex flex-col gap-4"
 
   return (
     <>
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-4 items-start">
         <div className="flex flex-col gap-4">
           <div className={card}>
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-lg bg-[#0070F0]/15 flex items-center justify-center">
+                <div className="w-11 h-11 shrink-0 rounded-lg bg-[#0070F0]/15 flex items-center justify-center">
                   <Icon name="CreditCard" size={22} className="text-[#4A9BFF]" />
                 </div>
                 <div>
@@ -266,9 +266,9 @@ export function YookassaSettings({ onChange }: { onChange?: (s: PaySettings) => 
               </Row>
             </div>
             <Row label="Адрес для HTTP-уведомлений" hint="ЮKassa → Интеграция → HTTP-уведомления. Отметьте события payment.succeeded и payment.canceled">
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input readOnly value={INVOICES_WEBHOOK_URL} className={`${field} text-white/60 text-xs`} onFocus={(e) => e.target.select()} />
-                <button onClick={copy} className="shrink-0 rounded-lg bg-white/5 hover:bg-white/10 px-3 text-sm flex items-center gap-1.5">
+                <button onClick={copy} className="shrink-0 min-h-[44px] sm:min-h-0 rounded-lg bg-white/5 hover:bg-white/10 px-3 text-sm flex items-center justify-center gap-1.5">
                   <Icon name={copied ? "Check" : "Copy"} size={14} />
                   {copied ? "Скопировано" : "Копировать"}
                 </button>
@@ -351,7 +351,7 @@ export function YookassaSettings({ onChange }: { onChange?: (s: PaySettings) => 
             <button
               onClick={save}
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-lg bg-[#D4AF37] hover:bg-[#B8860B] px-5 py-2.5 text-sm font-medium text-[#161616] disabled:opacity-60"
+              className="w-full sm:w-auto justify-center min-h-[44px] sm:min-h-0 inline-flex items-center gap-2 rounded-lg bg-[#D4AF37] hover:bg-[#B8860B] px-5 py-2.5 text-sm font-medium text-[#161616] disabled:opacity-60"
             >
               {saving && <Icon name="Loader2" size={15} className="animate-spin" />}
               Сохранить
@@ -359,7 +359,7 @@ export function YookassaSettings({ onChange }: { onChange?: (s: PaySettings) => 
             <button
               onClick={check}
               disabled={checking || !s.shop_id || !s.has_secret}
-              className="inline-flex items-center gap-2 rounded-lg bg-white/5 hover:bg-white/10 px-5 py-2.5 text-sm disabled:opacity-50"
+              className="w-full sm:w-auto justify-center min-h-[44px] sm:min-h-0 inline-flex items-center gap-2 rounded-lg bg-white/5 hover:bg-white/10 px-5 py-2.5 text-sm disabled:opacity-50"
               title={!s.has_secret ? "Сначала сохраните ключи" : ""}
             >
               <Icon name={checking ? "Loader2" : "PlugZap"} size={15} className={checking ? "animate-spin" : ""} />

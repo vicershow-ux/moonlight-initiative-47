@@ -252,15 +252,15 @@ export default function InvoiceEdit() {
       </button>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-4">
           {missingBank && (
-            <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
+            <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 sm:p-4 text-sm text-amber-200">
               <Icon name="TriangleAlert" size={16} className="mt-0.5 shrink-0" />
               В разделе «Компания» не заполнены банковские реквизиты — без них заказчик не сможет оплатить счёт.
             </div>
           )}
 
-          <div className="flex flex-col gap-4 rounded-xl border border-white/10 bg-[#1f1f1f] p-5">
+          <div className="flex flex-col gap-4 rounded-xl border border-white/10 bg-[#1f1f1f] p-3 sm:p-5">
             <p className="font-medium">Основание</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
@@ -306,7 +306,7 @@ export default function InvoiceEdit() {
             )}
           </div>
 
-          <div className="flex flex-col gap-4 rounded-xl border border-white/10 bg-[#1f1f1f] p-5">
+          <div className="flex flex-col gap-4 rounded-xl border border-white/10 bg-[#1f1f1f] p-3 sm:p-5">
             <p className="font-medium">Реквизиты счёта</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="flex flex-col gap-1.5">
@@ -341,7 +341,7 @@ export default function InvoiceEdit() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-[#1f1f1f] p-5">
+          <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-[#1f1f1f] p-3 sm:p-5">
             <p className="font-medium">Позиции</p>
             {items.map((it, i) => (
               <div key={i} className="flex flex-col gap-2 rounded-lg border border-white/10 bg-[#161616] p-3">
@@ -355,33 +355,33 @@ export default function InvoiceEdit() {
                   <button
                     onClick={() => setItems((prev) => prev.filter((_, idx) => idx !== i))}
                     title="Удалить"
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5 text-white/50 transition-colors hover:bg-red-500/20 hover:text-red-300"
+                    className="flex h-11 w-11 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg bg-white/5 text-white/50 transition-colors hover:bg-red-500/20 hover:text-red-300"
                   >
                     <Icon name="Trash2" size={15} />
                   </button>
                 </div>
-                <div className="grid grid-cols-4 gap-2">
-                  <input type="number" value={it.quantity} onChange={(e) => updateItem(i, { quantity: Number(e.target.value) })} className={field} title="Количество" />
-                  <input value={it.unit} onChange={(e) => updateItem(i, { unit: e.target.value })} className={field} title="Единица" />
-                  <input type="number" value={it.price} onChange={(e) => updateItem(i, { price: Number(e.target.value) })} className={field} title="Цена" />
-                  <div className="flex items-center justify-end text-sm font-medium">{money((Number(it.quantity) || 0) * (Number(it.price) || 0))}</div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <label className="flex min-w-0 flex-col gap-1 text-[11px] text-white/40 sm:block"><span className="sm:hidden">Кол-во</span><input type="number" inputMode="decimal" value={it.quantity} onChange={(e) => updateItem(i, { quantity: Number(e.target.value) })} className={`${field} w-full`} title="Количество" /></label>
+                  <label className="flex min-w-0 flex-col gap-1 text-[11px] text-white/40 sm:block"><span className="sm:hidden">Ед.</span><input value={it.unit} onChange={(e) => updateItem(i, { unit: e.target.value })} className={`${field} w-full`} title="Единица" /></label>
+                  <label className="flex min-w-0 flex-col gap-1 text-[11px] text-white/40 sm:block"><span className="sm:hidden">Цена</span><input type="number" inputMode="decimal" value={it.price} onChange={(e) => updateItem(i, { price: Number(e.target.value) })} className={`${field} w-full`} title="Цена" /></label>
+                  <div className="flex flex-col justify-end gap-1 text-sm font-medium sm:flex-row sm:items-center"><span className="text-[11px] font-normal text-white/40 sm:hidden">Сумма</span><span className="flex min-h-[40px] items-center break-all sm:min-h-0">{money((Number(it.quantity) || 0) * (Number(it.price) || 0))}</span></div>
                 </div>
               </div>
             ))}
             <button
               onClick={() => setItems((prev) => [...prev, { name: "", unit: "усл.", quantity: 1, price: 0, amount: 0 }])}
-              className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/15 py-2.5 text-sm text-white/60 transition-colors hover:border-[#D4AF37]/40 hover:text-white"
+              className="flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/15 py-2.5 text-sm text-white/60 transition-colors hover:border-[#D4AF37]/40 hover:text-white"
             >
               <Icon name="Plus" size={15} />
               Добавить позицию
             </button>
             <div className="flex flex-col items-end gap-0.5 pt-2 text-sm">
               {vatMode !== "none" && <span className="text-white/50">НДС: {money(totals.vat)}</span>}
-              <span className="text-lg font-semibold text-[#D4AF37]">К оплате: {money(totals.total)}</span>
+              <span className="text-base sm:text-lg font-semibold text-[#D4AF37] text-right">К оплате: {money(totals.total)}</span>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-[#1f1f1f] p-5">
+          <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-[#1f1f1f] p-3 sm:p-5">
             <p className="font-medium">Дополнительно</p>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs text-white/50">Назначение платежа</label>
@@ -416,14 +416,14 @@ export default function InvoiceEdit() {
           <button
             onClick={save}
             disabled={saving}
-            className="flex items-center justify-center gap-2 rounded-lg bg-[#D4AF37] px-4 py-3 text-sm font-medium text-[#161616] transition-colors hover:bg-[#B8860B] disabled:opacity-60"
+            className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-[#D4AF37] px-4 py-3 text-sm font-medium text-[#161616] transition-colors hover:bg-[#B8860B] disabled:opacity-60"
           >
             {saving ? <Icon name="Loader2" size={15} className="animate-spin" /> : <Icon name="Check" size={15} />}
             {editId ? "Сохранить счёт" : "Создать счёт"}
           </button>
         </div>
 
-        <div className="xl:sticky xl:top-4 xl:self-start">
+        <div className="min-w-0 xl:sticky xl:top-4 xl:self-start">
           <p className="mb-2 text-xs uppercase tracking-wide text-white/40">Предпросмотр</p>
           {contractId && items.length === 1 && (
             <p className="mb-2 flex items-start gap-1.5 text-xs text-white/50">
@@ -431,7 +431,7 @@ export default function InvoiceEdit() {
               Если у договора есть смета, после сохранения в счёте будет полный перечень работ с количеством и ценой — как в чеке. Сумма не изменится.
             </p>
           )}
-          <div className="rounded-xl bg-white p-6 text-[#161616] shadow-lg sm:p-8">
+          <div className="overflow-x-auto rounded-xl bg-white p-3 text-[#161616] shadow-lg sm:p-8">
             <div dangerouslySetInnerHTML={{ __html: buildInvoiceHtml({ ...preview, purpose: purpose || autoPurpose }) }} />
           </div>
         </div>

@@ -26,9 +26,9 @@ export function ContractEditorPane({
   onDownload,
 }: Props) {
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        <button className={goldBtn} onClick={onSave} disabled={saving}>
+    <div className="space-y-4 min-w-0">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+        <button className={`${goldBtn} col-span-2 sm:col-auto`} onClick={onSave} disabled={saving}>
           {saving ? (
             <Icon name="Loader2" size={16} className="animate-spin" />
           ) : (
@@ -50,13 +50,13 @@ export function ContractEditorPane({
         </button>
       </div>
 
-      <div className="rounded-xl border border-white/10 bg-white p-5 md:p-8">
+      <div className="overflow-x-auto rounded-xl border border-white/10 bg-white p-3 sm:p-5 md:p-8">
         <div
           ref={editorRef}
           contentEditable
           suppressContentEditableWarning
           onInput={onEdit}
-          className="contract-doc min-h-[500px] text-[#161616] outline-none"
+          className="contract-doc min-h-[500px] break-words text-[#161616] outline-none"
           dangerouslySetInnerHTML={{ __html: html }}
         />
       </div>

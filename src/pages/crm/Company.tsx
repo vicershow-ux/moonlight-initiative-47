@@ -137,7 +137,7 @@ export default function Company() {
 
         <Link
           to="/cabinet/company/pipeline"
-          className="flex items-center justify-between gap-2 px-6 py-4 mb-6 border border-white/10 rounded-xl bg-[#1f1f1f] hover:border-[#D4AF37]/40 transition-colors group"
+          className="flex items-center justify-between gap-2 px-4 sm:px-6 py-4 mb-6 border border-white/10 rounded-xl bg-[#1f1f1f] hover:border-[#D4AF37]/40 transition-colors group"
         >
           <div className="flex items-center gap-2">
             <Icon name="GitBranch" size={16} className="text-[#D4AF37]" />
@@ -147,7 +147,7 @@ export default function Company() {
         </Link>
 
         <div className="bg-[#1f1f1f] border border-white/10 rounded-xl overflow-hidden">
-          <div className="p-6 space-y-5">
+          <div className="p-4 sm:p-6 space-y-5">
             <div>
               <label className={labelClass}>Тип субъекта</label>
               <select
@@ -432,7 +432,7 @@ export default function Company() {
                 </div>
               )}
               {canEdit && (
-                <label className="flex items-center gap-2 bg-[#161616] border border-dashed border-white/15 rounded-lg px-3 py-2.5 text-sm text-white/60 cursor-pointer hover:border-[#D4AF37]/40 transition-colors w-fit">
+                <label className="flex items-center gap-2 bg-[#161616] border border-dashed border-white/15 rounded-lg px-3 py-2.5 text-sm text-white/60 cursor-pointer hover:border-[#D4AF37]/40 transition-colors w-full sm:w-fit flex-wrap min-h-[44px] sm:min-h-0 break-all">
                   <Icon name="Paperclip" size={15} />
                   {signatureFile ? signatureFile.name : "Прикрепить файл подписи"}
                   <span className="text-[10px] text-white/30 ml-1">PNG/JPG, до 2 MB</span>
@@ -450,7 +450,7 @@ export default function Company() {
                 </div>
               )}
               {canEdit && (
-                <label className="flex items-center gap-2 bg-[#161616] border border-dashed border-white/15 rounded-lg px-3 py-2.5 text-sm text-white/60 cursor-pointer hover:border-[#D4AF37]/40 transition-colors w-fit">
+                <label className="flex items-center gap-2 bg-[#161616] border border-dashed border-white/15 rounded-lg px-3 py-2.5 text-sm text-white/60 cursor-pointer hover:border-[#D4AF37]/40 transition-colors w-full sm:w-fit flex-wrap min-h-[44px] sm:min-h-0 break-all">
                   <Icon name="Stamp" fallback="Paperclip" size={15} />
                   {stampFile ? stampFile.name : "Прикрепить фото печати"}
                   <span className="text-[10px] text-white/30 ml-1">PNG с прозрачным фоном лучше всего</span>
@@ -463,11 +463,11 @@ export default function Company() {
             </div>
 
             {canEdit && (
-              <div className="flex items-center gap-3 pt-2">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-2">
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60"
+                  className="w-full sm:w-auto justify-center sm:justify-start min-h-[44px] sm:min-h-0 flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60"
                 >
                   {saving ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Check" size={14} />}
                   Сохранить

@@ -89,7 +89,7 @@ export function ObjectPhotoReports({ objectId, isClient }: { objectId: number; i
   }
 
   return (
-    <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+    <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <p className="font-medium flex items-center gap-2">
           <Icon name="Camera" size={17} className="text-[#D4AF37]" />

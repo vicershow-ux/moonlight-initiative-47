@@ -19,8 +19,10 @@ export function ActPreviewStep({
 }: ActPreviewStepProps) {
   return (
     <div>
-      <div className="bg-white text-[#161616] rounded-xl p-8 shadow-lg mb-4">
+      <div className="overflow-x-auto md:overflow-visible mb-4">
+      <div className="bg-white text-[#161616] rounded-xl p-4 sm:p-8 shadow-lg break-words">
         <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
+      </div>
       </div>
 
       {error && (
@@ -30,10 +32,10 @@ export function ActPreviewStep({
         </p>
       )}
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2 sm:gap-3">
         <button
           onClick={() => setStep(2)}
-          className="px-4 py-3 rounded-lg text-sm bg-white/5 hover:bg-white/10 transition-colors"
+          className="w-full sm:w-auto px-4 py-3 rounded-lg text-sm bg-white/5 hover:bg-white/10 transition-colors"
         >
           Назад
         </button>

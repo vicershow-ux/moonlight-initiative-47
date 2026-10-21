@@ -31,12 +31,12 @@ export function ObjectCreateStepper({ step }: ObjectCreateStepperProps) {
               >
                 {isDone ? <Icon name="Check" size={16} /> : num}
               </div>
-              <span className={`text-xs whitespace-nowrap ${isActive || isDone ? "text-white" : "text-white/40"}`}>
+              <span className={`text-[11px] sm:text-xs text-center leading-tight max-w-[72px] sm:max-w-none sm:whitespace-nowrap ${isActive || isDone ? "text-white" : "text-white/40"}`}>
                 {s.label}
               </span>
             </div>
             {idx < steps.length - 1 && (
-              <div className={`flex-1 h-0.5 mx-2 mb-5 ${isDone ? "bg-green-500" : "bg-white/10"}`} />
+              <div className={`flex-1 h-0.5 mx-1 sm:mx-2 mb-5 ${isDone ? "bg-green-500" : "bg-white/10"}`} />
             )}
           </div>
         )

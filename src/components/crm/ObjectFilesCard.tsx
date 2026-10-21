@@ -88,14 +88,14 @@ export function ObjectFilesCard({ objectId }: Props) {
   }
 
   return (
-    <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+    <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
       <div className="flex items-center justify-between mb-3">
         <p className="font-medium">Файлы</p>
         {canUpload && (
           <button
             onClick={() => inputRef.current?.click()}
             disabled={uploading}
-            className="text-sm text-[#D4AF37] hover:text-[#B8860B] transition-colors disabled:opacity-40"
+            className="min-h-[40px] sm:min-h-0 text-sm text-[#D4AF37] hover:text-[#B8860B] transition-colors disabled:opacity-40"
           >
             {uploading ? "Загрузка..." : "+ Загрузить"}
           </button>
@@ -134,7 +134,7 @@ export function ObjectFilesCard({ objectId }: Props) {
           {files.map((f) => (
             <div
               key={f.id}
-              className="flex items-center gap-3 bg-[#161616] border border-white/10 rounded-lg p-3"
+              className="flex items-center gap-2 sm:gap-3 bg-[#161616] border border-white/10 rounded-lg p-3"
             >
               <Icon
                 name={typeIcon[f.file_type] || "File"}
@@ -152,7 +152,7 @@ export function ObjectFilesCard({ objectId }: Props) {
                 >
                   {f.file_name}
                 </a>
-                <p className="text-xs text-white/30">
+                <p className="text-xs text-white/30 truncate">
                   {formatSize(f.file_size)} · {formatDate(f.created_at)} · {f.uploader_name}
                 </p>
               </div>
@@ -161,7 +161,7 @@ export function ObjectFilesCard({ objectId }: Props) {
                 download
                 target="_blank"
                 rel="noreferrer"
-                className="text-white/40 hover:text-white transition-colors"
+                className="w-10 h-10 sm:w-auto sm:h-auto flex sm:block items-center justify-center shrink-0 text-white/40 hover:text-white transition-colors"
                 title="Скачать"
               >
                 <Icon name="Download" size={15} />

@@ -180,7 +180,7 @@ export default function ObjectRooms() {
       <div className="flex items-center justify-end mb-4">
         <button
           onClick={handleAddRoom}
-          className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg"
+          className="w-full sm:w-auto justify-center min-h-[44px] sm:min-h-0 flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg"
         >
           <Icon name="Plus" size={16} />
           Добавить помещение
@@ -188,19 +188,19 @@ export default function ObjectRooms() {
       </div>
 
       {forms.length === 0 ? (
-        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-10 text-center text-white/30 text-sm">
+        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-6 sm:p-10 text-center text-white/30 text-sm">
           Пока нет помещений — добавьте первое
         </div>
       ) : (
         <div className="flex flex-col gap-4">
           {forms.map((form, idx) => (
-            <div key={form.id ?? `new-${idx}`} className="bg-[#1f1f1f] border border-white/10 rounded-xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <p className="font-medium">{form.name || "Новое помещение"}</p>
+            <div key={form.id ?? `new-${idx}`} className="bg-[#1f1f1f] border border-white/10 rounded-xl p-4 sm:p-6">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <p className="font-medium min-w-0 truncate">{form.name || "Новое помещение"}</p>
                 {form.id && (
                   <button
                     onClick={() => handleDeleteRoom(idx)}
-                    className="text-sm text-red-400 hover:text-red-300 transition-colors"
+                    className="shrink-0 min-h-[40px] sm:min-h-0 px-2 sm:px-0 text-sm text-red-400 hover:text-red-300 transition-colors"
                   >
                     Удалить
                   </button>
@@ -291,18 +291,18 @@ export default function ObjectRooms() {
                 </p>
               )}
 
-              <div className="flex items-center gap-3 mt-5 pt-5 border-t border-white/10">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-5 pt-5 border-t border-white/10">
                 <button
                   onClick={() => handleSaveRoom(idx)}
                   disabled={savingIdx === idx}
-                  className="flex items-center justify-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg disabled:opacity-60"
+                  className="w-full sm:w-auto min-h-[44px] sm:min-h-0 flex items-center justify-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg disabled:opacity-60"
                 >
                   {savingIdx === idx ? <Icon name="Loader2" size={16} className="animate-spin" /> : null}
                   Сохранить помещения
                 </button>
                 <button
                   onClick={() => handleCancelRoom(idx)}
-                  className="px-4 py-2.5 rounded-lg text-sm bg-white/5 hover:bg-white/10 transition-colors"
+                  className="w-full sm:w-auto min-h-[44px] sm:min-h-0 px-4 py-2.5 rounded-lg text-sm bg-white/5 hover:bg-white/10 transition-colors"
                 >
                   Отмена
                 </button>

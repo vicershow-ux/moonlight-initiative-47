@@ -57,9 +57,9 @@ export function CreateContractModal({ open, onOpenChange, object }: CreateContra
         </DialogHeader>
 
         {object && (
-          <div className="bg-[#161616] border border-white/10 rounded-xl p-4">
+          <div className="bg-[#161616] border border-white/10 rounded-xl p-3 sm:p-4">
             <p className="text-xs text-white/40 uppercase tracking-wide mb-1">Объект</p>
-            <p className="font-semibold">{object.address || object.client_name}</p>
+            <p className="font-semibold break-words">{object.address || object.client_name}</p>
             <p className="text-sm text-white/40 mt-0.5">Площадь: {object.area} м²</p>
           </div>
         )}
@@ -111,16 +111,16 @@ export function CreateContractModal({ open, onOpenChange, object }: CreateContra
           </div>
         </div>
 
-        <div className="flex items-center gap-3 pt-2 border-t border-white/10 mt-1">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2 sm:gap-3 pt-2 border-t border-white/10 mt-1">
           <button
             onClick={handleSubmit}
-            className="flex items-center justify-center gap-2 bg-white text-[#161616] hover:bg-white/90 transition-colors text-sm font-medium px-5 py-2.5 rounded-lg"
+            className="flex w-full sm:w-auto min-h-[44px] sm:min-h-0 items-center justify-center gap-2 bg-white text-[#161616] hover:bg-white/90 transition-colors text-sm font-medium px-5 py-2.5 rounded-lg"
           >
             Сформировать договор
           </button>
           <button
             onClick={() => onOpenChange(false)}
-            className="text-sm text-white/50 hover:text-white transition-colors px-3 py-2.5"
+            className="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-white/50 hover:text-white transition-colors px-3 py-2.5"
           >
             Отмена
           </button>

@@ -200,7 +200,7 @@ export default function ObjectPipeline() {
             onDelete={setConfirmStatus}
           />
 
-          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
             <p className="font-medium">Переходы между статусами</p>
             <p className="text-xs text-white/40 mt-0.5 mb-4">
               Выберите исходный статус в воронке и настройте, в какие активные статусы из него можно переводить объект.

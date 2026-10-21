@@ -246,8 +246,8 @@ export default function EstimateCreate() {
       </button>
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
-        <div className="xl:col-span-4 flex flex-col gap-4">
-          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+        <div className="xl:col-span-4 flex flex-col gap-4 min-w-0">
+          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
             <p className="font-medium mb-4">Номер сметы и договор</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="flex flex-col gap-1.5">
@@ -299,7 +299,7 @@ export default function EstimateCreate() {
             Добавить помещение
           </button>
 
-          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
             <p className="font-medium mb-4">Скидка на смету</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
@@ -326,7 +326,7 @@ export default function EstimateCreate() {
             </div>
           </div>
 
-          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
             <p className="font-medium mb-3">Примечания к смете</p>
             <textarea
               value={notes}
@@ -337,7 +337,7 @@ export default function EstimateCreate() {
             />
           </div>
 
-          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
             <p className="font-medium mb-3">Подпись и печать в смете</p>
             <SignStampToggles
               signatureUrl={company?.signature_url}
@@ -355,17 +355,17 @@ export default function EstimateCreate() {
             </p>
           )}
 
-          <div className="flex items-center justify-end gap-3 pb-4">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-2 sm:gap-3 pb-4">
             <button
               onClick={handleClose}
-              className="px-4 py-2.5 rounded-lg text-sm bg-white/5 hover:bg-white/10 transition-colors"
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-0 px-4 py-2.5 rounded-lg text-sm bg-white/5 hover:bg-white/10 transition-colors"
             >
               {editMode ? "Закрыть" : "Отмена"}
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-5 py-2.5 rounded-lg disabled:opacity-60"
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-0 flex items-center justify-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-5 py-2.5 rounded-lg disabled:opacity-60"
             >
               {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : null}
               {editMode ? "Сохранить изменения" : "Сохранить черновик"}
@@ -374,7 +374,7 @@ export default function EstimateCreate() {
         </div>
 
         <div className="flex flex-col gap-4">
-          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5 sticky top-4">
+          <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5 sticky top-4">
             <p className="font-medium mb-4">Итого</p>
             <div className="flex flex-col gap-2 text-sm">
               <div className="flex items-center justify-between">

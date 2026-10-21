@@ -14,6 +14,7 @@ import {
   ObjectMaterial,
 } from "@/lib/api"
 import { money, num, inputCls, goldBtn, RoomGroup } from "./constants"
+import { MaterialsObjectsMobileList } from "./MaterialsObjectsMobileList"
 
 interface MaterialsObjectsTabProps {
   objects: MaterialObject[]
@@ -87,7 +88,7 @@ export function MaterialsObjectsTab({
   const productUrl = (m: ObjectMaterial) => findProductUrl(m, materials)
 
   return (
-    <div className="rounded-xl border border-white/10 bg-[#1f1f1f] p-5">
+    <div className="rounded-xl border border-white/10 bg-[#1f1f1f] p-3 sm:p-5">
       {objects.length === 0 ? (
         <div className="py-16 text-center text-sm text-white/30">
           Объектов пока нет —{" "}
@@ -97,11 +98,11 @@ export function MaterialsObjectsTab({
         </div>
       ) : (
         <>
-          <div className="mb-5 flex flex-wrap items-end gap-3">
-            <div className="min-w-[280px] flex-1">
+          <div className="mb-5 flex flex-col items-stretch gap-3 md:flex-row md:flex-wrap md:items-end">
+            <div className="w-full md:w-auto md:min-w-[280px] md:flex-1">
               <label className="mb-1.5 block text-xs text-white/50">Объект</label>
               <select
-                className={inputCls}
+                className={`${inputCls} min-h-[44px] md:min-h-0`}
                 value={selectedObject ?? ""}
                 onChange={(e) => {
                   setSelectedObject(e.target.value ? Number(e.target.value) : null)
@@ -119,9 +120,9 @@ export function MaterialsObjectsTab({
             </div>
 
             {activeObject && (
-              <>
+              <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 md:contents">
                 <button
-                  className={goldBtn}
+                  className={`${goldBtn} min-h-[44px] justify-center md:min-h-0 md:justify-start`}
                   onClick={() => {
                     setShowQuick(!showQuick)
                     setShowCalc(false)
@@ -131,7 +132,7 @@ export function MaterialsObjectsTab({
                   {showQuick ? "Свернуть" : "Добавить штучно"}
                 </button>
                 <button
-                  className={goldBtn}
+                  className={`${goldBtn} min-h-[44px] justify-center md:min-h-0 md:justify-start`}
                   onClick={() => {
                     setShowCalc(!showCalc)
                     setShowQuick(false)
@@ -141,7 +142,7 @@ export function MaterialsObjectsTab({
                   {showCalc ? "Свернуть" : "Рассчитать помещение"}
                 </button>
                 <button
-                  className="flex items-center gap-2 rounded-lg border border-[#D4AF37]/40 px-4 py-2.5 text-sm text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10 disabled:opacity-40"
+                  className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-[#D4AF37]/40 px-4 py-2.5 text-sm text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10 disabled:opacity-40 md:min-h-0 md:justify-start"
                   disabled={materialsOf(activeObject.id).length === 0 || savingEstimate}
                   onClick={saveEstimate}
                 >
@@ -153,14 +154,14 @@ export function MaterialsObjectsTab({
                   Сохранить смету на материал
                 </button>
                 <button
-                  className="flex items-center gap-2 rounded-lg border border-[#D4AF37]/40 px-4 py-2.5 text-sm text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10 disabled:opacity-40"
+                  className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-[#D4AF37]/40 px-4 py-2.5 text-sm text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10 disabled:opacity-40 md:min-h-0 md:justify-start"
                   disabled={materialsOf(activeObject.id).length === 0}
                   onClick={() => setShowPurchase(true)}
                 >
                   <Icon name="ShoppingCart" size={16} />
                   Список на закупку
                 </button>
-              </>
+              </div>
             )}
           </div>
 
@@ -202,7 +203,7 @@ export function MaterialsObjectsTab({
               )}
 
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-[#161616] px-4 py-3 text-sm">
-                <div className="text-white/60">
+                <div className="min-w-0 break-words text-white/60">
                   {activeObject.object_code} — {activeObject.client_name}
                   <span className="ml-2 text-white/30">
                     {materialsOf(activeObject.id).length} позиций
@@ -224,14 +225,23 @@ export function MaterialsObjectsTab({
                       key={group.key}
                       className="rounded-lg border border-white/10 bg-[#161616]"
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-                        <div className="flex items-center gap-2 text-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-3 py-3 sm:px-4">
+                        <div className="flex min-w-0 items-center gap-2 text-sm">
                           <Icon name="DoorOpen" size={15} className="text-[#D4AF37]" />
                           {group.title}
                         </div>
                         <div className="text-sm text-[#D4AF37]">{money(group.sum)}</div>
                       </div>
-                      <div className="overflow-x-auto p-4">
+                      <MaterialsObjectsMobileList
+                        items={group.items}
+                        productUrl={productUrl}
+                        onView={(m) => printMaterials(activeObject, [m], materials, companyName)}
+                        onEdit={openEdit}
+                        onPrint={(m) => printMaterials(activeObject, [m], materials, companyName, true)}
+                        onPdf={(m) => downloadMaterialsPdf(activeObject, [m], materials, companyName)}
+                        onDelete={(m) => run(() => materialsApi.removeFromObject(m.id))}
+                      />
+                      <div className="hidden overflow-x-auto p-4 md:block">
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="border-b border-white/10 text-xs uppercase text-white/40">

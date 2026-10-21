@@ -167,17 +167,17 @@ export function EditServiceModal({ service, open, onOpenChange, onSaved }: EditS
           </p>
         )}
 
-        <div className="flex items-center justify-end gap-3 mt-4 pt-4 border-t border-white/10">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-3 mt-4 pt-4 border-t border-white/10">
           <button
             onClick={() => onOpenChange(false)}
-            className="px-4 py-2.5 rounded-lg text-sm bg-white/5 hover:bg-white/10 transition-colors"
+            className="w-full sm:w-auto min-h-[44px] sm:min-h-0 flex sm:block items-center justify-center px-4 py-2.5 rounded-lg text-sm bg-white/5 hover:bg-white/10 transition-colors"
           >
             Отмена
           </button>
           <button
             onClick={handleSubmit}
             disabled={saving}
-            className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-5 py-2.5 rounded-lg disabled:opacity-60"
+            className="w-full sm:w-auto min-h-[44px] sm:min-h-0 justify-center sm:justify-start flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-5 py-2.5 rounded-lg disabled:opacity-60"
           >
             {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : null}
             Сохранить изменения

@@ -69,11 +69,11 @@ export function CatalogEditModal({ material, onClose, onSaved }: CatalogEditModa
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overflow-x-hidden bg-black/70 p-2 backdrop-blur-sm sm:p-4"
       onClick={onClose}
     >
       <div
-        className="my-8 w-full max-w-3xl rounded-xl border border-white/10 bg-[#1f1f1f] p-6"
+        className="my-2 w-full min-w-0 max-w-3xl rounded-xl border border-white/10 bg-[#1f1f1f] p-4 sm:my-8 sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-start justify-between gap-4">
@@ -140,7 +140,7 @@ export function CatalogEditModal({ material, onClose, onSaved }: CatalogEditModa
         </div>
 
         <div className="mb-3 mt-6 text-xs uppercase text-white/40">Как добавлять в объект</div>
-        <div className="mb-4 grid gap-2 sm:grid-cols-2">
+        <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {[
             { v: true, title: "Штучно, без расчёта", hint: "Просто указываете количество" },
             { v: false, title: "С расчётом по площади", hint: "Количество считается по помещению" },
@@ -167,7 +167,7 @@ export function CatalogEditModal({ material, onClose, onSaved }: CatalogEditModa
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className={labelCls}>Как считать расход</label>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {CONSUMPTION_MODES.map((m) => (
                 <button
                   key={m.value}
@@ -256,9 +256,9 @@ export function CatalogEditModal({ material, onClose, onSaved }: CatalogEditModa
           onChange={(e) => set("note", e.target.value)}
         />
 
-        <div className="mt-6 flex flex-wrap items-center gap-3">
+        <div className="mt-6 flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <button
-            className="flex items-center gap-2 rounded-lg bg-[#D4AF37] px-5 py-2.5 text-sm text-[#161616] transition-colors hover:bg-[#B8860B] disabled:opacity-40"
+            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-[#D4AF37] sm:min-h-0 sm:w-auto sm:justify-start px-5 py-2.5 text-sm text-[#161616] transition-colors hover:bg-[#B8860B] disabled:opacity-40"
             onClick={save}
             disabled={form.name.trim().length < 2 || saving}
           >
@@ -270,7 +270,7 @@ export function CatalogEditModal({ material, onClose, onSaved }: CatalogEditModa
             Сохранить изменения
           </button>
           <button
-            className="rounded-lg border border-white/10 px-5 py-2.5 text-sm text-white/60 transition-colors hover:text-white"
+            className="min-h-[44px] w-full rounded-lg border border-white/10 px-5 py-2.5 text-sm text-white/60 transition-colors hover:text-white sm:min-h-0 sm:w-auto"
             onClick={onClose}
           >
             Отмена

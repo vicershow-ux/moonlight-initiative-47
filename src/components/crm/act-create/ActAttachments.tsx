@@ -80,7 +80,7 @@ export function ActAttachments({ objectId, value, onChange }: Props) {
                 type="button"
                 onClick={() => remove(i)}
                 title="Убрать из акта"
-                className="w-8 h-8 flex items-center justify-center rounded-md text-white/40 hover:text-red-400 hover:bg-white/5 transition-colors"
+                className="w-10 h-10 sm:w-8 sm:h-8 shrink-0 flex items-center justify-center rounded-md text-white/40 hover:text-red-400 hover:bg-white/5 transition-colors"
               >
                 <Icon name="X" size={15} />
               </button>

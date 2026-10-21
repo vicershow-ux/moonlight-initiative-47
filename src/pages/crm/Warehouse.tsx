@@ -265,11 +265,11 @@ export default function Warehouse() {
         </div>
       ) : (
         <Tabs defaultValue="stock">
-          <TabsList className="bg-[#1f1f1f] border border-white/10 mb-6 flex-wrap h-auto">
-            <TabsTrigger value="stock">Склад</TabsTrigger>
-            <TabsTrigger value="ledger">Учет</TabsTrigger>
-            <TabsTrigger value="objects">Объекты</TabsTrigger>
-            <TabsTrigger value="history">История</TabsTrigger>
+          <TabsList className="bg-[#1f1f1f] border border-white/10 mb-6 h-auto flex w-full justify-start overflow-x-auto whitespace-nowrap md:inline-flex md:w-auto md:flex-wrap md:justify-center md:overflow-visible">
+            <TabsTrigger value="stock" className="min-h-[40px] shrink-0 md:min-h-0">Склад</TabsTrigger>
+            <TabsTrigger value="ledger" className="min-h-[40px] shrink-0 md:min-h-0">Учет</TabsTrigger>
+            <TabsTrigger value="objects" className="min-h-[40px] shrink-0 md:min-h-0">Объекты</TabsTrigger>
+            <TabsTrigger value="history" className="min-h-[40px] shrink-0 md:min-h-0">История</TabsTrigger>
           </TabsList>
 
           <TabsContent value="stock">

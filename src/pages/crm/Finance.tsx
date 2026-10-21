@@ -47,12 +47,12 @@ export default function Finance() {
     <CrmLayout title="Финансы" subtitle="Доходы, расходы, долги заказчиков и прибыль по объектам">
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex rounded-lg bg-white/5 p-0.5 text-sm">
+          <div className="flex w-full sm:w-auto overflow-x-auto whitespace-nowrap rounded-lg bg-white/5 p-0.5 text-sm">
             {PERIODS.map((p) => (
               <button
                 key={p.k}
                 onClick={() => setPeriod(p.k)}
-                className={`rounded-md px-3 py-1.5 ${period === p.k ? "bg-[#D4AF37] text-[#161616] font-medium" : "text-white/60 hover:text-white"}`}
+                className={`flex-1 sm:flex-none shrink-0 min-h-[40px] sm:min-h-0 rounded-md px-3 py-1.5 ${period === p.k ? "bg-[#D4AF37] text-[#161616] font-medium" : "text-white/60 hover:text-white"}`}
               >
                 {p.l}
               </button>

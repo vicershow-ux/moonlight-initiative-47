@@ -4,7 +4,7 @@ import { Switch } from "@/components/ui/switch"
 import { bankApi, BankOperation, BankSettings } from "@/lib/api"
 
 const field = "w-full rounded-lg border border-white/10 bg-[#161616] px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
-const card = "rounded-xl border border-white/10 bg-[#1f1f1f] p-5 flex flex-col gap-4"
+const card = "rounded-xl border border-white/10 bg-[#1f1f1f] p-3 sm:p-5 flex flex-col gap-4"
 const money = (v: unknown) => new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(Number(v) || 0) + " ₽"
 const dt = (d?: string | null) =>
   d ? new Date(d).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"
@@ -172,9 +172,9 @@ export function TbankSettings({ onChange }: { onChange?: (s: BankSettings) => vo
     <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_440px] gap-4 items-start">
       <div className="flex flex-col gap-4">
         <div className={card}>
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-lg bg-[#FFDD2D]/15 flex items-center justify-center">
+              <div className="w-11 h-11 shrink-0 rounded-lg bg-[#FFDD2D]/15 flex items-center justify-center">
                 <Icon name="Landmark" size={22} className="text-[#FFDD2D]" />
               </div>
               <div>
@@ -190,7 +190,7 @@ export function TbankSettings({ onChange }: { onChange?: (s: BankSettings) => vo
 
           <label className="flex flex-col gap-1.5">
             <span className="text-sm text-white/80">Токен T-API</span>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="password"
                 value={token}
@@ -202,7 +202,7 @@ export function TbankSettings({ onChange }: { onChange?: (s: BankSettings) => vo
               <button
                 onClick={loadAccounts}
                 disabled={busy !== "" || (!token.trim() && !s.has_token)}
-                className="shrink-0 rounded-lg bg-white/5 hover:bg-white/10 px-3 text-sm flex items-center gap-1.5 disabled:opacity-50"
+                className="shrink-0 min-h-[44px] sm:min-h-0 rounded-lg bg-white/5 hover:bg-white/10 px-3 text-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
                 <Icon name={busy === "accounts" ? "Loader2" : "PlugZap"} size={14} className={busy === "accounts" ? "animate-spin" : ""} />
                 Проверить
@@ -263,7 +263,7 @@ export function TbankSettings({ onChange }: { onChange?: (s: BankSettings) => vo
             <button
               onClick={save}
               disabled={busy !== ""}
-              className="inline-flex items-center gap-2 rounded-lg bg-[#D4AF37] hover:bg-[#B8860B] px-5 py-2.5 text-sm font-medium text-[#161616] disabled:opacity-60"
+              className="w-full sm:w-auto justify-center min-h-[44px] sm:min-h-0 inline-flex items-center gap-2 rounded-lg bg-[#D4AF37] hover:bg-[#B8860B] px-5 py-2.5 text-sm font-medium text-[#161616] disabled:opacity-60"
             >
               {busy === "save" && <Icon name="Loader2" size={15} className="animate-spin" />}
               Сохранить
@@ -271,7 +271,7 @@ export function TbankSettings({ onChange }: { onChange?: (s: BankSettings) => vo
             <button
               onClick={sync}
               disabled={busy !== "" || !s.enabled || !s.has_token || !s.account_number}
-              className="inline-flex items-center gap-2 rounded-lg bg-white/5 hover:bg-white/10 px-5 py-2.5 text-sm disabled:opacity-50"
+              className="w-full sm:w-auto justify-center min-h-[44px] sm:min-h-0 inline-flex items-center gap-2 rounded-lg bg-white/5 hover:bg-white/10 px-5 py-2.5 text-sm disabled:opacity-50"
             >
               <Icon name={busy === "sync" ? "Loader2" : "RefreshCw"} size={15} className={busy === "sync" ? "animate-spin" : ""} />
               Загрузить выписку сейчас

@@ -50,18 +50,18 @@ export function NotificationBell() {
           )}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="bg-[#1f1f1f] border-white/10 text-white p-0 w-80">
+      <PopoverContent align="end" collisionPadding={8} className="bg-[#1f1f1f] border-white/10 text-white p-0 w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:w-80 sm:max-w-none">
         <div className="px-4 py-3 border-b border-white/10">
           <p className="text-sm font-medium">Уведомления</p>
         </div>
-        <div className="max-h-80 overflow-y-auto">
+        <div className="max-h-[60vh] sm:max-h-80 overflow-y-auto">
           {notifications.length === 0 ? (
             <div className="text-center py-8 text-white/30 text-sm">Пока нет уведомлений</div>
           ) : (
             notifications.map((n) => (
               <div key={n.id} className="px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/5">
-                <p className="text-sm font-medium mb-0.5">{n.title}</p>
-                <p className="text-xs text-white/50 mb-1">{n.message}</p>
+                <p className="text-sm font-medium mb-0.5 break-words">{n.title}</p>
+                <p className="text-xs text-white/50 mb-1 break-words">{n.message}</p>
                 <p className="text-[10px] text-white/30">{formatDate(n.created_at)}</p>
               </div>
             ))

@@ -10,7 +10,7 @@ function LeadRequestCard({ objectId, text, isClient }: { objectId: number; text:
   const [open, setOpen] = useState(false)
   const count = (text.match(/^\s*\d+\.\s/gm) || []).length
   return (
-    <div className="bg-[#1f1f1f] border border-[#D4AF37]/30 rounded-xl p-5">
+    <div className="bg-[#1f1f1f] border border-[#D4AF37]/30 rounded-xl p-3 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button
           type="button"
@@ -39,7 +39,7 @@ interface ObjectInfoPanelsProps {
 export function ObjectInfoPanels({ object, rooms, roomsLoading, isClient }: ObjectInfoPanelsProps) {
   return (
     <>
-      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
         <p className="font-medium mb-4">Информация о заказчике</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <div>
@@ -61,7 +61,7 @@ export function ObjectInfoPanels({ object, rooms, roomsLoading, isClient }: Obje
         </div>
       </div>
 
-      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
         <p className="font-medium mb-4">Параметры объекта</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <div>
@@ -105,7 +105,7 @@ export function ObjectInfoPanels({ object, rooms, roomsLoading, isClient }: Obje
         </div>
       </div>
 
-      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
         <p className="font-medium mb-4">Материалы и мебель</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
           <div>
@@ -128,13 +128,13 @@ export function ObjectInfoPanels({ object, rooms, roomsLoading, isClient }: Obje
       )}
 
       {object.measurer_comment && (
-        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
           <p className="font-medium mb-3">Комментарий замерщика</p>
           <p className="text-sm text-white/60 whitespace-pre-wrap">{object.measurer_comment}</p>
         </div>
       )}
 
-      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
         <p className="font-medium mb-3">Дизайн-проект</p>
         {object.design_project ? (
           <div className="flex flex-wrap gap-2">
@@ -160,7 +160,7 @@ export function ObjectInfoPanels({ object, rooms, roomsLoading, isClient }: Obje
         )}
       </div>
 
-      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
         <div className="flex items-center justify-between mb-3">
           <p className="font-medium">Эталонные помещения</p>
           <Link

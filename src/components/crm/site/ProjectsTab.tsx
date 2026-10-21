@@ -135,12 +135,12 @@ export function ProjectsTab({ form, update }: ProjectsTabProps) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between gap-3 mb-1">
         <p className="text-sm text-white/40">Объекты в разделе «Портфолио»</p>
         <button
           onClick={handleAdd}
           disabled={creating}
-          className="flex items-center gap-1.5 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-3 py-2 rounded-lg disabled:opacity-60"
+          className="shrink-0 min-h-[44px] sm:min-h-0 flex items-center gap-1.5 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-3 py-2 rounded-lg disabled:opacity-60"
         >
           <Icon name="Plus" size={14} />
           Добавить объект
@@ -156,7 +156,7 @@ export function ProjectsTab({ form, update }: ProjectsTabProps) {
           onDrop={() => handleDrop(item.id)}
           className="bg-[#161616] border border-white/10 rounded-lg p-4"
         >
-          <div className="flex items-start gap-3">
+          <div className="flex flex-wrap sm:flex-nowrap items-start gap-3">
             <Icon name="GripVertical" size={16} className="text-white/25 cursor-grab shrink-0 mt-2" />
 
             <div className="w-24 h-20 rounded-lg bg-[#1f1f1f] border border-white/10 flex items-center justify-center overflow-hidden shrink-0 relative group">
@@ -167,14 +167,14 @@ export function ProjectsTab({ form, update }: ProjectsTabProps) {
               </label>
             </div>
 
-            <div className="flex-1 space-y-2">
+            <div className="w-full sm:w-auto sm:flex-1 min-w-0 space-y-2">
               <input
                 value={item.title}
                 onChange={(e) => updateField(item.id, "title", e.target.value)}
                 placeholder="Название объекта"
                 className="w-full bg-[#1f1f1f] border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50 font-medium"
               />
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <input
                   value={item.category}
                   onChange={(e) => updateField(item.id, "category", e.target.value)}
@@ -198,12 +198,12 @@ export function ProjectsTab({ form, update }: ProjectsTabProps) {
                 <button
                   onClick={() => handleSave(item)}
                   disabled={savingId === item.id}
-                  className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-xs px-3 py-1.5 rounded-lg disabled:opacity-60"
+                  className="min-h-[40px] sm:min-h-0 flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-xs px-3 py-1.5 rounded-lg disabled:opacity-60"
                 >
                   {savingId === item.id && <Icon name="Loader2" size={12} className="animate-spin" />}
                   Сохранить
                 </button>
-                <button onClick={() => setConfirmId(item.id)} className="text-red-400 hover:underline text-xs">
+                <button onClick={() => setConfirmId(item.id)} className="min-h-[40px] sm:min-h-0 px-2 sm:px-0 text-red-400 hover:underline text-xs">
                   Удалить
                 </button>
               </div>

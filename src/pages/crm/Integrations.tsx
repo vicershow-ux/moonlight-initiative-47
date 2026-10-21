@@ -122,7 +122,7 @@ export default function Integrations() {
               )}
             </>
           )
-          const cls = "flex flex-col gap-3 rounded-xl border border-white/10 bg-[#1f1f1f] p-5"
+          const cls = "flex flex-col gap-3 rounded-xl border border-white/10 bg-[#1f1f1f] p-3 sm:p-5"
           return it.available ? (
             <Link key={it.slug} to={`/cabinet/integrations/${it.slug}`} className={`${cls} transition-colors hover:border-[#D4AF37]/40`}>
               {body}

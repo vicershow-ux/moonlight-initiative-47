@@ -69,11 +69,11 @@ export function FinanceExpenses({ data, onChanged }: { data: FinanceData; onChan
           <Icon name="Wallet" size={16} className="text-[#D4AF37]" />
           Расходы
         </p>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 w-full sm:w-auto sm:flex sm:flex-wrap gap-2">
           <ExpenseExportButton />
           <button
             onClick={add}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[#D4AF37] px-3 py-2 text-sm font-medium text-[#161616] hover:bg-[#B8860B]"
+            className="inline-flex justify-center min-h-[44px] sm:min-h-0 w-full sm:w-auto items-center gap-1.5 rounded-lg bg-[#D4AF37] px-3 py-2 text-sm font-medium text-[#161616] hover:bg-[#B8860B]"
           >
             <Icon name="Plus" size={15} />
             Добавить расход
@@ -150,7 +150,7 @@ export function FinanceExpenses({ data, onChanged }: { data: FinanceData; onChan
       ) : (
         <div className="flex flex-col divide-y divide-white/5 -my-1">
           {list.map((e) => (
-            <div key={e.id} className="group flex items-center gap-3 py-2.5">
+            <div key={e.id} className="group flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 py-2.5">
               <span
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
                 style={{ background: `${EXPENSE_COLORS[e.category] || "#6b7280"}26`, color: EXPENSE_COLORS[e.category] || "#9ca3af" }}
@@ -191,12 +191,12 @@ export function FinanceExpenses({ data, onChanged }: { data: FinanceData; onChan
                 <Icon name="Paperclip" size={13} className="shrink-0 text-white/40 sm:hidden" />
               )}
               <span className="shrink-0 font-medium text-red-300 whitespace-nowrap">−{rub(e.amount)}</span>
-              <div className="flex shrink-0 gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+              <div className="flex w-full sm:w-auto justify-end shrink-0 gap-2 sm:gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                 {!(e.attachments || []).length && (
                   <button
                     onClick={() => quickAttach(e)}
                     disabled={uploading}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 hover:bg-[#D4AF37]/20 hover:text-[#D4AF37]"
+                    className="flex h-10 w-10 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-white/5 hover:bg-[#D4AF37]/20 hover:text-[#D4AF37]"
                     title="Прикрепить чек или накладную"
                   >
                     <Icon name={uploading && attachTo?.id === e.id ? "Loader2" : "Paperclip"} size={13} className={uploading && attachTo?.id === e.id ? "animate-spin" : ""} />
@@ -207,14 +207,14 @@ export function FinanceExpenses({ data, onChanged }: { data: FinanceData; onChan
                     setEditing(e)
                     setOpen(true)
                   }}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 hover:bg-white/10"
+                  className="flex h-10 w-10 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-white/5 hover:bg-white/10"
                   title="Изменить"
                 >
                   <Icon name="Pencil" size={13} />
                 </button>
                 <button
                   onClick={() => setRemoving(e)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 hover:bg-red-500/20 hover:text-red-300"
+                  className="flex h-10 w-10 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-white/5 hover:bg-red-500/20 hover:text-red-300"
                   title="Удалить"
                 >
                   <Icon name="Trash2" size={13} />

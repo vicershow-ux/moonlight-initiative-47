@@ -105,11 +105,11 @@ export function BankDebitsInbox({ data, onChanged }: { data: FinanceData; onChan
               : "Все списания из выписки Т-Банка разнесены по расходам."}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
           <button
             onClick={sync}
             disabled={busy !== null}
-            className="flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-2 text-sm text-white/70 hover:bg-white/10 disabled:opacity-60"
+            className="flex justify-center sm:justify-start min-h-[44px] sm:min-h-0 items-center gap-1.5 rounded-lg bg-white/5 px-3 py-2 text-sm text-white/70 hover:bg-white/10 disabled:opacity-60"
           >
             <Icon name="RefreshCw" size={14} className={busy === "sync" ? "animate-spin" : ""} />
             Обновить
@@ -118,7 +118,7 @@ export function BankDebitsInbox({ data, onChanged }: { data: FinanceData; onChan
             <button
               onClick={() => accept(ready, "all")}
               disabled={busy !== null}
-              className="flex items-center gap-1.5 rounded-lg bg-[#D4AF37] px-3 py-2 text-sm font-medium text-[#161616] hover:bg-[#B8860B] disabled:opacity-60"
+              className="flex justify-center sm:justify-start min-h-[44px] sm:min-h-0 items-center gap-1.5 rounded-lg bg-[#D4AF37] px-3 py-2 text-sm font-medium text-[#161616] hover:bg-[#B8860B] disabled:opacity-60"
             >
               {busy === "all" ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="CheckCheck" size={14} />}
               Добавить все с категорией ({ready.length})
@@ -159,8 +159,8 @@ export function BankDebitsInbox({ data, onChanged }: { data: FinanceData; onChan
                     )}
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap">
-                  <select value={c.category} onChange={(e) => set(it.id, { category: e.target.value })} className={`${select} w-40`}>
+                <div className="grid grid-cols-[1fr_auto] sm:flex sm:flex-wrap items-center gap-2 lg:flex-nowrap">
+                  <select value={c.category} onChange={(e) => set(it.id, { category: e.target.value })} className={`${select} col-span-2 w-full sm:w-40`}>
                     <option value="">Категория…</option>
                     {Object.entries(data.categories).map(([k, l]) => (
                       <option key={k} value={k}>
@@ -171,7 +171,7 @@ export function BankDebitsInbox({ data, onChanged }: { data: FinanceData; onChan
                   <select
                     value={c.object_id ?? ""}
                     onChange={(e) => set(it.id, { object_id: e.target.value ? Number(e.target.value) : null })}
-                    className={`${select} w-44`}
+                    className={`${select} col-span-2 w-full sm:w-44`}
                   >
                     <option value="">Без объекта</option>
                     {data.object_options.map((o) => (
@@ -185,7 +185,7 @@ export function BankDebitsInbox({ data, onChanged }: { data: FinanceData; onChan
                     onClick={() => accept([it], it.id)}
                     disabled={!c.category || busy !== null}
                     title={c.category ? "Добавить в расходы" : "Сначала выберите категорию"}
-                    className="flex h-9 items-center gap-1.5 rounded-lg bg-[#D4AF37] px-3 text-sm font-medium text-[#161616] hover:bg-[#B8860B] disabled:opacity-40"
+                    className="flex h-11 sm:h-9 justify-center items-center gap-1.5 rounded-lg bg-[#D4AF37] px-3 text-sm font-medium text-[#161616] hover:bg-[#B8860B] disabled:opacity-40"
                   >
                     {busy === it.id ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Check" size={14} />}
                     В расходы
@@ -194,7 +194,7 @@ export function BankDebitsInbox({ data, onChanged }: { data: FinanceData; onChan
                     onClick={() => skip(it.id)}
                     disabled={busy !== null}
                     title="Не расход: перевод себе, возврат и т.п."
-                    className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-white/50 hover:bg-white/10 hover:text-white disabled:opacity-40"
+                    className="flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-lg bg-white/5 text-white/50 hover:bg-white/10 hover:text-white disabled:opacity-40"
                   >
                     <Icon name="EyeOff" size={14} />
                   </button>

@@ -62,9 +62,9 @@ export default function AddendumView() {
           <Icon name="ChevronLeft" size={16} />
           {isClient ? "К объекту" : "К договору"}
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:items-center sm:w-auto">
           <span
-            className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+            className={`col-span-2 justify-self-start px-2.5 py-1 rounded-full text-xs font-medium ${
               doc.status === "signed" ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"
             }`}
           >
@@ -74,7 +74,7 @@ export default function AddendumView() {
             <>
               <Link
                 to={`/cabinet/objects/${objectId}/contracts/${contractId}/addenda/${doc.id}/edit`}
-                className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg"
+                className="flex items-center justify-center min-h-[44px] sm:min-h-0 gap-1.5 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg"
               >
                 <Icon name="Pencil" size={14} />
                 Редактировать
@@ -82,26 +82,29 @@ export default function AddendumView() {
               <button
                 onClick={() => setConfirmDelete(true)}
                 title="Удалить"
-                className="flex items-center justify-center w-9 h-9 bg-white/5 hover:bg-red-500/20 hover:text-red-300 transition-colors rounded-lg"
+                className="flex items-center justify-center gap-1.5 text-sm w-full h-11 sm:w-9 sm:h-9 bg-white/5 hover:bg-red-500/20 hover:text-red-300 transition-colors rounded-lg"
               >
                 <Icon name="Trash2" size={15} />
+                <span className="sm:hidden">Удалить</span>
               </button>
             </>
           )}
           <button
             onClick={() => printAddendum({ addendum_number: doc.addendum_number, content_html: doc.content_html || "" })}
             title="Печать"
-            className="flex items-center justify-center w-9 h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg"
+            className="flex items-center justify-center gap-1.5 text-sm w-full h-11 sm:w-9 sm:h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg"
           >
             <Icon name="Printer" size={15} />
+            <span className="sm:hidden">Печать</span>
           </button>
           <button
             onClick={download}
             disabled={downloading}
             title="Скачать PDF"
-            className="flex items-center justify-center w-9 h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg disabled:opacity-60"
+            className="flex items-center justify-center gap-1.5 text-sm w-full h-11 sm:w-9 sm:h-9 bg-white/5 hover:bg-white/10 transition-colors rounded-lg disabled:opacity-60"
           >
             <Icon name={downloading ? "Loader2" : "Download"} size={15} className={downloading ? "animate-spin" : ""} />
+            <span className="sm:hidden">PDF</span>
           </button>
         </div>
       </div>
@@ -119,14 +122,14 @@ export default function AddendumView() {
         />
       ) : (
         doc.signed_at && (
-          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl mb-4 p-4 flex items-center gap-3 max-w-4xl mx-auto text-sm">
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl mb-4 p-3 sm:p-4 flex items-center gap-3 max-w-4xl mx-auto text-sm">
             <Icon name="BadgeCheck" size={20} className="text-emerald-400" />
             Заказчик подписал онлайн {new Date(doc.signed_at).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
           </div>
         )
       )}
 
-      <div className="bg-white rounded-xl p-6 md:p-10 max-w-4xl mx-auto shadow-xl overflow-x-auto">
+      <div className="bg-white rounded-xl p-3 sm:p-6 md:p-10 max-w-4xl mx-auto shadow-xl overflow-x-auto">
         <div dangerouslySetInnerHTML={{ __html: html }} />
       </div>
 

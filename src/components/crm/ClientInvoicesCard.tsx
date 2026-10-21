@@ -44,14 +44,14 @@ export function ClientInvoicesCard() {
   const paid = list.filter((i) => i.status === "paid").reduce((s, i) => s + Number(i.total_amount || 0), 0)
 
   return (
-    <div className="mb-6 rounded-xl border border-white/10 bg-[#1f1f1f] p-5">
+    <div className="mb-6 rounded-xl border border-white/10 bg-[#1f1f1f] p-3 sm:p-5">
       <PaymentReturnBanner message={payReturn.message} onClose={payReturn.clear} />
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="flex items-center gap-2 font-medium">
           <Icon name="Receipt" size={18} className="text-[#D4AF37]" />
           Мои счета на оплату
         </p>
-        <div className="flex gap-4 text-sm">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <span className="text-white/50">
             К оплате: <b className="text-[#D4AF37]">{money(unpaid)}</b>
           </span>
@@ -90,13 +90,13 @@ export function ClientInvoicesCard() {
                   {inv.due_date && !isPaid ? ` · оплатить до ${dateRu(inv.due_date)}` : ""}
                 </p>
               </div>
-              <div className="flex shrink-0 items-center gap-3">
+              <div className="flex shrink-0 items-center justify-between sm:justify-start gap-3">
                 <p className="text-lg font-semibold">{money(Number(inv.total_amount))}</p>
                 {!isPaid && <InvoicePayButton invoiceId={inv.id} />}
                 <button
                   onClick={() => download(inv.id)}
                   disabled={busyId === inv.id}
-                  className="flex items-center gap-1.5 rounded-lg bg-[#D4AF37] px-3 py-2 text-sm font-medium text-[#161616] transition-colors hover:bg-[#B8860B] disabled:opacity-60"
+                  className="flex min-h-[44px] sm:min-h-0 items-center gap-1.5 rounded-lg bg-[#D4AF37] px-3 py-2 text-sm font-medium text-[#161616] transition-colors hover:bg-[#B8860B] disabled:opacity-60"
                 >
                   <Icon name={busyId === inv.id ? "Loader2" : "Download"} size={14} className={busyId === inv.id ? "animate-spin" : ""} />
                   PDF

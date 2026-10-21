@@ -16,7 +16,7 @@ export function ContractTermsCard({ rental, edited, onRegenerate }: Props) {
       <div className="space-y-2 text-white/70">
         <div className="flex justify-between gap-3">
           <span className="text-white/40">Инструмент</span>
-          <span className="text-right">{rental.item_name}</span>
+          <span className="min-w-0 break-words text-right">{rental.item_name}</span>
         </div>
         <div className="flex justify-between gap-3">
           <span className="text-white/40">Количество</span>

@@ -12,14 +12,14 @@ interface DocumentsToolbarProps {
 
 export function DocumentsToolbar({ tab, setTab, search, setSearch }: DocumentsToolbarProps) {
   return (
-  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border-b border-white/10">
-    <div className="flex items-center gap-1 bg-[#161616] rounded-lg p-1 overflow-x-auto">
+  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 border-b border-white/10">
+    <div className="flex items-center gap-1 bg-[#161616] rounded-lg p-1 overflow-x-auto whitespace-nowrap max-w-full min-w-0">
       {tabs.map((t) => (
         <button
           key={t.key}
           onClick={() => setTab(t.key)}
           className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors",
+            "flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-md shrink-0 text-sm whitespace-nowrap transition-colors",
             tab === t.key ? "bg-[#D4AF37] text-[#161616]" : "text-white/50 hover:text-white"
           )}
         >
@@ -34,7 +34,7 @@ export function DocumentsToolbar({ tab, setTab, search, setSearch }: DocumentsTo
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Поиск по номеру, адресу, заказчику..."
-        className="w-full bg-[#161616] border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50"
+        className="w-full bg-[#161616] border border-white/10 rounded-lg pl-9 pr-3 py-2.5 sm:py-2 text-base sm:text-sm outline-none focus:border-[#D4AF37]/50"
       />
     </div>
   </div>

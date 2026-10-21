@@ -20,7 +20,7 @@ export function TransitionsFunnel({
 }: TransitionsFunnelProps) {
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 mb-3">
         <div>
           <p className="text-sm font-medium">Воронка переходов</p>
           <p className="text-xs text-white/30 mt-0.5">
@@ -35,7 +35,7 @@ export function TransitionsFunnel({
           <button
             key={s.id}
             onClick={() => setSelectedFromId(s.id)}
-            className={`text-left bg-[#161616] border rounded-lg px-3 py-2.5 w-[190px] transition-colors ${
+            className={`text-left bg-[#161616] border rounded-lg px-3 py-2.5 w-full sm:w-[190px] transition-colors ${
               selectedFromId === s.id ? "border-[#D4AF37]" : "border-white/10 hover:border-white/20"
             }`}
           >
@@ -58,7 +58,7 @@ export function TransitionsFunnel({
               <button
                 key={s.id}
                 onClick={() => setSelectedFromId(s.id)}
-                className={`text-left bg-[#161616] border rounded-lg px-3 py-2.5 w-[190px] transition-colors ${
+                className={`text-left bg-[#161616] border rounded-lg px-3 py-2.5 w-full sm:w-[190px] transition-colors ${
                   selectedFromId === s.id ? "border-[#D4AF37]" : "border-white/10 hover:border-white/20"
                 }`}
               >

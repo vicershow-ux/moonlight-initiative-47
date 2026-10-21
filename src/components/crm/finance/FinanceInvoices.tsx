@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import Icon from "@/components/ui/icon"
+import { MobileCard, CardAction } from "@/components/crm/MobileCard"
 import { FinanceInvoice } from "@/lib/api"
 import { card, dateRu, rub } from "./format"
 
@@ -25,6 +26,7 @@ function badge(inv: FinanceInvoice) {
 export function FinanceInvoices({ invoices }: { invoices: FinanceInvoice[] }) {
   const [filter, setFilter] = useState<Filter>("all")
   const [q, setQ] = useState("")
+  const navigate = useNavigate()
 
   const list = useMemo(() => {
     const s = q.trim().toLowerCase()
@@ -46,22 +48,22 @@ export function FinanceInvoices({ invoices }: { invoices: FinanceInvoice[] }) {
           <Icon name="ReceiptText" size={16} className="text-[#D4AF37]" />
           Счета
         </p>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
           <div className="relative">
             <Icon name="Search" size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/30" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Номер, заказчик, объект"
-              className="rounded-lg border border-white/10 bg-[#161616] pl-8 pr-3 py-1.5 text-sm outline-none focus:border-[#D4AF37]/50 w-52"
+              className="rounded-lg border border-white/10 bg-[#161616] pl-8 pr-3 py-1.5 text-sm outline-none focus:border-[#D4AF37]/50 w-full sm:w-52 min-h-[40px] sm:min-h-0"
             />
           </div>
-          <div className="flex rounded-lg bg-white/5 p-0.5 text-xs">
+          <div className="flex overflow-x-auto whitespace-nowrap rounded-lg bg-white/5 p-0.5 text-xs">
             {FILTERS.map((f) => (
               <button
                 key={f.k}
                 onClick={() => setFilter(f.k)}
-                className={`rounded-md px-2.5 py-1 ${filter === f.k ? "bg-[#D4AF37] text-[#161616]" : "text-white/60 hover:text-white"}`}
+                className={`flex-1 sm:flex-none shrink-0 min-h-[36px] sm:min-h-0 rounded-md px-2.5 py-1 ${filter === f.k ? "bg-[#D4AF37] text-[#161616]" : "text-white/60 hover:text-white"}`}
               >
                 {f.l}
               </button>
@@ -73,7 +75,35 @@ export function FinanceInvoices({ invoices }: { invoices: FinanceInvoice[] }) {
       {list.length === 0 ? (
         <p className="text-sm text-white/30 py-6 text-center">Счетов не найдено</p>
       ) : (
-        <div className="overflow-x-auto -mx-5">
+        <>
+        <div className="md:hidden flex flex-col gap-3">
+          {list.map((i) => {
+            const b = badge(i)
+            const open = () => navigate(`/cabinet/objects/${i.object_id}/invoices/${i.id}`)
+            return (
+              <MobileCard
+                key={i.id}
+                title={<span className="text-[#D4AF37]">№ {i.invoice_number}</span>}
+                subtitle={dateRu(i.invoice_date)}
+                badge={<span className={`rounded-full px-2 py-0.5 text-xs whitespace-nowrap ${b.c}`}>{b.l}</span>}
+                onClick={open}
+                rows={[
+                  { label: "Заказчик", value: i.client_name || "—" },
+                  { label: "Объект", value: i.object_code },
+                  { label: "Основание", value: i.contract_number ? `Договор № ${i.contract_number}` : i.act_number ? `Акт № ${i.act_number}` : "—" },
+                  { label: "Срок", value: <span className={i.overdue ? "text-red-300" : ""}>{i.status === "paid" ? dateRu(i.paid_at) : dateRu(i.due_date)}</span> },
+                  { label: "Сумма", value: <span className="font-medium text-white">{rub(i.amount)}</span> },
+                ]}
+                actions={<CardAction icon={<Icon name="Eye" size={16} />} label="Открыть счёт" onClick={open} />}
+              />
+            )
+          })}
+          <div className="flex items-center justify-between text-sm px-1">
+            <span className="text-white/50">Итого · {list.length} шт.</span>
+            <span className="font-semibold">{rub(total)}</span>
+          </div>
+        </div>
+        <div className="hidden md:block overflow-x-auto -mx-5">
           <table className="w-full text-sm min-w-[720px]">
             <thead>
               <tr className="text-left text-xs text-white/40 border-b border-white/5">
@@ -124,6 +154,7 @@ export function FinanceInvoices({ invoices }: { invoices: FinanceInvoice[] }) {
             </tfoot>
           </table>
         </div>
+        </>
       )}
     </div>
   )

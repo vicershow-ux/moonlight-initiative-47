@@ -195,7 +195,7 @@ export default function Team() {
         <div className="flex justify-end mb-6">
           <button
             onClick={() => setOpen(true)}
-            className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg"
+            className="w-full sm:w-auto justify-center min-h-[44px] sm:min-h-0 flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg"
           >
             <Icon name="UserPlus" size={16} />
             Пригласить сотрудника

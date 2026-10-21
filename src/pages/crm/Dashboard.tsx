@@ -6,7 +6,7 @@ import { dashboardApi, DashboardStats, objectsApi, objectStatusesApi, ObjectStat
 import { getStatusBadgeClass } from "@/lib/objectStatusColors"
 import { useAuth } from "@/contexts/AuthContext"
 import { DeleteButton } from "@/components/ui/delete-button"
-import { MobileCard } from "@/components/crm/MobileCard"
+import { MobileCard, CardAction } from "@/components/crm/MobileCard"
 import { ClientInvoicesCard } from "@/components/crm/ClientInvoicesCard"
 
 export default function Dashboard() {
@@ -51,7 +51,7 @@ export default function Dashboard() {
 
   return (
     <CrmLayout title="Главная">
-      <div className="flex items-center justify-end gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:flex sm:items-center sm:justify-end gap-3 mb-6">
         <div className="bg-[#1f1f1f] border border-white/10 rounded-xl px-4 py-2 text-center">
           <p className="text-xs text-white/40">Сотрудники</p>
           <p className="text-lg font-semibold">{stats?.team_count ?? 0}</p>
@@ -94,11 +94,11 @@ export default function Dashboard() {
               <Icon name="Wallet" size={18} className="text-[#D4AF37]" />
             </div>
           </div>
-          <p className="text-xl md:text-2xl font-semibold">{formatMoney(stats?.month_amount ?? 0)}</p>
+          <p className="text-lg sm:text-xl md:text-2xl font-semibold break-words">{formatMoney(stats?.month_amount ?? 0)}</p>
           <p className="text-xs text-white/30 mt-1">общая сумма смет за текущий месяц</p>
         </div>
 
-        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
           <p className="text-sm text-white/50 mb-3">Статусы объектов</p>
           <div className="flex flex-col gap-2">
             {stats && stats.statuses.length > 0 ? (
@@ -118,8 +118,8 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
+        <div className="lg:col-span-2 bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
+          <div className="flex items-center justify-between gap-3 mb-4">
             <p className="font-medium">Последние объекты</p>
             <Link to="/cabinet/objects" className="text-sm text-[#D4AF37] hover:text-[#B8860B]">
               Все объекты →
@@ -146,6 +146,25 @@ export default function Dashboard() {
                     { label: "Площадь", value: `${obj.area} м²` },
                     { label: "Создан", value: new Date(obj.created_at).toLocaleDateString("ru-RU") },
                   ]}
+                  actions={
+                    isClient ? undefined : (
+                      <>
+                        <CardAction
+                          icon={<Icon name="Eye" size={16} />}
+                          label="Открыть"
+                          onClick={() => navigate(`/cabinet/objects/${obj.id}`)}
+                        />
+                        <CardAction
+                          icon={<Icon name="Pencil" size={16} />}
+                          label="Изменить"
+                          onClick={() => navigate(`/cabinet/objects/${obj.id}/edit`)}
+                        />
+                        <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/5 shrink-0">
+                          <DeleteButton onConfirm={() => handleDelete(obj.id)} />
+                        </div>
+                      </>
+                    )
+                  }
                 />
               ))}
             </div>
@@ -217,7 +236,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+        <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
           <p className="font-medium mb-4">Быстрые действия</p>
           <div className="flex flex-col gap-2">
             <Link

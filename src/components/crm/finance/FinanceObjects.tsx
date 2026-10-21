@@ -18,14 +18,14 @@ export function FinanceObjects({ objects }: { objects: FinanceObject[] }) {
             const pct = o.contracted ? Math.min(100, Math.round((o.paid / o.contracted) * 100)) : 0
             return (
               <Link key={o.id} to={`/cabinet/objects/${o.id}`} className="py-3 flex flex-col gap-2 hover:bg-white/[0.02] -mx-2 px-2 rounded-lg">
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">
                       {o.object_code} · {o.client_name || "Без заказчика"}
                     </p>
                     <p className="text-xs text-white/40 truncate">{o.address || "Адрес не указан"}</p>
                   </div>
-                  <div className="flex shrink-0 gap-5 text-right">
+                  <div className="flex shrink-0 gap-5 sm:text-right">
                     <div>
                       <p className="text-sm font-semibold">{rub(o.contracted)}</p>
                       <p className="text-xs text-white/40">по договорам</p>

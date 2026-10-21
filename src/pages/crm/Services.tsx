@@ -5,6 +5,7 @@ import { EditServiceModal } from "@/components/crm/EditServiceModal"
 import Icon from "@/components/ui/icon"
 import { servicesApi, ServiceItem } from "@/lib/api"
 import { DeleteButton } from "@/components/ui/delete-button"
+import { MobileCard, CardAction } from "@/components/crm/MobileCard"
 
 const PAGE_SIZE = 20
 
@@ -138,7 +139,7 @@ export default function Services() {
 
   return (
     <CrmLayout title="Справочник услуг" subtitle="Общая база работ и ваши собственные услуги">
-      <div className="flex justify-end gap-2 mb-6">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end mb-6">
         <input
           ref={fileInputRef}
           type="file"
@@ -149,14 +150,14 @@ export default function Services() {
         <button
           onClick={handleImportClick}
           disabled={importing}
-          className="flex items-center gap-2 bg-white/5 hover:bg-white/10 transition-colors text-white text-sm px-4 py-2.5 rounded-lg disabled:opacity-60"
+          className="flex items-center justify-center sm:justify-start gap-2 min-h-[44px] sm:min-h-0 bg-white/5 hover:bg-white/10 transition-colors text-white text-sm px-3 sm:px-4 py-2.5 rounded-lg disabled:opacity-60"
         >
           {importing ? <Icon name="Loader2" size={16} className="animate-spin" /> : <Icon name="FileUp" size={16} />}
           Импорт из Excel
         </button>
         <Link
           to="/cabinet/services/new"
-          className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-4 py-2.5 rounded-lg"
+          className="flex items-center justify-center sm:justify-start gap-2 min-h-[44px] sm:min-h-0 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-3 sm:px-4 py-2.5 rounded-lg"
         >
           <Icon name="Plus" size={16} />
           Добавить услугу
@@ -169,7 +170,7 @@ export default function Services() {
         </div>
       )}
 
-      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5 mb-5">
+      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5 mb-5">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="relative">
             <Icon name="Search" size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
@@ -206,7 +207,7 @@ export default function Services() {
         </div>
       </div>
 
-      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+      <div className="md:bg-[#1f1f1f] md:border md:border-white/10 md:rounded-xl md:p-5">
         {loading ? (
           <div className="flex justify-center py-16">
             <Icon name="Loader2" size={24} className="animate-spin text-white/40" />
@@ -216,7 +217,31 @@ export default function Services() {
             {services.length === 0 ? "Справочник услуг пуст — добавьте первую услугу" : "Ничего не найдено по заданным фильтрам"}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="md:hidden flex flex-col gap-3">
+            {paged.map((s) => (
+              <MobileCard
+                key={s.id}
+                title={<span className="whitespace-normal break-words">{s.name}</span>}
+                subtitle={[s.category, s.subcategory].filter(Boolean).join(" · ") || undefined}
+                badge={<span className="text-sm font-medium text-[#D4AF37]">{formatMoney(s.price)}</span>}
+                rows={[{ label: "Ед. изм.", value: s.unit }]}
+                actions={
+                  <>
+                    <CardAction
+                      icon={<Icon name="Pencil" size={16} />}
+                      label="Изменить"
+                      onClick={() => openEdit(s)}
+                    />
+                    <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/5 shrink-0">
+                      <DeleteButton onConfirm={() => handleDelete(s.id)} />
+                    </div>
+                  </>
+                }
+              />
+            ))}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-white/40 text-xs uppercase border-b border-white/10">
@@ -252,13 +277,14 @@ export default function Services() {
                 ))}
               </tbody>
             </table>
+          </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-5 pt-4 border-t border-white/10">
               <p className="text-xs text-white/40">
                 Показано {(currentPage - 1) * PAGE_SIZE + 1}–
                 {Math.min(currentPage * PAGE_SIZE, filtered.length)} из {filtered.length} услуг
               </p>
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap justify-center items-center gap-1.5">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
@@ -294,7 +320,7 @@ export default function Services() {
                 </button>
               </div>
             </div>
-          </div>
+          </>
         )}
       </div>
 

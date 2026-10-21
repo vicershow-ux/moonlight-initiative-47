@@ -44,21 +44,21 @@ export function ObjectDocumentsPanel({
   onDeleteContract,
 }: ObjectDocumentsPanelProps) {
   return (
-    <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0 mb-4">
         <p className="font-medium">Документы объекта</p>
         {!isClient && (
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
             <Link
               to={`/cabinet/objects/${object.id}/estimates/new`}
-              className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-3 py-2 rounded-lg"
+              className="flex items-center justify-center gap-2 min-h-[44px] sm:min-h-0 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-3 py-2 rounded-lg"
             >
               <Icon name="Plus" size={14} />
               Создать смету
             </Link>
             <button
               onClick={onCreateContract}
-              className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg"
+              className="flex items-center justify-center gap-2 min-h-[44px] sm:min-h-0 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg"
             >
               <Icon name="FileSignature" size={14} />
               Составить договор
@@ -80,7 +80,7 @@ export function ObjectDocumentsPanel({
         <div className="flex flex-col gap-2">
           {estimates.map((est) => (
             <div key={est.id} className="bg-[#161616] border border-white/10 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
                 <p className="text-sm font-medium">Смета №{est.estimate_number || est.id} (ред. №{est.revision_number ?? 1})</p>
                 <div className="flex items-center gap-1.5">
                   <span className={`px-2 py-0.5 rounded-full text-xs ${getEstimateStatusColor(est.status)}`}>
@@ -91,11 +91,11 @@ export function ObjectDocumentsPanel({
                   )}
                 </div>
               </div>
-              <p className="text-lg font-semibold mb-2">{formatMoney(est.total_amount)}</p>
-              <div className="flex items-center gap-3">
+              <p className="text-lg font-semibold mb-2 break-words">{formatMoney(est.total_amount)}</p>
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <Link
                   to={`/cabinet/objects/${object.id}/estimates/${est.id}`}
-                  className="text-white/40 hover:text-white transition-colors"
+                  className="text-white/40 hover:text-white transition-colors w-10 h-10 sm:w-auto sm:h-auto flex items-center justify-center rounded-lg bg-white/5 sm:bg-transparent"
                   title="Просмотр"
                 >
                   <Icon name="Eye" size={15} />
@@ -103,7 +103,7 @@ export function ObjectDocumentsPanel({
                 {!isClient && (
                   <Link
                     to={`/cabinet/objects/${object.id}/estimates/${est.id}/edit`}
-                    className="text-white/40 hover:text-white transition-colors"
+                    className="text-white/40 hover:text-white transition-colors w-10 h-10 sm:w-auto sm:h-auto flex items-center justify-center rounded-lg bg-white/5 sm:bg-transparent"
                     title="Редактировать"
                   >
                     <Icon name="Pencil" size={15} />
@@ -111,7 +111,7 @@ export function ObjectDocumentsPanel({
                 )}
                 <button
                   onClick={() => onPrintEstimate(est.id)}
-                  className="text-white/40 hover:text-white transition-colors"
+                  className="text-white/40 hover:text-white transition-colors w-10 h-10 sm:w-auto sm:h-auto flex items-center justify-center rounded-lg bg-white/5 sm:bg-transparent"
                   title="Печать"
                 >
                   {printingId === est.id ? (
@@ -122,7 +122,7 @@ export function ObjectDocumentsPanel({
                 </button>
                 <button
                   onClick={() => onDownloadEstimate(est.id)}
-                  className="text-white/40 hover:text-white transition-colors"
+                  className="text-white/40 hover:text-white transition-colors w-10 h-10 sm:w-auto sm:h-auto flex items-center justify-center rounded-lg bg-white/5 sm:bg-transparent"
                   title="Скачать PDF"
                 >
                   <Icon name={downloadingId === est.id ? "Loader2" : "Download"} size={15} className={downloadingId === est.id ? "animate-spin" : ""} />
@@ -172,7 +172,7 @@ export function ObjectDocumentsPanel({
         <div className="flex flex-col gap-2">
           {contracts.map((c) => (
             <div key={c.id} className="bg-[#161616] border border-white/10 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
                 <p className="text-sm font-medium">Договор № {c.contract_number}</p>
                 <span
                   className={`px-2 py-0.5 rounded-full text-xs ${
@@ -182,11 +182,11 @@ export function ObjectDocumentsPanel({
                   {c.status === "signed" ? "Подписан" : "Черновик"}
                 </span>
               </div>
-              <p className="text-lg font-semibold mb-2">{formatMoney(c.total_amount)}</p>
-              <div className="flex items-center gap-3">
+              <p className="text-lg font-semibold mb-2 break-words">{formatMoney(c.total_amount)}</p>
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <Link
                   to={`/cabinet/objects/${object.id}/contracts/${c.id}`}
-                  className="text-white/40 hover:text-[#D4AF37] transition-colors"
+                  className="text-white/40 hover:text-[#D4AF37] transition-colors w-10 h-10 sm:w-auto sm:h-auto flex items-center justify-center rounded-lg bg-white/5 sm:bg-transparent"
                   title="Просмотр"
                 >
                   <Icon name="Eye" size={15} />
@@ -194,7 +194,7 @@ export function ObjectDocumentsPanel({
                 {!isClient && !c.signed_at && (
                   <Link
                     to={`/cabinet/objects/${object.id}/contracts/${c.id}/edit`}
-                    className="text-white/40 hover:text-white transition-colors"
+                    className="text-white/40 hover:text-white transition-colors w-10 h-10 sm:w-auto sm:h-auto flex items-center justify-center rounded-lg bg-white/5 sm:bg-transparent"
                     title="Редактировать"
                   >
                     <Icon name="Pencil" size={15} />
@@ -202,14 +202,14 @@ export function ObjectDocumentsPanel({
                 )}
                 <button
                   onClick={() => onPrintContract(c)}
-                  className="text-white/40 hover:text-white transition-colors"
+                  className="text-white/40 hover:text-white transition-colors w-10 h-10 sm:w-auto sm:h-auto flex items-center justify-center rounded-lg bg-white/5 sm:bg-transparent"
                   title="Печать"
                 >
                   <Icon name="Printer" size={15} />
                 </button>
                 <button
                   onClick={() => downloadContractPdf(c.content_html, c.contract_number)}
-                  className="text-white/40 hover:text-white transition-colors"
+                  className="text-white/40 hover:text-white transition-colors w-10 h-10 sm:w-auto sm:h-auto flex items-center justify-center rounded-lg bg-white/5 sm:bg-transparent"
                   title="Скачать PDF"
                 >
                   <Icon name="Download" size={15} />
@@ -217,7 +217,7 @@ export function ObjectDocumentsPanel({
                 {!isClient && (
                   <Link
                     to={`/cabinet/objects/${object.id}/contracts/${c.id}/addenda/new`}
-                    className="text-white/40 hover:text-[#D4AF37] transition-colors"
+                    className="text-white/40 hover:text-[#D4AF37] transition-colors w-10 h-10 sm:w-auto sm:h-auto flex items-center justify-center rounded-lg bg-white/5 sm:bg-transparent"
                     title="Составить допсоглашение"
                   >
                     <Icon name="FilePlus2" size={15} />

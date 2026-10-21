@@ -15,4 +15,4 @@ export const monthRu = (key: string) => {
   return new Date(y, m - 1, 1).toLocaleDateString("ru-RU", { month: "short" }).replace(".", "")
 }
 
-export const card = "rounded-xl border border-white/10 bg-[#1f1f1f] p-5"
+export const card = "rounded-xl border border-white/10 bg-[#1f1f1f] p-3 sm:p-5"

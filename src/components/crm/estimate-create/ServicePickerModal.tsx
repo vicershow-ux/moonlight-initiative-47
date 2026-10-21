@@ -115,7 +115,7 @@ export function ServicePickerModal({ open, onOpenChange, services, onAdd }: Serv
             />
           </div>
 
-          <div className={`grid ${category ? "grid-cols-2" : "grid-cols-1"} gap-3`}>
+          <div className={`grid grid-cols-1 ${category ? "sm:grid-cols-2" : ""} gap-3`}>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs text-white/50">Категория</label>
               <select
@@ -146,7 +146,7 @@ export function ServicePickerModal({ open, onOpenChange, services, onAdd }: Serv
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto border border-white/10 rounded-lg min-h-[220px]">
+          <div className="flex-1 overflow-y-auto border border-white/10 rounded-lg min-h-[180px] sm:min-h-[220px]">
             {!listVisible ? (
               <div className="flex flex-col items-center justify-center h-full py-16 text-center">
                 <Icon name="Search" size={28} className="text-white/15 mb-3" />
@@ -168,16 +168,16 @@ export function ServicePickerModal({ open, onOpenChange, services, onAdd }: Serv
                     {groupServices.map((s) => (
                       <label
                         key={s.id}
-                        className="flex items-start gap-2.5 px-2 py-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                        className="flex items-start gap-2.5 px-2 py-2.5 sm:py-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
                       >
                         <input
                           type="checkbox"
                           checked={selectedIds.has(s.id)}
                           onChange={() => toggleSelect(s.id)}
-                          className="mt-0.5 w-4 h-4 accent-[#D4AF37]"
+                          className="mt-0.5 w-5 h-5 sm:w-4 sm:h-4 shrink-0 accent-[#D4AF37]"
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm">{s.name}</p>
+                          <p className="text-sm break-words">{s.name}</p>
                           <p className="text-xs text-white/40">{formatMoney(s.price)} / {s.unit}</p>
                         </div>
                       </label>
@@ -193,17 +193,17 @@ export function ServicePickerModal({ open, onOpenChange, services, onAdd }: Serv
           </p>
         </div>
 
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
           <button
             onClick={() => onOpenChange(false)}
-            className="px-4 py-2.5 rounded-lg text-sm bg-white/5 hover:bg-white/10 transition-colors"
+            className="w-full sm:w-auto min-h-[44px] sm:min-h-0 px-4 py-2.5 rounded-lg text-sm bg-white/5 hover:bg-white/10 transition-colors"
           >
             Отмена
           </button>
           <button
             onClick={handleAdd}
             disabled={selectedIds.size === 0}
-            className="px-4 py-2.5 rounded-lg text-sm bg-red-600 hover:bg-red-700 transition-colors text-white disabled:opacity-50"
+            className="w-full sm:w-auto min-h-[44px] sm:min-h-0 px-4 py-2.5 rounded-lg text-sm bg-red-600 hover:bg-red-700 transition-colors text-white disabled:opacity-50"
           >
             Добавить
           </button>

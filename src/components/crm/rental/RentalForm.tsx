@@ -165,7 +165,7 @@ export function RentalForm({
       )}
 
       {(manualItem || !isOut || editing) && (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className="mb-1.5 block text-xs text-white/50">Наименование</label>
             <input
@@ -178,7 +178,7 @@ export function RentalForm({
         </div>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
           <label className="mb-1.5 block text-xs text-white/50">Количество</label>
           <input
@@ -242,7 +242,7 @@ export function RentalForm({
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
           <label className="mb-1.5 block text-xs text-white/50">Ставка, ₽</label>
           <input
@@ -284,7 +284,7 @@ export function RentalForm({
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1.5 block text-xs text-white/50">Дата выдачи</label>
           <input
@@ -330,7 +330,7 @@ export function RentalForm({
             <Icon name="Calculator" size={14} className="text-[#D4AF37]" />
             Предварительный расчёт
           </div>
-          <div className="grid gap-3 text-sm sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
             <div>
               <div className="text-xs text-white/40">Срок</div>
               <div>

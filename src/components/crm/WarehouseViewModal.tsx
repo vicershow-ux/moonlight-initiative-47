@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { MobileCard } from "@/components/crm/MobileCard"
 import Icon from "@/components/ui/icon"
 import { WarehouseRow, WarehouseItem } from "@/lib/api"
 
@@ -81,15 +82,15 @@ export function WarehouseViewModal({ warehouse, items, open, onOpenChange }: Pro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[88vh] max-w-5xl overflow-y-auto bg-[#1f1f1f] text-white">
+      <DialogContent className="max-h-[88vh] max-w-5xl overflow-y-auto overflow-x-hidden bg-[#1f1f1f] text-white">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg">
+          <DialogTitle className="flex min-w-0 items-center gap-2 break-words pr-6 text-left text-lg">
             <Icon name="Warehouse" size={20} className="text-[#D4AF37]" />
             {warehouse?.name || "Склад"}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="mb-1 flex flex-wrap gap-4 text-xs text-white/50">
+        <div className="mb-1 flex flex-col gap-2 break-words text-xs text-white/50 sm:flex-row sm:flex-wrap sm:gap-4">
           {warehouse?.address && (
             <span className="flex items-center gap-1.5">
               <Icon name="MapPin" size={13} />
@@ -113,7 +114,7 @@ export function WarehouseViewModal({ warehouse, items, open, onOpenChange }: Pro
           )}
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-lg border border-white/10 bg-[#161616] p-3">
             <div className="text-xs text-white/40">Позиций на складе</div>
             <div className="text-xl text-[#D4AF37]">{stock.length}</div>
@@ -146,21 +147,21 @@ export function WarehouseViewModal({ warehouse, items, open, onOpenChange }: Pro
         )}
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-[180px] flex-1">
+          <div className="relative w-full min-w-0 sm:w-auto sm:min-w-[180px] sm:flex-1">
             <Icon
               name="Search"
               size={15}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30"
             />
             <input
-              className={`${inputCls} pl-9`}
+              className={`${inputCls} min-h-[44px] pl-9 sm:min-h-0`}
               placeholder="Поиск по названию"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <select
-            className={`${inputCls} max-w-[180px]`}
+            className={`${inputCls} min-h-[44px] min-w-0 flex-1 sm:min-h-0 sm:max-w-[180px] sm:flex-none`}
             value={kindFilter}
             onChange={(e) => setKindFilter(e.target.value)}
           >
@@ -173,14 +174,14 @@ export function WarehouseViewModal({ warehouse, items, open, onOpenChange }: Pro
           </select>
           <div className="flex overflow-hidden rounded-lg border border-white/10">
             <button
-              className={`px-3 py-2 ${view === "list" ? "bg-[#D4AF37] text-[#161616]" : "text-white/50"}`}
+              className={`min-h-[44px] px-3 py-2 sm:min-h-0 ${view === "list" ? "bg-[#D4AF37] text-[#161616]" : "text-white/50"}`}
               onClick={() => setView("list")}
               title="Списком"
             >
               <Icon name="List" size={16} />
             </button>
             <button
-              className={`px-3 py-2 ${view === "grid" ? "bg-[#D4AF37] text-[#161616]" : "text-white/50"}`}
+              className={`min-h-[44px] px-3 py-2 sm:min-h-0 ${view === "grid" ? "bg-[#D4AF37] text-[#161616]" : "text-white/50"}`}
               onClick={() => setView("grid")}
               title="Плиткой"
             >
@@ -196,7 +197,30 @@ export function WarehouseViewModal({ warehouse, items, open, onOpenChange }: Pro
               : "Ничего не найдено по заданным условиям"}
           </div>
         ) : view === "list" ? (
-          <div className="overflow-x-auto">
+          <>
+          <div className="flex flex-col gap-3 md:hidden">
+            {filtered.map((i) => {
+              const st = kindOf(i.kind)
+              return (
+                <MobileCard
+                  key={i.id}
+                  title={i.name}
+                  badge={
+                    <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs ${st.cls}`}>
+                      <Icon name={st.icon} size={12} />
+                      {i.kind}
+                    </span>
+                  }
+                  rows={[
+                    { label: "Кол-во", value: `${num(i.qty)} ${i.unit}` },
+                    { label: "Цена", value: money(num(i.price)) },
+                    { label: "Сумма", value: money(num(i.qty) * num(i.price)) },
+                  ]}
+                />
+              )
+            })}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10 text-xs uppercase text-white/40">
@@ -232,14 +256,15 @@ export function WarehouseViewModal({ warehouse, items, open, onOpenChange }: Pro
               </tbody>
             </table>
           </div>
+          </>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((i) => {
               const st = kindOf(i.kind)
               return (
                 <div key={i.id} className="rounded-lg border border-white/10 bg-[#161616] p-3">
                   <div className="mb-2 flex items-start justify-between gap-2">
-                    <div className="text-sm">{i.name}</div>
+                    <div className="min-w-0 break-words text-sm">{i.name}</div>
                     <span className={`rounded-md px-1.5 py-0.5 text-[11px] ${st.cls}`}>
                       <Icon name={st.icon} size={11} />
                     </span>
@@ -257,7 +282,7 @@ export function WarehouseViewModal({ warehouse, items, open, onOpenChange }: Pro
         )}
 
         {issued.length > 0 && (
-          <div className="mt-2 rounded-lg border border-white/10 bg-[#161616] p-4">
+          <div className="mt-2 rounded-lg border border-white/10 bg-[#161616] p-3 sm:p-4">
             <div className="mb-3 flex items-center gap-2 text-sm text-white/70">
               <Icon name="Send" size={15} className="text-[#D4AF37]" />
               Выдано с этого склада на объекты

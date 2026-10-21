@@ -82,7 +82,7 @@ export default function MaterialCreate() {
         </div>
       )}
 
-      <div className="max-w-4xl rounded-xl border border-white/10 bg-[#1f1f1f] p-6">
+      <div className="max-w-4xl rounded-xl border border-white/10 bg-[#1f1f1f] p-4 sm:p-6">
         <div className="mb-5 text-xs uppercase text-white/40">Материал</div>
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div className="sm:col-span-2">
@@ -123,7 +123,7 @@ export default function MaterialCreate() {
         </div>
 
         <div className="mb-3 mt-7 text-xs uppercase text-white/40">Как добавлять в объект</div>
-        <div className="mb-5 grid gap-2 sm:grid-cols-2">
+        <div className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {[
             { v: true, title: "Штучно, без расчёта", hint: "Розетки, выключатели, светильники — просто указываете количество" },
             { v: false, title: "С расчётом по площади", hint: "Плитка, краска, смеси — количество считается по помещению" },
@@ -150,7 +150,7 @@ export default function MaterialCreate() {
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className={labelCls}>Как считать расход</label>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {CONSUMPTION_MODES.map((m) => (
                 <button
                   key={m.value}
@@ -264,9 +264,9 @@ export default function MaterialCreate() {
           </div>
         </div>
 
-        <div className="mt-7 flex flex-wrap items-center gap-3">
+        <div className="mt-7 flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <button
-            className="flex items-center gap-2 rounded-lg bg-[#D4AF37] px-5 py-2.5 text-sm text-[#161616] transition-colors hover:bg-[#B8860B] disabled:opacity-40"
+            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-[#D4AF37] px-5 py-2.5 text-sm text-[#161616] transition-colors hover:bg-[#B8860B] disabled:opacity-40 sm:min-h-0 sm:w-auto sm:justify-start"
             onClick={save}
             disabled={form.name.trim().length < 2 || saving}
           >
@@ -275,7 +275,7 @@ export default function MaterialCreate() {
           </button>
           <Link
             to="/cabinet/materials"
-            className="rounded-lg border border-white/10 px-5 py-2.5 text-sm text-white/60 transition-colors hover:text-white"
+            className="flex min-h-[44px] w-full items-center justify-center rounded-lg border border-white/10 px-5 py-2.5 text-sm text-white/60 transition-colors hover:text-white sm:block sm:min-h-0 sm:w-auto"
           >
             Отмена
           </Link>

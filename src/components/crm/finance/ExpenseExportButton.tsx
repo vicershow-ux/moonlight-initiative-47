@@ -45,7 +45,7 @@ export function ExpenseExportButton() {
           setResult(null)
           setOpen(true)
         }}
-        className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-2 text-sm text-white/80 hover:bg-white/10"
+        className="inline-flex justify-center sm:justify-start min-h-[44px] sm:min-h-0 w-full sm:w-auto items-center gap-1.5 rounded-lg bg-white/5 px-3 py-2 text-sm text-white/80 hover:bg-white/10"
       >
         <Icon name="FolderArchive" size={15} />
         Архив для бухгалтера

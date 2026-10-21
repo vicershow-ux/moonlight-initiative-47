@@ -150,7 +150,7 @@ export function PageSeoManager() {
       )}
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[220px] flex-1">
+        <div className="relative w-full sm:w-auto sm:min-w-[220px] flex-1">
           <Icon
             name="Search"
             size={15}

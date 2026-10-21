@@ -108,17 +108,17 @@ export function PriceParserModal({ onClose, onUpdated }: Props) {
   const errCount = lines.filter((l) => l.status === "error").length
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-2 sm:p-4" onClick={onClose}>
       <div
-        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-white/10 bg-[#1f1f1f] p-5"
+        className="max-h-[94vh] w-full min-w-0 max-w-2xl overflow-y-auto overflow-x-hidden rounded-xl border border-white/10 bg-[#1f1f1f] p-4 sm:max-h-[90vh] sm:p-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 font-medium">
             <Icon name="RefreshCw" size={18} className="text-[#D4AF37]" />
             Обновление цен по ссылкам
           </div>
-          <button onClick={onClose} className="text-white/40 hover:text-white">
+          <button onClick={onClose} className="shrink-0 p-1 text-white/40 hover:text-white">
             <Icon name="X" size={18} />
           </button>
         </div>
@@ -131,7 +131,7 @@ export function PriceParserModal({ onClose, onUpdated }: Props) {
           </div>
         ) : (
           <>
-            <div className="mb-4 rounded-lg border border-white/10 bg-[#161616] p-4 text-sm">
+            <div className="mb-4 rounded-lg border border-white/10 bg-[#161616] p-3 text-sm sm:p-4">
               <div className="mb-2 flex items-center gap-2">
                 <span
                   className={`h-2.5 w-2.5 rounded-full ${info.state.last_check_at ? (info.state.last_ok ? "bg-emerald-400" : "bg-red-400") : "bg-white/30"}`}
@@ -140,17 +140,17 @@ export function PriceParserModal({ onClose, onUpdated }: Props) {
                   {info.state.last_check_at ? (info.state.last_ok ? "Парсер работает" : "Парсер не работает") : "Не проверялся"}
                 </span>
               </div>
-              <div className="space-y-1 text-xs text-white/50">
+              <div className="space-y-1 break-words text-xs text-white/50">
                 <div>Способ загрузки: {strategyLabel}</div>
                 <div>Последняя проверка: {fmt(info.state.last_check_at)}</div>
                 <div>Последнее обновление цен: {fmt(info.state.last_run_at)}</div>
                 {info.state.last_message && <div className="text-white/60">{info.state.last_message}</div>}
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
                 <button
                   onClick={check}
                   disabled={checking || repairing || running}
-                  className="flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-sm text-white/80 hover:bg-white/5 disabled:opacity-40"
+                  className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-white/15 px-3 py-2 sm:min-h-0 sm:justify-start text-sm text-white/80 hover:bg-white/5 disabled:opacity-40"
                 >
                   <Icon name={checking ? "Loader2" : "Activity"} size={15} className={checking ? "animate-spin" : ""} />
                   Проверить работу
@@ -158,7 +158,7 @@ export function PriceParserModal({ onClose, onUpdated }: Props) {
                 <button
                   onClick={repair}
                   disabled={checking || repairing || running}
-                  className="flex items-center gap-2 rounded-lg border border-[#D4AF37]/40 px-3 py-2 text-sm text-[#D4AF37] hover:bg-[#D4AF37]/10 disabled:opacity-40"
+                  className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-[#D4AF37]/40 px-3 py-2 sm:min-h-0 sm:justify-start text-sm text-[#D4AF37] hover:bg-[#D4AF37]/10 disabled:opacity-40"
                 >
                   <Icon name={repairing ? "Loader2" : "Wrench"} size={15} className={repairing ? "animate-spin" : ""} />
                   Починить
@@ -192,7 +192,7 @@ export function PriceParserModal({ onClose, onUpdated }: Props) {
                   </span>
                 )}
               </div>
-              <button className={goldBtn} disabled={running || lines.length === 0} onClick={runAll}>
+              <button className={`${goldBtn} min-h-[44px] w-full justify-center sm:min-h-0 sm:w-auto sm:justify-start`} disabled={running || lines.length === 0} onClick={runAll}>
                 <Icon name={running ? "Loader2" : "RefreshCw"} size={16} className={running ? "animate-spin" : ""} />
                 Обновить цены и наличие
               </button>
@@ -213,7 +213,7 @@ export function PriceParserModal({ onClose, onUpdated }: Props) {
                     />
                     <div className="min-w-0">
                       <div className="truncate">{l.name}</div>
-                      <div className="text-xs text-white/40">{l.message}</div>
+                      <div className="break-words text-xs text-white/40">{l.message}</div>
                     </div>
                   </li>
                 ))}

@@ -36,7 +36,7 @@ export function ContractPartiesSection({
     <select
       value={subject}
       onChange={(e) => updateOption("work_subject", e.target.value)}
-      className="mx-0.5 inline-block max-w-[320px] cursor-pointer rounded border border-[#D4AF37]/40 bg-[#161616] px-1 py-0.5 text-lg font-semibold text-[#D4AF37] outline-none focus:border-[#D4AF37]"
+      className="mx-0.5 inline-block max-w-full sm:max-w-[320px] cursor-pointer rounded border border-[#D4AF37]/40 bg-[#161616] px-1 py-0.5 text-lg font-semibold text-[#D4AF37] outline-none focus:border-[#D4AF37]"
       title="Вид работ — из услуг на сайте"
     >
       {subjects.map((s) => (
@@ -48,7 +48,7 @@ export function ContractPartiesSection({
     №{" "}
     <InlineInput value={contractNumber} onChange={setContractNumber} placeholder="№" minWidth={56} />
   </h2>
-  <div className="flex items-center justify-between text-sm mb-6">
+  <div className="flex flex-wrap items-center justify-between gap-2 text-sm mb-6">
     <span>
       г.{" "}
       <InlineInput value={options.city} onChange={(v) => updateOption("city", v)} placeholder="г. Хабаровск" minWidth={90} />

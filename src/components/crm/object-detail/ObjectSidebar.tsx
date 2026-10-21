@@ -17,7 +17,7 @@ export function ObjectSidebar({
 }: ObjectSidebarProps) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
         <p className="font-medium mb-4">Стоимость проекта</p>
         <div className="flex flex-col gap-3 text-sm">
           <div className="flex items-center justify-between">
@@ -37,7 +37,7 @@ export function ObjectSidebar({
         </div>
       </div>
 
-      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-5">
+      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
         <p className="font-medium mb-4">Информация</p>
         <div className="flex flex-col gap-3 text-sm">
           <div>

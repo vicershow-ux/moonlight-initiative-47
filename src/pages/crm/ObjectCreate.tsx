@@ -121,7 +121,7 @@ export default function ObjectCreate() {
 
       <ObjectCreateStepper step={step} />
 
-      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-6 max-w-4xl">
+      <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-4 sm:p-6 max-w-4xl">
         {step === 1 && (
           <ObjectCreateStep1
             objectType={objectType}
@@ -180,28 +180,28 @@ export default function ObjectCreate() {
           </p>
         )}
 
-        <div className="flex items-center justify-between gap-3 mt-6 pt-5 border-t border-white/10">
-          <div>
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 mt-6 pt-5 border-t border-white/10">
+          <div className={step > 1 ? "" : "hidden sm:block"}>
             {step > 1 && (
               <button
                 onClick={handleBack}
-                className="px-4 py-2.5 rounded-lg text-sm bg-white/5 hover:bg-white/10 transition-colors"
+                className="w-full sm:w-auto min-h-[44px] sm:min-h-0 px-4 py-2.5 rounded-lg text-sm bg-white/5 hover:bg-white/10 transition-colors"
               >
                 Назад
               </button>
             )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-3">
             <Link
               to="/cabinet/objects"
-              className="px-4 py-2.5 rounded-lg text-sm bg-white/5 hover:bg-white/10 transition-colors"
+              className="flex sm:block items-center justify-center min-h-[44px] sm:min-h-0 px-4 py-2.5 rounded-lg text-sm bg-white/5 hover:bg-white/10 transition-colors"
             >
               Отмена
             </Link>
             {step < 3 ? (
               <button
                 onClick={handleNext}
-                className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-5 py-2.5 rounded-lg"
+                className="justify-center sm:justify-start min-h-[44px] sm:min-h-0 flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-5 py-2.5 rounded-lg"
               >
                 Далее
               </button>
@@ -209,7 +209,7 @@ export default function ObjectCreate() {
               <button
                 onClick={handleSubmit}
                 disabled={saving}
-                className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-5 py-2.5 rounded-lg disabled:opacity-60"
+                className="justify-center sm:justify-start min-h-[44px] sm:min-h-0 flex items-center gap-2 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-5 py-2.5 rounded-lg disabled:opacity-60"
               >
                 {saving ? <Icon name="Loader2" size={16} className="animate-spin" /> : null}
                 Создать объект

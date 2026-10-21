@@ -72,7 +72,7 @@ export function RentalsDialogs({
   return (
     <>
       <Dialog open={rentalOpen} onOpenChange={setRentalOpen}>
-        <DialogContent className="border-white/10 bg-[#1f1f1f] text-white sm:max-w-2xl">
+        <DialogContent className="overflow-x-hidden border-white/10 bg-[#1f1f1f] text-white sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editingRental ? "Изменить аренду" : "Оформить аренду"}</DialogTitle>
           </DialogHeader>
@@ -111,7 +111,7 @@ export function RentalsDialogs({
       </Dialog>
 
       <Dialog open={cpOpen} onOpenChange={setCpOpen}>
-        <DialogContent className="border-white/10 bg-[#1f1f1f] text-white sm:max-w-2xl">
+        <DialogContent className="overflow-x-hidden border-white/10 bg-[#1f1f1f] text-white sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editingCp ? "Изменить контрагента" : "Новый контрагент"}</DialogTitle>
           </DialogHeader>
@@ -142,7 +142,7 @@ export function RentalsDialogs({
       </Dialog>
 
       <Dialog open={!!returnFor} onOpenChange={(v) => !v && setReturnFor(null)}>
-        <DialogContent className="border-white/10 bg-[#1f1f1f] text-white sm:max-w-md">
+        <DialogContent className="overflow-x-hidden border-white/10 bg-[#1f1f1f] text-white sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Возврат инструмента</DialogTitle>
           </DialogHeader>
@@ -150,7 +150,7 @@ export function RentalsDialogs({
           {returnFor && (
             <div className="space-y-4">
               <div className="rounded-lg border border-white/10 bg-[#161616] p-4 text-sm">
-                <div className="font-medium">{returnFor.item_name}</div>
+                <div className="break-words font-medium">{returnFor.item_name}</div>
                 <div className="mt-1 text-white/40">
                   Выдано {num(returnFor.qty)} {returnFor.unit}
                   {num(returnFor.returned_qty) > 0 &&

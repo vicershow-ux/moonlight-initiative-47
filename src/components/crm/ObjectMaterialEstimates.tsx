@@ -93,11 +93,11 @@ export function ObjectMaterialEstimates({ objectId, isClient }: Props) {
             {formatDate(m.created_at)}
             {m.room_names ? ` · ${m.room_names}` : ""}
           </p>
-          <p className="text-lg font-semibold mb-2">{formatMoney(m.total_amount)}</p>
-          <div className="flex items-center gap-3">
+          <p className="text-lg font-semibold mb-2 break-words">{formatMoney(m.total_amount)}</p>
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={() => openDoc(m, "print")}
-              className="text-white/40 hover:text-white transition-colors"
+              className="text-white/40 hover:text-white transition-colors w-10 h-10 sm:w-auto sm:h-auto flex items-center justify-center rounded-lg bg-white/5 sm:bg-transparent"
               title="Печать"
             >
               {busyId === m.id ? (
@@ -108,7 +108,7 @@ export function ObjectMaterialEstimates({ objectId, isClient }: Props) {
             </button>
             <button
               onClick={() => openDoc(m, "pdf")}
-              className="text-white/40 hover:text-white transition-colors"
+              className="text-white/40 hover:text-white transition-colors w-10 h-10 sm:w-auto sm:h-auto flex items-center justify-center rounded-lg bg-white/5 sm:bg-transparent"
               title="Скачать PDF"
             >
               <Icon name="Download" size={15} />
@@ -116,7 +116,7 @@ export function ObjectMaterialEstimates({ objectId, isClient }: Props) {
             {!isClient && (
               <button
                 onClick={() => setSendFor(m)}
-                className="text-white/40 hover:text-white transition-colors"
+                className="text-white/40 hover:text-white transition-colors w-10 h-10 sm:w-auto sm:h-auto flex items-center justify-center rounded-lg bg-white/5 sm:bg-transparent"
                 title="Отправить заказчику на почту"
               >
                 <Icon name="Mail" size={15} />
