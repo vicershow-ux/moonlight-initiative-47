@@ -455,7 +455,7 @@ function stripAtRule(css: string, startRe: RegExp) {
   }
 }
 
-function scopeStyles(css: string, scope: string) {
+export function scopeStyles(css: string, scope: string) {
   // @page содержит вложенные блоки (@top-left и т.п.) — вырезаем со счётом скобок
   const withoutAtRules = stripAtRule(stripAtRule(css, /@page\b/g), /@media\s+print\b/g)
   return withoutAtRules.replace(/(^|\})\s*([^{}@]+)\s*\{/g, (_m, brace, selectors) => {

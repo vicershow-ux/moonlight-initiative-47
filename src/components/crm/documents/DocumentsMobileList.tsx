@@ -1,3 +1,4 @@
+import { DocumentPurchaseCard } from "@/components/crm/documents/DocumentPurchaseRows"
 import { addendumDelta } from "@/components/crm/documents/DocumentContractRows"
 import { DocumentMobileCard } from "@/components/crm/documents/DocumentMobileCard"
 import { DeleteButton } from "@/components/ui/delete-button"
@@ -15,6 +16,9 @@ export function DocumentsMobileList({ docs }: { docs: DocumentsData }) {
     downloadingId,
     handleDelete,
     showMatEstimates,
+    showPurchaseLists,
+    filteredPurchaseLists,
+    openPurchaseList,
     filteredMatEstimates,
     openMatEstimate,
     matBusyId,
@@ -66,6 +70,18 @@ export function DocumentsMobileList({ docs }: { docs: DocumentsData }) {
           printing={printingId === e.id}
           downloading={downloadingId === e.id}
           deleteButton={<DeleteButton onConfirm={() => handleDelete(e.id)} />}
+        />
+      ))}
+
+      {showPurchaseLists && filteredPurchaseLists.map((m) => (
+        <DocumentPurchaseCard
+          key={`m-purch-${m.id}`}
+          m={m}
+          obj={objectsMap[m.object_id]}
+          objectStatuses={objectStatuses}
+          busyId={matBusyId}
+          onOpen={openPurchaseList}
+          onDelete={handleDeleteMatEstimate}
         />
       ))}
 

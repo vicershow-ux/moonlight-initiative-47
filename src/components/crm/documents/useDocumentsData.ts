@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { estimatesApi, objectsApi, objectStatusesApi, contractsApi, actsApi, materialsApi, addendaApi, Estimate, ObjectItem, ObjectStatus, Contract, Act, MaterialEstimate, ContractAddendum } from "@/lib/api"
+import { estimatesApi, objectsApi, objectStatusesApi, contractsApi, actsApi, materialsApi, addendaApi, Estimate, ObjectItem, ObjectStatus, Contract, Act, MaterialEstimate, ContractAddendum, MaterialItem } from "@/lib/api"
 import { printMaterials, downloadMaterialsPdf } from "@/lib/printMaterials"
 import { printEstimate, downloadEstimatePdf } from "@/lib/printEstimate"
 import { downloadContractPdf } from "@/lib/downloadContractPdf"
@@ -7,7 +7,8 @@ import { printAct, printAddendum, darkenActHtml } from "@/lib/printAct"
 import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
 import { printHtml } from "@/lib/printHtml"
 import { useAuth } from "@/contexts/AuthContext"
-import { TabKey } from "@/components/crm/documents/constants"
+import { TabKey, isPurchaseList } from "@/components/crm/documents/constants"
+import { printPurchaseList, downloadPurchaseListPdf } from "@/lib/printPurchaseList"
 
 async function safeDelete(fn: () => Promise<unknown>) {
   try {
@@ -25,6 +26,7 @@ export function useDocumentsData() {
   const [addenda, setAddenda] = useState<ContractAddendum[]>([])
   const [addBusyId, setAddBusyId] = useState<number | null>(null)
   const [matEstimates, setMatEstimates] = useState<MaterialEstimate[]>([])
+  const [catalog, setCatalog] = useState<MaterialItem[]>([])
   const [matBusyId, setMatBusyId] = useState<number | null>(null)
   const [matSendFor, setMatSendFor] = useState<MaterialEstimate | null>(null)
   const [objectsMap, setObjectsMap] = useState<Record<number, ObjectItem>>({})
@@ -48,6 +50,7 @@ export function useDocumentsData() {
         setContracts(contractsData.contracts)
         setActs(actsData.acts)
         setMatEstimates(matData.estimates || [])
+        setCatalog(matData.materials || [])
         const map: Record<number, ObjectItem> = {}
         objData.objects.forEach((o) => { map[o.id] = o })
         setObjectsMap(map)
@@ -153,9 +156,21 @@ export function useDocumentsData() {
     })
   }, [estimates, search])
 
+  const matchMat = (m: MaterialEstimate, q: string) =>
+    !q ||
+    String(m.id).includes(q) ||
+    (m.object_code || "").toLowerCase().includes(q) ||
+    (m.client_name || "").toLowerCase().includes(q)
+
+  const filteredPurchaseLists = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return matEstimates.filter((m) => isPurchaseList(m.title) && matchMat(m, q))
+  }, [matEstimates, search])
+
   const filteredMatEstimates = useMemo(() => {
     const q = search.trim().toLowerCase()
     return matEstimates.filter((m) => {
+      if (isPurchaseList(m.title)) return false
       if (!q) return true
       return (
         String(m.id).includes(q) ||
@@ -179,6 +194,20 @@ export function useDocumentsData() {
       address: estimate.address || "",
     }
     return { obj, items: estimate.items || [] }
+  }
+
+  const openPurchaseList = async (m: MaterialEstimate, mode: "view" | "print" | "pdf") => {
+    setMatBusyId(mode === "pdf" ? -m.id : m.id)
+    try {
+      const { obj, items } = await loadMatDoc(m.id)
+      const company = user?.company_name || ""
+      if (mode === "pdf") await downloadPurchaseListPdf(obj, items, catalog, company)
+      else printPurchaseList(obj, items, catalog, company, mode === "print")
+    } catch (e) {
+      window.alert((e as Error)?.message || "Не удалось открыть список")
+    } finally {
+      setMatBusyId(null)
+    }
   }
 
   const openMatEstimate = async (m: MaterialEstimate, mode: "print" | "pdf" | "email") => {
@@ -243,11 +272,13 @@ export function useDocumentsData() {
   const showAddenda = tab === "all" || tab === "addenda"
   const showEstimates = tab === "all" || tab === "estimates"
   const showMatEstimates = tab === "all" || tab === "material_estimates"
+  const showPurchaseLists = tab === "all" || tab === "purchase_lists"
   const showContracts = tab === "all" || tab === "contracts"
   const showActs = tab === "all" || tab === "acts"
   const hasAnyRows =
     (showEstimates && filteredEstimates.length > 0) ||
     (showMatEstimates && filteredMatEstimates.length > 0) ||
+    (showPurchaseLists && filteredPurchaseLists.length > 0) ||
     (showContracts && filteredContracts.length > 0) ||
     (showActs && filteredActs.length > 0) ||
     (showAddenda && filteredAddenda.length > 0)
@@ -284,6 +315,9 @@ export function useDocumentsData() {
     handleDeleteMatEstimate,
     loadMatDoc,
     openMatEstimate,
+    openPurchaseList,
+    filteredPurchaseLists,
+    showPurchaseLists,
     filteredContracts,
     filteredActs,
     filteredAddenda,

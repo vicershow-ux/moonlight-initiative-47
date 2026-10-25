@@ -1,3 +1,4 @@
+import { DocumentPurchaseRow } from "@/components/crm/documents/DocumentPurchaseRows"
 import { DocumentEstimateRow, DocumentMatEstimateRow } from "@/components/crm/documents/DocumentEstimateRows"
 import { DocumentContractRow, DocumentActRow, DocumentAddendumRow } from "@/components/crm/documents/DocumentContractRows"
 import { DocumentsData } from "./useDocumentsData"
@@ -14,6 +15,9 @@ export function DocumentsTable({ docs }: { docs: DocumentsData }) {
     handleDownloadPdf,
     handleDelete,
     showMatEstimates,
+    showPurchaseLists,
+    filteredPurchaseLists,
+    openPurchaseList,
     filteredMatEstimates,
     matBusyId,
     openMatEstimate,
@@ -64,6 +68,18 @@ export function DocumentsTable({ docs }: { docs: DocumentsData }) {
               handlePrint={handlePrint}
               handleDownloadPdf={handleDownloadPdf}
               handleDelete={handleDelete}
+            />
+          ))}
+
+          {showPurchaseLists && filteredPurchaseLists.map((m) => (
+            <DocumentPurchaseRow
+              key={`purch-${m.id}`}
+              m={m}
+              obj={objectsMap[m.object_id]}
+              objectStatuses={objectStatuses}
+              busyId={matBusyId}
+              onOpen={openPurchaseList}
+              onDelete={handleDeleteMatEstimate}
             />
           ))}
 

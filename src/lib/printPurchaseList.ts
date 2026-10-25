@@ -1,5 +1,7 @@
 import { MaterialItem, MaterialObject, ObjectMaterial } from "@/lib/api"
 import { buildPurchasePlan } from "@/lib/purchaseList"
+import { renderPagedPdf } from "@/lib/pdfRender"
+import { scopeStyles } from "@/lib/printMaterials"
 
 const cssString = (s: string) =>
   String(s ?? "").replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r?\n/g, " ")
@@ -421,4 +423,20 @@ export function printPurchaseList(
       win.print()
     }
   }
+}
+export async function downloadPurchaseListPdf(
+  object: MaterialObject,
+  items: ObjectMaterial[],
+  catalog: MaterialItem[],
+  companyName: string
+) {
+  const { styles, bodyContent } = buildPurchaseDocument(object, items, catalog, companyName)
+  await renderPagedPdf(
+    (root) => {
+      root.id = "pdf-scope-purchase"
+      root.className = "est-root"
+      root.innerHTML = `<style>${scopeStyles(styles, "#pdf-scope-purchase")}</style>${bodyContent}`
+    },
+    { filename: `Список на закупку ${object.object_code}.pdf`, mode: "save" },
+  )
 }
