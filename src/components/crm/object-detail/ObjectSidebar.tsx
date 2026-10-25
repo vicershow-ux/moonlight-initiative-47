@@ -1,5 +1,6 @@
 import { ObjectItem } from "@/lib/api"
 import { ObjectFilesCard } from "@/components/crm/ObjectFilesCard"
+import { ObjectReceiptsCard } from "@/components/crm/purchase/ObjectReceiptsCard"
 import { formatMoney, formatDateTime } from "./utils"
 
 interface ObjectSidebarProps {
@@ -54,6 +55,8 @@ export function ObjectSidebar({
           </div>
         </div>
       </div>
+
+      <ObjectReceiptsCard objectId={object.id} />
 
       <ObjectFilesCard objectId={object.id} />
     </div>

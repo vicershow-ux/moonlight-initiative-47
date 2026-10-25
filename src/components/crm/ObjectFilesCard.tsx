@@ -51,7 +51,7 @@ export function ObjectFilesCard({ objectId }: Props) {
   const load = () => {
     setLoading(true)
     objectFilesApi
-      .list(objectId)
+      .list(objectId, "files")
       .then((d) => setFiles(d.files || []))
       .catch(() => setFiles([]))
       .finally(() => setLoading(false))

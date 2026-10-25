@@ -21,7 +21,8 @@ ALLOWED = {
 MAX_SIZE = 15 * 1024 * 1024
 
 KEYS = ['id', 'object_id', 'user_id', 'file_name', 'file_url', 'file_type',
-        'file_size', 'created_at', 'uploader_name']
+        'file_size', 'created_at', 'uploader_name', 'category', 'shop_name',
+        'purchase_list_id', 'amount']
 
 
 def get_conn():
@@ -123,7 +124,7 @@ def upload_to_s3(company_id, object_id, file_name, b64data):
 
 
 def handler(event: dict, context) -> dict:
-    '''Файлы объекта: загрузка фото, PDF и Excel дизайнером и сотрудниками'''
+    '''Файлы объекта: загрузка фото, PDF и Excel, а также чеков из магазинов по спискам на закупку'''
     method = event.get('httpMethod', 'GET')
 
     if method == 'OPTIONS':
@@ -146,12 +147,22 @@ def handler(event: dict, context) -> dict:
                 return response(400, {'error': 'Не указан объект'})
             if not has_access(cur, user, object_id):
                 return response(403, {'error': 'Нет доступа к объекту'})
+            category = params.get('category')
+            cat_cond, cat_args = '', []
+            if category == 'receipt':
+                cat_cond, cat_args = " AND f.category = %s", ['receipt']
+                if params.get('purchase_list_id'):
+                    cat_cond += " AND f.purchase_list_id = %s"
+                    cat_args.append(int(params['purchase_list_id']))
+            elif category == 'files':
+                cat_cond = " AND f.category <> 'receipt'"
             cur.execute(
                 "SELECT f.id, f.object_id, f.user_id, f.file_name, f.file_url, f.file_type, "
-                "f.file_size, f.created_at, u.full_name "
+                "f.file_size, f.created_at, u.full_name, f.category, f.shop_name, "
+                "f.purchase_list_id, f.amount "
                 "FROM object_files f JOIN users u ON u.id = f.user_id "
-                "WHERE f.object_id = %s AND f.company_id = %s ORDER BY f.created_at DESC",
-                (object_id, user['company_id'])
+                f"WHERE f.object_id = %s AND f.company_id = %s{cat_cond} ORDER BY f.created_at DESC",
+                [object_id, user['company_id']] + cat_args
             )
             files = [dict(zip(KEYS, r)) for r in cur.fetchall()]
             return response(200, {'files': files})
@@ -175,10 +186,20 @@ def handler(event: dict, context) -> dict:
                 return response(400, {'error': err})
 
             kind, size = meta
+            category = 'receipt' if body.get('category') == 'receipt' else ''
+            shop_name = (body.get('shop_name') or '').strip()[:255]
+            plist = body.get('purchase_list_id')
+            plist = int(plist) if str(plist or '').isdigit() else None
+            try:
+                amount = round(float(body.get('amount') or 0), 2)
+            except (TypeError, ValueError):
+                amount = 0
             cur.execute(
                 "INSERT INTO object_files (company_id, object_id, user_id, file_name, "
-                "file_url, file_type, file_size) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
-                (user['company_id'], obj_id, user['user_id'], file_name, url, kind, size)
+                "file_url, file_type, file_size, category, shop_name, purchase_list_id, amount) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                (user['company_id'], obj_id, user['user_id'], file_name, url, kind, size,
+                 category, shop_name, plist, amount)
             )
             new_id = cur.fetchone()[0]
             conn.commit()

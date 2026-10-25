@@ -4,7 +4,9 @@ import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/contexts/AuthContext"
-import { materialsApi, MaterialEstimate, MaterialItem } from "@/lib/api"
+import { materialsApi, MaterialEstimate, MaterialItem, objectFilesApi, ObjectFile } from "@/lib/api"
+import { ShopReceipts } from "@/components/crm/purchase/ShopReceipts"
+import { ReceiptViewer } from "@/components/crm/purchase/ReceiptViewer"
 import { buildPurchasePlan } from "@/lib/purchaseList"
 import { printPurchaseList, downloadPurchaseListPdf } from "@/lib/printPurchaseList"
 import { formatMoney } from "@/components/crm/documents/constants"
@@ -24,6 +26,15 @@ export default function PurchaseListView() {
   const [saveState, setSaveState] = useState<"idle" | "saving" | "error">("idle")
   const [pdfBusy, setPdfBusy] = useState(false)
   const saveTimer = useRef<number | null>(null)
+  const [receipts, setReceipts] = useState<ObjectFile[]>([])
+  const [viewing, setViewing] = useState<ObjectFile | null>(null)
+
+  const loadReceipts = (objectId: number, listId: number) => {
+    objectFilesApi
+      .list(objectId, "receipt", listId)
+      .then((d) => setReceipts(d.files || []))
+      .catch(() => setReceipts([]))
+  }
 
   useEffect(() => {
     if (!id) return
@@ -33,6 +44,7 @@ export default function PurchaseListView() {
         setEstimate(est.estimate)
         setBought(new Set(est.estimate.bought || []))
         setCatalog(mat?.materials || [])
+        loadReceipts(est.estimate.object_id, est.estimate.id)
       })
       .catch((e) => setError((e as Error)?.message || "Не удалось загрузить список"))
       .finally(() => setLoading(false))
@@ -229,6 +241,16 @@ export default function PurchaseListView() {
                     )
                   })}
                 </ul>
+                {user?.role !== "client" && (
+                  <ShopReceipts
+                    objectId={estimate.object_id}
+                    purchaseListId={estimate.id}
+                    shopName={shop.name}
+                    receipts={receipts.filter((r) => (r.shop_name || "") === shop.name)}
+                    onChanged={() => loadReceipts(estimate.object_id, estimate.id)}
+                    onOpen={setViewing}
+                  />
+                )}
               </div>
             )
           })}
@@ -240,6 +262,7 @@ export default function PurchaseListView() {
           )}
         </div>
       )}
+      {viewing && <ReceiptViewer receipt={viewing} onClose={() => setViewing(null)} />}
     </CrmLayout>
   )
 }

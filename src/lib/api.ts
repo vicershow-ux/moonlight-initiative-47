@@ -1942,11 +1942,18 @@ export interface ObjectFile {
   file_size: number
   created_at: string
   uploader_name: string
+  category?: string
+  shop_name?: string
+  purchase_list_id?: number | null
+  amount?: number
 }
 
 export const objectFilesApi = {
-  async list(objectId: number) {
-    const res = await fetch(`${OBJECT_FILES_URL}?object_id=${objectId}`, {
+  async list(objectId: number, category: "files" | "receipt" | "" = "", purchaseListId?: number) {
+    const q = new URLSearchParams({ object_id: String(objectId) })
+    if (category) q.set("category", category)
+    if (purchaseListId) q.set("purchase_list_id", String(purchaseListId))
+    const res = await fetch(`${OBJECT_FILES_URL}?${q.toString()}`, {
       headers: { ...authHeaders() },
     })
     return parseResponse(res) as Promise<{ files: ObjectFile[] }>
@@ -1957,6 +1964,22 @@ export const objectFilesApi = {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ object_id: objectId, file_name: fileName, data }),
+    })
+    return parseResponse(res) as Promise<{ success: boolean; id: number; url: string }>
+  },
+
+  async uploadReceipt(payload: {
+    object_id: number
+    file_name: string
+    data: string
+    shop_name: string
+    purchase_list_id: number
+    amount?: number
+  }) {
+    const res = await fetch(OBJECT_FILES_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ ...payload, category: "receipt" }),
     })
     return parseResponse(res) as Promise<{ success: boolean; id: number; url: string }>
   },
