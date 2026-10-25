@@ -76,6 +76,16 @@ export const defaultOptions: Required<ContractOptions> = {
   work_subject: "ремонт квартиры",
   apply_signature: false,
   apply_stamp: false,
+  our_role: "contractor",
+  contractor_inn: "",
+  contractor_phone: "",
+  contractor_email: "",
+  contractor_address: "",
+  contractor_passport: "",
+  contractor_account: "",
+  contractor_bank_name: "",
+  contractor_bik: "",
+  contractor_corr_account: "",
 }
 
 export const copiesTotalOptions = [

@@ -25,11 +25,13 @@ export function CreateContractModal({ open, onOpenChange, object }: CreateContra
   const [loading, setLoading] = useState(false)
   const [estimateId, setEstimateId] = useState("")
   const [templateKey, setTemplateKey] = useState("apartment_renovation")
+  const [role, setRole] = useState<"contractor" | "customer">("contractor")
 
   useEffect(() => {
     if (open && object) {
       setLoading(true)
       setEstimateId("")
+      setRole("contractor")
       estimatesApi
         .listByObject(object.id)
         .then((data) => setEstimates(data.estimates))
@@ -42,6 +44,7 @@ export function CreateContractModal({ open, onOpenChange, object }: CreateContra
     const params = new URLSearchParams()
     if (estimateId) params.set("estimate_id", estimateId)
     params.set("template", templateKey)
+    if (role === "customer") params.set("role", "customer")
     navigate(`/cabinet/objects/${object.id}/contracts/new?${params.toString()}`)
     onOpenChange(false)
   }
@@ -65,7 +68,31 @@ export function CreateContractModal({ open, onOpenChange, object }: CreateContra
         )}
 
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium">Выберите смету для договора</label>
+          <label className="text-sm font-medium">Кто вы в договоре</label>
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              { v: "contractor", t: "Я — Исполнитель", d: "работаю для заказчика" },
+              { v: "customer", t: "Я — Заказчик", d: "нанимаю исполнителя" },
+            ] as const).map((r) => (
+              <button
+                key={r.v}
+                type="button"
+                onClick={() => setRole(r.v)}
+                className={`min-h-[44px] rounded-lg border px-3 py-2 text-left transition-colors ${
+                  role === r.v
+                    ? "border-[#D4AF37] bg-[#D4AF37] text-[#161616]"
+                    : "border-white/10 bg-[#161616] text-white/70 hover:text-white"
+                }`}
+              >
+                <span className="block text-sm font-medium">{r.t}</span>
+                <span className={`block text-xs ${role === r.v ? "text-[#161616]/70" : "text-white/40"}`}>{r.d}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium">{role === "customer" ? "Смета на работы исполнителя (необязательно)" : "Выберите смету для договора"}</label>
           <div className="relative">
             <select
               value={estimateId}

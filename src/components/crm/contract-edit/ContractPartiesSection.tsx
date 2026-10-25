@@ -1,7 +1,9 @@
 import { Dispatch, SetStateAction } from "react"
 import { ToggleGroup } from "@/components/crm/contract-create/ToggleGroup"
 import { InlineInput, InlineSelect } from "@/components/crm/contract-create/InlineField"
-import { ContractOptions } from "@/lib/api"
+import { CompanyData, ContractOptions } from "@/lib/api"
+import { ContractRoleSwitch } from "./ContractRoleSwitch"
+import { HiredContractorFields } from "./HiredContractorFields"
 import { genderOptions } from "./constants"
 import { RENOVATION, subjectTitle } from "@/lib/contractSubject"
 
@@ -14,6 +16,7 @@ interface ContractPartiesSectionProps {
   updateOption: <K extends keyof ContractOptions>(key: K, value: ContractOptions[K]) => void
   /** Направления услуг с сайта */
   serviceCategories?: string[]
+  company?: CompanyData | null
 }
 
 export function ContractPartiesSection({
@@ -24,12 +27,16 @@ export function ContractPartiesSection({
   options,
   updateOption,
   serviceCategories = [],
+  company = null,
 }: ContractPartiesSectionProps) {
+  const hire = options.our_role === "customer"
   const subject = options.work_subject || RENOVATION
   const subjects = [RENOVATION, ...serviceCategories.filter((c) => c !== RENOVATION)]
   if (!subjects.includes(subject)) subjects.push(subject)
   return (
     <>
+  <ContractRoleSwitch value={options.our_role} onChange={(v) => updateOption("our_role", v)} />
+
   {/* Заголовок */}
   <h2 className="text-center text-lg font-semibold text-white mb-2">
     Договор подряда на{" "}
@@ -63,7 +70,7 @@ export function ContractPartiesSection({
 
   {/* Статус Заказчика */}
   <ToggleGroup
-    label="Статус Заказчика"
+    label={hire ? "Статус Заказчика (ваша компания)" : "Статус Заказчика"}
     required
     value={options.customer_type}
     onChange={(v) => updateOption("customer_type", v)}
@@ -112,7 +119,7 @@ export function ContractPartiesSection({
 
   {/* Статус Подрядчика */}
   <ToggleGroup
-    label="Статус Подрядчика"
+    label={hire ? "Статус Подрядчика (кого нанимаете)" : "Статус Подрядчика"}
     required
     value={options.contractor_type}
     onChange={(v) => updateOption("contractor_type", v)}
@@ -186,6 +193,12 @@ export function ContractPartiesSection({
       {" "}на основании{" "}
       <InlineInput value={options.contractor_basis} onChange={(v) => updateOption("contractor_basis", v)} placeholder="Устава" minWidth={70} />
       , с другой стороны,
+    </p>
+  )}
+  {hire && <HiredContractorFields options={options} updateOption={updateOption} />}
+  {hire && !company?.inn && (
+    <p className="mb-3 text-xs text-amber-400/80">
+      Чтобы в договоре стояли ИНН и банк вашей компании как Заказчика, заполните их в разделе «Компания».
     </p>
   )}
   <p>

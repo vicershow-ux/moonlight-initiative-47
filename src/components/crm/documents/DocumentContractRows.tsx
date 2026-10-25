@@ -29,7 +29,9 @@ export function DocumentContractRow({
   return (
         <tr key={`contract-${c.id}`} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
           <td className="py-3 px-4">
-            <span className="text-blue-400 font-medium text-xs">Договор</span>
+            <span className={cn("font-medium text-xs", c.options?.our_role === "customer" ? "text-orange-300" : "text-blue-400")}>
+              {c.options?.our_role === "customer" ? "Договор с исполнителем" : "Договор"}
+            </span>
           </td>
           <td className="py-3 px-4">
             <p className="font-medium">
@@ -41,7 +43,16 @@ export function DocumentContractRow({
           <td className="py-3 px-4 text-white/60">
             {obj?.object_code || c.object_code || "—"}
           </td>
-          <td className="py-3 px-4 text-white/60">{c.client_name || obj?.client_name || "—"}</td>
+          <td className="py-3 px-4 text-white/60">
+            {c.options?.our_role === "customer" ? (
+              <>
+                <span className="block">{c.options.contractor_org_name || c.options.contractor_name || "—"}</span>
+                <span className="block text-xs text-white/30">исполнитель</span>
+              </>
+            ) : (
+              c.client_name || obj?.client_name || "—"
+            )}
+          </td>
           <td className="py-3 px-4 font-medium">{formatMoney(c.total_amount)}</td>
           <td className="py-3 px-4">
             {obj?.status ? (

@@ -173,7 +173,14 @@ export function ObjectDocumentsPanel({
           {contracts.map((c) => (
             <div key={c.id} className="bg-[#161616] border border-white/10 rounded-lg p-4">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                <p className="text-sm font-medium">Договор № {c.contract_number}</p>
+                <p className="text-sm font-medium">
+                  Договор № {c.contract_number}
+                  {c.options?.our_role === "customer" && (
+                    <span className="ml-2 px-2 py-0.5 rounded-full text-[11px] bg-orange-500/20 text-orange-300 align-middle">
+                      с исполнителем{c.options.contractor_name ? ` · ${c.options.contractor_name}` : ""}
+                    </span>
+                  )}
+                </p>
                 <span
                   className={`px-2 py-0.5 rounded-full text-xs ${
                     c.status === "signed" ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"

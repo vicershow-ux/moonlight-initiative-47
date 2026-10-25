@@ -40,43 +40,53 @@ const STAGED_DETAIL = `
 
 function customerIntro(ctx: ContractContext): string {
   const { options: o, object } = ctx
-  const customerName = o.customer_name || object.client_name || ""
+  const customerName = o.customer_name || (isHire(o) ? "" : object.client_name) || ""
+  const ourInn = isHire(o) && ctx.company?.inn ? ctx.company.inn : ""
   if (o.customer_type === "individual") {
     return `${esc(customerName)}, действующ${g(o, "customer")} как физическое лицо (далее — «Заказчик»), с одной стороны, и`
   }
   if (o.customer_type === "entrepreneur") {
     const suffix = o.customer_gender === "f" ? "ная" : "ный"
-    return `Индивидуальный предприниматель ${esc(customerName)}, зарегистрирован${suffix} в реестре индивидуальных предпринимателей под № ${esc(o.customer_ogrnip) || "____________"} (далее — «Заказчик»), с одной стороны, и`
+    return `Индивидуальный предприниматель ${esc(customerName)}, зарегистрирован${suffix} в реестре индивидуальных предпринимателей под № ${esc(o.customer_ogrnip) || "____________"}${ourInn ? `, ИНН ${esc(ourInn)}` : ""} (далее — «Заказчик»), с одной стороны, и`
   }
   const org = o.customer_org_name || customerName
-  return `${esc(org)}, именуемое в дальнейшем «Заказчик», от имени которого действует ${esc(o.customer_director_position) || "генеральный директор"} ${esc(o.customer_director_name) || esc(customerName)} на основании ${esc(o.customer_basis) || "Устава"}, с одной стороны, и`
+  const reg = [o.customer_ogrn ? `ОГРН ${esc(o.customer_ogrn)}` : "", ourInn ? `ИНН ${esc(ourInn)}` : ""].filter(Boolean).join(", ")
+  return `${esc(org)}${reg ? ` (${reg})` : ""}, именуемое в дальнейшем «Заказчик», от имени которого действует ${esc(o.customer_director_position) || "генеральный директор"} ${esc(o.customer_director_name) || esc(customerName)} на основании ${esc(o.customer_basis) || "Устава"}, с одной стороны, и`
 }
+
+/** Мы — Заказчик: нанимаем исполнителя на отдельный вид работ */
+export const isHire = (o: ContractOptions) => o.our_role === "customer"
 
 function contractorIntro(ctx: ContractContext): string {
   const { options: o } = ctx
+  const hire = isHire(o)
+  const comp = hire ? null : ctx.company
   // ИП и физлицо — человек: ФИО из договора, иначе из компании. Название бренда тут не подходит
-  const person = o.contractor_name || ctx.company?.contact_full_name || ctx.company?.name || ""
-  const name = o.contractor_type === "legal" ? ctx.company?.name || o.contractor_name || "" : person
-  const ogrn = o.contractor_ogrnip || ctx.company?.ogrn || ""
+  const person = o.contractor_name || comp?.contact_full_name || comp?.name || ""
+  const name = o.contractor_type === "legal" ? (hire ? o.contractor_org_name : comp?.name) || o.contractor_name || "" : person
+  const ogrn = o.contractor_ogrnip || comp?.ogrn || ""
+  const inn = hire ? o.contractor_inn : comp?.inn
   const gg = g(o, "contractor")
+  const innText = inn ? `, ИНН ${esc(inn)}` : ""
+  const passport = hire && o.contractor_passport ? `, паспорт ${esc(o.contractor_passport)}` : ""
 
   if (o.contractor_type === "individual") {
-    return `${esc(name)}, действующ${gg} как физическое лицо (далее — «Подрядчик»), с другой стороны,`
+    return `${esc(name)}${passport}, действующ${gg} как физическое лицо (далее — «Подрядчик»), с другой стороны,`
   }
   if (o.contractor_type === "self_employed") {
-    return `${esc(name)}, действующ${gg} как физическое лицо с применением налогового режима «налог на профессиональный доход» (далее — «Подрядчик»), с другой стороны,`
+    return `${esc(name)}${innText}${passport}, действующ${gg} как физическое лицо с применением налогового режима «налог на профессиональный доход» (далее — «Подрядчик»), с другой стороны,`
   }
   if (o.contractor_type === "foreign_citizen") {
     const citizen = o.contractor_gender === "f" ? "гражданка" : "гражданин"
-    return `${esc(name)}, ${citizen} ${esc(o.contractor_country) || "____________"}, основанием пребывания на территории Российской Федерации является ${esc(o.contractor_residence_basis) || "____________"}, наличие разрешения на работу подтверждается ${esc(o.contractor_work_permit) || "____________"}, действующ${gg} как физическое лицо (далее — «Подрядчик»), с другой стороны,`
+    return `${esc(name)}, ${citizen} ${esc(o.contractor_country) || "____________"}${passport}, основанием пребывания на территории Российской Федерации является ${esc(o.contractor_residence_basis) || "____________"}, наличие разрешения на работу подтверждается ${esc(o.contractor_work_permit) || "____________"}, действующ${gg} как физическое лицо (далее — «Подрядчик»), с другой стороны,`
   }
   if (o.contractor_type === "entrepreneur") {
     const suffix = o.contractor_gender === "f" ? "ная" : "ный"
-    return `Индивидуальный предприниматель ${esc(name)}, зарегистрирован${suffix} в реестре индивидуальных предпринимателей под № ${esc(ogrn) || "____________"}${ctx.company?.inn ? `, ИНН ${esc(ctx.company.inn)}` : ""} (далее — «Подрядчик»), с другой стороны,`
+    return `Индивидуальный предприниматель ${esc(name)}, зарегистрирован${suffix} в реестре индивидуальных предпринимателей под № ${esc(ogrn) || "____________"}${innText} (далее — «Подрядчик»), с другой стороны,`
   }
   const org = o.contractor_org_name || name
-  const reg = [ogrn ? `ОГРН ${esc(ogrn)}` : "", ctx.company?.inn ? `ИНН ${esc(ctx.company.inn)}` : ""].filter(Boolean).join(", ")
-  return `${esc(org)}${reg ? ` (${reg})` : ""}, именуемое в дальнейшем «Подрядчик», от имени которого действует ${esc(o.contractor_director_position) || ctx.company?.director_position || "Директор"} ${esc(o.contractor_director_name) || esc(ctx.company?.director_name || "") || esc(person)} на основании ${esc(o.contractor_basis) || "Устава"}, с другой стороны,`
+  const reg = [ogrn ? `ОГРН ${esc(ogrn)}` : "", inn ? `ИНН ${esc(inn)}` : ""].filter(Boolean).join(", ")
+  return `${esc(org)}${reg ? ` (${reg})` : ""}, именуемое в дальнейшем «Подрядчик», от имени которого действует ${esc(o.contractor_director_position) || comp?.director_position || "Директор"} ${esc(o.contractor_director_name) || esc(comp?.director_name || "") || esc(person)} на основании ${esc(o.contractor_basis) || "Устава"}, с другой стороны,`
 }
 
 function partyIntro(ctx: ContractContext): string {
@@ -106,41 +116,126 @@ ${rows}
 </table></div>`
 }
 
-/** Реквизиты подрядчика — все, что заполнено в разделе «Компания», банк отдельным блоком */
-function contractorCard(ctx: ContractContext, companyName: string): string {
-  const c = ctx.company
-  const o = ctx.options
-  const isLegal = o.contractor_type === "legal"
-  const isIp = o.contractor_type === "entrepreneur"
-  const title = isLegal ? o.contractor_org_name || companyName : isIp ? `ИП ${o.contractor_name || c?.contact_full_name || companyName}` : o.contractor_name || c?.contact_full_name || companyName
-  const ogrn = o.contractor_ogrnip || c?.ogrn
+interface PartyRequisites {
+  ogrnLabel?: string
+  ogrn?: string
+  inn?: string
+  kpp?: string
+  passport?: string
+  addressLabel: string
+  address?: string
+  phone?: string
+  email?: string
+  website?: string
+  account?: string
+  bank?: string
+  bik?: string
+  corr?: string
+  bankInn?: string
+  bankKpp?: string
+}
+
+function requisitesRows(r: PartyRequisites) {
   const main = [
-    isLegal || isIp ? row(isLegal ? "ОГРН" : "ОГРНИП", ogrn) : "",
-    row("ИНН", c?.inn),
-    isLegal ? row("КПП", c?.kpp) : "",
-    row(isLegal ? "Юр. адрес" : "Адрес", c?.legal_address),
-    row("Телефон", c?.phone),
-    row("E-mail", c?.email),
-    row("Сайт", c?.website),
+    r.ogrnLabel ? row(r.ogrnLabel, r.ogrn) : "",
+    row("ИНН", r.inn),
+    row("КПП", r.kpp),
+    row("Паспорт", r.passport),
+    row(r.addressLabel, r.address),
+    row("Телефон", r.phone),
+    row("E-mail", r.email),
+    row("Сайт", r.website),
   ].join("")
   const bank = [
-    row("Расчётный счёт", group4(c?.account_number), "acc-hl"),
-    row("Банк", c?.bank_name),
-    row("БИК", c?.bik, "acc"),
-    row("Корр. счёт", group4(c?.correspondent_account), "acc"),
-    row("ИНН банка", c?.bank_inn, "acc"),
-    row("КПП банка", c?.bank_kpp, "acc"),
+    row("Расчётный счёт", group4(r.account), "acc-hl"),
+    row("Банк", r.bank),
+    row("БИК", r.bik, "acc"),
+    row("Корр. счёт", group4(r.corr), "acc"),
+    row("ИНН банка", r.bankInn, "acc"),
+    row("КПП банка", r.bankKpp, "acc"),
   ].join("")
   const bankBlock = bank
     ? `<tr><td colspan="2" style="padding:8px 12px 3px;font-size:10.5px;font-weight:700;letter-spacing:.4px;color:#6B4508;text-transform:uppercase;border:none;border-top:1px solid #D9C9A8">Банковские реквизиты</td></tr>${bank}`
     : ""
-  return card("Подрядчик (Исполнитель)", title, main + bankBlock)
+  return main + bankBlock
+}
+
+/** Реквизиты своей компании — всё, что заполнено в разделе «Компания» */
+function companyRequisites(c: CompanyData | null, type: string, ogrn?: string): PartyRequisites {
+  const isLegal = type === "legal"
+  const isIp = type === "entrepreneur"
+  return {
+    ogrnLabel: isLegal ? "ОГРН" : isIp ? "ОГРНИП" : undefined,
+    ogrn,
+    inn: c?.inn,
+    kpp: isLegal ? c?.kpp : "",
+    addressLabel: isLegal ? "Юр. адрес" : "Адрес",
+    address: c?.legal_address,
+    phone: c?.phone,
+    email: c?.email,
+    website: c?.website,
+    account: c?.account_number,
+    bank: c?.bank_name,
+    bik: c?.bik,
+    corr: c?.correspondent_account,
+    bankInn: c?.bank_inn,
+    bankKpp: c?.bank_kpp,
+  }
+}
+
+function contractorTitle(ctx: ContractContext, companyName: string): string {
+  const { options: o, company: c } = ctx
+  if (isHire(o)) {
+    if (o.contractor_type === "legal") return o.contractor_org_name || o.contractor_name || ""
+    if (o.contractor_type === "entrepreneur") return `ИП ${o.contractor_name || ""}`
+    return o.contractor_name || ""
+  }
+  if (o.contractor_type === "legal") return o.contractor_org_name || companyName
+  if (o.contractor_type === "entrepreneur") return `ИП ${o.contractor_name || c?.contact_full_name || companyName}`
+  return o.contractor_name || c?.contact_full_name || companyName
+}
+
+function contractorCard(ctx: ContractContext, companyName: string): string {
+  const { options: o, company: c } = ctx
+  const title = contractorTitle(ctx, companyName)
+  if (!isHire(o)) {
+    return card("Подрядчик (Исполнитель)", title, requisitesRows(companyRequisites(c, o.contractor_type, o.contractor_ogrnip || c?.ogrn)))
+  }
+  const isLegal = o.contractor_type === "legal"
+  const isIp = o.contractor_type === "entrepreneur"
+  const person = !isLegal && !isIp
+  return card("Подрядчик (Исполнитель)", title, requisitesRows({
+    ogrnLabel: isLegal ? "ОГРН" : isIp ? "ОГРНИП" : undefined,
+    ogrn: o.contractor_ogrnip,
+    inn: o.contractor_inn,
+    passport: person ? o.contractor_passport : "",
+    addressLabel: isLegal ? "Юр. адрес" : "Адрес",
+    address: o.contractor_address,
+    phone: o.contractor_phone,
+    email: o.contractor_email,
+    account: o.contractor_account,
+    bank: o.contractor_bank_name,
+    bik: o.contractor_bik,
+    corr: o.contractor_corr_account,
+  }))
+}
+
+function customerTitle(ctx: ContractContext): string {
+  const { options: o, object } = ctx
+  const fallback = isHire(o) ? ctx.company?.contact_full_name || ctx.company?.name || "" : object.client_name || ""
+  if (o.customer_type === "legal" && o.customer_org_name) return o.customer_org_name
+  if (o.customer_type === "entrepreneur") return `ИП ${o.customer_name || fallback}`
+  return o.customer_name || fallback
 }
 
 function customerCard(ctx: ContractContext, address: string): string {
-  const { options: o, object } = ctx
+  const { options: o, object, company: c } = ctx
   const isLegal = o.customer_type === "legal"
-  const name = isLegal && o.customer_org_name ? o.customer_org_name : o.customer_type === "entrepreneur" ? `ИП ${o.customer_name || object.client_name || ""}` : o.customer_name || object.client_name || ""
+  if (isHire(o)) {
+    const ogrn = isLegal ? o.customer_ogrn : o.customer_ogrnip
+    const rows = requisitesRows(companyRequisites(c, o.customer_type, ogrn || c?.ogrn)) + row("Адрес объекта", address)
+    return card("Заказчик", customerTitle(ctx), rows)
+  }
   const rows = [
     o.customer_type === "entrepreneur" ? row("ОГРНИП", o.customer_ogrnip) : "",
     isLegal ? row("ОГРН", o.customer_ogrn) : "",
@@ -149,19 +244,22 @@ function customerCard(ctx: ContractContext, address: string): string {
     row("E-mail", object.email),
     row("Адрес объекта", address),
   ].join("")
-  return card("Заказчик", name, rows)
+  return card("Заказчик", customerTitle(ctx), rows)
 }
 
 /**
  * Реквизиты и подписи. Под роспись — высокое поле во всю ширину колонки, чтобы размашистая
- * подпись не наезжала на текст. Подпись и печать компании накладываются поверх поля по галочкам
+ * подпись не наезжала на текст. Подпись и печать компании ставятся на стороне, которой является компания
  */
 function requisitesAndSigns(ctx: ContractContext, companyName: string, address: string): string {
   const { options: o, object, company: c } = ctx
-  const signer = o.contractor_type === "legal"
-    ? `${o.contractor_director_position || c?.director_position || "Директор"} ${o.contractor_director_name || c?.director_name || c?.contact_full_name || ""}`.trim()
-    : o.contractor_name || c?.contact_full_name || companyName
-  const customer = o.customer_name || object.client_name || ""
+  const hire = isHire(o)
+  const contractorSigner = o.contractor_type === "legal"
+    ? `${o.contractor_director_position || (hire ? "" : c?.director_position) || "Директор"} ${o.contractor_director_name || (hire ? "" : c?.director_name || c?.contact_full_name) || ""}`.trim()
+    : o.contractor_name || (hire ? "" : c?.contact_full_name || companyName)
+  const customerSigner = o.customer_type === "legal" && (o.customer_director_name || hire)
+    ? `${o.customer_director_position || "Директор"} ${o.customer_director_name || c?.director_name || c?.contact_full_name || ""}`.trim()
+    : o.customer_name || (hire ? c?.contact_full_name || companyName : object.client_name) || ""
   const sig = o.apply_signature && c?.signature_url
     ? `<img src="${esc(c.signature_url)}" crossorigin="anonymous" alt="" style="position:absolute;left:10px;bottom:4px;height:62px;max-width:200px;object-fit:contain"/>`
     : ""
@@ -169,24 +267,26 @@ function requisitesAndSigns(ctx: ContractContext, companyName: string, address: 
   const stamp = withStamp
     ? `<img src="${esc(c?.stamp_url)}" crossorigin="anonymous" alt="" style="position:absolute;right:0;top:88px;height:118px;width:118px;object-fit:contain;opacity:0.92"/>`
     : ""
+  const ours = sig + stamp
   const box = (overlay: string) =>
     `<div style="position:relative;height:84px;border-bottom:1px solid #555;margin:0 0 4px">${overlay}</div>`
+  const bottomPad = withStamp ? "80px" : "0"
   return `<table style="width:100%;margin-top:16px;border-collapse:collapse">
 <tr>
 <td style="width:50%;vertical-align:top;padding-right:8px;border:none">${contractorCard(ctx, companyName)}</td>
 <td style="width:50%;vertical-align:top;padding-left:8px;border:none">${customerCard(ctx, address)}</td>
 </tr>
 <tr style="page-break-inside:avoid;break-inside:avoid">
-<td style="width:50%;vertical-align:top;padding:36px 20px ${withStamp ? "80px" : "0"} 0;border:none">
+<td style="width:50%;vertical-align:top;padding:36px 20px ${bottomPad} 0;border:none">
 <p style="margin:0 0 6px"><strong>ОТ ИМЕНИ ПОДРЯДЧИКА</strong></p>
-${box(sig + stamp)}
-<p style="margin:0">${esc(signer)}</p>
+${box(hire ? "" : ours)}
+<p style="margin:0">${esc(contractorSigner)}</p>
 <p style="font-size:11px;color:#666;margin:2px 0 0">(подпись)</p>
 </td>
-<td style="width:50%;vertical-align:top;padding:36px 0 0 20px;border:none">
+<td style="width:50%;vertical-align:top;padding:36px 0 ${bottomPad} 20px;border:none">
 <p style="margin:0 0 6px"><strong>ОТ ИМЕНИ ЗАКАЗЧИКА</strong></p>
-${box("")}
-<p style="margin:0">${esc(customer)}</p>
+${box(hire ? ours : "")}
+<p style="margin:0">${esc(customerSigner)}</p>
 <p style="font-size:11px;color:#666;margin:2px 0 0">(подпись)</p>
 </td>
 </tr>
@@ -363,7 +463,7 @@ ${materialsBody}`
 <p>5.3. ${docDelivery53}</p>
 <p>5.4. В случае если в течение ${unilateralDays} ${unilateralDaysKind} с момента отправки Акта сдачи-приёмки Заказчик не подпишет его или не направит Подрядчику письменный мотивированный отказ, работы по соответствующему этапу считаются принятыми Заказчиком в полном объёме и надлежащего качества. В этом случае односторонний Акт, подписанный Подрядчиком, имеет полную юридическую силу и является основанием для оплаты.</p>`
 
-  const companyName = ctx.company?.name || ctx.company?.contact_full_name || o.contractor_name || ""
+  const companyName = ctx.company?.name || ctx.company?.contact_full_name || (isHire(o) ? "" : o.contractor_name) || ""
 
   return `
 <div class="contract-doc">

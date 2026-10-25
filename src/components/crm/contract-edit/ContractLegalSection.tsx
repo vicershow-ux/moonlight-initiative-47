@@ -5,6 +5,7 @@ import { ToggleGroup } from "@/components/crm/contract-create/ToggleGroup"
 import { InlineInput, InlineSelect } from "@/components/crm/contract-create/InlineField"
 import { CompanyData, ContractOptions, ObjectItem } from "@/lib/api"
 import { durationWordsOnlyRu } from "@/lib/numberToWordsRu"
+import { HireRequisitesPreview } from "./HireRequisitesPreview"
 import { copiesTotalOptions, copiesPerPartyOptions, daysKindOptions } from "./constants"
 
 interface ContractLegalSectionProps {
@@ -147,6 +148,9 @@ export function ContractLegalSection({
     applyStamp={Boolean(options.apply_stamp)}
     onChange={(k, v) => updateOption(k, v)}
   />
+  {options.our_role === "customer" ? (
+    <HireRequisitesPreview options={options} company={company} />
+  ) : (
   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-white/10 pt-4 items-stretch">
     <div className="md:border-r md:border-white/10 md:pr-6 flex flex-col">
       <p className="text-xs uppercase tracking-wide text-white/50 mb-2">Подрядчик (Исполнитель)</p>
@@ -204,6 +208,7 @@ export function ContractLegalSection({
       </div>
     </div>
   </div>
+  )}
 
   {/* Статус договора */}
   <div className="mt-6">

@@ -585,6 +585,18 @@ export interface ContractOptions {
   // Наложить на договор подпись и печать из раздела «Компания»
   apply_signature?: boolean
   apply_stamp?: boolean
+  // Наша роль в договоре: обычно мы — Подрядчик; «customer» — нанимаем исполнителя сами
+  our_role?: "contractor" | "customer"
+  // Реквизиты нанятого исполнителя (когда our_role = customer)
+  contractor_inn?: string
+  contractor_phone?: string
+  contractor_email?: string
+  contractor_address?: string
+  contractor_passport?: string
+  contractor_account?: string
+  contractor_bank_name?: string
+  contractor_bik?: string
+  contractor_corr_account?: string
 }
 
 export interface Contract {

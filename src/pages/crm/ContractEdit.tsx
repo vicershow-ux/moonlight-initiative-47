@@ -58,6 +58,56 @@ function contractorFromCompany(comp: CompanyData | null, type: string): Partial<
   return out
 }
 
+type Opts = Required<ContractOptions>
+
+/** Данные своей компании в роли Заказчика */
+function customerFromCompany(comp: CompanyData | null): Partial<Opts> {
+  const type = contractorTypeOf(comp)
+  const customerType: Opts["customer_type"] = type === "legal" ? "legal" : type === "entrepreneur" ? "entrepreneur" : "individual"
+  const person = comp?.contact_full_name || comp?.name || ""
+  return {
+    customer_type: customerType,
+    customer_name: customerType === "legal" ? comp?.name || person : person,
+    customer_org_name: customerType === "legal" ? comp?.name || "" : "",
+    customer_director_position: customerType === "legal" ? comp?.director_position || "" : "",
+    customer_director_name: customerType === "legal" ? comp?.director_name || comp?.contact_full_name || "" : "",
+    customer_ogrn: customerType === "legal" ? comp?.ogrn || "" : "",
+    customer_ogrnip: customerType === "entrepreneur" ? comp?.ogrn || "" : "",
+  }
+}
+
+const EMPTY_CONTRACTOR: Partial<Opts> = {
+  contractor_type: "self_employed",
+  contractor_name: "",
+  contractor_org_name: "",
+  contractor_director_position: "",
+  contractor_director_name: "",
+  contractor_ogrnip: "",
+}
+
+/** Переключение «кто мы в договоре»: свою компанию переносим на нужную сторону, другую сторону очищаем */
+function switchRole(prev: Opts, role: Opts["our_role"], comp: CompanyData | null, obj: ObjectItem | null): Opts {
+  if (role === prev.our_role) return prev
+  if (role === "customer") {
+    return { ...prev, our_role: "customer", ...customerFromCompany(comp), ...EMPTY_CONTRACTOR }
+  }
+  const type = contractorTypeOf(comp) ?? "individual"
+  return {
+    ...prev,
+    our_role: "contractor",
+    customer_type: "individual",
+    customer_name: obj?.client_name || "",
+    customer_org_name: "",
+    customer_director_position: "",
+    customer_director_name: "",
+    customer_ogrn: "",
+    customer_ogrnip: "",
+    ...EMPTY_CONTRACTOR,
+    ...contractorFromCompany(comp, type),
+    contractor_type: type as Opts["contractor_type"],
+  }
+}
+
 export default function ContractEdit() {
   const { id, contractId } = useParams()
   const [searchParams] = useSearchParams()
@@ -118,7 +168,7 @@ export default function ContractEdit() {
           const saved = { ...defaultOptions, ...contract.options }
           // В старых договорах у ИП/физлица в подрядчике стоит название компании — меняем на ФИО,
           // и подставляем ОГРН(ИП), если он не был заполнен
-          if (contract.status !== "signed" && comp) {
+          if (contract.status !== "signed" && comp && saved.our_role !== "customer") {
             if (saved.contractor_type !== "legal" && comp.contact_full_name && saved.contractor_name === comp.name) {
               saved.contractor_name = comp.contact_full_name
             }
@@ -131,7 +181,11 @@ export default function ContractEdit() {
           const qsEstimate = searchParams.get("estimate_id")
           const initialEstimateId = qsEstimate || (estimatesList[0] ? String(estimatesList[0].id) : "")
           setEstimateId(initialEstimateId)
+          const hireMode = searchParams.get("role") === "customer"
           setOptions((prev) => {
+            if (hireMode) {
+              return switchRole({ ...prev, object_address: obj.address || "" }, "customer", comp, obj)
+            }
             const type = contractorTypeOf(comp) ?? prev.contractor_type
             return {
               ...prev,
@@ -149,9 +203,10 @@ export default function ContractEdit() {
 
   const updateOption = <K extends keyof ContractOptions>(key: K, value: ContractOptions[K]) => {
     setOptions((prev) => {
+      if (key === "our_role") return switchRole(prev, value as Opts["our_role"], company, object)
       const next = { ...prev, [key]: value as Required<ContractOptions>[K] }
-      // Сменили статус подрядчика — подставляем данные своей компании под этот статус
-      if (key === "contractor_type" && company) {
+      // Сменили статус подрядчика — подставляем данные своей компании под этот статус (только когда подрядчик — мы)
+      if (key === "contractor_type" && company && prev.our_role !== "customer") {
         Object.assign(next, contractorFromCompany(company, String(value)))
       }
       return next
@@ -224,7 +279,10 @@ export default function ContractEdit() {
   const isStaged = options.work_order === "staged"
 
   return (
-    <CrmLayout title="Конструктор договора" subtitle={`Объект: ${object.object_code} · ${object.client_name}`}>
+    <CrmLayout
+      title={options.our_role === "customer" ? "Договор с исполнителем" : "Конструктор договора"}
+      subtitle={`Объект: ${object.object_code} · ${object.client_name}`}
+    >
       {/* Панель действий */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 mb-4 sm:mb-6 sticky top-0 z-10 bg-[#161616]/95 backdrop-blur py-2 -mx-2 px-2 rounded-lg">
         <button
@@ -268,6 +326,7 @@ export default function ContractEdit() {
           options={options}
           updateOption={updateOption}
           serviceCategories={serviceCategories}
+          company={company}
         />
 
         <ContractSubjectSection

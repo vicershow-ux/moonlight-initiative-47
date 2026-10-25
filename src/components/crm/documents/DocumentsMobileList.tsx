@@ -113,15 +113,15 @@ export function DocumentsMobileList({ docs }: { docs: DocumentsData }) {
       {showContracts && filteredContracts.map((c) => (
         <DocumentMobileCard
           key={`m-con-${c.id}`}
-          kind="Договор"
-          kindClass="text-blue-400"
+          kind={c.options?.our_role === "customer" ? "Договор с исполнителем" : "Договор"}
+          kindClass={c.options?.our_role === "customer" ? "text-orange-300" : "text-blue-400"}
           title="Договор подряда на ремонт"
           subtitle={`№ ${c.contract_number}`}
           createdAt={c.contract_date || c.created_at}
           amount={Number(c.total_amount)}
           obj={objectsMap[c.object_id]}
           objectCode={c.object_code}
-          clientName={c.client_name}
+          clientName={c.options?.our_role === "customer" ? c.options.contractor_org_name || c.options.contractor_name || "—" : c.client_name}
           objectStatuses={objectStatuses}
           statusBadge={
             <span className={`px-2 py-1 rounded-full text-[11px] ${c.status === "signed" ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"}`}>
