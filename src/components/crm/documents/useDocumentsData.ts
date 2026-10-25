@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom"
 import { useEffect, useMemo, useState } from "react"
 import { estimatesApi, objectsApi, objectStatusesApi, contractsApi, actsApi, materialsApi, addendaApi, Estimate, ObjectItem, ObjectStatus, Contract, Act, MaterialEstimate, ContractAddendum, MaterialItem } from "@/lib/api"
 import { printMaterials, downloadMaterialsPdf } from "@/lib/printMaterials"
@@ -20,6 +21,7 @@ async function safeDelete(fn: () => Promise<unknown>) {
 
 export function useDocumentsData() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [estimates, setEstimates] = useState<Estimate[]>([])
   const [contracts, setContracts] = useState<Contract[]>([])
   const [acts, setActs] = useState<Act[]>([])
@@ -197,6 +199,10 @@ export function useDocumentsData() {
   }
 
   const openPurchaseList = async (m: MaterialEstimate, mode: "view" | "print" | "pdf") => {
+    if (mode === "view") {
+      navigate(`/cabinet/purchase-lists/${m.id}`)
+      return
+    }
     setMatBusyId(mode === "pdf" ? -m.id : m.id)
     try {
       const { obj, items } = await loadMatDoc(m.id)

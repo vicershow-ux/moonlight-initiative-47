@@ -396,7 +396,7 @@ def handler(event: dict, context) -> dict:
         if method == 'GET' and entity == 'estimate' and row_id:
             cur.execute(
                 "SELECT me.id, me.object_id, me.title, me.room_names, me.total_amount, "
-                "me.items_json, me.created_at, o.object_code, o.client_name, o.address "
+                "me.items_json, me.created_at, o.object_code, o.client_name, o.address, me.bought_json "
                 "FROM material_estimates me JOIN objects o ON o.id = me.object_id "
                 f"WHERE me.id = %s AND me.company_id = %s{client_cond}",
                 [row_id, company_id] + client_args
@@ -410,6 +410,7 @@ def handler(event: dict, context) -> dict:
                     'room_names': row[3], 'total_amount': row[4],
                     'items': json.loads(row[5] or '[]'), 'created_at': row[6],
                     'object_code': row[7], 'client_name': row[8], 'address': row[9],
+                    'bought': json.loads(row[10] or '[]'),
                 }
             })
 
@@ -466,14 +467,19 @@ def handler(event: dict, context) -> dict:
 
             cur.execute(
                 "SELECT me.id, me.object_id, me.title, me.room_names, me.total_amount, "
-                "me.created_at, o.object_code, o.client_name "
+                "me.created_at, o.object_code, o.client_name, me.items_json, me.bought_json "
                 "FROM material_estimates me JOIN objects o ON o.id = me.object_id "
                 "WHERE me.company_id = %s ORDER BY me.created_at DESC",
                 (company_id,)
             )
             ekeys = ['id', 'object_id', 'title', 'room_names', 'total_amount',
                      'created_at', 'object_code', 'client_name']
-            estimates = [dict(zip(ekeys, r)) for r in cur.fetchall()]
+            estimates = []
+            for r in cur.fetchall():
+                e = dict(zip(ekeys, r[:8]))
+                e['items_count'] = len(json.loads(r[8] or '[]'))
+                e['bought_count'] = len(json.loads(r[9] or '[]'))
+                estimates.append(e)
 
             return response(200, {
                 'materials': materials,
@@ -695,6 +701,19 @@ def handler(event: dict, context) -> dict:
             new_id = cur.fetchone()[0]
             conn.commit()
             return response(200, {'success': True, 'id': new_id})
+
+        if method == 'PUT' and entity == 'estimate' and params.get('action') == 'bought':
+            if not row_id:
+                return response(400, {'error': 'Не указан список'})
+            bought = sorted({int(x) for x in (body.get('bought') or []) if str(x).lstrip('-').isdigit()})
+            cur.execute(
+                "UPDATE material_estimates SET bought_json = %s WHERE id = %s AND company_id = %s RETURNING id",
+                (json.dumps(bought), row_id, company_id)
+            )
+            if not cur.fetchone():
+                return response(404, {'error': 'Список не найден'})
+            conn.commit()
+            return response(200, {'success': True, 'bought': bought})
 
         if method == 'DELETE' and entity == 'estimate':
             if not row_id:

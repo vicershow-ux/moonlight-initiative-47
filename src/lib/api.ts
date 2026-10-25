@@ -1767,6 +1767,9 @@ export interface MaterialEstimate {
   client_name: string
   address?: string
   items?: ObjectMaterial[]
+  bought?: number[]
+  items_count?: number
+  bought_count?: number
 }
 
 export const materialsApi = {
@@ -1799,6 +1802,15 @@ export const materialsApi = {
       headers: { ...authHeaders() },
     })
     return parseResponse(res) as Promise<{ estimate: MaterialEstimate }>
+  },
+
+  async setBought(id: number, bought: number[]) {
+    const res = await fetch(`${MATERIALS_URL}?entity=estimate&id=${id}&action=bought`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ bought }),
+    })
+    return parseResponse(res) as Promise<{ success: boolean; bought: number[] }>
   },
 
   async sendEstimateEmail(id: number, payload: { email: string; pdf_base64: string; message?: string }) {

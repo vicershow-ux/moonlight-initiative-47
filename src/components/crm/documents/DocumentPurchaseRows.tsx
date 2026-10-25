@@ -18,6 +18,16 @@ interface PurchaseRowProps {
 
 const kindClass = "text-[#7FC8A9]"
 
+function BoughtBadge({ m }: { m: MaterialEstimate }) {
+  const total = Number(m.items_count || 0)
+  const done = Number(m.bought_count || 0)
+  if (total > 0 && done >= total)
+    return <span className="px-2 py-0.5 rounded-full text-xs bg-green-500/20 text-green-300">всё куплено</span>
+  if (done > 0)
+    return <span className="px-2 py-0.5 rounded-full text-xs bg-amber-500/20 text-amber-300">куплено {done} из {total}</span>
+  return <span className="px-2 py-0.5 rounded-full text-xs bg-white/10 text-white/60">не начат</span>
+}
+
 export function DocumentPurchaseRow({ m, obj, objectStatuses, busyId, onOpen, onDelete }: PurchaseRowProps) {
   return (
     <tr className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
@@ -42,7 +52,7 @@ export function DocumentPurchaseRow({ m, obj, objectStatuses, busyId, onOpen, on
         ) : "—"}
       </td>
       <td className="py-3 px-4">
-        <span className="px-2 py-0.5 rounded-full text-xs bg-green-500/20 text-green-300">сохранён</span>
+        <BoughtBadge m={m} />
       </td>
       <td className="py-3 px-4">
         <div className="flex items-center gap-3">
@@ -80,6 +90,7 @@ export function DocumentPurchaseCard({ m, obj, objectStatuses, busyId, onOpen, o
         </div>
         <div className="text-right shrink-0">
           <p className="font-medium">{formatMoney(Number(m.total_amount))}</p>
+          <div className="mt-1"><BoughtBadge m={m} /></div>
           {status && (
             <span className={cn("inline-block mt-1 px-2 py-0.5 rounded-full text-[11px]", getStatusBadgeClass(objectStatuses.find((s) => s.name === status)?.color))}>
               {status}

@@ -26,6 +26,7 @@ export interface PurchaseLine {
   /** сколько сэкономили против самого дорогого предложения */
   saved: number
   roomName: string
+  index: number
 }
 
 export interface PurchaseShop {
@@ -85,7 +86,7 @@ export function buildPurchasePlan(
   let shortageCount = 0
   let unknownShopCount = 0
 
-  items.forEach((item) => {
+  items.forEach((item, index) => {
     const ref = catalog.find((c) => c.id === item.material_id)
     const offers = ref?.offers || []
     const qty = num(item.qty)
@@ -123,6 +124,7 @@ export function buildPurchasePlan(
       offersCount: priced.length,
       saved: lineSaved,
       roomName: item.room_name || "",
+      index,
     }
 
     if (!shops.has(shopName)) {

@@ -30,7 +30,7 @@ export function PurchaseListModal({
     setSaved("")
     try {
       await materialsApi.createEstimate({ object_id: object.id, title: "Список закупок", items })
-      setSaved("Список сохранён в «Документы» — его можно открыть, скачать и распечатать")
+      setSaved("Список сохранён в «Документы» — откройте его там и отмечайте купленное прямо в магазине")
     } catch (e) {
       setSaved((e as Error)?.message || "Не удалось сохранить")
     } finally {
