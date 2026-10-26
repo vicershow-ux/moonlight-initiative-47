@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 
 from tasks import portal_tasks, portal_complete
 from documents import portal_documents, portal_document, portal_sign
+from chat import portal_chat
 from common import (response, token_of, upload_photo, clean_photos, executor_object_ids_sql,
                     REPORT_SELECT, reports_rows, f, display_name)
 
@@ -117,6 +118,9 @@ def handle_portal(method, action, event, conn, cur, params):
         )
         conn.commit()
         return response(200, {'id': new_id})
+
+    if action == 'chat':
+        return portal_chat(method, cur, conn, ex, params, body, can_access_object)
 
     if action == 'document' and method == 'GET':
         return portal_document(cur, ex, params)

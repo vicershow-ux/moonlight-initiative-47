@@ -10,6 +10,7 @@ import { ObjectInfoPanels } from "@/components/crm/object-detail/ObjectInfoPanel
 import { ObjectDocumentsPanel } from "@/components/crm/object-detail/ObjectDocumentsPanel"
 import { ObjectSidebar } from "@/components/crm/object-detail/ObjectSidebar"
 import { ObjectChat } from "@/components/crm/object-detail/ObjectChat"
+import { ObjectExecutorChat } from "@/components/crm/executors/ObjectExecutorChat"
 import { ObjectPhotoReports } from "@/components/crm/object-detail/ObjectPhotoReports"
 import { ObjectPaymentSchedule } from "@/components/crm/object-detail/ObjectPaymentSchedule"
 import { formatDateTime } from "@/components/crm/object-detail/utils"
@@ -255,6 +256,7 @@ export default function ObjectDetail() {
 
         <div className="flex flex-col gap-4">
           <ObjectChat objectId={object.id} />
+          {!isClient && <ObjectExecutorChat objectId={object.id} />}
           <ObjectPaymentSchedule
             objectId={object.id}
             isClient={isClient}

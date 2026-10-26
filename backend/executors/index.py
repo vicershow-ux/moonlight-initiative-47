@@ -7,6 +7,7 @@ from common import (get_conn, cors_headers, response, token_of, num, f, clean_ex
 from portal import handle_portal, hash_password
 from summary import object_summary
 from tasks import handle_tasks
+from chat import handle_chat
 
 
 def current_user(cur, event):
@@ -228,6 +229,8 @@ def handler(event: dict, context) -> dict:
             if user['role'] not in ('owner', 'admin'):
                 return response(403, {'error': 'Сводка доступна руководителю'})
             return object_summary(cur, user, params.get('object_id'))
+        if action == 'chat':
+            return handle_chat(method, cur, conn, user, params, body)
         if action == 'tasks':
             return handle_tasks(method, cur, conn, user, params, body)
         if action == 'payment':

@@ -231,6 +231,46 @@ export const tasksApi = {
   },
 }
 
+export interface ExecutorMessage {
+  id: number
+  executor_id: number
+  object_id: number
+  author: "executor" | "company"
+  author_name: string
+  body: string
+  photos: string[]
+  created_at: string
+}
+
+export interface ChatThread {
+  executor_id: number
+  name: string
+  specialty: string
+  access_enabled: boolean
+  unread: number
+  last_at: string | null
+}
+
+type ChatPhoto = { name: string; data: string }
+const chatPhotos = (photos: ChatPhoto[]) => photos.map((p) => ({ file_name: p.name, data: p.data }))
+
+export const executorChatApi = {
+  async threads(objectId: number) {
+    const res = await fetch(`${URL_}?action=chat&object_id=${objectId}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ threads: ChatThread[] }>
+  },
+  async messages(objectId: number, executorId: number, after = 0) {
+    const res = await fetch(`${URL_}?action=chat&object_id=${objectId}&executor_id=${executorId}&after=${after}`, {
+      headers: { ...authHeaders() },
+    })
+    return parseResponse(res) as Promise<{ messages: ExecutorMessage[] }>
+  },
+  async send(objectId: number, executorId: number, body: string, photos: ChatPhoto[]) {
+    const res = await fetch(`${URL_}?action=chat&object_id=${objectId}&executor_id=${executorId}`, json("POST", { body, photos: chatPhotos(photos) }))
+    return parseResponse(res) as Promise<{ id: number }>
+  },
+}
+
 /** Срок задания: просрочено / сегодня / осталось N дней */
 export function dueInfo(due: string | null, status: TaskStatus) {
   if (!due) return { text: "без срока", cls: "text-white/40" }
@@ -364,6 +404,22 @@ export const portalApi = {
       body: "{}",
     })
     return parseResponse(res) as Promise<{ signed: boolean; executor_signed_at: string }>
+  },
+  async chatUnread() {
+    const res = await fetch(`${URL_}?portal=1&action=chat`, { headers: portalHeaders() })
+    return parseResponse(res) as Promise<{ unread: Record<string, number> }>
+  },
+  async chatMessages(objectId: number, after = 0) {
+    const res = await fetch(`${URL_}?portal=1&action=chat&object_id=${objectId}&after=${after}`, { headers: portalHeaders() })
+    return parseResponse(res) as Promise<{ messages: ExecutorMessage[] }>
+  },
+  async chatSend(objectId: number, body: string, photos: ChatPhoto[]) {
+    const res = await fetch(`${URL_}?portal=1&action=chat&object_id=${objectId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...portalHeaders() },
+      body: JSON.stringify({ body, photos: chatPhotos(photos) }),
+    })
+    return parseResponse(res) as Promise<{ id: number }>
   },
   async completeTask(id: number, payload: { done: boolean; comment?: string; photos?: string[] }) {
     const res = await fetch(`${URL_}?portal=1&action=task&id=${id}`, {

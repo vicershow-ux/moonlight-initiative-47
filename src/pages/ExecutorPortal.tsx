@@ -7,6 +7,7 @@ import { getPortalToken, clearPortalToken, portalApi, PortalData } from "@/lib/e
 import { reportStatus } from "@/components/crm/executors/ExecutorReportsList"
 import { PortalTasks } from "@/components/executor-portal/PortalTasks"
 import { PortalDocuments } from "@/components/executor-portal/PortalDocuments"
+import { PortalChat } from "@/components/executor-portal/PortalChat"
 import { formatDate } from "@/components/crm/documents/constants"
 
 const input =
@@ -209,6 +210,8 @@ export default function ExecutorPortal() {
         <PortalDocuments contracts={data.contracts || []} acts={data.acts || []} onChanged={load} />
 
         <PortalTasks tasks={data.tasks || []} onChanged={load} />
+
+        <PortalChat objects={data.objects} companyName={data.company.name} />
 
         <ReportForm data={data} onSent={load} />
 
