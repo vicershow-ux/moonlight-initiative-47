@@ -1,8 +1,38 @@
 {
   "tests": [
-    {"name": "OPTIONS CORS preflight", "method": "OPTIONS", "path": "/", "expectedStatus": 200},
-    {"name": "GET without auth returns 401", "method": "GET", "path": "/", "expectedStatus": 401},
-    {"name": "Portal me without auth returns 401", "method": "GET", "path": "/?portal=1&action=me", "expectedStatus": 401},
-    {"name": "Portal login with wrong password returns 401", "method": "POST", "path": "/?portal=1&action=login", "body": {"email": "nobody@example.com", "password": "wrong-pass"}, "expectedStatus": 401}
+    {
+      "name": "OPTIONS CORS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET without auth returns 401",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Portal me without auth returns 401",
+      "method": "GET",
+      "path": "/?portal=1&action=me",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Portal login with wrong password returns 401",
+      "method": "POST",
+      "path": "/?portal=1&action=login",
+      "body": {
+        "email": "nobody@example.com",
+        "password": "wrong-pass"
+      },
+      "expectedStatus": 401
+    },
+    {
+      "name": "Object summary without auth returns 401",
+      "method": "GET",
+      "path": "/?action=object_summary&object_id=1",
+      "expectedStatus": 401
+    }
   ]
 }

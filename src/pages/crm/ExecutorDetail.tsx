@@ -220,7 +220,7 @@ export default function ExecutorDetail() {
               <p className="text-sm text-white/60">
                 Вход открыт: <span className="text-white">{ex.login_email}</span>
                 <span className="block text-xs text-white/40 mt-1">
-                  Адрес входа: {window.location.origin}/executor
+                  Входит через «Войти» на сайте
                   {ex.last_login_at ? ` · был ${formatDate(ex.last_login_at)}` : " · ещё не входил"}
                 </span>
               </p>

@@ -2,6 +2,7 @@ import { ObjectItem } from "@/lib/api"
 import { ObjectFilesCard } from "@/components/crm/ObjectFilesCard"
 import { ObjectReceiptsCard } from "@/components/crm/purchase/ObjectReceiptsCard"
 import { ObjectExecutorsCard } from "@/components/crm/executors/ObjectExecutorsCard"
+import { ObjectCostSummary } from "./ObjectCostSummary"
 import { useAuth } from "@/contexts/AuthContext"
 import { formatMoney, formatDateTime } from "./utils"
 
@@ -40,6 +41,8 @@ export function ObjectSidebar({
           </div>
         </div>
       </div>
+
+      {(user?.role === "owner" || user?.role === "admin") && <ObjectCostSummary objectId={object.id} />}
 
       <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
         <p className="font-medium mb-4">Информация</p>

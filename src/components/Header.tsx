@@ -13,7 +13,7 @@ export function Header() {
   const isLandingPage = location.pathname === "/"
   const [scrolled, setScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [authOpen, setAuthOpen] = useState(false)
+  const [authOpen, setAuthOpen] = useState(() => new URLSearchParams(location.search).get("login") === "1")
 
   const openAuth = () => {
     setAuthOpen(true)

@@ -5,6 +5,7 @@ from datetime import date
 from common import (get_conn, cors_headers, response, token_of, num, f, clean_executor, FIELDS, display_name,
                     REPORT_SELECT, reports_rows)
 from portal import handle_portal, hash_password
+from summary import object_summary
 
 
 def current_user(cur, event):
@@ -179,6 +180,9 @@ def set_access(cur, cid, eid, body):
         cur.execute("SELECT 1 FROM executors WHERE lower(login_email) = %s AND id <> %s", (login, eid))
         if cur.fetchone():
             return 'Эта почта уже используется другим исполнителем'
+        cur.execute("SELECT 1 FROM users WHERE lower(email) = %s", (login,))
+        if cur.fetchone():
+            return 'На эту почту уже зарегистрирован сотрудник или заказчик — укажите другую'
     if password and len(password) < 6:
         return 'Пароль — не короче 6 символов'
     cur.execute("SELECT password_hash FROM executors WHERE id = %s", (eid,))
@@ -194,7 +198,7 @@ def set_access(cur, cid, eid, body):
 
 
 def handler(event: dict, context) -> dict:
-    '''Исполнители (субподрядчики): справочник с реквизитами, объекты, оплаты в расходы, отчёты и кабинет исполнителя'''
+    '''Исполнители (субподрядчики): справочник, оплаты в расходы, отчёты, кабинет исполнителя и сводка расходов по объекту'''
     method = event.get('httpMethod', 'GET')
     if method == 'OPTIONS':
         return {'statusCode': 200, 'headers': cors_headers(), 'body': ''}
@@ -215,6 +219,10 @@ def handler(event: dict, context) -> dict:
         cid = user['company_id']
         body = json.loads(event.get('body') or '{}') if method in ('POST', 'PUT') else {}
 
+        if action == 'object_summary':
+            if user['role'] not in ('owner', 'admin'):
+                return response(403, {'error': 'Сводка доступна руководителю'})
+            return object_summary(cur, user, params.get('object_id'))
         if action == 'payment':
             return handle_payments(method, cur, conn, user, params, body)
         if action == 'reports':

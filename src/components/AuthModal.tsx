@@ -59,7 +59,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
       } else {
         reset()
         onOpenChange(false)
-        navigate("/cabinet")
+        navigate(result.executor ? "/executor" : "/cabinet")
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Что-то пошло не так")

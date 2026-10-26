@@ -4,6 +4,8 @@ import { UserData } from "@/lib/api"
 export interface LoginOutcome {
   requires2fa: boolean
   challengeToken?: string
+  /** Вошёл исполнитель — его ведём в кабинет исполнителя */
+  executor?: boolean
 }
 
 export interface AuthContextValue {

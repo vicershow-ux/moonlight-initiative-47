@@ -1,59 +1,14 @@
 import { useEffect, useRef, useState } from "react"
+import { Navigate } from "react-router-dom"
 import Icon from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 import { compressImage } from "@/lib/compressImage"
-import { getPortalToken, setPortalToken, clearPortalToken, portalApi, PortalData } from "@/lib/executorsApi"
+import { getPortalToken, clearPortalToken, portalApi, PortalData } from "@/lib/executorsApi"
 import { reportStatus } from "@/components/crm/executors/ExecutorReportsList"
 import { formatMoney, formatDate } from "@/components/crm/documents/constants"
 
 const input =
   "w-full bg-[#161616] border border-white/10 rounded-lg px-3 min-h-[48px] text-base outline-none focus:border-[#D4AF37]/50"
-
-function LoginForm({ onDone }: { onDone: () => void }) {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState("")
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setBusy(true)
-    setError("")
-    try {
-      const { token } = await portalApi.login(email, password)
-      setPortalToken(token)
-      onDone()
-    } catch (err) {
-      setError((err as Error)?.message || "Не удалось войти")
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <div className="min-h-screen bg-[#161616] text-white flex items-center justify-center p-4">
-      <form onSubmit={submit} className="w-full max-w-sm bg-[#1f1f1f] border border-white/10 rounded-2xl p-6 flex flex-col gap-3">
-        <div className="w-12 h-12 rounded-full bg-orange-500/15 text-orange-300 flex items-center justify-center mx-auto">
-          <Icon name="HardHat" size={22} />
-        </div>
-        <h1 className="text-center text-lg font-semibold">Кабинет исполнителя</h1>
-        <p className="text-center text-xs text-white/40 -mt-1 mb-2">Отчёты о работе по вашим объектам</p>
-        <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Почта" className={input} autoComplete="username" required />
-        <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="Пароль" className={input} autoComplete="current-password" required />
-        {error && <p className="text-sm text-red-400">{error}</p>}
-        <button
-          type="submit"
-          disabled={busy}
-          className="flex items-center justify-center gap-2 min-h-[48px] rounded-lg bg-[#D4AF37] hover:bg-[#B8860B] text-[#161616] font-medium disabled:opacity-60"
-        >
-          {busy && <Icon name="Loader2" size={16} className="animate-spin" />}
-          Войти
-        </button>
-        <p className="text-center text-[11px] text-white/30">Почту и пароль выдаёт заказчик работ</p>
-      </form>
-    </div>
-  )
-}
 
 function ReportForm({ data, onSent }: { data: PortalData; onSent: () => void }) {
   const [objectId, setObjectId] = useState<number | "">(data.objects[0]?.id ?? "")
@@ -212,7 +167,7 @@ export default function ExecutorPortal() {
     if (authed) load()
   }, [authed])
 
-  if (!authed) return <LoginForm onDone={() => setAuthed(true)} />
+  if (!authed) return <Navigate to="/?login=1" replace />
 
   if (loading && !data) {
     return (

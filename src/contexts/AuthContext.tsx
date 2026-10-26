@@ -1,5 +1,6 @@
 import { useContext, useState, useEffect, ReactNode } from "react"
 import { authApi, getToken, setToken, clearToken, UserData } from "@/lib/api"
+import { portalApi, setPortalToken } from "@/lib/executorsApi"
 import { AuthContext, AuthContextValue, LoginOutcome } from "./authContextValue"
 
 export type { AuthContextValue, LoginOutcome }
@@ -22,7 +23,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = async (email: string, password: string, remember = true): Promise<LoginOutcome> => {
-    const data = await authApi.login({ email, password })
+    let data: Awaited<ReturnType<typeof authApi.login>>
+    try {
+      data = await authApi.login({ email, password })
+    } catch (err) {
+      // Не нашли среди сотрудников и заказчиков — пробуем как исполнителя
+      let blocked = ""
+      const exec = await portalApi.login(email, password).catch((e: Error) => {
+        if (/отключ/i.test(e?.message || "")) blocked = e.message
+        return null
+      })
+      if (blocked) throw new Error(blocked)
+      if (exec?.token) {
+        setPortalToken(exec.token)
+        return { requires2fa: false, executor: true }
+      }
+      throw err
+    }
     if (data.requires_2fa) {
       return { requires2fa: true, challengeToken: data.challenge_token }
     }

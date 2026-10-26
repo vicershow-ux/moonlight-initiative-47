@@ -189,8 +189,8 @@ export function ExecutorDialog({ open, onOpenChange, executor, onSaved }: Props)
                 {field("login_email", "Почта для входа", { type: "email" })}
                 {field("password", executor?.has_password ? "Новый пароль (если меняете)" : "Пароль", { placeholder: "не короче 6 символов" })}
                 <p className="sm:col-span-2 text-xs text-white/40">
-                  Исполнитель входит по адресу <span className="text-white/70">{window.location.origin}/executor</span> и видит
-                  только свои объекты и договоры.
+                  Исполнитель входит через обычную кнопку «Войти» на сайте и сразу попадает в свой кабинет — видит только
+                  свои объекты и договоры.
                 </p>
               </div>
             )}

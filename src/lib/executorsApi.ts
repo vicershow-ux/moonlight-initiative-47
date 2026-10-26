@@ -179,7 +179,34 @@ export const executorsApi = {
   },
 }
 
-/** Кабинет исполнителя — отдельный вход, свой токен */
+export interface ObjectSummary {
+  object: { id: number; object_code: string; client_name: string; address: string }
+  income: { contracted: number; received: number; outstanding: number }
+  executors: { contract_id: number; contract_number: string; contract_date: string; name: string; work_subject: string; total: number; paid: number; status: string; executor_id?: number | null }[]
+  receipts: { shop: string; amount: number; count: number }[]
+  materials: { name: string; unit: string; qty: number; price: number; sum: number }[]
+  other: { category: string; label: string; amount: number; count: number }[]
+  totals: {
+    executors_paid: number
+    executors_total: number
+    executors_debt: number
+    receipts: number
+    materials: number
+    other: number
+    costs: number
+    profit: number
+    planned_profit: number
+  }
+}
+
+export const objectSummaryApi = {
+  async get(objectId: number) {
+    const res = await fetch(`${URL_}?action=object_summary&object_id=${objectId}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<ObjectSummary>
+  },
+}
+
+/** Кабинет исполнителя — свой токен, вход через общую форму «Войти» */
 export const getPortalToken = () =>
   localStorage.getItem(PORTAL_TOKEN_KEY) || ""
 export const setPortalToken = (t: string) => localStorage.setItem(PORTAL_TOKEN_KEY, t)
