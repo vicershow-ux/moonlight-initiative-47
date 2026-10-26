@@ -33,6 +33,12 @@
       "method": "GET",
       "path": "/?action=object_summary&object_id=1",
       "expectedStatus": 401
+    },
+    {
+      "name": "Tasks without auth returns 401",
+      "method": "GET",
+      "path": "/?action=tasks",
+      "expectedStatus": 401
     }
   ]
 }

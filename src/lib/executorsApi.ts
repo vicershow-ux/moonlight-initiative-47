@@ -64,13 +64,16 @@ export interface Executor {
   paid_total?: number
   reports_new?: number
   reports_total?: number
+  tasks_open?: number
+  tasks_done?: number
+  tasks_overdue?: number
   objects?: ExecutorObject[]
   contracts?: ExecutorContract[]
 }
 
 export type ExecutorForm = Omit<
   Executor,
-  "id" | "created_at" | "display_name" | "last_login_at" | "has_password" | "contracts_count" | "contracts_total" | "paid_total" | "reports_new" | "reports_total" | "objects" | "contracts"
+  "id" | "created_at" | "display_name" | "last_login_at" | "has_password" | "tasks_open" | "tasks_done" | "tasks_overdue" | "contracts_count" | "contracts_total" | "paid_total" | "reports_new" | "reports_total" | "objects" | "contracts"
 > & { object_ids: number[]; password?: string }
 
 export const emptyExecutor: ExecutorForm = {
@@ -179,6 +182,67 @@ export const executorsApi = {
   },
 }
 
+export type TaskStatus = "open" | "done" | "accepted"
+
+export interface ExecutorTask {
+  id: number
+  executor_id: number
+  object_id: number
+  title: string
+  description: string
+  due_date: string | null
+  status: TaskStatus
+  executor_comment: string
+  photos: string[]
+  done_at: string | null
+  created_at: string
+  updated_at: string
+  object_code: string
+  address: string
+  executor_name: string
+}
+
+export const tasksApi = {
+  async list(params: { object_id?: number; executor_id?: number } = {}) {
+    const q = new URLSearchParams({ action: "tasks" })
+    if (params.object_id) q.set("object_id", String(params.object_id))
+    if (params.executor_id) q.set("executor_id", String(params.executor_id))
+    const res = await fetch(`${URL_}?${q}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ tasks: ExecutorTask[] }>
+  },
+  async create(payload: { executor_id: number; object_id: number; title: string; description?: string; due_date?: string }) {
+    const res = await fetch(`${URL_}?action=tasks`, json("POST", payload))
+    return parseResponse(res) as Promise<{ id: number }>
+  },
+  async update(id: number, payload: { title: string; description?: string; due_date?: string }) {
+    const res = await fetch(`${URL_}?action=tasks&id=${id}`, json("PUT", payload))
+    return parseResponse(res)
+  },
+  async setStatus(id: number, status: "accepted" | "open") {
+    const res = await fetch(`${URL_}?action=tasks&id=${id}`, json("PUT", { status }))
+    return parseResponse(res)
+  },
+  async remove(id: number) {
+    const res = await fetch(`${URL_}?action=tasks&id=${id}`, { method: "DELETE", headers: { ...authHeaders() } })
+    return parseResponse(res)
+  },
+}
+
+/** Срок задания: просрочено / сегодня / осталось N дней */
+export function dueInfo(due: string | null, status: TaskStatus) {
+  if (!due) return { text: "без срока", cls: "text-white/40" }
+  const d = new Date(due + "T00:00:00")
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const days = Math.round((d.getTime() - today.getTime()) / 86400000)
+  const label = d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })
+  if (status !== "open") return { text: `срок ${label}`, cls: "text-white/40" }
+  if (days < 0) return { text: `просрочено · ${label}`, cls: "text-red-400" }
+  if (days === 0) return { text: "срок сегодня", cls: "text-amber-300" }
+  if (days <= 2) return { text: `срок ${label}`, cls: "text-amber-300" }
+  return { text: `срок ${label}`, cls: "text-white/50" }
+}
+
 export interface ObjectSummary {
   object: { id: number; object_code: string; client_name: string; address: string }
   income: { contracted: number; received: number; outstanding: number }
@@ -223,6 +287,7 @@ export interface PortalData {
   objects: { id: number; object_code: string; address: string; status: string }[]
   contracts: ExecutorContract[]
   reports: ExecutorReport[]
+  tasks: ExecutorTask[]
 }
 
 export const portalApi = {
@@ -257,6 +322,14 @@ export const portalApi = {
       body: JSON.stringify(payload),
     })
     return parseResponse(res) as Promise<{ id: number }>
+  },
+  async completeTask(id: number, payload: { done: boolean; comment?: string; photos?: string[] }) {
+    const res = await fetch(`${URL_}?portal=1&action=task&id=${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...portalHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res)
   },
   async removeReport(id: number) {
     const res = await fetch(`${URL_}?portal=1&action=report&id=${id}`, { method: "DELETE", headers: portalHeaders() })

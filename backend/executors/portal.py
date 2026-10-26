@@ -4,6 +4,7 @@ import os
 import secrets
 from datetime import datetime, timedelta
 
+from tasks import portal_tasks, portal_complete
 from common import (response, token_of, upload_photo, clean_photos, executor_object_ids_sql,
                     REPORT_SELECT, reports_rows, f, display_name)
 
@@ -116,6 +117,9 @@ def handle_portal(method, action, event, conn, cur, params):
         conn.commit()
         return response(200, {'id': new_id})
 
+    if action == 'task' and method == 'POST':
+        return portal_complete(cur, conn, ex, params, body)
+
     if action == 'report' and method == 'DELETE':
         cur.execute("DELETE FROM executor_reports WHERE id = %s AND executor_id = %s AND status = 'new' RETURNING id",
                     (params.get('id'), ex['id']))
@@ -149,7 +153,7 @@ def handle_portal(method, action, event, conn, cur, params):
         return response(200, {
             'executor': {'id': ex['id'], 'name': display_name(ex), 'specialty': ex['specialty'], 'phone': ex['phone']},
             'company': {'name': comp[0] or '', 'phone': comp[1] or ''},
-            'objects': objects, 'contracts': contracts, 'reports': reports,
+            'objects': objects, 'contracts': contracts, 'reports': reports, 'tasks': portal_tasks(cur, ex),
         })
 
     return response(404, {'error': 'Неизвестное действие'})

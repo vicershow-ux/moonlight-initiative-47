@@ -3,6 +3,7 @@ import { ObjectFilesCard } from "@/components/crm/ObjectFilesCard"
 import { ObjectReceiptsCard } from "@/components/crm/purchase/ObjectReceiptsCard"
 import { ObjectExecutorsCard } from "@/components/crm/executors/ObjectExecutorsCard"
 import { ObjectCostSummary } from "./ObjectCostSummary"
+import { ExecutorTasksCard } from "@/components/crm/executors/ExecutorTasksCard"
 import { useAuth } from "@/contexts/AuthContext"
 import { formatMoney, formatDateTime } from "./utils"
 
@@ -61,6 +62,8 @@ export function ObjectSidebar({
           </div>
         </div>
       </div>
+
+      {user?.role !== "client" && <ExecutorTasksCard objectId={object.id} />}
 
       {user?.role !== "client" && <ObjectExecutorsCard objectId={object.id} />}
 

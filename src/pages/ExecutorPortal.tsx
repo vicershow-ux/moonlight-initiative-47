@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 import { compressImage } from "@/lib/compressImage"
 import { getPortalToken, clearPortalToken, portalApi, PortalData } from "@/lib/executorsApi"
 import { reportStatus } from "@/components/crm/executors/ExecutorReportsList"
+import { PortalTasks } from "@/components/executor-portal/PortalTasks"
 import { formatMoney, formatDate } from "@/components/crm/documents/constants"
 
 const input =
@@ -206,6 +207,8 @@ export default function ExecutorPortal() {
       </header>
 
       <main className="max-w-2xl mx-auto p-4 flex flex-col gap-4">
+        <PortalTasks tasks={data.tasks || []} onChanged={load} />
+
         <ReportForm data={data} onSent={load} />
 
         {data.contracts.length > 0 && (

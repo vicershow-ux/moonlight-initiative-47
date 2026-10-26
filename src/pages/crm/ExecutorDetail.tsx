@@ -9,6 +9,7 @@ import { objectsApi } from "@/lib/api"
 import { ExecutorDialog } from "@/components/crm/executors/ExecutorDialog"
 import { ExecutorReportsList } from "@/components/crm/executors/ExecutorReportsList"
 import { ContractPaymentsCard } from "@/components/crm/executors/ContractPaymentsCard"
+import { ExecutorTasksCard } from "@/components/crm/executors/ExecutorTasksCard"
 import { formatMoney, formatDate } from "@/components/crm/documents/constants"
 
 function NewContractButton({ executorId }: { executorId: number }) {
@@ -191,6 +192,8 @@ export default function ExecutorDetail() {
               </ul>
             )}
           </div>
+
+          <ExecutorTasksCard executorId={ex.id} />
 
           <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">
             <p className="font-medium mb-3">Отчёты о работе</p>

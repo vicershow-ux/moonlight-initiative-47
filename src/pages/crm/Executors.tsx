@@ -126,6 +126,14 @@ export default function Executors() {
                           {e.access_enabled && (
                             <span className="px-2 py-0.5 rounded-full text-[11px] bg-blue-500/20 text-blue-300">кабинет открыт</span>
                           )}
+                          {!!e.tasks_open && (
+                            <span className={cn("px-2 py-0.5 rounded-full text-[11px]", e.tasks_overdue ? "bg-red-500/20 text-red-300" : "bg-white/10 text-white/60")}>
+                              заданий: {e.tasks_open}{e.tasks_overdue ? `, просрочено ${e.tasks_overdue}` : ""}
+                            </span>
+                          )}
+                          {!!e.tasks_done && (
+                            <span className="px-2 py-0.5 rounded-full text-[11px] bg-amber-500/20 text-amber-300">выполнено, проверьте: {e.tasks_done}</span>
+                          )}
                           {!!e.reports_new && (
                             <span className="px-2 py-0.5 rounded-full text-[11px] bg-amber-500/20 text-amber-300">
                               отчётов: {e.reports_new}

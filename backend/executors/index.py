@@ -6,6 +6,7 @@ from common import (get_conn, cors_headers, response, token_of, num, f, clean_ex
                     REPORT_SELECT, reports_rows)
 from portal import handle_portal, hash_password
 from summary import object_summary
+from tasks import handle_tasks
 
 
 def current_user(cur, event):
@@ -55,13 +56,17 @@ def executor_stats(cur, cid):
     cur.execute("SELECT executor_id, COUNT(*) FILTER (WHERE status = 'new'), COUNT(*) FROM executor_reports "
                 "WHERE company_id = %s GROUP BY 1", (cid,))
     reports = {a: (b, c) for a, b, c in cur.fetchall()}
+    cur.execute("SELECT executor_id, COUNT(*) FILTER (WHERE status = 'open'), COUNT(*) FILTER (WHERE status = 'done'), "
+                "COUNT(*) FILTER (WHERE status = 'open' AND due_date < CURRENT_DATE) FROM executor_tasks "
+                "WHERE company_id = %s GROUP BY 1", (cid,))
+    tasks = {a: (b, c, d) for a, b, c, d in cur.fetchall()}
     cur.execute("SELECT eo.executor_id, o.id, o.object_code, o.address FROM executor_objects eo "
                 "JOIN objects o ON o.id = eo.object_id JOIN executors e ON e.id = eo.executor_id WHERE e.company_id = %s",
                 (cid,))
     objects = {}
     for eid, oid, code, addr in cur.fetchall():
         objects.setdefault(eid, []).append({'id': oid, 'object_code': code, 'address': addr})
-    return contracts, paid, reports, objects
+    return contracts, paid, reports, objects, tasks
 
 
 def contract_executor(cur, cid, contract_id):
@@ -223,6 +228,8 @@ def handler(event: dict, context) -> dict:
             if user['role'] not in ('owner', 'admin'):
                 return response(403, {'error': 'Сводка доступна руководителю'})
             return object_summary(cur, user, params.get('object_id'))
+        if action == 'tasks':
+            return handle_tasks(method, cur, conn, user, params, body)
         if action == 'payment':
             return handle_payments(method, cur, conn, user, params, body)
         if action == 'reports':
@@ -253,7 +260,7 @@ def handler(event: dict, context) -> dict:
             cur.execute(f"SELECT {', '.join(LIST_COLS)} FROM executors WHERE company_id = %s "
                         "ORDER BY is_archived, full_name, org_name", (cid,))
             rows = [executor_payload(cur, cid, r) for r in cur.fetchall()]
-            contracts, paid, reports, objects = executor_stats(cur, cid)
+            contracts, paid, reports, objects, tasks = executor_stats(cur, cid)
             for e in rows:
                 n, total = contracts.get(e['id'], (0, 0))
                 e['contracts_count'] = n
@@ -261,6 +268,7 @@ def handler(event: dict, context) -> dict:
                 e['paid_total'] = paid.get(e['id'], 0)
                 e['reports_new'], e['reports_total'] = reports.get(e['id'], (0, 0))
                 e['objects'] = objects.get(e['id'], [])
+                e['tasks_open'], e['tasks_done'], e['tasks_overdue'] = tasks.get(e['id'], (0, 0, 0))
             return response(200, {'executors': rows})
 
         if method == 'DELETE':
