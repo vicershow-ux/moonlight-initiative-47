@@ -1,5 +1,5 @@
 import { useState, FormEvent } from "react"
-import { useLocation } from "react-router-dom"
+import { useLocation } from "@/lib/router-compat"
 import { ArrowRight } from "lucide-react"
 import { leadsApi } from "@/lib/api"
 import { reachGoal, sourceFromPath } from "@/lib/metrika"

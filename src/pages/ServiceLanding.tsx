@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { Navigate, useParams } from "react-router-dom"
+import { Navigate, useParams } from "@/lib/router-compat"
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import { useSiteContent } from "@/hooks/useSiteContent"

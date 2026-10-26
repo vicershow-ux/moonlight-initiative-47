@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Navigate } from "react-router-dom"
+import { Navigate } from "@/lib/router-compat"
 import Icon from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 import { compressImage } from "@/lib/compressImage"

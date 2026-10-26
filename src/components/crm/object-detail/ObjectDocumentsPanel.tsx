@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom"
+import { Link } from "@/lib/router-compat"
 import Icon from "@/components/ui/icon"
 import { Contract, Estimate, ObjectItem } from "@/lib/api"
 import { ObjectMaterialEstimates } from "@/components/crm/ObjectMaterialEstimates"

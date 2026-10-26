@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link } from "@/lib/router-compat"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { objectStatusesApi, ObjectStatus, ObjectStatusTransition } from "@/lib/api"

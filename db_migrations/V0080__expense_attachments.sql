@@ -1,1 +1,0 @@
-ALTER TABLE company_expenses ADD COLUMN IF NOT EXISTS attachments JSONB NOT NULL DEFAULT '[]'::jsonb;

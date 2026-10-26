@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useState } from "react"
-import { NavLink, useLocation, useNavigate } from "react-router-dom"
+import { NavLink, useLocation, useNavigate } from "@/lib/router-compat"
 import Icon from "@/components/ui/icon"
 import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/lib/utils"

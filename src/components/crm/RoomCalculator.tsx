@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link } from "@/lib/router-compat"
 import Icon from "@/components/ui/icon"
 import { MaterialItem, MaterialRoom, ObjectMaterial } from "@/lib/api"
 import { calcMaterialQty, consumptionLabel, getMode } from "@/lib/materialConsumption"

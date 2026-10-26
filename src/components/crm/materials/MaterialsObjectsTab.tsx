@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Link } from "react-router-dom"
+import { Link } from "@/lib/router-compat"
 import Icon from "@/components/ui/icon"
 import { PurchaseListModal } from "./PurchaseListModal"
 import { RoomCalculator } from "@/components/crm/RoomCalculator"

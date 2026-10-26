@@ -52,7 +52,7 @@ export function HeroAboutTab({ form, update, onFileSelected }: HeroAboutTabProps
     label: string
     preview: string | null
     url: string
-    inputRef: React.RefObject<HTMLInputElement>
+    inputRef: React.RefObject<HTMLInputElement | null>
     onChange: (e: ChangeEvent<HTMLInputElement>) => void
   }) => (
     <div>

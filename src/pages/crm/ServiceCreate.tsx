@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "@/lib/router-compat"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import { CategoryCombobox } from "@/components/crm/CategoryCombobox"
 import Icon from "@/components/ui/icon"

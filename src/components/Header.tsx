@@ -1,5 +1,5 @@
 import { useState, useEffect, MouseEvent } from "react"
-import { useLocation } from "react-router-dom"
+import { useLocation } from "@/lib/router-compat"
 import { cn } from "../lib/utils"
 import { AuthModal } from "./AuthModal"
 import { useSiteContent } from "@/hooks/useSiteContent"

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link } from "@/lib/router-compat"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import { EditServiceModal } from "@/components/crm/EditServiceModal"
 import Icon from "@/components/ui/icon"

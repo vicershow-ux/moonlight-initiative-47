@@ -10,6 +10,7 @@ export interface CartWork {
 
 const KEY = "fixkey_work_cart"
 const listeners = new Set<() => void>()
+const EMPTY: CartWork[] = []
 
 const read = (): CartWork[] => {
   try {
@@ -62,7 +63,7 @@ const subscribe = (l: () => void) => {
 }
 
 export function useWorkCart() {
-  const items = useSyncExternalStore(subscribe, () => state, () => state)
+  const items = useSyncExternalStore(subscribe, () => state, () => EMPTY)
   const total = items.reduce((s, w) => s + w.price * w.quantity, 0)
   const qtyOf = (w: { name: string; category: string }) => items.find((x) => same(x, w))?.quantity || 0
   return { items, total, count: items.length, qtyOf }

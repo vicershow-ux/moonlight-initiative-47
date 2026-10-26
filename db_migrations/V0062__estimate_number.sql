@@ -1,1 +1,0 @@
-ALTER TABLE estimates ADD COLUMN IF NOT EXISTS estimate_number TEXT NOT NULL DEFAULT '';

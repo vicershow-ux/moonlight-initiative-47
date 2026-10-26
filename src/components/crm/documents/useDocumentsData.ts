@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom"
+import { useNavigate } from "@/lib/router-compat"
 import { useEffect, useMemo, useState } from "react"
 import { estimatesApi, objectsApi, objectStatusesApi, contractsApi, actsApi, materialsApi, addendaApi, Estimate, ObjectItem, ObjectStatus, Contract, Act, MaterialEstimate, ContractAddendum, MaterialItem } from "@/lib/api"
 import { printMaterials, downloadMaterialsPdf } from "@/lib/printMaterials"

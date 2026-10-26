@@ -1,1 +1,0 @@
-ALTER TABLE material_estimates ADD COLUMN IF NOT EXISTS bought_json TEXT NOT NULL DEFAULT '[]';

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Navigate } from "react-router-dom"
+import { Navigate } from "@/lib/router-compat"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"

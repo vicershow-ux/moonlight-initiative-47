@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import { LegalContent } from "@/components/LegalContent"
@@ -57,7 +57,10 @@ export function LegalPage({
 
   const company = s?.legal_company_name || s?.brand_name || "FixKey"
   const email = s?.email || ""
-  const site = typeof window !== "undefined" ? window.location.host : "fixkey.ru"
+  const [site, setSite] = useState("fixkey.ru")
+  useEffect(() => {
+    setSite(window.location.host)
+  }, [])
   const updatedAt = s?.legal_updated_at || "17 августа 2026 года"
 
   const fill = (value: string) =>

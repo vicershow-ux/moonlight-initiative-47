@@ -1,5 +1,0 @@
-ALTER TABLE object_files ADD COLUMN IF NOT EXISTS category VARCHAR(20) NOT NULL DEFAULT '';
-ALTER TABLE object_files ADD COLUMN IF NOT EXISTS shop_name VARCHAR(255) NOT NULL DEFAULT '';
-ALTER TABLE object_files ADD COLUMN IF NOT EXISTS purchase_list_id INTEGER NULL;
-ALTER TABLE object_files ADD COLUMN IF NOT EXISTS amount NUMERIC(14,2) NOT NULL DEFAULT 0;
-CREATE INDEX IF NOT EXISTS idx_object_files_receipts ON object_files (object_id, category);

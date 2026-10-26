@@ -1,2 +1,0 @@
-UPDATE site_page_seo SET meta_keywords = 'монтаж вентиляции хабаровск, вентиляция в квартире, установка приточного клапана, монтаж вытяжного вентилятора, монтаж воздуховодов, вентиляция цена', updated_at = NOW()
-WHERE company_id = 2 AND page_path = '/uslugi/ventilyaciya' AND meta_keywords LIKE 'вентиляция и кондиционирование%';

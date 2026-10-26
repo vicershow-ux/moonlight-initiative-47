@@ -3,7 +3,7 @@ import Icon from "@/components/ui/icon"
 import { ghostBtn, goldBtn } from "./rentalsUi"
 
 interface Props {
-  editorRef: RefObject<HTMLDivElement>
+  editorRef: RefObject<HTMLDivElement | null>
   html: string
   saving: boolean
   downloading: boolean
