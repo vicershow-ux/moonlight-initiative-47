@@ -105,6 +105,7 @@ export default function ActCreate() {
           ...prev,
           executor_gender: contr?.options?.contractor_gender || prev.executor_gender || "m",
           customer_gender: contr?.options?.customer_gender || prev.customer_gender || "m",
+          ...(contr?.options?.our_role === "customer" ? { apply_signature: true, apply_stamp: true } : {}),
         }))
         const preferred = contr?.estimate_id || ests[0]?.id || null
         setSelectedEstimateId(preferred)
@@ -267,7 +268,10 @@ export default function ActCreate() {
   }
 
   return (
-    <CrmLayout title={editingActId ? "Редактирование акта" : "Составление акта"}>
+    <CrmLayout
+      title={editingActId ? "Редактирование акта" : contract?.options?.our_role === "customer" ? "Акт приёмки работ исполнителя" : "Составление акта"}
+      subtitle={contract?.options?.our_role === "customer" ? `Вы — Заказчик · договор № ${contract.contract_number}` : undefined}
+    >
       <div className={step === 2 ? "max-w-4xl mx-auto" : "max-w-2xl mx-auto"}>
         <div className="flex items-center gap-3 mb-4 sm:mb-6">
           <button

@@ -4,6 +4,7 @@ import { InlineInput, InlineSelect } from "@/components/crm/contract-create/Inli
 import { CompanyData, ContractOptions } from "@/lib/api"
 import { ContractRoleSwitch } from "./ContractRoleSwitch"
 import { HiredContractorFields } from "./HiredContractorFields"
+import { ExecutorPicker } from "./ExecutorPicker"
 import { genderOptions } from "./constants"
 import { RENOVATION, subjectTitle } from "@/lib/contractSubject"
 
@@ -17,6 +18,7 @@ interface ContractPartiesSectionProps {
   /** Направления услуг с сайта */
   serviceCategories?: string[]
   company?: CompanyData | null
+  applyOptions?: (patch: Partial<Required<ContractOptions>>) => void
 }
 
 export function ContractPartiesSection({
@@ -28,6 +30,7 @@ export function ContractPartiesSection({
   updateOption,
   serviceCategories = [],
   company = null,
+  applyOptions,
 }: ContractPartiesSectionProps) {
   const hire = options.our_role === "customer"
   const subject = options.work_subject || RENOVATION
@@ -116,6 +119,8 @@ export function ContractPartiesSection({
       , с одной стороны, и
     </p>
   )}
+
+  {hire && applyOptions && <ExecutorPicker options={options} applyExecutor={applyOptions} />}
 
   {/* Статус Подрядчика */}
   <ToggleGroup

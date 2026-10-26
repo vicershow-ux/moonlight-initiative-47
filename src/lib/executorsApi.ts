@@ -1,0 +1,262 @@
+import { authHeaders, funcUrl, parseResponse } from "@/lib/api"
+
+const URL_ = funcUrl("executors")
+const PORTAL_TOKEN_KEY = "fixkey_executor_token"
+
+export type ExecutorKind = "individual" | "self_employed" | "foreign_citizen" | "entrepreneur" | "legal"
+
+export const executorKindLabels: Record<ExecutorKind, string> = {
+  self_employed: "Самозанятый",
+  individual: "Физлицо",
+  entrepreneur: "ИП",
+  legal: "Юрлицо",
+  foreign_citizen: "Иностранный гражданин",
+}
+
+export interface ExecutorObject {
+  id: number
+  object_code: string
+  address: string
+}
+
+export interface ExecutorContract {
+  id: number
+  object_id: number
+  contract_number: string
+  contract_date: string
+  status: "draft" | "signed"
+  total_amount: number
+  object_code?: string
+  work_subject: string
+  paid: number
+}
+
+export interface Executor {
+  id: number
+  kind: ExecutorKind
+  full_name: string
+  org_name: string
+  director_position: string
+  director_name: string
+  gender: "m" | "f"
+  inn: string
+  ogrnip: string
+  passport: string
+  country: string
+  phone: string
+  email: string
+  address: string
+  account: string
+  bank_name: string
+  bik: string
+  corr_account: string
+  specialty: string
+  note: string
+  is_archived: boolean
+  created_at: string
+  display_name: string
+  login_email: string
+  access_enabled: boolean
+  last_login_at: string | null
+  has_password?: boolean
+  contracts_count?: number
+  contracts_total?: number
+  paid_total?: number
+  reports_new?: number
+  reports_total?: number
+  objects?: ExecutorObject[]
+  contracts?: ExecutorContract[]
+}
+
+export type ExecutorForm = Omit<
+  Executor,
+  "id" | "created_at" | "display_name" | "last_login_at" | "has_password" | "contracts_count" | "contracts_total" | "paid_total" | "reports_new" | "reports_total" | "objects" | "contracts"
+> & { object_ids: number[]; password?: string }
+
+export const emptyExecutor: ExecutorForm = {
+  kind: "self_employed",
+  full_name: "",
+  org_name: "",
+  director_position: "",
+  director_name: "",
+  gender: "m",
+  inn: "",
+  ogrnip: "",
+  passport: "",
+  country: "",
+  phone: "",
+  email: "",
+  address: "",
+  account: "",
+  bank_name: "",
+  bik: "",
+  corr_account: "",
+  specialty: "",
+  note: "",
+  is_archived: false,
+  login_email: "",
+  access_enabled: false,
+  object_ids: [],
+  password: "",
+}
+
+export interface ExecutorPayment {
+  id: number
+  amount: number
+  expense_date: string
+  description: string
+  contract_id: number | null
+  object_id: number | null
+  contract_number: string | null
+}
+
+export interface ExecutorReport {
+  id: number
+  executor_id: number
+  object_id: number
+  contract_id: number | null
+  report_date: string
+  work_text: string
+  progress_pct: number
+  photos: string[]
+  status: "new" | "accepted" | "rework"
+  reply: string
+  created_at: string
+  reviewed_at: string | null
+  object_code: string
+  address: string
+  executor_name: string
+}
+
+const json = (method: string, body: unknown) => ({
+  method,
+  headers: { "Content-Type": "application/json", ...authHeaders() },
+  body: JSON.stringify(body),
+})
+
+export const executorsApi = {
+  async list() {
+    const res = await fetch(URL_, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ executors: Executor[] }>
+  },
+  async get(id: number) {
+    const res = await fetch(`${URL_}?id=${id}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ executor: Executor }>
+  },
+  async save(form: Partial<ExecutorForm>, id?: number) {
+    const res = await fetch(id ? `${URL_}?id=${id}` : URL_, json(id ? "PUT" : "POST", form))
+    return parseResponse(res) as Promise<{ id: number }>
+  },
+  async archive(id: number) {
+    const res = await fetch(`${URL_}?id=${id}`, { method: "DELETE", headers: { ...authHeaders() } })
+    return parseResponse(res)
+  },
+  async payments(params: { contract_id?: number; executor_id?: number }) {
+    const q = new URLSearchParams({ action: "payment" })
+    if (params.contract_id) q.set("contract_id", String(params.contract_id))
+    if (params.executor_id) q.set("executor_id", String(params.executor_id))
+    const res = await fetch(`${URL_}?${q}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ payments: ExecutorPayment[] }>
+  },
+  async addPayment(payload: { contract_id: number; amount: number; payment_date: string; note?: string }) {
+    const res = await fetch(`${URL_}?action=payment`, json("POST", payload))
+    return parseResponse(res) as Promise<{ id: number }>
+  },
+  async removePayment(id: number) {
+    const res = await fetch(`${URL_}?action=payment&id=${id}`, { method: "DELETE", headers: { ...authHeaders() } })
+    return parseResponse(res)
+  },
+  async reports(params: { object_id?: number; executor_id?: number } = {}) {
+    const q = new URLSearchParams({ action: "reports" })
+    if (params.object_id) q.set("object_id", String(params.object_id))
+    if (params.executor_id) q.set("executor_id", String(params.executor_id))
+    const res = await fetch(`${URL_}?${q}`, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ reports: ExecutorReport[] }>
+  },
+  async reviewReport(id: number, status: "accepted" | "rework", reply = "") {
+    const res = await fetch(`${URL_}?action=reports&id=${id}`, json("PUT", { status, reply }))
+    return parseResponse(res)
+  },
+}
+
+/** Кабинет исполнителя — отдельный вход, свой токен */
+export const getPortalToken = () =>
+  localStorage.getItem(PORTAL_TOKEN_KEY) || ""
+export const setPortalToken = (t: string) => localStorage.setItem(PORTAL_TOKEN_KEY, t)
+export const clearPortalToken = () => localStorage.removeItem(PORTAL_TOKEN_KEY)
+
+const portalHeaders = (): Record<string, string> => {
+  const t = getPortalToken()
+  return t ? { Authorization: `Bearer ${t}` } : {}
+}
+
+export interface PortalData {
+  executor: { id: number; name: string; specialty: string; phone: string }
+  company: { name: string; phone: string }
+  objects: { id: number; object_code: string; address: string; status: string }[]
+  contracts: ExecutorContract[]
+  reports: ExecutorReport[]
+}
+
+export const portalApi = {
+  async login(email: string, password: string) {
+    const res = await fetch(`${URL_}?portal=1&action=login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    })
+    return parseResponse(res) as Promise<{ token: string }>
+  },
+  async me() {
+    const res = await fetch(`${URL_}?portal=1&action=me`, { headers: portalHeaders() })
+    return parseResponse(res) as Promise<PortalData>
+  },
+  async logout() {
+    await fetch(`${URL_}?portal=1&action=logout`, { headers: portalHeaders() }).catch(() => null)
+    clearPortalToken()
+  },
+  async upload(fileName: string, data: string) {
+    const res = await fetch(`${URL_}?portal=1&action=upload`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...portalHeaders() },
+      body: JSON.stringify({ file_name: fileName, data }),
+    })
+    return parseResponse(res) as Promise<{ url: string }>
+  },
+  async sendReport(payload: { object_id: number; contract_id?: number | null; work_text: string; progress_pct: number; photos: string[]; report_date?: string }) {
+    const res = await fetch(`${URL_}?portal=1&action=report`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...portalHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res) as Promise<{ id: number }>
+  },
+  async removeReport(id: number) {
+    const res = await fetch(`${URL_}?portal=1&action=report&id=${id}`, { method: "DELETE", headers: portalHeaders() })
+    return parseResponse(res)
+  },
+}
+
+/** Перенос исполнителя из справочника в поля договора */
+export function executorToContractOptions(e: Executor) {
+  return {
+    executor_id: e.id,
+    contractor_type: e.kind,
+    contractor_name: e.full_name,
+    contractor_gender: e.gender,
+    contractor_org_name: e.org_name,
+    contractor_director_position: e.director_position,
+    contractor_director_name: e.director_name,
+    contractor_ogrnip: e.ogrnip,
+    contractor_country: e.country,
+    contractor_inn: e.inn,
+    contractor_passport: e.passport,
+    contractor_phone: e.phone,
+    contractor_email: e.email,
+    contractor_address: e.address,
+    contractor_account: e.account,
+    contractor_bank_name: e.bank_name,
+    contractor_bik: e.bik,
+    contractor_corr_account: e.corr_account,
+  }
+}

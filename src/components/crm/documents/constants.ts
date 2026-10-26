@@ -1,4 +1,4 @@
-export type TabKey = "all" | "estimates" | "material_estimates" | "purchase_lists" | "contracts" | "addenda" | "acts" | "invoices"
+export type TabKey = "all" | "estimates" | "material_estimates" | "purchase_lists" | "contracts" | "addenda" | "acts" | "invoices" | "executors"
 
 export const tabs: { key: TabKey; label: string }[] = [
   { key: "all", label: "\u0412\u0441\u0435 \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u044b" },
@@ -9,6 +9,7 @@ export const tabs: { key: TabKey; label: string }[] = [
   { key: "addenda", label: "Доп. соглашения" },
   { key: "acts", label: "\u0410\u043a\u0442\u044b" },
   { key: "invoices", label: "Счета" },
+  { key: "executors", label: "Исполнители" },
 ]
 
 export const formatMoney = (n: number) =>

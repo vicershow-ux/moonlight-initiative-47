@@ -14,6 +14,7 @@ import {
   siteApi,
   ContractOptions,
 } from "@/lib/api"
+import { executorsApi, executorToContractOptions } from "@/lib/executorsApi"
 import { buildContractHtml } from "@/lib/buildContractHtml"
 import { ContractPartiesSection } from "@/components/crm/contract-edit/ContractPartiesSection"
 import { ContractSubjectSection } from "@/components/crm/contract-edit/ContractSubjectSection"
@@ -77,6 +78,16 @@ function customerFromCompany(comp: CompanyData | null): Partial<Opts> {
 }
 
 const EMPTY_CONTRACTOR: Partial<Opts> = {
+  executor_id: null,
+  contractor_inn: "",
+  contractor_passport: "",
+  contractor_phone: "",
+  contractor_email: "",
+  contractor_address: "",
+  contractor_account: "",
+  contractor_bank_name: "",
+  contractor_bik: "",
+  contractor_corr_account: "",
   contractor_type: "self_employed",
   contractor_name: "",
   contractor_org_name: "",
@@ -181,7 +192,7 @@ export default function ContractEdit() {
           const qsEstimate = searchParams.get("estimate_id")
           const initialEstimateId = qsEstimate || (estimatesList[0] ? String(estimatesList[0].id) : "")
           setEstimateId(initialEstimateId)
-          const hireMode = searchParams.get("role") === "customer"
+          const hireMode = searchParams.get("role") === "customer" || Boolean(searchParams.get("executor_id"))
           setOptions((prev) => {
             if (hireMode) {
               return switchRole({ ...prev, object_address: obj.address || "" }, "customer", comp, obj)
@@ -200,6 +211,19 @@ export default function ContractEdit() {
       .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objectId, contractId])
+
+  // Пришли из карточки исполнителя — подставляем его реквизиты
+  useEffect(() => {
+    const exId = Number(searchParams.get("executor_id"))
+    if (editMode || !exId || loading) return
+    executorsApi
+      .get(exId)
+      .then(({ executor }) =>
+        setOptions((prev) => ({ ...prev, ...(executorToContractOptions(executor) as Partial<Opts>) }))
+      )
+      .catch(() => null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading])
 
   const updateOption = <K extends keyof ContractOptions>(key: K, value: ContractOptions[K]) => {
     setOptions((prev) => {
@@ -327,6 +351,7 @@ export default function ContractEdit() {
           updateOption={updateOption}
           serviceCategories={serviceCategories}
           company={company}
+          applyOptions={(patch) => setOptions((prev) => ({ ...prev, ...patch }))}
         />
 
         <ContractSubjectSection

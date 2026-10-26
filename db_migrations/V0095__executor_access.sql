@@ -1,0 +1,13 @@
+ALTER TABLE executors ADD COLUMN IF NOT EXISTS login_email VARCHAR(255) NOT NULL DEFAULT '';
+ALTER TABLE executors ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) NOT NULL DEFAULT '';
+ALTER TABLE executors ADD COLUMN IF NOT EXISTS access_enabled BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE executors ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_executors_login ON executors (lower(login_email)) WHERE login_email <> '';
+CREATE TABLE IF NOT EXISTS executor_sessions (
+    id SERIAL PRIMARY KEY,
+    executor_id INTEGER NOT NULL REFERENCES executors(id),
+    token VARCHAR(128) NOT NULL UNIQUE,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT now()
+);
+ALTER TABLE acts ADD COLUMN IF NOT EXISTS our_role VARCHAR(20) NOT NULL DEFAULT 'contractor';

@@ -146,9 +146,18 @@ export function useDocumentsData() {
     }
   }
 
+  const isExecTab = tab === "executors"
+  const hireContracts = useMemo(() => contracts.filter((c) => c.options?.our_role === "customer"), [contracts])
+  const hireContractIds = useMemo(() => new Set(hireContracts.map((c) => c.id)), [hireContracts])
+  const hireEstimateIds = useMemo(
+    () => new Set(hireContracts.map((c) => c.estimate_id).filter((x): x is number => Boolean(x))),
+    [hireContracts]
+  )
+
   const filteredEstimates = useMemo(() => {
     const q = search.trim().toLowerCase()
     return estimates.filter((e) => {
+      if (tab === "executors" && !hireEstimateIds.has(e.id)) return false
       if (!q) return true
       return (
         String(e.id).includes(q) ||
@@ -156,7 +165,7 @@ export function useDocumentsData() {
         (e.client_name || "").toLowerCase().includes(q)
       )
     })
-  }, [estimates, search])
+  }, [estimates, search, tab, hireEstimateIds])
 
   const matchMat = (m: MaterialEstimate, q: string) =>
     !q ||
@@ -241,18 +250,22 @@ export function useDocumentsData() {
   const filteredContracts = useMemo(() => {
     const q = search.trim().toLowerCase()
     return contracts.filter((c) => {
+      if (isExecTab && c.options?.our_role !== "customer") return false
       if (!q) return true
       return (
+        (c.options?.contractor_name || "").toLowerCase().includes(q) ||
+        (c.options?.contractor_org_name || "").toLowerCase().includes(q) ||
         c.contract_number.toLowerCase().includes(q) ||
         (c.object_code || "").toLowerCase().includes(q) ||
         (c.client_name || "").toLowerCase().includes(q)
       )
     })
-  }, [contracts, search])
+  }, [contracts, search, isExecTab])
 
   const filteredActs = useMemo(() => {
     const q = search.trim().toLowerCase()
     return acts.filter((a) => {
+      if (isExecTab && !(a.contract_id && hireContractIds.has(a.contract_id))) return false
       if (!q) return true
       return (
         a.act_number.toLowerCase().includes(q) ||
@@ -260,7 +273,7 @@ export function useDocumentsData() {
         (a.client_name || "").toLowerCase().includes(q)
       )
     })
-  }, [acts, search])
+  }, [acts, search, isExecTab, hireContractIds])
 
   const filteredAddenda = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -276,11 +289,11 @@ export function useDocumentsData() {
   }, [addenda, search])
 
   const showAddenda = tab === "all" || tab === "addenda"
-  const showEstimates = tab === "all" || tab === "estimates"
+  const showEstimates = tab === "all" || tab === "estimates" || tab === "executors"
   const showMatEstimates = tab === "all" || tab === "material_estimates"
   const showPurchaseLists = tab === "all" || tab === "purchase_lists"
-  const showContracts = tab === "all" || tab === "contracts"
-  const showActs = tab === "all" || tab === "acts"
+  const showContracts = tab === "all" || tab === "contracts" || tab === "executors"
+  const showActs = tab === "all" || tab === "acts" || tab === "executors"
   const hasAnyRows =
     (showEstimates && filteredEstimates.length > 0) ||
     (showMatEstimates && filteredMatEstimates.length > 0) ||

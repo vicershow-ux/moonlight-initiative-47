@@ -202,6 +202,15 @@ def handler(event: dict, context) -> dict:
                  category, shop_name, plist, amount)
             )
             new_id = cur.fetchone()[0]
+            if category == 'receipt' and amount > 0:
+                att = json.dumps([{'name': file_name[:200], 'url': url, 'type': 'photo' if kind == 'photo' else 'pdf', 'size': size}],
+                                 ensure_ascii=False)
+                cur.execute(
+                    "INSERT INTO company_expenses (company_id, object_id, category, amount, expense_date, description, "
+                    "payee, created_by, attachments, source, source_id) "
+                    "VALUES (%s, %s, 'purchases', %s, CURRENT_DATE, %s, %s, %s, %s, 'receipt', %s)",
+                    (user['company_id'], obj_id, amount, 'Чек по списку на закупку', shop_name, user['user_id'], att, new_id)
+                )
             conn.commit()
             return response(200, {'success': True, 'id': new_id, 'url': url})
 
@@ -219,6 +228,10 @@ def handler(event: dict, context) -> dict:
                 return response(403, {'error': 'Можно удалять только свои файлы'})
             if not has_access(cur, user, row[0]):
                 return response(403, {'error': 'Нет доступа к объекту'})
+            cur.execute(
+                "DELETE FROM company_expenses WHERE company_id = %s AND source = 'receipt' AND source_id = %s",
+                (user['company_id'], row_id)
+            )
             cur.execute(
                 "DELETE FROM object_files WHERE id = %s AND company_id = %s",
                 (row_id, user['company_id'])

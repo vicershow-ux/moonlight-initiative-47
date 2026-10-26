@@ -12,6 +12,7 @@ import { SendContractEmailDialog } from "@/components/crm/SendContractEmailDialo
 import { useAuth } from "@/contexts/AuthContext"
 import { ContractAddendaList } from "@/components/crm/ContractAddendaList"
 import { DocSignBar } from "@/components/crm/DocSignBar"
+import { ContractPaymentsCard } from "@/components/crm/executors/ContractPaymentsCard"
 
 export default function ContractView() {
   const { id, contractId } = useParams()
@@ -112,8 +113,9 @@ export default function ContractView() {
             className="flex items-center justify-center min-h-[44px] sm:min-h-0 gap-1.5 bg-[#D4AF37] hover:bg-[#B8860B] transition-colors text-[#161616] text-sm px-3 py-2 rounded-lg"
           >
             <Icon name="Plus" size={14} />
-            Составить акт
+            {contract.options?.our_role === "customer" ? "Акт приёмки работ" : "Составить акт"}
           </Link>
+{contract.options?.our_role !== "customer" && (
           <Link
             to={`/cabinet/objects/${objectId}/invoices/new?contract_id=${contract.id}`}
             className="flex items-center justify-center min-h-[44px] sm:min-h-0 gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
@@ -121,6 +123,7 @@ export default function ContractView() {
             <Icon name="Receipt" size={14} />
             Выставить счёт
           </Link>
+          )}
           <button
             onClick={() => setSendOpen(true)}
             className="flex items-center justify-center min-h-[44px] sm:min-h-0 gap-1.5 bg-white/10 hover:bg-white/15 transition-colors text-white text-sm px-3 py-2 rounded-lg"
@@ -171,6 +174,21 @@ export default function ContractView() {
       )}
 
       <ContractAddendaList objectId={objectId} contractId={contract.id} isClient={isClient} />
+
+      {!isClient && contract.options?.our_role === "customer" && (
+        <div className="max-w-4xl mx-auto mb-4 flex flex-col gap-2">
+          {contract.options.executor_id && (
+            <Link
+              to={`/cabinet/executors/${contract.options.executor_id}`}
+              className="self-start inline-flex items-center gap-1.5 text-sm text-orange-300 hover:text-orange-200"
+            >
+              <Icon name="HardHat" size={15} />
+              Карточка исполнителя
+            </Link>
+          )}
+          <ContractPaymentsCard contractId={contract.id} total={Number(contract.total_amount)} />
+        </div>
+      )}
 
       <div className="overflow-x-auto md:overflow-visible max-w-4xl mx-auto">
       <div className="bg-white text-[#161616] rounded-xl p-4 sm:p-12 max-w-4xl mx-auto shadow-lg break-words">

@@ -8,6 +8,7 @@ export const EXPENSE_ICONS: Record<string, string> = {
   taxes: "Landmark",
   office: "Phone",
   ads: "Megaphone",
+  purchases: "Receipt",
   other: "Ellipsis",
 }
 
@@ -21,5 +22,6 @@ export const EXPENSE_COLORS: Record<string, string> = {
   taxes: "#94a3b8",
   office: "#2dd4bf",
   ads: "#fb923c",
+  purchases: "#22c55e",
   other: "#6b7280",
 }

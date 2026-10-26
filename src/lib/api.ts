@@ -19,7 +19,7 @@ function detectApiBase() {
 
 const API_BASE = detectApiBase()
 
-function funcUrl(name: keyof typeof funcUrls) {
+export function funcUrl(name: keyof typeof funcUrls) {
   return API_BASE ? `${API_BASE}/${name}` : funcUrls[name]
 }
 
@@ -63,7 +63,7 @@ export function clearToken() {
   sessionStorage.removeItem(TOKEN_KEY)
 }
 
-function authHeaders(): Record<string, string> {
+export function authHeaders(): Record<string, string> {
   const token = getToken()
   return token ? { "X-Authorization": token } : {}
 }
@@ -80,7 +80,7 @@ export interface UserData {
   totp_enabled?: boolean
 }
 
-async function parseResponse(res: Response) {
+export async function parseResponse(res: Response) {
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
     throw new Error(data.error || "Ошибка запроса")
@@ -597,6 +597,8 @@ export interface ContractOptions {
   contractor_bank_name?: string
   contractor_bik?: string
   contractor_corr_account?: string
+  // Исполнитель из справочника «Исполнители»
+  executor_id?: number | null
 }
 
 export interface Contract {

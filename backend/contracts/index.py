@@ -622,6 +622,8 @@ def handler(event: dict, context) -> dict:
             cur.execute("DELETE FROM contract_addenda WHERE contract_id = %s", (contract_id,))
             cur.execute("UPDATE acts SET contract_id = NULL WHERE contract_id = %s", (contract_id,))
             cur.execute("UPDATE invoices SET contract_id = NULL WHERE contract_id = %s", (contract_id,))
+            cur.execute("UPDATE company_expenses SET contract_id = NULL WHERE contract_id = %s AND company_id = %s", (contract_id, company_id))
+            cur.execute("UPDATE executor_reports SET contract_id = NULL WHERE contract_id = %s AND company_id = %s", (contract_id, company_id))
             cur.execute("DELETE FROM contracts WHERE id = %s AND company_id = %s", (contract_id, company_id))
             conn.commit()
             return response(200, {'success': True})

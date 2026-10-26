@@ -86,6 +86,7 @@ export const defaultOptions: Required<ContractOptions> = {
   contractor_bank_name: "",
   contractor_bik: "",
   contractor_corr_account: "",
+  executor_id: null,
 }
 
 export const copiesTotalOptions = [

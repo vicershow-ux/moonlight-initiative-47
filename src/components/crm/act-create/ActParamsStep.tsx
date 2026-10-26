@@ -221,7 +221,9 @@ export function ActParamsStep({
         </div>
 
         <div className="flex flex-col gap-1.5 mt-4">
-          <label className="text-xs text-white/50">Подпись и печать Исполнителя</label>
+          <label className="text-xs text-white/50">
+            {contract?.options?.our_role === "customer" ? "Ваша подпись и печать — как Заказчика" : "Подпись и печать Исполнителя"}
+          </label>
           <SignStampToggles
             signatureUrl={company?.signature_url}
             stampUrl={company?.stamp_url}

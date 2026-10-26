@@ -66,7 +66,7 @@ def parse_period(params):
 CATEGORIES = {
     'salary': 'Зарплата', 'subcontract': 'Субподряд', 'transport': 'Транспорт', 'tools': 'Инструмент',
     'materials': 'Материалы (вне объекта)', 'rent': 'Аренда', 'taxes': 'Налоги и сборы', 'office': 'Офис и связь',
-    'ads': 'Реклама', 'other': 'Прочее',
+    'ads': 'Реклама', 'purchases': 'Закупки по чекам', 'other': 'Прочее',
 }
 EXP_KEYS = ['id', 'object_id', 'category', 'amount', 'expense_date', 'description', 'payee', 'created_at', 'object_code', 'client_name', 'from_bank', 'attachments']
 
@@ -273,7 +273,7 @@ def handler(event: dict, context) -> dict:
         received, received_n, outstanding, outstanding_n, overdue, overdue_n, issued, auto_paid = r
 
         cur.execute(
-            "SELECT COALESCE(SUM(total_amount), 0), COUNT(*) FROM contracts WHERE company_id = %s AND status = 'signed' "
+            "SELECT COALESCE(SUM(total_amount), 0), COUNT(*) FROM contracts WHERE company_id = %s AND status = 'signed' AND COALESCE(options->>'our_role', '') <> 'customer' "
             "AND COALESCE(contract_date, created_at::date) >= %s",
             (cid, start)
         )
@@ -352,7 +352,7 @@ def handler(event: dict, context) -> dict:
         cur.execute(
             f"""
             SELECT o.id, o.object_code, o.client_name, o.address, o.status,
-              COALESCE((SELECT SUM(total_amount) FROM contracts c WHERE c.object_id = o.id AND c.status = 'signed'), 0),
+              COALESCE((SELECT SUM(total_amount) FROM contracts c WHERE c.object_id = o.id AND c.status = 'signed' AND COALESCE(c.options->>'our_role', '') <> 'customer'), 0),
               COALESCE((SELECT SUM({DUE}) FROM invoices i WHERE i.object_id = o.id AND i.status = 'paid'), 0),
               COALESCE((SELECT SUM({DUE}) FROM invoices i WHERE i.object_id = o.id AND i.status <> 'paid'), 0),
               COALESCE((SELECT SUM({DUE}) FROM invoices i WHERE i.object_id = o.id AND i.status <> 'paid' AND i.due_date < CURRENT_DATE), 0),
