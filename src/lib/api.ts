@@ -616,6 +616,7 @@ export interface Contract {
   created_at: string
   updated_at: string
   signed_at?: string | null
+  executor_signed_at?: string | null
   object_code?: string
   client_name?: string
   address?: string
@@ -758,6 +759,7 @@ export interface Act {
   act_type: string
   status: "draft" | "signed"
   signed_at?: string | null
+  executor_signed_at?: string | null
   options: ActOptions
   items: ActItem[]
   content_html: string

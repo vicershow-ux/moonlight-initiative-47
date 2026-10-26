@@ -69,7 +69,7 @@ def get_current_user(cur, event):
 ACT_KEYS = [
     'id', 'object_id', 'contract_id', 'estimate_id', 'act_number', 'act_date',
     'act_type', 'status', 'options', 'items', 'content_html', 'total_amount',
-    'created_by', 'created_at', 'updated_at', 'signed_at',
+    'created_by', 'created_at', 'updated_at', 'signed_at', 'executor_signed_at',
 ]
 
 BASE_COLS = ", ".join([f"a.{k}" for k in ACT_KEYS])
@@ -869,7 +869,7 @@ def handler(event, context):
             if not act_id:
                 return response(400, {'error': 'Не указан id акта'})
             body = json.loads(event.get('body') or '{}')
-            cur.execute("SELECT id, signed_at FROM acts WHERE id = %s AND company_id = %s", (act_id, company_id))
+            cur.execute("SELECT id, COALESCE(signed_at, executor_signed_at) FROM acts WHERE id = %s AND company_id = %s", (act_id, company_id))
             ex = cur.fetchone()
             if not ex:
                 return response(404, {'error': 'Акт не найден'})

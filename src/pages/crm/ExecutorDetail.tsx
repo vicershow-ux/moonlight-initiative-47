@@ -150,6 +150,16 @@ export default function ExecutorDetail() {
                           {formatDate(c.contract_date)}
                           {c.work_subject ? ` · ${c.work_subject}` : ""} · {c.status === "signed" ? "подписан" : "черновик"}
                         </p>
+                        <p className="text-[11px] mt-1 flex flex-wrap gap-x-3">
+                          <span className={c.executor_signed_at ? "text-emerald-400" : "text-amber-300"}>
+                            {c.executor_signed_at ? "исполнитель подписал договор" : "договор ждёт подписи исполнителя"}
+                          </span>
+                          {!!c.acts_count && (
+                            <span className={c.acts_signed === c.acts_count ? "text-emerald-400" : "text-amber-300"}>
+                              актов подписано: {c.acts_signed}/{c.acts_count}
+                            </span>
+                          )}
+                        </p>
                       </div>
                       <div className="text-sm text-right">
                         <span className="font-medium">{formatMoney(c.total_amount)}</span>

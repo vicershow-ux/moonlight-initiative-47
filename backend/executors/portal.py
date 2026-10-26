@@ -5,6 +5,7 @@ import secrets
 from datetime import datetime, timedelta
 
 from tasks import portal_tasks, portal_complete
+from documents import portal_documents, portal_document, portal_sign
 from common import (response, token_of, upload_photo, clean_photos, executor_object_ids_sql,
                     REPORT_SELECT, reports_rows, f, display_name)
 
@@ -117,6 +118,11 @@ def handle_portal(method, action, event, conn, cur, params):
         conn.commit()
         return response(200, {'id': new_id})
 
+    if action == 'document' and method == 'GET':
+        return portal_document(cur, ex, params)
+    if action == 'sign' and method == 'POST':
+        return portal_sign(cur, conn, ex, params, event)
+
     if action == 'task' and method == 'POST':
         return portal_complete(cur, conn, ex, params, body)
 
@@ -136,16 +142,7 @@ def handle_portal(method, action, event, conn, cur, params):
         objects = [dict(zip(['id', 'object_code', 'address', 'client_name', 'status'], r)) for r in cur.fetchall()]
         for o in objects:
             o.pop('client_name', None)
-        cur.execute(
-            "SELECT c.id, c.object_id, c.contract_number, c.contract_date, c.status, c.total_amount, "
-            "c.options->>'work_subject', "
-            "COALESCE((SELECT SUM(amount) FROM company_expenses e WHERE e.contract_id = c.id AND e.source = 'executor_payment'), 0) "
-            "FROM contracts c WHERE c.company_id = %s AND c.options->>'executor_id' = %s ORDER BY c.contract_date DESC",
-            (cid, str(ex['id']))
-        )
-        contracts = [{'id': a, 'object_id': b, 'contract_number': c, 'contract_date': d, 'status': e,
-                      'total_amount': f(t), 'work_subject': s or '', 'paid': f(p)}
-                     for a, b, c, d, e, t, s, p in cur.fetchall()]
+        contracts, acts = portal_documents(cur, ex)
         cur.execute(REPORT_SELECT + "WHERE r.executor_id = %s ORDER BY r.created_at DESC LIMIT 100", (ex['id'],))
         reports = reports_rows(cur)
         cur.execute("SELECT name, phone FROM companies WHERE id = %s", (cid,))
@@ -153,7 +150,7 @@ def handle_portal(method, action, event, conn, cur, params):
         return response(200, {
             'executor': {'id': ex['id'], 'name': display_name(ex), 'specialty': ex['specialty'], 'phone': ex['phone']},
             'company': {'name': comp[0] or '', 'phone': comp[1] or ''},
-            'objects': objects, 'contracts': contracts, 'reports': reports, 'tasks': portal_tasks(cur, ex),
+            'objects': objects, 'contracts': contracts, 'acts': acts, 'reports': reports, 'tasks': portal_tasks(cur, ex),
         })
 
     return response(404, {'error': 'Неизвестное действие'})

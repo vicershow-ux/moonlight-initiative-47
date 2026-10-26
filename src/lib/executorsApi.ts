@@ -29,6 +29,9 @@ export interface ExecutorContract {
   object_code?: string
   work_subject: string
   paid: number
+  executor_signed_at?: string | null
+  acts_count?: number
+  acts_signed?: number
 }
 
 export interface Executor {
@@ -281,11 +284,38 @@ const portalHeaders = (): Record<string, string> => {
   return t ? { Authorization: `Bearer ${t}` } : {}
 }
 
+export interface PortalContract extends ExecutorContract {
+  executor_signed_at: string | null
+}
+
+export interface PortalAct {
+  id: number
+  contract_id: number
+  object_id: number
+  act_number: string
+  act_date: string
+  total_amount: number
+  executor_signed_at: string | null
+  object_code: string
+  contract_number: string
+}
+
+export interface PortalDocument {
+  kind: "contract" | "act"
+  id: number
+  number: string
+  date: string
+  total_amount: number
+  content_html: string
+  executor_signed_at: string | null
+}
+
 export interface PortalData {
   executor: { id: number; name: string; specialty: string; phone: string }
   company: { name: string; phone: string }
   objects: { id: number; object_code: string; address: string; status: string }[]
-  contracts: ExecutorContract[]
+  contracts: PortalContract[]
+  acts: PortalAct[]
   reports: ExecutorReport[]
   tasks: ExecutorTask[]
 }
@@ -322,6 +352,18 @@ export const portalApi = {
       body: JSON.stringify(payload),
     })
     return parseResponse(res) as Promise<{ id: number }>
+  },
+  async document(kind: "contract" | "act", id: number) {
+    const res = await fetch(`${URL_}?portal=1&action=document&kind=${kind}&id=${id}`, { headers: portalHeaders() })
+    return parseResponse(res) as Promise<PortalDocument>
+  },
+  async sign(kind: "contract" | "act", id: number) {
+    const res = await fetch(`${URL_}?portal=1&action=sign&kind=${kind}&id=${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...portalHeaders() },
+      body: "{}",
+    })
+    return parseResponse(res) as Promise<{ signed: boolean; executor_signed_at: string }>
   },
   async completeTask(id: number, payload: { done: boolean; comment?: string; photos?: string[] }) {
     const res = await fetch(`${URL_}?portal=1&action=task&id=${id}`, {

@@ -57,7 +57,7 @@ def has_object_access(cur, user, object_id):
 CONTRACT_KEYS = [
     'id', 'object_id', 'estimate_id', 'contract_number', 'contract_date',
     'status', 'template_key', 'options', 'content_html', 'total_amount',
-    'created_by', 'created_at', 'updated_at', 'signed_at',
+    'created_by', 'created_at', 'updated_at', 'signed_at', 'executor_signed_at',
 ]
 
 
@@ -582,7 +582,7 @@ def handler(event: dict, context) -> dict:
                 return response(400, {'error': 'Не указан ID договора'})
             body = json.loads(event.get('body') or '{}')
 
-            cur.execute("SELECT object_id, signed_at FROM contracts WHERE id = %s AND company_id = %s", (contract_id, company_id))
+            cur.execute("SELECT object_id, COALESCE(signed_at, executor_signed_at) FROM contracts WHERE id = %s AND company_id = %s", (contract_id, company_id))
             existing = cur.fetchone()
             if not existing:
                 return response(404, {'error': 'Договор не найден'})

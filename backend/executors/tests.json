@@ -39,6 +39,12 @@
       "method": "GET",
       "path": "/?action=tasks",
       "expectedStatus": 401
+    },
+    {
+      "name": "Portal document without auth returns 401",
+      "method": "GET",
+      "path": "/?portal=1&action=document&kind=contract&id=1",
+      "expectedStatus": 401
     }
   ]
 }

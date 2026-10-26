@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { ContractAddendaList } from "@/components/crm/ContractAddendaList"
 import { DocSignBar } from "@/components/crm/DocSignBar"
 import { ContractPaymentsCard } from "@/components/crm/executors/ContractPaymentsCard"
+import { ExecutorSignStatus } from "@/components/crm/executors/ExecutorSignStatus"
 
 export default function ContractView() {
   const { id, contractId } = useParams()
@@ -92,7 +93,7 @@ export default function ContractView() {
             {contract.status === "signed" ? "подписан" : "черновик"}
           </span>
           {!isClient && (<>
-          {!contract.signed_at && (
+          {!contract.signed_at && !contract.executor_signed_at && (
           <Link
             to={`/cabinet/objects/${objectId}/contracts/${contract.id}/edit`}
             className="flex items-center justify-center min-h-[44px] sm:min-h-0 gap-1.5 bg-blue-500 hover:bg-blue-600 transition-colors text-white text-sm px-3 py-2 rounded-lg"
@@ -174,6 +175,10 @@ export default function ContractView() {
       )}
 
       <ContractAddendaList objectId={objectId} contractId={contract.id} isClient={isClient} />
+
+      {!isClient && contract.options?.our_role === "customer" && contract.options.executor_id && (
+        <ExecutorSignStatus signedAt={contract.executor_signed_at} kind="contract" />
+      )}
 
       {!isClient && contract.options?.our_role === "customer" && (
         <div className="max-w-4xl mx-auto mb-4 flex flex-col gap-2">

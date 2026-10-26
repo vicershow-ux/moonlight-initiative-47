@@ -6,7 +6,8 @@ import { compressImage } from "@/lib/compressImage"
 import { getPortalToken, clearPortalToken, portalApi, PortalData } from "@/lib/executorsApi"
 import { reportStatus } from "@/components/crm/executors/ExecutorReportsList"
 import { PortalTasks } from "@/components/executor-portal/PortalTasks"
-import { formatMoney, formatDate } from "@/components/crm/documents/constants"
+import { PortalDocuments } from "@/components/executor-portal/PortalDocuments"
+import { formatDate } from "@/components/crm/documents/constants"
 
 const input =
   "w-full bg-[#161616] border border-white/10 rounded-lg px-3 min-h-[48px] text-base outline-none focus:border-[#D4AF37]/50"
@@ -179,8 +180,6 @@ export default function ExecutorPortal() {
   }
   if (!data) return null
 
-  const objName = (id: number) => data.objects.find((o) => o.id === id)?.object_code || ""
-
   return (
     <div className="min-h-screen bg-[#161616] text-white">
       <header className="sticky top-0 z-10 bg-[#161616]/95 backdrop-blur border-b border-white/10">
@@ -207,34 +206,11 @@ export default function ExecutorPortal() {
       </header>
 
       <main className="max-w-2xl mx-auto p-4 flex flex-col gap-4">
+        <PortalDocuments contracts={data.contracts || []} acts={data.acts || []} onChanged={load} />
+
         <PortalTasks tasks={data.tasks || []} onChanged={load} />
 
         <ReportForm data={data} onSent={load} />
-
-        {data.contracts.length > 0 && (
-          <section className="bg-[#1f1f1f] border border-white/10 rounded-xl p-4">
-            <p className="font-medium mb-3">Мои договоры</p>
-            <ul className="flex flex-col gap-2">
-              {data.contracts.map((c) => (
-                <li key={c.id} className="rounded-lg bg-[#161616] border border-white/10 p-3">
-                  <div className="flex justify-between gap-2 text-sm">
-                    <span className="font-medium">
-                      № {c.contract_number} · {objName(c.object_id)}
-                    </span>
-                    <span>{formatMoney(c.total_amount)}</span>
-                  </div>
-                  <div className="flex justify-between gap-2 text-xs text-white/40 mt-1">
-                    <span>
-                      {formatDate(c.contract_date)}
-                      {c.work_subject ? ` · ${c.work_subject}` : ""}
-                    </span>
-                    <span className="text-emerald-400">получено {formatMoney(c.paid)}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
 
         <section className="bg-[#1f1f1f] border border-white/10 rounded-xl p-4">
           <p className="font-medium mb-3">Мои отчёты</p>

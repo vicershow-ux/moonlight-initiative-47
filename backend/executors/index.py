@@ -245,15 +245,18 @@ def handler(event: dict, context) -> dict:
             e['objects'] = [{'id': a, 'object_code': b, 'address': c} for a, b, c in cur.fetchall()]
             cur.execute(
                 "SELECT c.id, c.object_id, c.contract_number, c.contract_date, c.status, c.total_amount, o.object_code, "
-                "c.options->>'work_subject', "
+                "c.options->>'work_subject', c.executor_signed_at, "
+                "(SELECT COUNT(*) FROM acts a WHERE a.contract_id = c.id), "
+                "(SELECT COUNT(*) FROM acts a WHERE a.contract_id = c.id AND a.executor_signed_at IS NOT NULL), "
                 "COALESCE((SELECT SUM(amount) FROM company_expenses x WHERE x.contract_id = c.id AND x.source = 'executor_payment'), 0) "
                 "FROM contracts c JOIN objects o ON o.id = c.object_id "
                 "WHERE c.company_id = %s AND c.options->>'executor_id' = %s ORDER BY c.contract_date DESC",
                 (cid, str(eid))
             )
             e['contracts'] = [{'id': a, 'object_id': b, 'contract_number': c, 'contract_date': d, 'status': s,
-                               'total_amount': f(t), 'object_code': oc, 'work_subject': ws or '', 'paid': f(p)}
-                              for a, b, c, d, s, t, oc, ws, p in cur.fetchall()]
+                               'total_amount': f(t), 'object_code': oc, 'work_subject': ws or '', 'paid': f(p),
+                               'executor_signed_at': es, 'acts_count': an, 'acts_signed': asg}
+                              for a, b, c, d, s, t, oc, ws, es, an, asg, p in cur.fetchall()]
             return response(200, {'executor': e})
 
         if method == 'GET':
