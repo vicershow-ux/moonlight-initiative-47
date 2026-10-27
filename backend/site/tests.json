@@ -47,6 +47,12 @@
       "method": "GET",
       "path": "/?resource=public_sitemap",
       "expectedStatus": 200
+    },
+    {
+      "name": "Unauthorized promo",
+      "method": "GET",
+      "path": "/?resource=promo",
+      "expectedStatus": 401
     }
   ]
 }

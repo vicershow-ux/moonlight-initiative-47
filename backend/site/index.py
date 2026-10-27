@@ -438,6 +438,57 @@ def handler(event: dict, context) -> dict:
 
             return response(405, {'error': 'Метод не поддерживается'})
 
+        if resource == 'promo':
+            item_id = params.get('id')
+            cols = "id, kind, title, data, created_at, updated_at"
+
+            def promo_row(r):
+                return {'id': r[0], 'kind': r[1], 'title': r[2], 'data': r[3] or {},
+                        'created_at': r[4].isoformat() if r[4] else None,
+                        'updated_at': r[5].isoformat() if r[5] else None}
+
+            if method == 'GET':
+                cur.execute(f"SELECT {cols} FROM site_promo_items WHERE company_id = %s ORDER BY updated_at DESC",
+                            (company_id,))
+                return response(200, {'items': [promo_row(r) for r in cur.fetchall()]})
+
+            body = json.loads(event.get('body') or '{}') if method in ('POST', 'PUT') else {}
+            kind = body.get('kind') if body.get('kind') in ('flyer', 'card') else 'flyer'
+            title = str(body.get('title') or '').strip()[:200] or 'Без названия'
+            data = body.get('data') if isinstance(body.get('data'), dict) else {}
+            if body.get('image_file'):
+                data['image'] = upload_image(company_id, body['image_file'], 'promo')
+            if body.get('logo_file'):
+                data['logo'] = upload_image(company_id, body['logo_file'], 'promo')
+
+            if method == 'POST':
+                cur.execute(
+                    f"INSERT INTO site_promo_items (company_id, kind, title, data) VALUES (%s, %s, %s, %s) RETURNING {cols}",
+                    (company_id, kind, title, json.dumps(data, ensure_ascii=False))
+                )
+                row = cur.fetchone()
+                conn.commit()
+                return response(200, promo_row(row))
+
+            if method == 'PUT' and item_id:
+                cur.execute(
+                    f"UPDATE site_promo_items SET kind = %s, title = %s, data = %s, updated_at = NOW() "
+                    f"WHERE id = %s AND company_id = %s RETURNING {cols}",
+                    (kind, title, json.dumps(data, ensure_ascii=False), item_id, company_id)
+                )
+                row = cur.fetchone()
+                if not row:
+                    return response(404, {'error': 'Макет не найден'})
+                conn.commit()
+                return response(200, promo_row(row))
+
+            if method == 'DELETE' and item_id:
+                cur.execute("DELETE FROM site_promo_items WHERE id = %s AND company_id = %s", (item_id, company_id))
+                conn.commit()
+                return response(200, {'success': True})
+
+            return response(405, {'error': 'Метод не поддерживается'})
+
         if resource in LIST_CONFIG:
             cfg = LIST_CONFIG[resource]
             item_id = params.get('id')

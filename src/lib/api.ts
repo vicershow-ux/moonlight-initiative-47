@@ -1294,6 +1294,39 @@ export interface PageSeo {
   updated_at?: string
 }
 
+export type PromoKind = "flyer" | "card"
+
+export interface PromoData {
+  orientation?: "portrait" | "landscape"
+  theme?: "dark" | "light" | "gold"
+  headline?: string
+  subtitle?: string
+  bullets?: string
+  offer?: string
+  name?: string
+  role?: string
+  phone?: string
+  email?: string
+  website?: string
+  address?: string
+  image?: string
+  logo?: string
+  qr_enabled?: boolean
+  qr_url?: string
+  qr_caption?: string
+  tear_off?: boolean
+  copies?: number
+}
+
+export interface PromoItem {
+  id: number
+  kind: PromoKind
+  title: string
+  data: PromoData
+  created_at?: string | null
+  updated_at?: string | null
+}
+
 export interface SitePhilosophyItem {
   id: number
   sort_order: number
@@ -1381,6 +1414,26 @@ export const siteApi = {
       body: JSON.stringify(payload),
     })
     return parseResponse(res) as Promise<SiteSettings>
+  },
+
+  promo: {
+    async list() {
+      const res = await fetch(`${SITE_URL}?resource=promo`, { headers: { ...authHeaders() } })
+      return parseResponse(res) as Promise<{ items: PromoItem[] }>
+    },
+    async save(item: { id?: number; kind: PromoKind; title: string; data: PromoData; image_file?: string; logo_file?: string }) {
+      const url = item.id ? `${SITE_URL}?resource=promo&id=${item.id}` : `${SITE_URL}?resource=promo`
+      const res = await fetch(url, {
+        method: item.id ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify(item),
+      })
+      return parseResponse(res) as Promise<PromoItem>
+    },
+    async remove(id: number) {
+      const res = await fetch(`${SITE_URL}?resource=promo&id=${id}`, { method: "DELETE", headers: { ...authHeaders() } })
+      return parseResponse(res) as Promise<{ success: boolean }>
+    },
   },
 
   pageSeo: {

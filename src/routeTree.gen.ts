@@ -21,6 +21,7 @@ import { Route as CabinetCustomersRouteImport } from './routes/cabinet.customers
 import { Route as CabinetDocumentsRouteImport } from './routes/cabinet.documents'
 import { Route as CabinetFinanceRouteImport } from './routes/cabinet.finance'
 import { Route as CabinetProfileRouteImport } from './routes/cabinet.profile'
+import { Route as CabinetPromoRouteImport } from './routes/cabinet.promo'
 import { Route as CabinetSiteRouteImport } from './routes/cabinet.site'
 import { Route as CabinetTeamRouteImport } from './routes/cabinet.team'
 import { Route as CabinetWarehouseRouteImport } from './routes/cabinet.warehouse'
@@ -119,6 +120,11 @@ const CabinetFinanceRoute = CabinetFinanceRouteImport.update({
 const CabinetProfileRoute = CabinetProfileRouteImport.update({
   id: '/cabinet/profile',
   path: '/cabinet/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CabinetPromoRoute = CabinetPromoRouteImport.update({
+  id: '/cabinet/promo',
+  path: '/cabinet/promo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CabinetSiteRoute = CabinetSiteRouteImport.update({
@@ -345,6 +351,7 @@ export interface FileRoutesByFullPath {
   '/cabinet/documents': typeof CabinetDocumentsRoute
   '/cabinet/finance': typeof CabinetFinanceRoute
   '/cabinet/profile': typeof CabinetProfileRoute
+  '/cabinet/promo': typeof CabinetPromoRoute
   '/cabinet/site': typeof CabinetSiteRoute
   '/cabinet/team': typeof CabinetTeamRoute
   '/cabinet/warehouse': typeof CabinetWarehouseRoute
@@ -398,6 +405,7 @@ export interface FileRoutesByTo {
   '/cabinet/documents': typeof CabinetDocumentsRoute
   '/cabinet/finance': typeof CabinetFinanceRoute
   '/cabinet/profile': typeof CabinetProfileRoute
+  '/cabinet/promo': typeof CabinetPromoRoute
   '/cabinet/site': typeof CabinetSiteRoute
   '/cabinet/team': typeof CabinetTeamRoute
   '/cabinet/warehouse': typeof CabinetWarehouseRoute
@@ -452,6 +460,7 @@ export interface FileRoutesById {
   '/cabinet/documents': typeof CabinetDocumentsRoute
   '/cabinet/finance': typeof CabinetFinanceRoute
   '/cabinet/profile': typeof CabinetProfileRoute
+  '/cabinet/promo': typeof CabinetPromoRoute
   '/cabinet/site': typeof CabinetSiteRoute
   '/cabinet/team': typeof CabinetTeamRoute
   '/cabinet/warehouse': typeof CabinetWarehouseRoute
@@ -507,6 +516,7 @@ export interface FileRouteTypes {
     | '/cabinet/documents'
     | '/cabinet/finance'
     | '/cabinet/profile'
+    | '/cabinet/promo'
     | '/cabinet/site'
     | '/cabinet/team'
     | '/cabinet/warehouse'
@@ -560,6 +570,7 @@ export interface FileRouteTypes {
     | '/cabinet/documents'
     | '/cabinet/finance'
     | '/cabinet/profile'
+    | '/cabinet/promo'
     | '/cabinet/site'
     | '/cabinet/team'
     | '/cabinet/warehouse'
@@ -613,6 +624,7 @@ export interface FileRouteTypes {
     | '/cabinet/documents'
     | '/cabinet/finance'
     | '/cabinet/profile'
+    | '/cabinet/promo'
     | '/cabinet/site'
     | '/cabinet/team'
     | '/cabinet/warehouse'
@@ -667,6 +679,7 @@ export interface RootRouteChildren {
   CabinetDocumentsRoute: typeof CabinetDocumentsRoute
   CabinetFinanceRoute: typeof CabinetFinanceRoute
   CabinetProfileRoute: typeof CabinetProfileRoute
+  CabinetPromoRoute: typeof CabinetPromoRoute
   CabinetSiteRoute: typeof CabinetSiteRoute
   CabinetTeamRoute: typeof CabinetTeamRoute
   CabinetWarehouseRoute: typeof CabinetWarehouseRoute
@@ -793,6 +806,13 @@ declare module '@tanstack/react-router' {
       path: '/cabinet/profile'
       fullPath: '/cabinet/profile'
       preLoaderRoute: typeof CabinetProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cabinet/promo': {
+      id: '/cabinet/promo'
+      path: '/cabinet/promo'
+      fullPath: '/cabinet/promo'
+      preLoaderRoute: typeof CabinetPromoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cabinet/site': {
@@ -1083,6 +1103,7 @@ const rootRouteChildren: RootRouteChildren = {
   CabinetDocumentsRoute: CabinetDocumentsRoute,
   CabinetFinanceRoute: CabinetFinanceRoute,
   CabinetProfileRoute: CabinetProfileRoute,
+  CabinetPromoRoute: CabinetPromoRoute,
   CabinetSiteRoute: CabinetSiteRoute,
   CabinetTeamRoute: CabinetTeamRoute,
   CabinetWarehouseRoute: CabinetWarehouseRoute,
