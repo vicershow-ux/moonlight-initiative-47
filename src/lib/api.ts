@@ -1,3 +1,4 @@
+import type { PromoDesign } from "@/lib/promoTypes"
 import funcUrls from "../../backend/func2url.json"
 import { EstimateStatus } from "@/lib/estimateStatus"
 
@@ -1296,33 +1297,11 @@ export interface PageSeo {
 
 export type PromoKind = "flyer" | "card"
 
-export interface PromoData {
-  orientation?: "portrait" | "landscape"
-  theme?: "dark" | "light" | "gold"
-  headline?: string
-  subtitle?: string
-  bullets?: string
-  offer?: string
-  name?: string
-  role?: string
-  phone?: string
-  email?: string
-  website?: string
-  address?: string
-  image?: string
-  logo?: string
-  qr_enabled?: boolean
-  qr_url?: string
-  qr_caption?: string
-  tear_off?: boolean
-  copies?: number
-}
-
 export interface PromoItem {
   id: number
   kind: PromoKind
   title: string
-  data: PromoData
+  data: PromoDesign
   created_at?: string | null
   updated_at?: string | null
 }
@@ -1421,7 +1400,7 @@ export const siteApi = {
       const res = await fetch(`${SITE_URL}?resource=promo`, { headers: { ...authHeaders() } })
       return parseResponse(res) as Promise<{ items: PromoItem[] }>
     },
-    async save(item: { id?: number; kind: PromoKind; title: string; data: PromoData; image_file?: string; logo_file?: string }) {
+    async save(item: { id?: number; kind: PromoKind; title: string; data: PromoDesign }) {
       const url = item.id ? `${SITE_URL}?resource=promo&id=${item.id}` : `${SITE_URL}?resource=promo`
       const res = await fetch(url, {
         method: item.id ? "PUT" : "POST",
@@ -1429,6 +1408,14 @@ export const siteApi = {
         body: JSON.stringify(item),
       })
       return parseResponse(res) as Promise<PromoItem>
+    },
+    async upload(file: string) {
+      const res = await fetch(`${SITE_URL}?resource=promo&action=upload`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ file }),
+      })
+      return parseResponse(res) as Promise<{ url: string }>
     },
     async remove(id: number) {
       const res = await fetch(`${SITE_URL}?resource=promo&id=${id}`, { method: "DELETE", headers: { ...authHeaders() } })

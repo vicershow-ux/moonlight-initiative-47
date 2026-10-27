@@ -1,248 +1,181 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { Navigate } from "@/lib/router-compat"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
 import { useAuth } from "@/contexts/AuthContext"
 import { useToast } from "@/hooks/use-toast"
 import { hasPosition } from "@/lib/positions"
-import { PromoData, PromoItem, PromoKind, siteApi } from "@/lib/api"
-import { Contacts, cardPreset, flyerPresets } from "@/components/crm/promo/promoConfig"
-import { PromoPreview } from "@/components/crm/promo/PromoPreview"
-import { PromoEditorForm } from "@/components/crm/promo/PromoEditorForm"
-import { printPromo } from "@/components/crm/promo/printPromo"
+import { PromoItem, siteApi } from "@/lib/api"
+import type { PromoDesign } from "@/lib/promoTypes"
+import { FONTS_HREF, FORMATS } from "@/components/crm/promo/formats"
+import { Contacts, TEMPLATES, blankDesign } from "@/components/crm/promo/templates"
+import { DesignThumb } from "@/components/crm/promo/ui"
+import { PromoEditor } from "@/components/crm/promo/PromoEditor"
 
-interface Draft {
+interface Open {
   id?: number
-  kind: PromoKind
   title: string
-  data: PromoData
-  image_file?: string
-  logo_file?: string
+  design: PromoDesign
 }
 
-const KIND_LABEL: Record<PromoKind, string> = { flyer: "Объявление А4", card: "Визитки" }
+const isDesign = (d: unknown): d is PromoDesign => !!d && Array.isArray((d as PromoDesign).sides)
 
 export default function Promo() {
   const { user } = useAuth()
   const { toast } = useToast()
   const canManage = user?.role === "owner" || hasPosition(user, "super_admin")
-
   const [items, setItems] = useState<PromoItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [contacts, setContacts] = useState<Contacts>({ phone: "", email: "", website: "fixkey.ru", brand: "FixKey" })
-  const [draft, setDraft] = useState<Draft | null>(null)
-  const [dirty, setDirty] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const sheetRef = useRef<HTMLDivElement>(null)
+  const [filter, setFilter] = useState<"card" | "flyer">("card")
+  const [open, setOpen] = useState<Open | null>(null)
+  const [contacts, setContacts] = useState<Contacts>({ brand: "FixKey", phone: "", email: "", website: "fixkey.ru", telegram: "", city: "Хабаровск" })
 
   useEffect(() => {
+    if (!document.querySelector("link[data-promo-fonts]")) {
+      const l = document.createElement("link")
+      l.rel = "stylesheet"
+      l.href = FONTS_HREF
+      l.dataset.promoFonts = "1"
+      document.head.appendChild(l)
+    }
     if (!canManage) return
     Promise.all([siteApi.promo.list(), siteApi.getSettings().catch(() => null)])
       .then(([list, s]) => {
-        setItems(list.items || [])
-        if (s) setContacts({ phone: s.phone || "", email: s.email || "", website: "fixkey.ru", brand: s.brand_name || "FixKey" })
+        setItems((list.items || []).filter((i) => isDesign(i.data)))
+        if (s)
+          setContacts((c) => ({
+            ...c,
+            brand: s.brand_name || c.brand,
+            phone: s.phone || "",
+            email: s.email || "",
+            telegram: s.telegram_url || "",
+          }))
       })
       .catch((e) => toast({ variant: "destructive", title: "Не удалось загрузить", description: e instanceof Error ? e.message : "" }))
       .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const presets = useMemo(() => flyerPresets(contacts), [contacts])
-
   if (!canManage) return <Navigate to="/cabinet/company" replace />
 
-  const confirmLeave = () => !dirty || window.confirm("Изменения не сохранены. Закрыть без сохранения?")
-
-  const open = (d: Draft) => {
-    if (!confirmLeave()) return
-    setDraft(d)
-    setDirty(false)
-  }
-
-  const change = (patch: Partial<PromoData>) => {
-    setDraft((d) => (d ? { ...d, data: { ...d.data, ...patch } } : d))
-    setDirty(true)
-  }
-
-  const setImage = (field: "image" | "logo", dataUrl: string) => {
-    setDraft((d) => (d ? { ...d, data: { ...d.data, [field]: dataUrl }, [`${field}_file`]: dataUrl } : d))
-    setDirty(true)
-  }
-
-  const save = async () => {
-    if (!draft) return
-    setSaving(true)
-    try {
-      const data = { ...draft.data }
-      if (draft.image_file) delete data.image
-      if (draft.logo_file) delete data.logo
-      const saved = await siteApi.promo.save({ ...draft, data })
-      setItems((list) => [saved, ...list.filter((i) => i.id !== saved.id)])
-      setDraft({ id: saved.id, kind: saved.kind, title: saved.title, data: saved.data })
-      setDirty(false)
-      toast({ title: "Макет сохранён" })
-    } catch (e) {
-      toast({ variant: "destructive", title: "Не удалось сохранить", description: e instanceof Error ? e.message : "" })
-    } finally {
-      setSaving(false)
-    }
+  if (open) {
+    return (
+      <PromoEditor
+        id={open.id}
+        title={open.title}
+        design={open.design}
+        contacts={contacts}
+        onClose={() => setOpen(null)}
+        onSaved={(id, title, design) => {
+          const kind = design.format === "card" ? "card" : "flyer"
+          setItems((list) => [{ id, title, kind, data: design }, ...list.filter((i) => i.id !== id)])
+        }}
+      />
+    )
   }
 
   const remove = async (item: PromoItem) => {
     if (!window.confirm(`Удалить «${item.title}»?`)) return
     try {
       await siteApi.promo.remove(item.id)
-      setItems((list) => list.filter((i) => i.id !== item.id))
-      if (draft?.id === item.id) setDraft(null)
+      setItems((l) => l.filter((i) => i.id !== item.id))
     } catch (e) {
       toast({ variant: "destructive", title: "Не удалось удалить", description: e instanceof Error ? e.message : "" })
     }
   }
 
-  const print = () => {
-    if (draft && sheetRef.current) printPromo(draft.kind, draft.data, sheetRef.current, draft.title)
-  }
-
-  if (loading) {
-    return (
-      <CrmLayout title="Промо" subtitle="Объявления А4 и визитки для печати">
-        <div className="flex items-center justify-center py-24">
-          <Icon name="Loader2" size={28} className="animate-spin text-white/40" />
-        </div>
-      </CrmLayout>
-    )
-  }
-
-  if (draft) {
-    return (
-      <CrmLayout title="Промо" subtitle={KIND_LABEL[draft.kind]}>
-        <div className="mb-5 flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => confirmLeave() && (setDraft(null), setDirty(false))}
-            className="flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-2 text-sm text-white/70 hover:bg-white/10"
-          >
-            <Icon name="ArrowLeft" size={15} />
-            Все макеты
-          </button>
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            {dirty && <span className="text-xs text-amber-400">не сохранено</span>}
-            <button
-              onClick={print}
-              className="flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2.5 text-sm text-white hover:bg-white/15"
-            >
-              <Icon name="Printer" size={15} />
-              Печать
-            </button>
-            <button
-              onClick={save}
-              disabled={saving || (!dirty && !!draft.id)}
-              className="flex items-center gap-2 rounded-lg bg-[#D4AF37] px-5 py-2.5 text-sm font-medium text-[#161616] hover:bg-[#B8860B] disabled:opacity-50"
-            >
-              <Icon name={saving ? "Loader2" : "Check"} size={15} className={saving ? "animate-spin" : ""} />
-              Сохранить
-            </button>
-          </div>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-          <div className="order-2 rounded-xl border border-white/10 bg-[#1f1f1f] p-4 lg:order-1 lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto">
-            <PromoEditorForm
-              kind={draft.kind}
-              title={draft.title}
-              data={draft.data}
-              onTitle={(v) => {
-                setDraft({ ...draft, title: v })
-                setDirty(true)
-              }}
-              onChange={change}
-              onImage={setImage}
-            />
-          </div>
-          <div className="order-1 rounded-xl border border-white/10 bg-[#2a2a2a] p-4 md:p-8 lg:order-2">
-            <PromoPreview ref={sheetRef} kind={draft.kind} data={draft.data} />
-            <p className="mt-4 text-center text-xs text-white/40">
-              {draft.kind === "card"
-                ? "На листе А4 — 10 визиток 90×50 мм с пунктиром для отреза. При печати выберите «Масштаб 100%»."
-                : "Лист А4. При печати выберите «Масштаб 100%» и включите «Фон и цвета»."}
-            </p>
-          </div>
-        </div>
-      </CrmLayout>
-    )
-  }
-
-  const card = cardPreset(contacts)
+  const templates = TEMPLATES.filter((t) => t.kind === filter)
+  const mine = items.filter((i) => i.kind === filter)
+  const isCard = filter === "card"
+  const grid = isCard ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
 
   return (
-    <CrmLayout title="Промо" subtitle="Объявления А4 и визитки для печати">
-      <section className="mb-8">
-        <h2 className="mb-3 text-sm font-medium text-white/70">Создать новый макет</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {presets.map((p) => (
-            <button
-              key={p.label}
-              onClick={() => open({ kind: "flyer", title: p.title, data: p.data })}
-              className="flex items-start gap-3 rounded-xl border border-white/10 bg-[#1f1f1f] p-4 text-left transition-colors hover:border-[#D4AF37]/50"
-            >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#D4AF37]/15 text-[#D4AF37]">
-                <Icon name="FileText" size={18} />
-              </span>
-              <span>
-                <span className="block text-sm font-medium">Объявление А4</span>
-                <span className="block text-xs text-white/40">Шаблон «{p.label}»</span>
-              </span>
+    <CrmLayout title="Промо" subtitle="Конструктор визиток и листовок для печати">
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <div className="flex rounded-lg border border-white/10 bg-[#1f1f1f] p-1">
+          {(
+            [
+              ["card", "Визитки", "CreditCard"],
+              ["flyer", "Листовки и объявления", "FileText"],
+            ] as const
+          ).map(([v, l, ic]) => (
+            <button key={v} onClick={() => setFilter(v)} className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm ${filter === v ? "bg-[#D4AF37] font-medium text-[#161616]" : "text-white/60 hover:text-white"}`}>
+              <Icon name={ic} size={15} />
+              {l}
             </button>
           ))}
-          <button
-            onClick={() => open({ kind: "card", title: card.title, data: card.data })}
-            className="flex items-start gap-3 rounded-xl border border-white/10 bg-[#1f1f1f] p-4 text-left transition-colors hover:border-[#D4AF37]/50"
-          >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#D4AF37]/15 text-[#D4AF37]">
-              <Icon name="IdCard" fallback="CreditCard" size={18} />
-            </span>
-            <span>
-              <span className="block text-sm font-medium">Визитки</span>
-              <span className="block text-xs text-white/40">10 штук на листе, линии отреза</span>
-            </span>
-          </button>
         </div>
-      </section>
+      </div>
 
-      <section>
-        <h2 className="mb-3 text-sm font-medium text-white/70">Мои макеты</h2>
-        {items.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-white/10 py-14 text-center text-sm text-white/40">
-            Пока нет сохранённых макетов — выберите шаблон выше
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {items.map((item) => (
-              <div key={item.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#1f1f1f] p-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5 text-white/60">
-                  <Icon name={item.kind === "card" ? "CreditCard" : "FileText"} size={16} />
-                </span>
-                <button onClick={() => open({ id: item.id, kind: item.kind, title: item.title, data: item.data })} className="min-w-0 flex-1 text-left">
-                  <span className="block truncate text-sm font-medium">{item.title}</span>
-                  <span className="block text-xs text-white/40">
-                    {KIND_LABEL[item.kind]} · {item.data.orientation === "landscape" ? "горизонтально" : "вертикально"}
-                    {item.data.qr_enabled ? " · QR-код" : ""}
-                  </span>
-                </button>
-                <button
-                  onClick={() => open({ ...item, title: `${item.title} (копия)`, id: undefined })}
-                  title="Сделать копию"
-                  className="rounded-lg p-2 text-white/50 hover:bg-white/10 hover:text-white"
-                >
-                  <Icon name="Copy" size={15} />
-                </button>
-                <button onClick={() => remove(item)} title="Удалить" className="rounded-lg p-2 text-white/50 hover:bg-red-500/15 hover:text-red-300">
-                  <Icon name="Trash2" size={15} />
-                </button>
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <Icon name="Loader2" size={28} className="animate-spin text-white/40" />
+        </div>
+      ) : (
+        <>
+          {mine.length > 0 && (
+            <section className="mb-10">
+              <h2 className="mb-3 text-sm font-medium text-white/70">Мои макеты</h2>
+              <div className={`grid gap-4 ${grid}`}>
+                {mine.map((item) => (
+                  <div key={item.id} className="rounded-xl border border-white/10 bg-[#1f1f1f] p-3">
+                    <button onClick={() => setOpen({ id: item.id, title: item.title, design: item.data })} className="flex w-full justify-center rounded-lg bg-[#2b2b2b] p-4">
+                      <DesignThumb design={item.data} width={isCard ? (item.data.orientation === "portrait" ? 110 : 200) : 150} />
+                    </button>
+                    <div className="mt-2 flex items-center gap-1">
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium">{item.title}</div>
+                        <div className="text-xs text-white/40">
+                          {FORMATS[item.data.format]?.label} · {item.data.orientation === "landscape" ? "горизонтально" : "вертикально"}
+                        </div>
+                      </div>
+                      <button onClick={() => setOpen({ title: `${item.title} (копия)`, design: item.data })} title="Сделать копию" className="rounded-lg p-2 text-white/50 hover:bg-white/10 hover:text-white">
+                        <Icon name="Copy" size={15} />
+                      </button>
+                      <button onClick={() => remove(item)} title="Удалить" className="rounded-lg p-2 text-white/50 hover:bg-red-500/15 hover:text-red-300">
+                        <Icon name="Trash2" size={15} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+            </section>
+          )}
+
+          <section>
+            <h2 className="mb-3 text-sm font-medium text-white/70">{isCard ? "Шаблоны визиток 90×50 мм" : "Шаблоны листовок А4"}</h2>
+            <div className={`grid gap-4 ${grid}`}>
+              <button
+                onClick={() => setOpen({ title: isCard ? "Моя визитка" : "Моя листовка", design: blankDesign(filter) })}
+                className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[#D4AF37]/50 bg-[#1f1f1f] p-4 text-[#D4AF37] hover:bg-[#D4AF37]/5"
+              >
+                <Icon name="SquarePlus" size={40} strokeWidth={1.5} />
+                <span className="text-sm font-medium">Создать свой дизайн</span>
+              </button>
+              {templates.map((t) => {
+                const d = t.build(contacts)
+                const portrait = d.orientation === "portrait"
+                return (
+                  <button key={t.id} onClick={() => setOpen({ title: t.name, design: { ...d, template: t.id } })} className="rounded-xl border border-white/10 bg-[#1f1f1f] p-3 text-left transition-colors hover:border-[#D4AF37]/60">
+                    <div className="flex items-center justify-center rounded-lg bg-[#2b2b2b] p-4">
+                      {isCard ? (
+                        <div className={`flex ${portrait ? "flex-row" : "flex-col"} gap-2`}>
+                          <DesignThumb design={d} width={portrait ? 80 : 170} />
+                          {d.sides[1] && <DesignThumb design={d} side={1} width={portrait ? 80 : 170} />}
+                        </div>
+                      ) : (
+                        <DesignThumb design={d} width={150} />
+                      )}
+                    </div>
+                    <div className="mt-2 truncate text-sm font-medium">{t.name}</div>
+                    <div className="text-xs text-white/40">{isCard ? "90×50 мм · 2 стороны" : "А4 · 210×297 мм"}</div>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+        </>
+      )}
     </CrmLayout>
   )
 }

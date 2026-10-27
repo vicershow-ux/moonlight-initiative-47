@@ -453,13 +453,16 @@ def handler(event: dict, context) -> dict:
                 return response(200, {'items': [promo_row(r) for r in cur.fetchall()]})
 
             body = json.loads(event.get('body') or '{}') if method in ('POST', 'PUT') else {}
+
+            if method == 'POST' and params.get('action') == 'upload':
+                file_data = body.get('file') or ''
+                if not file_data:
+                    return response(400, {'error': 'Нет файла'})
+                return response(200, {'url': upload_image(company_id, file_data, 'promo')})
+
             kind = body.get('kind') if body.get('kind') in ('flyer', 'card') else 'flyer'
             title = str(body.get('title') or '').strip()[:200] or 'Без названия'
             data = body.get('data') if isinstance(body.get('data'), dict) else {}
-            if body.get('image_file'):
-                data['image'] = upload_image(company_id, body['image_file'], 'promo')
-            if body.get('logo_file'):
-                data['logo'] = upload_image(company_id, body['logo_file'], 'promo')
 
             if method == 'POST':
                 cur.execute(
