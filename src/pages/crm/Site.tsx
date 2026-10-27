@@ -44,7 +44,7 @@ const emptyForm: SiteSettings = {
 }
 
 type PendingFiles = Partial<Record<
-  "logo_file" | "favicon_file" | "hero_bg_image_file" | "hero_fg_image_file" | "about_image_file",
+  "logo_file" | "favicon_file" | "hero_bg_image_file" | "hero_fg_image_file" | "about_image_file" | "og_image_file",
   string
 >>
 
@@ -85,7 +85,12 @@ export default function Site() {
   const handleSave = async () => {
     setSaving(true)
     try {
-      const payload = { ...form, ...pendingFiles }
+      // Заголовок и описание главной правятся в списке страниц на вкладке SEO — здесь их не перезаписываем
+      const { meta_title: _t, meta_description: _d, meta_keywords: _k, ...rest } = form
+      void _t
+      void _d
+      void _k
+      const payload = { ...rest, ...pendingFiles }
       const updated = await siteApi.updateSettings(payload)
       setForm({ ...emptyForm, ...updated })
       setPendingFiles({})
@@ -175,7 +180,7 @@ export default function Site() {
           <CalculatorTab form={form} update={update} />
         </TabsContent>
         <TabsContent value="seo">
-          <SeoTab form={form} update={update} />
+          <SeoTab form={form} update={update} onFileSelected={onFileSelected} />
         </TabsContent>
         <TabsContent value="legal">
           <LegalTab form={form} update={update} />

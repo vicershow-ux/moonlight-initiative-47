@@ -1288,6 +1288,9 @@ export interface PageSeo {
   intro_text: string
   og_image: string
   is_indexed: boolean
+  image_url?: string
+  image_file?: string
+  og_image_file?: string
   updated_at?: string
 }
 

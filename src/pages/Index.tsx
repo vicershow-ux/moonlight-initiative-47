@@ -10,6 +10,7 @@ import { CallToAction } from "../components/CallToAction"
 import { Footer } from "../components/Footer"
 import { useSiteContent } from "@/hooks/useSiteContent"
 import { WorkCartBar } from "@/components/services/WorkCartBar"
+import { DEFAULT_OG_IMAGE } from "@/lib/pageHead"
 
 export default function Index() {
   const { content } = useSiteContent()
@@ -48,12 +49,12 @@ export default function Index() {
     setMeta("property", "og:title", meta_title)
     setMeta("property", "og:description", meta_description)
     setMeta("property", "og:url", window.location.origin)
-    setMeta("property", "og:image", s.og_image || s.logo_url || "")
+    setMeta("property", "og:image", s.og_image || DEFAULT_OG_IMAGE)
 
     setMeta("name", "twitter:card", "summary_large_image")
     setMeta("name", "twitter:title", meta_title)
     setMeta("name", "twitter:description", meta_description)
-    setMeta("name", "twitter:image", s.og_image || s.logo_url || "")
+    setMeta("name", "twitter:image", s.og_image || DEFAULT_OG_IMAGE)
 
     let canonical = document.querySelector('link[rel="canonical"]')
     if (!canonical) {

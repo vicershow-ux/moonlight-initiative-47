@@ -240,14 +240,19 @@ def handler(event: dict, context) -> dict:
         if method == 'GET' and resource == 'public_page_seo':
             cur.execute(
                 "SELECT page_path, page_kind, page_label, meta_title, meta_description, "
-                "meta_keywords, h1_title, intro_text, og_image, is_indexed "
+                "meta_keywords, h1_title, intro_text, og_image, is_indexed, image_url "
                 "FROM site_page_seo WHERE company_id = %s ORDER BY sort_order, id",
                 (LANDING_COMPANY_ID,)
             )
             keys = ['page_path', 'page_kind', 'page_label', 'meta_title', 'meta_description',
-                    'meta_keywords', 'h1_title', 'intro_text', 'og_image', 'is_indexed']
+                    'meta_keywords', 'h1_title', 'intro_text', 'og_image', 'is_indexed', 'image_url']
             pages = [dict(zip(keys, r)) for r in cur.fetchall()]
-            return response(200, {'pages': pages})
+            cur.execute("SELECT brand_name, og_image, seo_region, meta_title, meta_description, meta_keywords "
+                        "FROM site_settings WHERE company_id = %s", (LANDING_COMPANY_ID,))
+            row = cur.fetchone() or ('', '', '', '', '', '')
+            site = dict(zip(['brand_name', 'og_image', 'seo_region', 'meta_title', 'meta_description', 'meta_keywords'],
+                            [v or '' for v in row]))
+            return response(200, {'pages': pages, 'site': site})
 
         user = get_current_user(cur, event)
         if not user:
@@ -281,6 +286,7 @@ def handler(event: dict, context) -> dict:
                     'hero_bg_image_file': 'hero_bg_image',
                     'hero_fg_image_file': 'hero_fg_image',
                     'about_image_file': 'about_image',
+                    'og_image_file': 'og_image',
                 }
                 for file_key, target_field in image_file_map.items():
                     file_data = body.get(file_key)
@@ -325,13 +331,13 @@ def handler(event: dict, context) -> dict:
 
         if resource == 'page_seo':
             seo_keys = ['page_path', 'page_kind', 'page_label', 'meta_title', 'meta_description',
-                        'meta_keywords', 'h1_title', 'intro_text', 'og_image', 'is_indexed']
+                        'meta_keywords', 'h1_title', 'intro_text', 'og_image', 'is_indexed', 'image_url']
 
             if method == 'GET':
                 sync_service_seo(cur, conn, company_id)
                 cur.execute(
                     "SELECT id, page_path, page_kind, page_label, meta_title, meta_description, "
-                    "meta_keywords, h1_title, intro_text, og_image, is_indexed, updated_at "
+                    "meta_keywords, h1_title, intro_text, og_image, is_indexed, image_url, updated_at "
                     "FROM site_page_seo WHERE company_id = %s ORDER BY sort_order, id",
                     (company_id,)
                 )
@@ -345,8 +351,13 @@ def handler(event: dict, context) -> dict:
                 if not page_path:
                     return response(400, {'error': 'Не указан адрес страницы'})
 
+                if body.get('image_file'):
+                    body['image_url'] = upload_image(company_id, body['image_file'], 'services')
+                if body.get('og_image_file'):
+                    body['og_image'] = upload_image(company_id, body['og_image_file'], 'social')
+
                 editable = ['page_label', 'meta_title', 'meta_description', 'meta_keywords',
-                            'h1_title', 'intro_text', 'og_image']
+                            'h1_title', 'intro_text', 'og_image', 'image_url']
                 set_clauses = []
                 values = []
                 for field in editable:
@@ -371,11 +382,18 @@ def handler(event: dict, context) -> dict:
                 )
                 if cur.rowcount == 0:
                     return response(404, {'error': 'Страница не найдена'})
+                if page_path == '/':
+                    home = {k: str(body[k] or '').strip() for k in ('meta_title', 'meta_description', 'meta_keywords') if k in body}
+                    if home:
+                        cur.execute(
+                            f"UPDATE site_settings SET {', '.join(f'{k} = %s' for k in home)}, updated_at = NOW() WHERE company_id = %s",
+                            list(home.values()) + [company_id]
+                        )
                 conn.commit()
 
                 cur.execute(
                     "SELECT id, page_path, page_kind, page_label, meta_title, meta_description, "
-                    "meta_keywords, h1_title, intro_text, og_image, is_indexed, updated_at "
+                    "meta_keywords, h1_title, intro_text, og_image, is_indexed, image_url, updated_at "
                     "FROM site_page_seo WHERE company_id = %s AND page_path = %s",
                     (company_id, page_path)
                 )

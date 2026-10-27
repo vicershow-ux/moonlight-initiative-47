@@ -49,3 +49,20 @@ export function usePageSeo(path: string | undefined) {
 
   return seo
 }
+
+/** Все страницы сразу — нужно списку услуг, чтобы показать фото из кабинета */
+export function usePageSeoMap() {
+  const [map, setMap] = useState<Map<string, PageSeo>>(() => cache || new Map())
+
+  useEffect(() => {
+    let alive = true
+    loadPageSeo().then((m) => {
+      if (alive) setMap(m)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  return map
+}

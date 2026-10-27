@@ -1,0 +1,1 @@
+ALTER TABLE site_page_seo ADD COLUMN IF NOT EXISTS image_url TEXT NOT NULL DEFAULT '';

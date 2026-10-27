@@ -4,7 +4,7 @@ import { Footer } from "@/components/Footer"
 import { HighlightedText } from "@/components/HighlightedText"
 import { useSiteContent } from "@/hooks/useSiteContent"
 import { useServiceLandings } from "@/hooks/useServiceLandings"
-import { usePageSeo } from "@/hooks/usePageSeo"
+import { usePageSeo, usePageSeoMap } from "@/hooks/usePageSeo"
 import Icon from "@/components/ui/icon"
 import { serviceImage } from "@/lib/serviceImages"
 import { reachGoal } from "@/lib/metrika"
@@ -25,6 +25,7 @@ export default function ServicesIndex() {
 
   const { landings, statsByCategory, loading } = useServiceLandings()
   const customSeo = usePageSeo("/uslugi")
+  const seoMap = usePageSeoMap()
 
   useEffect(() => {
     document.title = customSeo?.meta_title || META_TITLE
@@ -114,7 +115,7 @@ export default function ServicesIndex() {
                   >
                     <div className="relative aspect-[16/10] overflow-hidden bg-[#161616]">
                       <img
-                        src={serviceImage(c.slug)}
+                        src={seoMap.get(`/uslugi/${c.slug}`)?.image_url || serviceImage(c.slug)}
                         alt={c.category}
                         loading="lazy"
                         className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"

@@ -81,7 +81,7 @@ export function ServiceLandingHero({ meta, customSeo, phone, phoneHref, loading,
           <div className="w-full flex flex-col gap-5">
           <div className="relative aspect-[16/10] rounded-2xl overflow-hidden bg-[#161616] group">
             <img
-              src={serviceImage(meta.slug)}
+              src={customSeo?.image_url || serviceImage(meta.slug)}
               alt={meta.category}
               className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-105"
             />

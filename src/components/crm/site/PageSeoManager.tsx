@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
 import Icon from "@/components/ui/icon"
 import { PageSeo, siteApi } from "@/lib/api"
+import { ImageUploadField } from "@/components/crm/site/ImageUploadField"
+import { serviceImage } from "@/lib/serviceImages"
+import { SITE_ORIGIN } from "@/lib/pageHead"
 
 const inputClass =
   "w-full bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
@@ -137,8 +140,8 @@ export function PageSeoManager() {
       <div className="mb-4">
         <h3 className="text-sm font-medium">Заголовки и описания по страницам</h3>
         <p className="mt-1 text-xs text-white/40">
-          Каждая страница услуги выходит в поиске по своему запросу. Меняйте заголовок, описание
-          и ключевые слова — на сайте они появятся после нажатия «Опубликовать».
+          У каждой страницы — свой заголовок, описание, ключевые слова и картинки. Откройте строку,
+          поправьте и нажмите «Сохранить» в ней. На сайте изменения появятся после «Опубликовать».
         </p>
       </div>
 
@@ -328,6 +331,47 @@ export function PageSeoManager() {
                       value={valueOf(page, "intro_text")}
                       onChange={(e) => setField(page.page_path, "intro_text", e.target.value)}
                     />
+                  </div>
+
+                  {page.page_kind === "service" && (
+                    <ImageUploadField
+                      key={`img-${page.page_path}-${page.image_url || ""}`}
+                      label="Фото услуги"
+                      hint="Показывается на странице услуги и в карточке в списке «Все услуги». Лучше горизонтальное фото, от 1600 px по ширине."
+                      aspect="aspect-[16/10]"
+                      current={drafts[page.page_path]?.image_url === "" ? "" : page.image_url || ""}
+                      fallback={serviceImage(page.page_path.replace("/uslugi/", ""))}
+                      onPick={(data) => setField(page.page_path, "image_file", data)}
+                      onClear={() => {
+                        setField(page.page_path, "image_file", "")
+                        setField(page.page_path, "image_url", "")
+                      }}
+                    />
+                  )}
+
+                  <ImageUploadField
+                    key={`og-${page.page_path}-${page.og_image || ""}`}
+                    label="Картинка для соцсетей"
+                    hint="Покажется, когда ссылку на эту страницу отправят в мессенджер. Если не загружать — возьмётся фото услуги или общая картинка сайта. Лучший размер — 1200×630."
+                    current={drafts[page.page_path]?.og_image === "" ? "" : page.og_image || ""}
+                    onPick={(data) => setField(page.page_path, "og_image_file", data)}
+                    onClear={() => {
+                      setField(page.page_path, "og_image_file", "")
+                      setField(page.page_path, "og_image", "")
+                    }}
+                  />
+
+                  <div>
+                    <p className="mb-1.5 text-xs text-white/50">Так страница будет выглядеть в поиске:</p>
+                    <div className="rounded-lg bg-white p-4">
+                      <p className="mb-1 text-base leading-snug text-[#1a0dab] break-words">
+                        {title.length > TITLE_LIMIT ? `${title.slice(0, TITLE_LIMIT)}…` : title || page.page_label}
+                      </p>
+                      <p className="mb-1 text-xs text-[#006621] break-all">{SITE_ORIGIN.replace("https://", "")}{page.page_path === "/" ? "" : page.page_path}</p>
+                      <p className="text-xs leading-relaxed text-[#545454]">
+                        {desc.length > DESC_LIMIT ? `${desc.slice(0, DESC_LIMIT)}…` : desc || "Добавьте описание — это текст под ссылкой в поиске."}
+                      </p>
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3">

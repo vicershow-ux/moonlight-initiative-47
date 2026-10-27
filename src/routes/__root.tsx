@@ -11,11 +11,12 @@ import {MetrikaTracker} from "@/components/MetrikaTracker";
 import {AnalyticsHead} from "@/components/AnalyticsHead";
 import PageNotFound from "@/pages/PageNotFound";
 import appCss from "@/index.css?url";
+import {DEFAULT_OG_IMAGE} from "@/lib/pageHead";
 
 const TITLE = "Ремонт квартир под ключ в Хабаровске — FixKey";
 const DESCRIPTION =
     "Ремонт квартир и домов под ключ в Хабаровске и Хабаровском р-не. Фиксированная смета до начала работ, гарантия 3 года, контроль на каждом этапе.";
-const OG_IMAGE = "https://cdn.poehali.dev/projects/***/files/og-image-1792749059216.png";
+const OG_IMAGE = DEFAULT_OG_IMAGE;
 
 const SEO_SCRIPT = `(function () {
             var known = ["/", "/uslugi"];
