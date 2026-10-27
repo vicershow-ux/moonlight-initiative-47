@@ -237,6 +237,42 @@ def handler(event: dict, context) -> dict:
             ]
             return response(200, {'categories': cats})
 
+        if method == 'GET' and resource == 'public_sitemap':
+            cur.execute(
+                "SELECT category, MAX(created_at) FROM services WHERE company_id = %s AND is_active = true "
+                "AND category <> '' AND price > 0 GROUP BY category", (LANDING_COMPANY_ID,)
+            )
+            cats = cur.fetchall()
+            cur.execute("SELECT page_path, is_indexed, updated_at FROM site_page_seo WHERE company_id = %s",
+                        (LANDING_COMPANY_ID,))
+            seo = {r[0]: (r[1], r[2]) for r in cur.fetchall()}
+            cur.execute("SELECT updated_at FROM site_settings WHERE company_id = %s", (LANDING_COMPANY_ID,))
+            row = cur.fetchone()
+            site_updated = row[0] if row else None
+
+            def stamp(*values):
+                dates = [v for v in values if v]
+                return max(dates).date().isoformat() if dates else None
+
+            pages = []
+            newest = None
+            services = []
+            for cat, created in sorted(cats, key=lambda c: c[0]):
+                path = f"/uslugi/{slugify(cat)}"
+                if path == '/uslugi/':
+                    continue
+                indexed, updated = seo.get(path, (True, None))
+                if not indexed:
+                    continue
+                services.append({'path': path, 'lastmod': stamp(created, updated), 'kind': 'service'})
+                newest = max([d for d in (newest, created, updated) if d])
+            for path, kind in (('/', 'home'), ('/uslugi', 'catalog')):
+                indexed, updated = seo.get(path, (True, None))
+                if indexed:
+                    extra = site_updated if path == '/' else None
+                    pages.append({'path': path, 'lastmod': stamp(updated, extra, newest), 'kind': kind})
+            return response(200, {'pages': pages + services})
+
         if method == 'GET' and resource == 'public_page_seo':
             cur.execute(
                 "SELECT page_path, page_kind, page_label, meta_title, meta_description, "

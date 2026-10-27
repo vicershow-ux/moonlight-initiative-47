@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as CookiesRouteImport } from './routes/cookies'
 import { Route as ExecutorRouteImport } from './routes/executor'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as CabinetIndexRouteImport } from './routes/cabinet.index'
 import { Route as CabinetCompanyAssetsRouteImport } from './routes/cabinet.company-assets'
@@ -78,6 +79,11 @@ const ExecutorRoute = ExecutorRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TermsRoute = TermsRouteImport.update({
@@ -332,6 +338,7 @@ export interface FileRoutesByFullPath {
   '/cookies': typeof CookiesRoute
   '/executor': typeof ExecutorRoute
   '/privacy': typeof PrivacyRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/cabinet/company-assets': typeof CabinetCompanyAssetsRoute
   '/cabinet/customers': typeof CabinetCustomersRoute
@@ -384,6 +391,7 @@ export interface FileRoutesByTo {
   '/cookies': typeof CookiesRoute
   '/executor': typeof ExecutorRoute
   '/privacy': typeof PrivacyRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/cabinet/company-assets': typeof CabinetCompanyAssetsRoute
   '/cabinet/customers': typeof CabinetCustomersRoute
@@ -437,6 +445,7 @@ export interface FileRoutesById {
   '/cookies': typeof CookiesRoute
   '/executor': typeof ExecutorRoute
   '/privacy': typeof PrivacyRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/cabinet/company-assets': typeof CabinetCompanyAssetsRoute
   '/cabinet/customers': typeof CabinetCustomersRoute
@@ -491,6 +500,7 @@ export interface FileRouteTypes {
     | '/cookies'
     | '/executor'
     | '/privacy'
+    | '/sitemap.xml'
     | '/terms'
     | '/cabinet/company-assets'
     | '/cabinet/customers'
@@ -543,6 +553,7 @@ export interface FileRouteTypes {
     | '/cookies'
     | '/executor'
     | '/privacy'
+    | '/sitemap.xml'
     | '/terms'
     | '/cabinet/company-assets'
     | '/cabinet/customers'
@@ -595,6 +606,7 @@ export interface FileRouteTypes {
     | '/cookies'
     | '/executor'
     | '/privacy'
+    | '/sitemap.xml'
     | '/terms'
     | '/cabinet/company-assets'
     | '/cabinet/customers'
@@ -648,6 +660,7 @@ export interface RootRouteChildren {
   CookiesRoute: typeof CookiesRoute
   ExecutorRoute: typeof ExecutorRoute
   PrivacyRoute: typeof PrivacyRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
   CabinetCompanyAssetsRoute: typeof CabinetCompanyAssetsRoute
   CabinetCustomersRoute: typeof CabinetCustomersRoute
@@ -724,6 +737,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -1056,6 +1076,7 @@ const rootRouteChildren: RootRouteChildren = {
   CookiesRoute: CookiesRoute,
   ExecutorRoute: ExecutorRoute,
   PrivacyRoute: PrivacyRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
   CabinetCompanyAssetsRoute: CabinetCompanyAssetsRoute,
   CabinetCustomersRoute: CabinetCustomersRoute,
