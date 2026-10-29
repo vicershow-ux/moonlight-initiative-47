@@ -304,6 +304,30 @@ export const DEFAULT_PANEL: PanelSettings = {
 
 export const INPUT_CABLES = ["6 мм²", "10 мм²", "16 мм²", "25 мм²"]
 
+/**
+ * Линейные элементы потолка: магнитный трек (отрезок a–b)
+ * и парящий потолок (светящийся контур с отступом от стен помещения)
+ */
+export type FixtureKind = "track" | "floating"
+
+export interface PlanFixture {
+  id: string
+  kind: FixtureKind
+  a: PlanPoint
+  b: PlanPoint
+  roomId: string | null
+  label: string
+  /** Высота установки от пола, м */
+  height: number
+  /** Парящий потолок: отступ контура от стен, м */
+  offset?: number
+}
+
+export const FIXTURE_PRESETS: Record<FixtureKind, { label: string; code: string; height: number; icon: string }> = {
+  track: { label: "Магнитный трек", code: "Тр", height: 2.7, icon: "Minus" },
+  floating: { label: "Парящий потолок", code: "ПП", height: 2.7, icon: "Square" },
+}
+
 export interface PlanScheme {
   version: 1
   rooms: PlanRoom[]
@@ -316,6 +340,8 @@ export interface PlanScheme {
   panel?: PanelSettings
   /** Толщина и материал стен по id стены «помещение:номер» */
   walls?: Record<string, WallProps>
+  /** Магнитные треки и парящие потолки — слой электрики */
+  fixtures?: PlanFixture[]
 }
 
 export const LAYERS: { value: PlanLayer; label: string; icon: string }[] = [

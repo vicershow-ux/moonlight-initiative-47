@@ -29,7 +29,7 @@ export interface PlaceAssist {
 const ALIGN_PX = 10
 
 /** Расстояние от точки до контура комнаты по лучу вдоль оси: dx/dy = ±1 */
-function rayHit(p: PlanPoint, pts: PlanPoint[], dx: number, dy: number): number | null {
+export function rayHit(p: PlanPoint, pts: PlanPoint[], dx: number, dy: number): number | null {
   let best: number | null = null
   for (let i = 0; i < pts.length; i++) {
     const a = pts[i]

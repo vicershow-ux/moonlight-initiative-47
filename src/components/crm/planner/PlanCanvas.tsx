@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   dist,
   distToPolyline,
@@ -15,7 +15,11 @@ import {
   PlanNode,
   PlanPoint,
   PlanScheme,
+  FixtureKind,
+  PlanFixture,
 } from "@/lib/planner/types"
+import { fixtureRefs, hitFixture } from "@/lib/planner/fixtures"
+import { FloatingDraft, TrackDraft } from "./FixtureDrafts"
 import {
   SNAP_STEP,
   eventPoint,
@@ -37,7 +41,7 @@ import { TypedLengthHint } from "./TypedLengthHint"
 import { WallLegend } from "./WallLegend"
 import { NodeLegend } from "./NodeLegend"
 
-export type PlanTool = "select" | "draw" | "window" | "door" | "arch" | "node" | "link"
+export type PlanTool = "select" | "draw" | "window" | "door" | "arch" | "node" | "link" | "track" | "floating"
 
 interface Props {
   scheme: PlanScheme
@@ -70,6 +74,10 @@ interface Props {
   linkSpec?: string | null
   /** Подсвеченная группа щита: её кабели и точки ярко, остальное бледно */
   highlightGroupId?: string | null
+  selectedFixtureId?: string | null
+  onSelectFixture?: (id: string | null) => void
+  onAddFixture?: (kind: FixtureKind, a: PlanPoint, b: PlanPoint) => void
+  onUpdateFixture?: (id: string, patch: Partial<PlanFixture>) => void
 }
 
 export function PlanCanvas({
@@ -101,6 +109,10 @@ export function PlanCanvas({
   linkGroupId = null,
   linkSpec = null,
   highlightGroupId = null,
+  selectedFixtureId = null,
+  onSelectFixture,
+  onAddFixture,
+  onUpdateFixture,
 }: Props) {
   const { wrapRef, size, view, setView, toScreen, toWorld, gridLines, gridStep, zoomBy, fitView } =
     usePlanView(scheme.rooms)
@@ -113,6 +125,7 @@ export function PlanCanvas({
     | { type: "vertex"; roomId: string; index: number }
     | { type: "node"; nodeId: string }
     | { type: "bend"; linkId: string; index: number }
+    | { type: "fixture"; id: string; grab: PlanPoint; a: PlanPoint; b: PlanPoint }
     | null
   >(null)
 
@@ -124,6 +137,21 @@ export function PlanCanvas({
     () => (scheme.links || []).filter((l) => l.layer === layer),
     [scheme.links, layer],
   )
+  const fixtures = useMemo(() => (layer === "electric" ? scheme.fixtures || [] : []), [scheme.fixtures, layer])
+  /** Начало рисуемого трека */
+  const [trackStart, setTrackStart] = useState<PlanPoint | null>(null)
+  useEffect(() => {
+    setTrackStart(null)
+  }, [tool, layer])
+  useEffect(() => {
+    if (!trackStart) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setTrackStart(null)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [trackStart])
+
   const nodeById = useMemo(() => {
     const map = new Map<string, PlanNode>()
     for (const n of scheme.nodes || []) map.set(n.id, n)
@@ -137,10 +165,26 @@ export function PlanCanvas({
   const snapPoint = (p: PlanPoint) => ({ x: snap(p.x, SNAP_STEP), y: snap(p.y, SNAP_STEP) })
 
   /** Потолочные точки (светильники, споты, коробки) ставятся с размерами до стен и соседей */
+  const ceilingRefs = (excludeNode?: string, excludeFixture?: string) => [
+    ...nodes.filter((n) => n.id !== excludeNode && CEILING_KINDS.has(n.kind)).map((n) => ({ x: n.x, y: n.y })),
+    ...fixtureRefs(fixtures, excludeFixture),
+  ]
   const placeFor = (world: PlanPoint, kind: NodeKind, free: boolean, excludeId?: string) => {
     if (FORCE_WALL.has(kind) || !CEILING_KINDS.has(kind)) return null
-    const refs = nodes.filter((n) => n.id !== excludeId && CEILING_KINDS.has(n.kind)).map((n) => ({ x: n.x, y: n.y }))
-    return placeAssist(snapPoint(world), scheme.rooms, refs, view.scale, free)
+    return placeAssist(snapPoint(world), scheme.rooms, ceilingRefs(excludeId), view.scale, free)
+  }
+
+  /** Конец трека: от начала строго по горизонтали или вертикали (Alt — под любым углом) */
+  const trackEnd = (world: PlanPoint, free: boolean) => {
+    if (!trackStart) return placeAssist(snapPoint(world), scheme.rooms, ceilingRefs(), view.scale, free)
+    let p = snapPoint(world)
+    if (!free) {
+      p = Math.abs(p.x - trackStart.x) >= Math.abs(p.y - trackStart.y) ? { x: p.x, y: trackStart.y } : { x: trackStart.x, y: p.y }
+    }
+    const pa = placeAssist(p, scheme.rooms, ceilingRefs(), view.scale, free)
+    // Прилипание не должно сбивать трек с оси
+    const q = free ? pa.point : trackStart.y === p.y ? { x: pa.point.x, y: trackStart.y } : { x: trackStart.x, y: pa.point.y }
+    return { ...pa, point: q }
   }
 
   const { bends, setBends, nextBend } = useLinkRoute({ tool, layer, linkFromId, nodeById, onCancelLink, snapPoint })
@@ -175,6 +219,22 @@ export function PlanCanvas({
       return
     }
 
+    if (tool === "track") {
+      const pa = trackEnd(world, e.altKey)
+      if (!trackStart) {
+        setTrackStart(pa.point)
+        return
+      }
+      if (dist(trackStart, pa.point) > 0.05) onAddFixture?.("track", trackStart, pa.point)
+      setTrackStart(null)
+      return
+    }
+
+    if (tool === "floating") {
+      onAddFixture?.("floating", world, world)
+      return
+    }
+
     if (tool === "link") {
       const n = hitNode()
       if (n) {
@@ -193,6 +253,7 @@ export function PlanCanvas({
         if (n) {
           setDrag({ type: "node", nodeId: n.id })
           onSelectNode(n.id)
+          onSelectFixture?.(null)
           return
         }
 
@@ -212,8 +273,18 @@ export function PlanCanvas({
         })
         if (link) {
           onSelectLink(link.id)
+          onSelectFixture?.(null)
           return
         }
+        const fx = hitFixture(scheme, fixtures, world, 8 / view.scale)
+        if (fx) {
+          onSelectFixture?.(fx.id)
+          onSelectNode(null)
+          onSelectLink(null)
+          if (fx.kind === "track") setDrag({ type: "fixture", id: fx.id, grab: world, a: fx.a, b: fx.b })
+          return
+        }
+        onSelectFixture?.(null)
         onSelectNode(null)
         onSelectLink(null)
       }
@@ -296,6 +367,11 @@ export function PlanCanvas({
       const a = drawAssist(world, e.altKey)
       setAssist(a)
       setCursor(a.point)
+    } else if (tool === "track" && !drag) {
+      if (assist) setAssist(null)
+      const pa = trackEnd(world, e.altKey)
+      setPlace(pa)
+      setCursor(pa.point)
     } else if (tool === "node" && !drag) {
       if (assist) setAssist(null)
       const pa = placeFor(world, nodeKind, e.altKey)
@@ -319,6 +395,16 @@ export function PlanCanvas({
       onMoveNode(drag.nodeId, pa ? pa.point : snapPoint(world))
       return
     }
+    if (drag.type === "fixture") {
+      // Трек двигается целиком; к осям светильников прилипает его начало
+      const raw = { x: drag.a.x + world.x - drag.grab.x, y: drag.a.y + world.y - drag.grab.y }
+      const pa = placeAssist(snapPoint(raw), scheme.rooms, ceilingRefs(undefined, drag.id), view.scale, e.altKey)
+      const dx = pa.point.x - drag.a.x
+      const dy = pa.point.y - drag.a.y
+      onUpdateFixture?.(drag.id, { a: pa.point, b: { x: drag.b.x + dx, y: drag.b.y + dy } })
+      setPlace({ ...pa, dims: [] })
+      return
+    }
     if (drag.type === "bend") {
       const link = links.find((l) => l.id === drag.linkId)
       if (!link) return
@@ -334,7 +420,7 @@ export function PlanCanvas({
 
   const handleUp = () => {
     if (drag?.type === "vertex") setAssist(null)
-    if (drag?.type === "node") setPlace(null)
+    if (drag?.type === "node" || drag?.type === "fixture") setPlace(null)
     setDrag(null)
   }
 
@@ -349,7 +435,7 @@ export function PlanCanvas({
         className="touch-none rounded-xl bg-[#141414]"
         style={{
           cursor:
-            tool === "draw" || tool === "node" || tool === "link"
+            tool === "draw" || tool === "node" || tool === "link" || tool === "track" || tool === "floating"
               ? "crosshair"
               : drag
                 ? "grabbing"
@@ -411,6 +497,8 @@ export function PlanCanvas({
             groups={scheme.groups || []}
             linkGroupId={linkGroupId}
             highlightGroupId={highlightGroupId}
+            fixtures={fixtures}
+            selectedFixtureId={selectedFixtureId}
             linkSpec={linkSpec}
             nodeById={nodeById}
             linkFromId={linkFromId}
@@ -423,6 +511,11 @@ export function PlanCanvas({
             scheme={scheme}
           />
         )}
+
+        {tool === "track" && trackStart && cursor && (
+          <TrackDraft scheme={scheme} a={trackStart} b={cursor} toScreen={toScreen} />
+        )}
+        {tool === "floating" && cursor && <FloatingDraft scheme={scheme} at={cursor} toScreen={toScreen} />}
 
         {place && layer !== "plan" && <PlaceAssistLayer assist={place} toScreen={toScreen} />}
 

@@ -7,7 +7,9 @@ import {
   CableSettings,
   PanelSettings,
   PlanScheme,
+  PlanFixture,
 } from "@/lib/planner/types"
+import { SelectedFixtureCard } from "./SelectedFixtureCard"
 import { groupSummaries } from "@/lib/planner/groups"
 import { phaseBalance } from "@/lib/planner/phases"
 import { panelSettings, panelWarnings } from "@/lib/planner/panelDiagram"
@@ -41,6 +43,9 @@ interface Props {
   onHoverWall?: (wallId: string | null) => void
   highlightGroupId?: string | null
   onHighlightGroup?: (id: string | null) => void
+  selectedFixture?: PlanFixture | null
+  onUpdateFixture?: (id: string, patch: Partial<PlanFixture>) => void
+  onDeleteFixture?: (id: string) => void
 }
 
 export function EngineerSidebar({
@@ -61,6 +66,9 @@ export function EngineerSidebar({
   onHoverWall,
   highlightGroupId = null,
   onHighlightGroup,
+  selectedFixture = null,
+  onUpdateFixture,
+  onDeleteFixture,
 }: Props) {
   const panel = panelSettings(scheme.panel)
   const panelIssues = layer === "electric" ? panelWarnings(scheme) : []
@@ -109,6 +117,10 @@ export function EngineerSidebar({
           scheme={scheme}
           onHoverWall={onHoverWall}
         />
+      )}
+
+      {selectedFixture && onUpdateFixture && onDeleteFixture && (
+        <SelectedFixtureCard fixture={selectedFixture} scheme={scheme} onUpdate={onUpdateFixture} onDelete={onDeleteFixture} />
       )}
 
       {selectedLink && (

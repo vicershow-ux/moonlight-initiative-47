@@ -1,6 +1,7 @@
 import { docBrandHeader, docBrandStyles } from "@/lib/docBrandHeader"
 import {
   dimensionParts,
+  dist,
   fmtMm,
   fmtNum,
   linkGeometry,
@@ -30,7 +31,9 @@ import { CABLE_BUY_SHARE, electricMaterials } from "@/lib/planner/materials"
 import { ceilingPlan, ceilingRows, ceilingSvg } from "@/lib/planner/ceiling"
 import { PHASE_COLORS, SECTION_COLORS, WALL_MATERIALS, WallMaterial, sectionColor, sectionOf } from "@/lib/planner/types"
 import { hatchPattern, materialSwatchImg, usedMaterials } from "@/lib/planner/wallHatch"
-import { NODE_CODES, nodeLegendImg, nodeLegendItems } from "@/lib/planner/nodeLegend"
+import { NODE_CODES, fixtureLegendItems, nodeLegendImg, nodeLegendItems } from "@/lib/planner/nodeLegend"
+import { FLOATING_OFFSET, fixtureLength, floatingContour } from "@/lib/planner/fixtures"
+import { Box, LabelCandidate, LabelSpot, alongSegment, aroundPoint, createLabelPlacer, iconBox, textWidth } from "@/lib/planner/labelLayout"
 import { OPENING_HINTS, PDF_OPENING_PALETTE, openingLegendItems, openingSwatchImg } from "@/lib/planner/openingLegend"
 import {
   doorSwing,
@@ -107,6 +110,7 @@ export function schemeToSvg(
   const dimColor = isEng ? "#aaaaaa" : "#555555"
   const nameColor = isEng ? "#999999" : "#161616"
 
+  const roomLabelBoxes: Box[] = []
   scheme.rooms.forEach((room) => {
     if (room.points.length < 2) return
     const d =
@@ -135,6 +139,7 @@ export function schemeToSvg(
       // чтобы она не накладывалась на оборудование в середине комнаты
       const ys = room.points.map((p) => p.y)
       const labelY = isEng ? sy(Math.min(...ys)) + 20 : sy(c.y) - 3
+      roomLabelBoxes.push({ x: sx(c.x) - room.name.length * 4, y: labelY - 12, w: room.name.length * 8, h: 28 })
       parts.push(
         `<text x="${sx(c.x)}" y="${labelY}" text-anchor="middle" font-size="12" font-weight="bold" fill="${nameColor}" font-family="Arial">${escapeXml(room.name)}</text>`,
       )
@@ -234,6 +239,61 @@ export function schemeToSvg(
     const defaultColor = layer === "electric" ? "#B8860B" : "#2f80c9"
     const groupById = new Map((scheme.groups || []).map((g) => [g.id, g]))
 
+    // Подписи раскладываются в конце: сначала точки, потом треки и трассы — без наложений
+    const jobs: { prio: number; cands: LabelCandidate[]; fallback?: LabelCandidate[]; svg: (sp: LabelSpot, fb: boolean) => string }[] = []
+    const haloAttr = 'stroke="#ffffff" stroke-width="2.5" paint-order="stroke" stroke-linejoin="round"'
+    const tAttr = (sp: LabelSpot) =>
+      `x="${sp.x.toFixed(1)}" y="${sp.y.toFixed(1)}" text-anchor="${sp.anchor}"${sp.rotate ? ` transform="rotate(${sp.rotate.toFixed(1)}, ${sp.x.toFixed(1)}, ${sp.y.toFixed(1)})"` : ""}`
+
+    // Парящий потолок — штрихпунктирный контур; треки — толстой линией с засечками на торцах
+    if (layer === "electric") {
+      for (const f of scheme.fixtures || []) {
+        if (f.kind === "floating") {
+          const cn = floatingContour(scheme, f)
+          if (!cn) continue
+          parts.push(
+            `<polygon points="${cn.map((p) => `${sx(p.x)},${sy(p.y)}`).join(" ")}" fill="none" stroke="#2f80c9" stroke-width="1.3" stroke-dasharray="9 3 2 3"/>`,
+          )
+          let bi = 0
+          let bl = 0
+          cn.forEach((p, i) => {
+            const l = dist(p, cn[(i + 1) % cn.length])
+            if (l > bl) {
+              bl = l
+              bi = i
+            }
+          })
+          const text = `ПП · отступ ${fmtMm(f.offset ?? FLOATING_OFFSET)}`
+          const q1 = cn[bi]
+          const q2 = cn[(bi + 1) % cn.length]
+          jobs.push({
+            prio: 2,
+            cands: alongSegment({ x: sx(q1.x), y: sy(q1.y) }, { x: sx(q2.x), y: sy(q2.y) }, textWidth(text, 8.5, true), 10, 4),
+            svg: (sp) => `<text ${tAttr(sp)} font-size="8.5" font-weight="bold" fill="#2f80c9" font-family="Arial" ${haloAttr}>${text}</text>`,
+          })
+          continue
+        }
+        const x1 = sx(f.a.x)
+        const y1 = sy(f.a.y)
+        const x2 = sx(f.b.x)
+        const y2 = sy(f.b.y)
+        const len = Math.hypot(x2 - x1, y2 - y1) || 1
+        const nx = -(y2 - y1) / len
+        const ny = (x2 - x1) / len
+        parts.push(
+          `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#161616" stroke-width="3.5"/>`,
+          `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#ffffff" stroke-width="0.8"/>`,
+          ...[[x1, y1], [x2, y2]].map(([x, y]) => `<line x1="${x - nx * 5}" y1="${y - ny * 5}" x2="${x + nx * 5}" y2="${y + ny * 5}" stroke="#161616" stroke-width="1.4"/>`),
+        )
+        const text = `Тр ${fmtMm(fixtureLength(f))}`
+        jobs.push({
+          prio: 0,
+          cands: alongSegment({ x: x1, y: y1 }, { x: x2, y: y2 }, textWidth(text, 8.5, true), 10, 5),
+          svg: (sp) => `<text ${tAttr(sp)} font-size="8.5" font-weight="bold" fill="#161616" font-family="Arial" ${haloAttr}>${text}</text>`,
+        })
+      }
+    }
+
     links.forEach((l) => {
       const g = linkGeometry(l, byId)
       if (!g) return
@@ -248,17 +308,12 @@ export function schemeToSvg(
       )
       const seg = longestSegment(g.route)
       if (!seg) return
-      const x1 = sx(seg.a.x)
-      const y1 = sy(seg.a.y)
-      const x2 = sx(seg.b.x)
-      const y2 = sy(seg.b.y)
-      const mx = (x1 + x2) / 2
-      const my = (y1 + y2) / 2
-      const angle = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI
-      const flip = angle > 90 || angle < -90
-      parts.push(
-        `<text x="${mx}" y="${my - 4}" text-anchor="middle" font-size="9" fill="${lineColor}" font-family="Arial" transform="rotate(${flip ? angle + 180 : angle}, ${mx}, ${my})">${grp ? `Гр.${grp.num} · ` : ""}${escapeXml(l.spec)}</text>`,
-      )
+      const text = `${grp ? `Гр.${grp.num} · ` : ""}${escapeXml(l.spec)}`
+      jobs.push({
+        prio: 3,
+        cands: alongSegment({ x: sx(seg.a.x), y: sy(seg.a.y) }, { x: sx(seg.b.x), y: sy(seg.b.y) }, textWidth(text, 8.5), 10, 3),
+        svg: (sp) => `<text ${tAttr(sp)} font-size="8.5" fill="${lineColor}" font-family="Arial" ${haloAttr}>${text}</text>`,
+      })
     })
 
     const nodeGroups = layer === "electric" ? nodeGroupNums(scheme) : new Map<string, number[]>()
@@ -278,16 +333,38 @@ export function schemeToSvg(
         )
         parts.push(`<circle cx="${px}" cy="${py}" r="3.5" fill="${preset.color}"/>`)
       }
-      // У правого края листа подпись ставим слева от значка, иначе она обрежется
+      // Место подписи подбирается так, чтобы она не налезала на другие
       const code = [NODE_CODES[n.kind], groupTag(nodeGroups.get(n.id))].filter(Boolean).join(" · ")
       const text = escapeXml(n.label || preset.label)
       const full = code ? `${code} ${text}` : text
-      const nearRight = px + 12 + full.length * 5 > width - 8
       const codeSpan = code ? `<tspan font-weight="bold" fill="#161616">${escapeXml(code)}</tspan> ` : ""
-      parts.push(
-        `<text x="${nearRight ? px - 12 : px + 12}" y="${py + 3.5}" text-anchor="${nearRight ? "end" : "start"}" font-size="9" fill="#333" font-family="Arial">${codeSpan}${text}</text>`,
-      )
+      jobs.push({
+        prio: 0,
+        cands: aroundPoint({ x: px, y: py }, 9, textWidth(full, 8.5), 10),
+        fallback: code ? aroundPoint({ x: px, y: py }, 9, textWidth(code, 8.5, true), 10) : undefined,
+        svg: (sp, fb) =>
+          `<text ${tAttr(sp)} font-size="8.5" fill="#333" font-family="Arial" ${haloAttr}>${fb ? `<tspan font-weight="bold" fill="#161616">${escapeXml(code)}</tspan>` : `${codeSpan}${text}`}</text>`,
+      })
     })
+
+    const placer = createLabelPlacer(
+      [...nodes.map((n) => iconBox(sx(n.x), sy(n.y), 9)), ...roomLabelBoxes],
+      { x: 2, y: 2, w: width - 4, h: height - 30 },
+    )
+    jobs
+      .map((j, i) => ({ j, i }))
+      .sort((a, b) => a.j.prio - b.j.prio || a.i - b.i)
+      .forEach(({ j }) => {
+        const sp = placer.place(j.cands)
+        if (sp) {
+          parts.push(j.svg(sp, false))
+          return
+        }
+        if (j.fallback) {
+          const fb = placer.place(j.fallback)
+          if (fb) parts.push(j.svg(fb, true))
+        }
+      })
   }
 
   parts.push(
@@ -438,8 +515,21 @@ function wallLegend(scheme: PlanScheme): string {
 /** Условные обозначения точек под схемой электрики или сантехники: значок, буква, количество, высота */
 function nodeLegend(scheme: PlanScheme, layer: Exclude<PlanLayer, "plan">): string {
   const items = nodeLegendItems(scheme.nodes || [], layer)
-  if (!items.length) return ""
-  const html = items
+  const fx = layer === "electric" ? fixtureLegendItems(scheme.fixtures || []) : []
+  if (!items.length && !fx.length) return ""
+  const fxImg = (kind: string) =>
+    `<img src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+      kind === "track"
+        ? '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="24"><line x1="5" y1="12" x2="35" y2="12" stroke="#161616" stroke-width="3.5"/><line x1="5" y1="12" x2="35" y2="12" stroke="#fff" stroke-width="0.8"/><line x1="5" y1="7" x2="5" y2="17" stroke="#161616" stroke-width="1.4"/><line x1="35" y1="7" x2="35" y2="17" stroke="#161616" stroke-width="1.4"/></svg>'
+        : '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="24"><rect x="5" y="5" width="30" height="14" fill="none" stroke="#2f80c9" stroke-width="1.3" stroke-dasharray="9 3 2 3"/></svg>',
+    )}" width="40" height="24" style="vertical-align:middle;display:inline-block"/>`
+  const fxHtml = fx
+    .map(
+      (i) =>
+        `<div class="wl-item">${fxImg(i.kind)}<div><div class="wl-name"><b>${i.code}</b> — ${escapeXml(i.label)} — ${escapeXml(i.total)}</div><div class="wl-th">${i.kind === "track" ? "длина у линии, мм" : "светящийся контур с отступом от стен"}</div></div></div>`,
+    )
+    .join("")
+  const html = fxHtml + items
     .map(
       (i) =>
         `<div class="wl-item">${nodeLegendImg(i.kind)}<div><div class="wl-name">${i.code ? `<b>${escapeXml(i.code)}</b> — ` : ""}${escapeXml(i.label)} — ${i.count} шт.</div><div class="wl-th">высота ${i.heights.join(", ")} мм от пола</div></div></div>`,
@@ -710,7 +800,8 @@ function engineerSection(
 ): string {
   const nodes = (scheme.nodes || []).filter((n) => n.layer === layer)
   const links = (scheme.links || []).filter((l) => l.layer === layer)
-  if (nodes.length === 0 && links.length === 0) return ""
+  const hasFixtures = layer === "electric" && (scheme.fixtures || []).length > 0
+  if (nodes.length === 0 && links.length === 0 && !hasFixtures) return ""
 
   const title = layer === "electric" ? "Схема электрики" : "Схема сантехники"
   const specTitle = layer === "electric" ? "Кабель по сечениям" : "Труба по диаметрам"

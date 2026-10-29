@@ -55,7 +55,13 @@ export function PlannerWorkspace({ state }: Props) {
     updateLink,
     deleteLink,
     updateWall,
+    selectedFixtureId,
+    setSelectedFixtureId,
+    addFixture,
+    updateFixture,
+    deleteFixture,
   } = state
+  const selectedFixture = (scheme.fixtures || []).find((f) => f.id === selectedFixtureId) || null
   const [hoverWallId, setHoverWallId] = useState<string | null>(null)
   /** Группа щита, которую подсвечиваем на схеме электрики */
   const [highlightGroupId, setHighlightGroupId] = useState<string | null>(null)
@@ -141,6 +147,10 @@ export function PlannerWorkspace({ state }: Props) {
           linkGroupId={linkGroupId}
           linkSpec={state.linkSpec}
           highlightGroupId={activeHighlight}
+          selectedFixtureId={selectedFixtureId}
+          onSelectFixture={setSelectedFixtureId}
+          onAddFixture={addFixture}
+          onUpdateFixture={updateFixture}
           selectedWallId={hoverWallId ?? (layer === "plan" ? activeWallId : null)}
           onSelectWall={selectWall}
         />
@@ -190,6 +200,9 @@ export function PlannerWorkspace({ state }: Props) {
           onHoverWall={setHoverWallId}
           highlightGroupId={activeHighlight}
           onHighlightGroup={setHighlightGroupId}
+          selectedFixture={selectedFixture}
+          onUpdateFixture={updateFixture}
+          onDeleteFixture={deleteFixture}
         />
       )}
     </div>

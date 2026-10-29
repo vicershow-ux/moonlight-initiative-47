@@ -10,6 +10,7 @@ import {
   PlanGroup,
   PlanRoom,
   PlanScheme,
+  PlanFixture,
   sectionColor,
 } from "@/lib/planner/types"
 import { FORCE_WALL, mountPosition, nodeDirection, snapToWall } from "@/lib/planner/walls"
@@ -19,6 +20,9 @@ import { SymbolShapes } from "./NodeSymbol"
 import { NODE_CODES } from "@/lib/planner/nodeLegend"
 import { groupTag, nodeGroupNums } from "@/lib/planner/groups"
 import type { PlanTool } from "./PlanCanvas"
+import { alongSegment, aroundPoint, iconBox, spotAttrs, textWidth } from "@/lib/planner/labelLayout"
+import { LabelJob, halo, layoutLabels } from "./labelJobs"
+import { renderFixtures } from "./PlanFixturesLayer"
 
 interface Props {
   layer: PlanLayer
@@ -47,6 +51,9 @@ interface Props {
   scheme?: PlanScheme
   /** Подсвеченная группа щита: её кабели и точки ярко, остальное бледно */
   highlightGroupId?: string | null
+  /** Магнитные треки и парящие потолки */
+  fixtures?: PlanFixture[]
+  selectedFixtureId?: string | null
 }
 
 const polyPoints = (pts: PlanPoint[], toScreen: ToScreen) =>
@@ -78,6 +85,8 @@ export function PlanEngineerLayer({
   toScreen,
   scheme,
   highlightGroupId = null,
+  fixtures = [],
+  selectedFixtureId = null,
 }: Props) {
   const color = layer === "electric" ? "#E8B23A" : "#7FB5E8"
   const groupById = new Map(groups.map((g) => [g.id, g]))
@@ -98,6 +107,8 @@ export function PlanEngineerLayer({
     return set
   }, [hl, links])
   const DIM = 0.16
+  /** Подписи собираются при отрисовке и раскладываются в конце без наложений */
+  const labelJobs: LabelJob[] = []
 
   // На электрике трасса окрашивается в цвет своего сечения — как в PDF
   const colorOf = (spec?: string | null) => (layer === "electric" && spec ? sectionColor(spec) : color)
@@ -111,28 +122,19 @@ export function PlanEngineerLayer({
     const grp = l.groupId ? groupById.get(l.groupId) : null
     const lit = hl ? l.groupId === hl : null
 
-    // Подпись — группа и сечение, без длины: длина есть в карточке трассы и в PDF
-    let label: React.ReactNode = null
+    // Подпись — группа и сечение, без длины: длина есть в карточке трассы и в PDF.
+    // Место подбирается в конце, вместе с остальными подписями
     if (seg && dist(seg.a, seg.b) * scale > 60) {
-      const pa = toScreen(seg.a)
-      const pb = toScreen(seg.b)
-      const mx = (pa.x + pb.x) / 2
-      const my = (pa.y + pb.y) / 2
-      let angle = (Math.atan2(pb.y - pa.y, pb.x - pa.x) * 180) / Math.PI
-      if (angle > 90 || angle < -90) angle += 180
-      label = (
-        <text
-          x={mx}
-          y={my - 5}
-          textAnchor="middle"
-          fontSize="10"
-          fill={lc}
-          transform={`rotate(${angle}, ${mx}, ${my})`}
-        >
-          {grp ? `Гр.${grp.num} · ` : ""}
-          {l.spec}
-        </text>
-      )
+      const text = `${grp ? `Гр.${grp.num} · ` : ""}${l.spec}`
+      labelJobs.push({
+        prio: 2,
+        cands: alongSegment(toScreen(seg.a), toScreen(seg.b), textWidth(text, 10), 11),
+        render: (sp) => (
+          <text key={`ll${l.id}`} {...spotAttrs(sp)} fontSize="10" fill={lc} opacity={lit === false && !selected ? DIM : 1} style={halo}>
+            {text}
+          </text>
+        ),
+      })
     }
 
     return (
@@ -158,7 +160,6 @@ export function PlanEngineerLayer({
           strokeLinejoin="round"
           opacity={selected || lit ? 1 : 0.85}
         />
-        {label}
         {/* У выбранной трассы показываем изломы — их можно перетаскивать */}
         {selected &&
           (l.points || []).map((p, i) => {
@@ -195,6 +196,38 @@ export function PlanEngineerLayer({
     const inReveal = n.mount?.place === "reveal"
 
     const nodeLit = hl ? hlNodes.has(n.id) : null
+    {
+      const code = NODE_CODES[n.kind]
+      const grp = groupTag(nodeGroups.get(n.id))
+      const tag = [code, grp].filter(Boolean).join(" · ")
+      const name = `${n.label || preset.label}${inReveal ? " · откос" : ""}`
+      const full = scale > 26
+      const text = full ? `${tag ? `${tag} ` : ""}${name}` : tag
+      const op = nodeLit === false && !selected ? DIM + 0.1 : 1
+      if (text) {
+        const fs = full ? 10 : 9
+        const w = textWidth(text, fs, !full)
+        // Полная подпись не влезает — пробуем хотя бы короткую с буквами и группой
+        const cands = aroundPoint(p, r, w, fs + 2)
+        const short = full && tag ? aroundPoint(p, r, textWidth(tag, 9, true), 11) : []
+        labelJobs.push({
+          prio: selected ? -1 : 0,
+          cands,
+          fallback: short,
+          render: (sp, isShort) =>
+            isShort || !full ? (
+              <text key={`nl${n.id}`} {...spotAttrs(sp)} fontSize="9" fontWeight="700" fill="#D4AF37" opacity={op} style={halo}>
+                {tag}
+              </text>
+            ) : (
+              <text key={`nl${n.id}`} {...spotAttrs(sp)} fontSize="10" fill="rgba(255,255,255,0.8)" opacity={op} style={halo}>
+                {tag && <tspan fontWeight="700" fill="#D4AF37">{tag} </tspan>}
+                {name}
+              </text>
+            ),
+        })
+      }
+    }
     return (
       <g key={n.id} style={{ cursor: tool === "select" ? "grab" : "pointer" }} opacity={nodeLit === false && !selected ? DIM + 0.1 : 1}>
         {nodeLit && <circle cx={p.x} cy={p.y} r={r + 4} fill="#D4AF37" opacity={0.18} stroke="#D4AF37" strokeWidth={1} />}
@@ -231,25 +264,6 @@ export function PlanEngineerLayer({
             <circle cx={p.x} cy={p.y} r={4} fill={preset.color} />
           </>
         )}
-        {(() => {
-          const code = NODE_CODES[n.kind]
-          const grp = groupTag(nodeGroups.get(n.id))
-          const tag = [code, grp].filter(Boolean).join(" · ")
-          if (scale > 26) {
-            return (
-              <text x={p.x + r + 4} y={p.y + 4} fontSize="10" fill="rgba(255,255,255,0.75)">
-                {tag && <tspan fontWeight="700" fill="#D4AF37">{tag} </tspan>}
-                {n.label || preset.label}
-                {inReveal ? " · откос" : ""}
-              </text>
-            )
-          }
-          return tag ? (
-            <text x={p.x + r + 2} y={p.y + 4} fontSize="9" fontWeight="700" fill="#D4AF37">
-              {tag}
-            </text>
-          ) : null
-        })()}
       </g>
     )
   }
@@ -264,10 +278,23 @@ export function PlanEngineerLayer({
       : [{ x: from.x, y: from.y }, ...bends, ...(previewBend ? [previewBend] : [])]
   }
 
+  const linkEls = links.map(renderLink)
+  const nodeEls = nodes.map(renderNode)
+  const fixtureEls = renderFixtures({ scheme, fixtures, selectedFixtureId, scale, toScreen, jobs: labelJobs, halo })
+  const labels = layoutLabels(
+    labelJobs,
+    nodes.map((n) => {
+      const q = toScreen({ x: n.x, y: n.y })
+      return iconBox(q.x, q.y, 10)
+    }),
+  )
+
   return (
     <g>
-      {links.map(renderLink)}
-      {nodes.map(renderNode)}
+      {fixtureEls}
+      {linkEls}
+      {nodeEls}
+      <g pointerEvents="none">{labels}</g>
       {draftRoute && (
         <>
           <polyline

@@ -26,7 +26,10 @@ import {
   WallProps,
   DEFAULT_WALL,
   emptyScheme,
+  FixtureKind,
+  PlanFixture,
 } from "@/lib/planner/types"
+import { FLOATING_OFFSET } from "@/lib/planner/fixtures"
 
 const uid = () => Math.random().toString(36).slice(2, 10)
 
@@ -55,6 +58,8 @@ export function usePlannerState(id: string | undefined) {
   const [selectedOpeningId, setSelectedOpeningId] = useState<string | null>(null)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null)
+  /** Выбранный трек или парящий потолок */
+  const [selectedFixtureId, setSelectedFixtureId] = useState<string | null>(null)
   const [fileUrl, setFileUrl] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
   const [syncRooms, setSyncRooms] = useState(true)
@@ -79,6 +84,7 @@ export function usePlannerState(id: string | undefined) {
               cable: raw.cable,
               panel: raw.panel,
               walls: raw.walls || {},
+              fixtures: raw.fixtures || [],
             })
           }
           setFileUrl(planData.plan.file_url || null)
@@ -258,6 +264,57 @@ export function usePlannerState(id: string | undefined) {
     touch()
   }
 
+  /** Трек — отрезок a–b; парящий потолок — по одному на помещение, контур от его стен */
+  const addFixture = (kind: FixtureKind, a: PlanPoint, b: PlanPoint) => {
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+    const room = [...scheme.rooms].reverse().find((r) => pointInPolygon(mid, r.points))
+    if (kind === "floating") {
+      if (!room) return
+      const exists = (scheme.fixtures || []).find((f) => f.kind === "floating" && f.roomId === room.id)
+      if (exists) {
+        setSelectedFixtureId(exists.id)
+        return
+      }
+    }
+    const fx: PlanFixture = {
+      id: uid(),
+      kind,
+      a,
+      b,
+      roomId: room ? room.id : null,
+      label: "",
+      height: room?.height ?? scheme.defaultHeight,
+      offset: kind === "floating" ? FLOATING_OFFSET : undefined,
+    }
+    setScheme((s) => ({ ...s, fixtures: [...(s.fixtures || []), fx] }))
+    setSelectedFixtureId(fx.id)
+    setSelectedNodeId(null)
+    setSelectedLinkId(null)
+    touch()
+  }
+
+  const updateFixture = (fid: string, patch: Partial<PlanFixture>) => {
+    setScheme((s) => ({
+      ...s,
+      fixtures: (s.fixtures || []).map((f) => {
+        if (f.id !== fid) return f
+        const next = { ...f, ...patch }
+        if (patch.a || patch.b) {
+          const mid = { x: (next.a.x + next.b.x) / 2, y: (next.a.y + next.b.y) / 2 }
+          next.roomId = [...s.rooms].reverse().find((r) => pointInPolygon(mid, r.points))?.id ?? next.roomId
+        }
+        return next
+      }),
+    }))
+    touch()
+  }
+
+  const deleteFixture = (fid: string) => {
+    setScheme((s) => ({ ...s, fixtures: (s.fixtures || []).filter((f) => f.id !== fid) }))
+    setSelectedFixtureId(null)
+    touch()
+  }
+
   const deleteNode = (nodeId: string) => {
     setScheme((s) => ({
       ...s,
@@ -406,6 +463,7 @@ export function usePlannerState(id: string | undefined) {
     setLinkFromId(null)
     setSelectedNodeId(null)
     setSelectedLinkId(null)
+    setSelectedFixtureId(null)
     setDraft([])
     if (next === "electric") {
       setNodeKind("socket")
@@ -542,6 +600,11 @@ export function usePlannerState(id: string | undefined) {
     setSelectedNodeId,
     selectedLinkId,
     setSelectedLinkId,
+    selectedFixtureId,
+    setSelectedFixtureId,
+    addFixture,
+    updateFixture,
+    deleteFixture,
     fileUrl,
     dirty,
     syncRooms,

@@ -7,6 +7,7 @@ import { gostSymbol } from "@/lib/planner/symbols"
 import {
   LINK_SPECS,
   NODE_PRESETS,
+  FIXTURE_PRESETS,
   NodeKind,
   PlanGroup,
   PlanLayer,
@@ -136,6 +137,31 @@ export function PlannerEngineerPicker({
                 {NODE_PRESETS[k].label}
               </button>
             ))}
+          {layer === "electric" &&
+            (["track", "floating"] as const).map((k) => (
+              <button
+                key={k}
+                onClick={() => setTool(k)}
+                className={`flex min-h-[38px] items-center gap-2 rounded-lg px-3 text-sm transition-colors ${
+                  tool === k ? "bg-[#D4AF37] text-[#161616]" : "bg-white/5 text-white/60 hover:bg-white/10"
+                }`}
+              >
+                <Icon name={FIXTURE_PRESETS[k].icon} size={15} />
+                {FIXTURE_PRESETS[k].label}
+              </button>
+            ))}
+          {tool === "track" && (
+            <span className="flex w-full items-center gap-1.5 text-xs text-white/40">
+              <Icon name="Ruler" size={12} />
+              Первый щелчок — начало трека, второй — конец. Трек идёт строго по горизонтали или вертикали и прилипает к осям светильников; Alt — под любым углом, Esc — отмена
+            </span>
+          )}
+          {tool === "floating" && (
+            <span className="flex w-full items-center gap-1.5 text-xs text-white/40">
+              <Icon name="Ruler" size={12} />
+              Щёлкните в помещении — светящийся контур встанет по его стенам с отступом 100 мм; отступ меняется в карточке справа
+            </span>
+          )}
           {tool === "node" && CEILING_KINDS.has(nodeKind) && (
             <span className="flex w-full items-center gap-1.5 text-xs text-white/40">
               <Icon name="Ruler" size={12} />
