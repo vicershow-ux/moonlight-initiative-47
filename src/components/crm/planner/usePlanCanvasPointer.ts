@@ -9,7 +9,7 @@ import {
   wallSegments,
 } from "@/lib/planner/geometry"
 import { PlanFixture, PlanLink, PlanNode, PlanPoint } from "@/lib/planner/types"
-import { hitFixture } from "@/lib/planner/fixtures"
+import { hitFixture, shiftTrack } from "@/lib/planner/fixtures"
 import { hitWall } from "@/lib/planner/walls"
 import { PlaceAssist, placeAssist } from "@/lib/planner/placeAssist"
 import { SNAP_STEP, eventPoint } from "./usePlanView"
@@ -82,7 +82,7 @@ export function usePlanCanvasPointer({
     onAddFixture,
     onUpdateFixture,
   } = props
-  const { trackStart, setTrackStart, snapPoint, ceilingRefs, placeFor, trackEnd, assistRefs, drawAssist } = assistApi
+  const { trackStart, trackPts, setTrackPts, finishTrack, snapPoint, ceilingRefs, placeFor, trackEnd, assistRefs, drawAssist } = assistApi
   const [, setCursor] = cursorState
 
   const [assist, setAssist] = useState<DrawAssist | null>(null)
@@ -110,11 +110,15 @@ export function usePlanCanvasPointer({
     if (tool === "track") {
       const pa = trackEnd(world, e.altKey)
       if (!trackStart) {
-        setTrackStart(pa.point)
+        setTrackPts([pa.point])
         return
       }
-      if (dist(trackStart, pa.point) > 0.05) onAddFixture?.("track", trackStart, pa.point)
-      setTrackStart(null)
+      // Двойной щелчок или щелчок в ту же точку — конец трека, иначе ещё один поворот
+      if (e.detail >= 2 || dist(trackStart, pa.point) <= 0.05) {
+        finishTrack(dist(trackStart, pa.point) > 0.05 ? [...trackPts, pa.point] : trackPts)
+        return
+      }
+      setTrackPts([...trackPts, pa.point])
       return
     }
 
@@ -169,7 +173,7 @@ export function usePlanCanvasPointer({
           onSelectFixture?.(fx.id)
           onSelectNode(null)
           onSelectLink(null)
-          if (fx.kind === "track") setDrag({ type: "fixture", id: fx.id, grab: world, a: fx.a, b: fx.b })
+          if (fx.kind === "track") setDrag({ type: "fixture", id: fx.id, grab: world, a: fx.a, b: fx.b, points: fx.points || [] })
           return
         }
         onSelectFixture?.(null)
@@ -289,7 +293,7 @@ export function usePlanCanvasPointer({
       const pa = placeAssist(snapPoint(raw), scheme.rooms, ceilingRefs(undefined, drag.id), view.scale, e.altKey)
       const dx = pa.point.x - drag.a.x
       const dy = pa.point.y - drag.a.y
-      onUpdateFixture?.(drag.id, { a: pa.point, b: { x: drag.b.x + dx, y: drag.b.y + dy } })
+      onUpdateFixture?.(drag.id, shiftTrack(drag, dx, dy))
       setPlace({ ...pa, dims: [] })
       return
     }

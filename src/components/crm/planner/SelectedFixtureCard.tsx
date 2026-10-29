@@ -9,6 +9,9 @@ import {
   floatingContour,
   floatingPerimeter,
   trackOffsets,
+  trackSegments,
+  trackTurns,
+  shiftTrack,
 } from "@/lib/planner/fixtures"
 
 const inputCls =
@@ -27,12 +30,17 @@ export function SelectedFixtureCard({ fixture: f, scheme, onUpdate, onDelete }: 
   const preset = FIXTURE_PRESETS[f.kind]
   const room = scheme.rooms.find((r) => r.id === f.roomId)
 
-  /** Длина трека: конец сдвигается по оси трека */
+  /** Длина трека: меняется последний участок — конец сдвигается по его оси */
   const setLength = (mm: number) => {
-    const len = fixtureLength(f) || 1
-    const L = Math.max(fromMm(mm), 0.05)
-    onUpdate(f.id, { b: { x: f.a.x + ((f.b.x - f.a.x) / len) * L, y: f.a.y + ((f.b.y - f.a.y) / len) * L } })
+    const segs = trackSegments(f)
+    const last = segs[segs.length - 1]
+    const rest = fixtureLength(f) - last.length
+    const L = Math.max(fromMm(mm) - rest, 0.05)
+    const len = last.length || 1
+    onUpdate(f.id, { b: { x: last.a.x + ((last.b.x - last.a.x) / len) * L, y: last.a.y + ((last.b.y - last.a.y) / len) * L } })
   }
+
+  const turns = f.kind === "track" ? trackTurns(f) : 0
 
   /** Отступ сбоку — трек переезжает параллельно стене */
   const setSide = (mm: number) => {
@@ -40,7 +48,7 @@ export function SelectedFixtureCard({ fixture: f, scheme, onUpdate, onDelete }: 
     if (o.side === null) return
     const d = (o.side - fromMm(mm)) * o.sideDir
     const shift = o.horiz ? { x: 0, y: d } : { x: d, y: 0 }
-    onUpdate(f.id, { a: { x: f.a.x + shift.x, y: f.a.y + shift.y }, b: { x: f.b.x + shift.x, y: f.b.y + shift.y } })
+    onUpdate(f.id, shiftTrack(f, shift.x, shift.y))
   }
 
   /** Отступ от начального торца — трек сдвигается вдоль оси */
@@ -49,7 +57,7 @@ export function SelectedFixtureCard({ fixture: f, scheme, onUpdate, onDelete }: 
     if (o.startEnd === null) return
     const d = fromMm(mm) - o.startEnd
     const shift = o.horiz ? { x: d, y: 0 } : { x: 0, y: d }
-    onUpdate(f.id, { a: { x: f.a.x + shift.x, y: f.a.y + shift.y }, b: { x: f.b.x + shift.x, y: f.b.y + shift.y } })
+    onUpdate(f.id, shiftTrack(f, shift.x, shift.y))
   }
 
   const o = f.kind === "track" ? trackOffsets(scheme, f) : null
@@ -74,7 +82,7 @@ export function SelectedFixtureCard({ fixture: f, scheme, onUpdate, onDelete }: 
       {f.kind === "track" && o && (
         <>
           <div className="mb-3">
-            <label className={labelCls}>Длина трека, мм</label>
+            <label className={labelCls}>Длина трека{turns ? " (меняется последний участок)" : ""}, мм</label>
             <input className={inputCls} type="number" min="50" step="10" value={toMm(fixtureLength(f))} onChange={(e) => setLength(Number(e.target.value))} />
           </div>
           <div className="mb-3 grid grid-cols-2 gap-2">
@@ -101,6 +109,22 @@ export function SelectedFixtureCard({ fixture: f, scheme, onUpdate, onDelete }: 
               />
             </div>
           </div>
+          {turns > 0 && (
+            <div className="mb-3 rounded-lg bg-[#161616] p-2 text-xs text-white/60">
+              <div className="mb-1 flex justify-between">
+                <span>Поворотов (угловых коннекторов)</span>
+                <span className="font-semibold text-[#D4AF37]">{turns}</span>
+              </div>
+              <div className="text-white/40">Участки: {trackSegments(f).map((x) => toMm(x.length)).join(" + ")} мм</div>
+              <button
+                onClick={() => onUpdate(f.id, { points: [] })}
+                className="mt-1.5 flex items-center gap-1 text-[#D4AF37] hover:text-[#B8860B]"
+              >
+                <Icon name="Minus" size={12} />
+                Выпрямить трек
+              </button>
+            </div>
+          )}
           {o.endEnd !== null && (
             <div className="mb-3 text-xs text-white/40">
               До {o.horiz ? "правой" : "нижней"} стены: {toMm(o.endEnd)} мм

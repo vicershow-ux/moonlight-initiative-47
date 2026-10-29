@@ -32,7 +32,16 @@ export function PlanCanvas(props: PlanCanvasProps) {
   )
   const fixtures = useMemo(() => (layer === "electric" ? scheme.fixtures || [] : []), [scheme.fixtures, layer])
 
-  const assistApi = usePlanCanvasAssist({ scheme, tool, layer, draft, nodes, fixtures, scale: view.scale })
+  const assistApi = usePlanCanvasAssist({
+    scheme,
+    tool,
+    layer,
+    draft,
+    nodes,
+    fixtures,
+    scale: view.scale,
+    onFinishTrack: (pts) => props.onAddFixture?.("track", pts[0], pts[pts.length - 1], pts.slice(1, -1)),
+  })
 
   const nodeById = useMemo(() => {
     const map = new Map<string, PlanNode>()
@@ -105,7 +114,7 @@ export function PlanCanvas(props: PlanCanvasProps) {
           cursor={cursor}
           bends={bends}
           nextBend={nextBend}
-          trackStart={assistApi.trackStart}
+          trackPts={assistApi.trackPts}
           place={place}
           assist={assist}
           typedPoint={typedPoint}

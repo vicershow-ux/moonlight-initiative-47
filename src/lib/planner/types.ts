@@ -321,7 +321,23 @@ export interface PlanFixture {
   height: number
   /** Парящий потолок: отступ контура от стен, м */
   offset?: number
+  /** Трек: повороты под 90° между началом a и концом b */
+  points?: PlanPoint[]
 }
+
+/** Мощности для подбора блоков питания трековых светильников и ленты */
+export interface LightingSettings {
+  /** Светильники на метр магнитного трека, Вт/м */
+  trackWPerM: number
+  /** Светодиодная лента парящего потолка, Вт/м */
+  stripWPerM: number
+  /** Запас мощности блока питания, % */
+  psuReserve: number
+}
+
+export const DEFAULT_LIGHTING: LightingSettings = { trackWPerM: 20, stripWPerM: 14.4, psuReserve: 25 }
+
+export const lightingSettings = (l?: Partial<LightingSettings> | null): LightingSettings => ({ ...DEFAULT_LIGHTING, ...(l || {}) })
 
 export const FIXTURE_PRESETS: Record<FixtureKind, { label: string; code: string; height: number; icon: string }> = {
   track: { label: "Магнитный трек", code: "Тр", height: 2.7, icon: "Minus" },
@@ -342,6 +358,8 @@ export interface PlanScheme {
   walls?: Record<string, WallProps>
   /** Магнитные треки и парящие потолки — слой электрики */
   fixtures?: PlanFixture[]
+  /** Мощности трековых светильников и ленты для сметы */
+  lighting?: LightingSettings
 }
 
 export const LAYERS: { value: PlanLayer; label: string; icon: string }[] = [

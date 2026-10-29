@@ -2,7 +2,7 @@ import { NODE_PRESETS, NodeKind, PlanFixture, PlanNode, PlanRoom, PlanScheme, se
 import { pointInPolygon, toMm } from "./geometry"
 import { gostSymbol, placeSymbol, symbolToSvg } from "./symbols"
 import { linkGeometry } from "./geometry"
-import { FLOATING_OFFSET, fixtureLength, fixtureRoom, floatingContour } from "./fixtures"
+import { FLOATING_OFFSET, fixtureLength, fixtureRoom, floatingContour, trackPath, trackTurns } from "./fixtures"
 
 /** Что ставится на потолок или под ним — светильники, споты, распаечные коробки */
 export const CEILING_KINDS = new Set<NodeKind>(["light", "spot", "junction"])
@@ -29,6 +29,9 @@ export interface CeilingTrack {
   x2: number
   y2: number
   length: number
+  /** Все точки трека от левой и верхней стены: концы и повороты, м */
+  path: { x: number; y: number }[]
+  turns: number
   /** До правой и нижней стены от дальнего конца, м */
   rx: number
   ry: number
@@ -66,23 +69,32 @@ export function ceilingPlan(scheme: PlanScheme, room: PlanRoom): CeilingPlan | n
   const tracks = own
     .filter((f) => f.kind === "track")
     .map((f) => {
-      const lo = f.a.x + f.a.y <= f.b.x + f.b.y ? f.a : f.b
-      const hi = lo === f.a ? f.b : f.a
-      return { f, lo, hi }
+      // Начало — тот конец, что ближе к левому верхнему углу; путь идёт от него
+      const raw = trackPath(f)
+      const path = raw[0].x + raw[0].y <= raw[raw.length - 1].x + raw[raw.length - 1].y ? raw : [...raw].reverse()
+      return { f, path }
     })
-    .sort((a, b) => a.lo.y - b.lo.y || a.lo.x - b.lo.x)
-    .map(({ f, lo, hi }, i): CeilingTrack => ({
-      fixture: f,
-      no: i + 1,
-      horiz: Math.abs(hi.y - lo.y) <= Math.abs(hi.x - lo.x),
-      x1: lo.x - minX,
-      y1: lo.y - minY,
-      x2: hi.x - minX,
-      y2: hi.y - minY,
-      length: fixtureLength(f),
-      rx: maxX - Math.max(lo.x, hi.x),
-      ry: maxY - Math.max(lo.y, hi.y),
-    }))
+    .sort((a, b) => a.path[0].y - b.path[0].y || a.path[0].x - b.path[0].x)
+    .map(({ f, path }, i): CeilingTrack => {
+      const lo = path[0]
+      const hi = path[path.length - 1]
+      const xs = path.map((p) => p.x)
+      const ys = path.map((p) => p.y)
+      return {
+        fixture: f,
+        no: i + 1,
+        horiz: Math.max(...xs) - Math.min(...xs) >= Math.max(...ys) - Math.min(...ys),
+        x1: lo.x - minX,
+        y1: lo.y - minY,
+        x2: hi.x - minX,
+        y2: hi.y - minY,
+        length: fixtureLength(f),
+        path: path.map((p) => ({ x: p.x - minX, y: p.y - minY })),
+        turns: trackTurns(f),
+        rx: maxX - Math.max(...xs),
+        ry: maxY - Math.max(...ys),
+      }
+    })
   return {
     room,
     tracks,
@@ -186,25 +198,43 @@ export function ceilingSvg(scheme: PlanScheme, c: CeilingPlan, width = 700): str
 
   // Треки — толстой линией с засечками, номер в квадрате
   for (const t of c.tracks) {
-    const x1 = pad.l + t.x1 * k
-    const y1 = pad.t + t.y1 * k
-    const x2 = pad.l + t.x2 * k
-    const y2 = pad.t + t.y2 * k
-    const L = Math.hypot(x2 - x1, y2 - y1) || 1
-    const nx = -(y2 - y1) / L
-    const ny = (x2 - x1) / L
+    const pts = t.path.map((p) => ({ x: pad.l + p.x * k, y: pad.t + p.y * k }))
+    const poly = pts.map((p) => `${p.x},${p.y}`).join(" ")
+    const tick = (p: { x: number; y: number }, q: { x: number; y: number }) => {
+      const L = Math.hypot(q.x - p.x, q.y - p.y) || 1
+      const nx = -(q.y - p.y) / L
+      const ny = (q.x - p.x) / L
+      return `<line x1="${p.x - nx * 5}" y1="${p.y - ny * 5}" x2="${p.x + nx * 5}" y2="${p.y + ny * 5}" stroke="${INK}" stroke-width="1.4"/>`
+    }
     parts.push(
-      `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${INK}" stroke-width="3.5"/>`,
-      `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#fff" stroke-width="0.8"/>`,
-      ...[[x1, y1], [x2, y2]].map(([x, y]) => `<line x1="${x - nx * 5}" y1="${y - ny * 5}" x2="${x + nx * 5}" y2="${y + ny * 5}" stroke="${INK}" stroke-width="1.4"/>`),
-      // Оси концов трека — к цепочкам размеров
-      ...[[x1, y1], [x2, y2]].flatMap(([x, y]) => [
+      `<polyline points="${poly}" fill="none" stroke="${INK}" stroke-width="3.5" stroke-linejoin="miter"/>`,
+      `<polyline points="${poly}" fill="none" stroke="#fff" stroke-width="0.8" stroke-linejoin="miter"/>`,
+      tick(pts[0], pts[1]),
+      tick(pts[pts.length - 1], pts[pts.length - 2]),
+      ...pts.slice(1, -1).map((p) => `<rect x="${p.x - 3}" y="${p.y - 3}" width="6" height="6" fill="${INK}"/>`),
+      // Оси концов и поворотов трека — к цепочкам размеров
+      ...pts.flatMap(({ x, y }) => [
         `<line x1="${x}" y1="${pad.t - 14}" x2="${x}" y2="${y}" stroke="${TRK}" stroke-width="0.4" stroke-dasharray="2 2"/>`,
         `<line x1="${pad.l - 14}" y1="${y}" x2="${x}" y2="${y}" stroke="${TRK}" stroke-width="0.4" stroke-dasharray="2 2"/>`,
       ]),
     )
-    const mx = (x1 + x2) / 2 + nx * 11
-    const my = (y1 + y2) / 2 + ny * 11
+    // Номер — у середины самого длинного участка
+    let bi = 0
+    let bl = -1
+    for (let i = 1; i < pts.length; i++) {
+      const l = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y)
+      if (l > bl) {
+        bl = l
+        bi = i
+      }
+    }
+    const p1 = pts[bi - 1]
+    const p2 = pts[bi]
+    const L = bl || 1
+    const nx = -(p2.y - p1.y) / L
+    const ny = (p2.x - p1.x) / L
+    const mx = (p1.x + p2.x) / 2 + nx * 11
+    const my = (p1.y + p2.y) / 2 + ny * 11
     parts.push(
       `<rect x="${mx - 9}" y="${my - 7}" width="18" height="12" rx="2" fill="${TRK}"/>`,
       `<text x="${mx}" y="${my + 2}" text-anchor="middle" font-size="7.5" font-weight="bold" fill="#fff" ${FONT}>Т${t.no}</text>`,
@@ -241,14 +271,14 @@ export function ceilingSvg(scheme: PlanScheme, c: CeilingPlan, width = 700): str
     parts.push(chain(c.points.map((p) => p.dy), c.depth, pad.l - 18, (m) => pad.t + m * k, false, ACC))
   }
   if (hasTr) {
-    const tx = c.tracks.flatMap((t) => [t.x1, t.x2])
-    const ty = c.tracks.flatMap((t) => [t.y1, t.y2])
+    const tx = c.tracks.flatMap((t) => t.path.map((p) => p.x))
+    const ty = c.tracks.flatMap((t) => t.path.map((p) => p.y))
     parts.push(chain(tx, c.width, pad.t - (hasPts ? 36 : 18), (m) => pad.l + m * k, true, TRK))
     parts.push(chain(ty, c.depth, pad.l - (hasPts ? 36 : 18), (m) => pad.t + m * k, false, TRK))
   }
   parts.push(chain([], c.width, pad.t + H + 18, (m) => pad.l + m * k, true, INK))
   parts.push(
-    `<text x="${pad.l}" y="${height - 6}" font-size="8.5" fill="#666" ${FONT}>Вид снизу на потолок, ориентация как на плане. Размеры, мм: золотые — до центров светильников, синие — до концов треков.</text>`,
+    `<text x="${pad.l}" y="${height - 6}" font-size="8.5" fill="#666" ${FONT}>Вид снизу на потолок, ориентация как на плане. Размеры, мм: золотые — до центров светильников, синие — до концов и поворотов треков.</text>`,
   )
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${parts.join("")}</svg>`
 }
@@ -272,7 +302,7 @@ export function ceilingTrackRows(c: CeilingPlan) {
     no: t.no,
     name: t.fixture.label || "Магнитный трек",
     length: toMm(t.length),
-    dir: t.horiz ? "вдоль X" : "вдоль Y",
+    dir: t.turns ? `${t.turns} пов.: ${t.path.map((p) => `${toMm(p.x)}×${toMm(p.y)}`).join(" → ")}` : t.horiz ? "вдоль X" : "вдоль Y",
     fromLeft: toMm(t.x1),
     fromTop: toMm(t.y1),
     toRight: toMm(t.rx),

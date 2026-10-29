@@ -17,26 +17,52 @@ interface Args {
   nodes: PlanNode[]
   fixtures: PlanFixture[]
   scale: number
+  /** Закончили рисовать трек: все его точки по порядку */
+  onFinishTrack?: (pts: PlanPoint[]) => void
 }
 
 /**
  * Привязки при рисовании и расстановке: шаг сетки, прилипание к осям
  * потолочных точек и треков, конец рисуемого трека, уровни углов помещений
  */
-export function usePlanCanvasAssist({ scheme, tool, layer, draft, nodes, fixtures, scale }: Args) {
-  /** Начало рисуемого трека */
-  const [trackStart, setTrackStart] = useState<PlanPoint | null>(null)
+export function usePlanCanvasAssist({ scheme, tool, layer, draft, nodes, fixtures, scale, onFinishTrack }: Args) {
+  /** Рисуемый трек: начало и уже поставленные повороты */
+  const [trackPts, setTrackPts] = useState<PlanPoint[]>([])
+  const trackStart = trackPts.length ? trackPts[trackPts.length - 1] : null
   useEffect(() => {
-    setTrackStart(null)
+    setTrackPts([])
   }, [tool, layer])
+
+  /** Готовый трек уходит в план; меньше двух точек или нулевая длина — отбрасываем */
+  const finishTrack = (pts: PlanPoint[]) => {
+    const clean = pts.filter((p, i) => i === 0 || Math.hypot(p.x - pts[i - 1].x, p.y - pts[i - 1].y) > 0.02)
+    // Точки на одной прямой — не поворот, убираем
+    const out = clean.filter((p, i) => {
+      if (i === 0 || i === clean.length - 1) return true
+      const a = clean[i - 1]
+      const b = clean[i + 1]
+      return Math.abs((p.x - a.x) * (b.y - p.y) - (p.y - a.y) * (b.x - p.x)) > 1e-9
+    })
+    if (out.length >= 2) onFinishTrack?.(out)
+    setTrackPts([])
+  }
+
+  // Enter — закончить трек, Backspace — убрать последний поворот, Esc — отмена
   useEffect(() => {
-    if (!trackStart) return
+    if (!trackPts.length) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setTrackStart(null)
+      const target = e.target as HTMLElement | null
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return
+      if (e.key === "Escape") setTrackPts([])
+      else if (e.key === "Enter") finishTrack(trackPts)
+      else if (e.key === "Backspace") {
+        e.preventDefault()
+        setTrackPts((p) => p.slice(0, -1))
+      }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [trackStart])
+  })
 
   const snapPoint = (p: PlanPoint) => ({ x: snap(p.x, SNAP_STEP), y: snap(p.y, SNAP_STEP) })
 
@@ -50,7 +76,7 @@ export function usePlanCanvasAssist({ scheme, tool, layer, draft, nodes, fixture
     return placeAssist(snapPoint(world), scheme.rooms, ceilingRefs(excludeId), scale, free)
   }
 
-  /** Конец трека: от начала строго по горизонтали или вертикали (Alt — под любым углом) */
+  /** Следующая точка трека: от последней строго по горизонтали или вертикали — повороты под 90° (Alt — под любым углом) */
   const trackEnd = (world: PlanPoint, free: boolean) => {
     if (!trackStart) return placeAssist(snapPoint(world), scheme.rooms, ceilingRefs(), scale, free)
     let p = snapPoint(world)
@@ -75,7 +101,7 @@ export function usePlanCanvasAssist({ scheme, tool, layer, draft, nodes, fixture
     return assistPoint(snapPoint(world), prev, before, assistRefs(), scale, free)
   }
 
-  return { trackStart, setTrackStart, snapPoint, ceilingRefs, placeFor, trackEnd, assistRefs, drawAssist }
+  return { trackStart, trackPts, setTrackPts, finishTrack, snapPoint, ceilingRefs, placeFor, trackEnd, assistRefs, drawAssist }
 }
 
 export default usePlanCanvasAssist

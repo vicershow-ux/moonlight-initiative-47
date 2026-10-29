@@ -23,7 +23,7 @@ interface Props {
   cursor: PlanPoint | null
   bends: PlanPoint[]
   nextBend: (world: PlanPoint, free: boolean) => PlanPoint
-  trackStart: PlanPoint | null
+  trackPts: PlanPoint[]
   place: PlaceAssist | null
   assist: DrawAssist | null
   typedPoint: () => PlanPoint | null
@@ -42,7 +42,7 @@ export function PlanCanvasLayers({
   cursor,
   bends,
   nextBend,
-  trackStart,
+  trackPts,
   place,
   assist,
   typedPoint,
@@ -130,9 +130,7 @@ export function PlanCanvasLayers({
         />
       )}
 
-      {tool === "track" && trackStart && cursor && (
-        <TrackDraft scheme={scheme} a={trackStart} b={cursor} toScreen={toScreen} />
-      )}
+      {tool === "track" && trackPts.length > 0 && cursor && <TrackDraft pts={trackPts} b={cursor} toScreen={toScreen} />}
       {tool === "floating" && cursor && <FloatingDraft scheme={scheme} at={cursor} toScreen={toScreen} />}
 
       {place && layer !== "plan" && <PlaceAssistLayer assist={place} toScreen={toScreen} />}

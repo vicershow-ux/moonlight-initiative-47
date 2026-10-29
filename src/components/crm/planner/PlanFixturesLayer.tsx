@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react"
 import { FIXTURE_PRESETS, PlanFixture, PlanScheme } from "@/lib/planner/types"
 import { fmtMm } from "@/lib/planner/geometry"
-import { fixtureLength, floatingContour, trackOffsets } from "@/lib/planner/fixtures"
+import { fixtureLength, floatingContour, trackOffsets, trackPath, trackSegments } from "@/lib/planner/fixtures"
 import { alongSegment } from "@/lib/planner/labelLayout"
 import { textWidth } from "@/lib/planner/labelLayout"
 import { ToScreen } from "./usePlanView"
@@ -131,32 +131,56 @@ export function renderFixtures({ scheme, fixtures, selectedFixtureId, scale, toS
       continue
     }
 
-    const pa = toScreen(f.a)
-    const pb = toScreen(f.b)
-    const len = Math.hypot(pb.x - pa.x, pb.y - pa.y) || 1
-    const nx = -(pb.y - pa.y) / len
-    const ny = (pb.x - pa.x) / len
+    const path = trackPath(f).map(toScreen)
+    const poly = path.map((p) => `${p.x},${p.y}`).join(" ")
     const color = selected ? SEL : TRACK_COLOR
+    // Засечки на торцах — поперёк крайних участков
+    const endTick = (p: { x: number; y: number }, q: { x: number; y: number }, key: number) => {
+      const len = Math.hypot(q.x - p.x, q.y - p.y) || 1
+      const nx = -(q.y - p.y) / len
+      const ny = (q.x - p.x) / len
+      return <line key={key} x1={p.x - nx * 7} y1={p.y - ny * 7} x2={p.x + nx * 7} y2={p.y + ny * 7} stroke={color} strokeWidth={2} />
+    }
     out.push(
       <g key={f.id}>
-        <line x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y} stroke="#141414" strokeWidth={8} strokeLinecap="butt" />
-        <line x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y} stroke={color} strokeWidth={selected ? 5 : 4} strokeLinecap="butt" />
-        <line x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y} stroke="#141414" strokeWidth={1.2} />
-        {[pa, pb].map((p, i) => (
-          <line key={i} x1={p.x - nx * 7} y1={p.y - ny * 7} x2={p.x + nx * 7} y2={p.y + ny * 7} stroke={color} strokeWidth={2} />
+        <polyline points={poly} fill="none" stroke="#141414" strokeWidth={8} strokeLinejoin="miter" />
+        <polyline points={poly} fill="none" stroke={color} strokeWidth={selected ? 5 : 4} strokeLinejoin="miter" />
+        <polyline points={poly} fill="none" stroke="#141414" strokeWidth={1.2} strokeLinejoin="miter" />
+        {endTick(path[0], path[1], 0)}
+        {endTick(path[path.length - 1], path[path.length - 2], 1)}
+        {/* Повороты — угловые коннекторы */}
+        {path.slice(1, -1).map((p, i) => (
+          <rect key={`c${i}`} x={p.x - 4} y={p.y - 4} width={8} height={8} fill="#141414" stroke={color} strokeWidth={1.5} />
         ))}
       </g>,
     )
+    // Подпись — на самом длинном участке; при поворотах ещё и длины участков у выбранного
+    const segs = trackSegments(f)
+    const longest = segs.reduce((m, x) => (x.length > m.length ? x : m), segs[0])
     const text = `${code} ${fmtMm(fixtureLength(f))}`
     jobs.push({
       prio: selected ? -1 : 0,
-      cands: alongSegment(pa, pb, textWidth(text, 10, true), 11, 7),
+      cands: alongSegment(toScreen(longest.a), toScreen(longest.b), textWidth(text, 10, true), 11, 7),
       render: (sp) => (
         <text key={`tl${f.id}`} {...spotAttrs(sp)} fontSize="10" fontWeight="700" fill={color} style={halo}>
           {text}
         </text>
       ),
     })
+    if (selected && segs.length > 1) {
+      segs.forEach((sg, i) => {
+        const t = fmtMm(sg.length)
+        jobs.push({
+          prio: 1,
+          cands: alongSegment(toScreen(sg.a), toScreen(sg.b), textWidth(t, 9), 10, 7).reverse(),
+          render: (sp) => (
+            <text key={`ts${f.id}${i}`} {...spotAttrs(sp)} fontSize="9" fill={SEL} style={halo}>
+              {t}
+            </text>
+          ),
+        })
+      })
+    }
     // У выбранного трека — отступы от стен: сбоку и с обоих торцов
     if (selected && scale > 0) out.push(...trackDims(scheme, f, toScreen, jobs, halo))
   }
@@ -168,10 +192,10 @@ export function trackDims(scheme: PlanScheme, f: PlanFixture, toScreen: ToScreen
   const o = trackOffsets(scheme, f)
   if (!o.lo || !o.hi) return []
   const out: ReactNode[] = []
-  const mid = { x: (f.a.x + f.b.x) / 2, y: (f.a.y + f.b.y) / 2 }
+  const from = o.sideFrom ?? { x: (f.a.x + f.b.x) / 2, y: (f.a.y + f.b.y) / 2 }
   if (o.side !== null) {
-    const w = o.horiz ? { x: mid.x, y: mid.y + o.sideDir * o.side } : { x: mid.x + o.sideDir * o.side, y: mid.y }
-    out.push(dimLine(`ts${f.id}`, mid, w, o.side, toScreen, jobs, halo))
+    const w = o.horiz ? { x: from.x, y: from.y + o.sideDir * o.side } : { x: from.x + o.sideDir * o.side, y: from.y }
+    out.push(dimLine(`ts${f.id}`, from, w, o.side, toScreen, jobs, halo))
   }
   if (o.startEnd !== null) {
     const w = o.horiz ? { x: o.lo.x - o.startEnd, y: o.lo.y } : { x: o.lo.x, y: o.lo.y - o.startEnd }

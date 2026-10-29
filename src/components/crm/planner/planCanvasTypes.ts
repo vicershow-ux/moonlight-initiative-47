@@ -43,7 +43,7 @@ export interface PlanCanvasProps {
   highlightGroupId?: string | null
   selectedFixtureId?: string | null
   onSelectFixture?: (id: string | null) => void
-  onAddFixture?: (kind: FixtureKind, a: PlanPoint, b: PlanPoint) => void
+  onAddFixture?: (kind: FixtureKind, a: PlanPoint, b: PlanPoint, points?: PlanPoint[]) => void
   onUpdateFixture?: (id: string, patch: Partial<PlanFixture>) => void
 }
 
@@ -53,5 +53,5 @@ export type PlanDrag =
   | { type: "vertex"; roomId: string; index: number }
   | { type: "node"; nodeId: string }
   | { type: "bend"; linkId: string; index: number }
-  | { type: "fixture"; id: string; grab: PlanPoint; a: PlanPoint; b: PlanPoint }
+  | { type: "fixture"; id: string; grab: PlanPoint; a: PlanPoint; b: PlanPoint; points: PlanPoint[] }
   | null

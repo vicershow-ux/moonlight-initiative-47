@@ -203,6 +203,7 @@ export function PlannerWorkspace({ state }: Props) {
           selectedFixture={selectedFixture}
           onUpdateFixture={updateFixture}
           onDeleteFixture={deleteFixture}
+          onUpdateLighting={state.updateLighting}
         />
       )}
     </div>

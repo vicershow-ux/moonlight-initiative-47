@@ -6,19 +6,25 @@ import { FLOATING_COLOR, TRACK_COLOR } from "./PlanFixturesLayer"
 
 const halo = { paintOrder: "stroke" as const, stroke: "#141414", strokeWidth: 3, strokeLinejoin: "round" as const }
 
-/** Рисуемый трек: от первого щелчка до курсора, с длиной у середины */
-export function TrackDraft({ a, b, toScreen }: { scheme: PlanScheme; a: PlanPoint; b: PlanPoint; toScreen: ToScreen }) {
-  const pa = toScreen(a)
-  const pb = toScreen(b)
-  const len = dist(a, b)
+/** Рисуемый трек: поставленные точки и участок до курсора, с длиной всего трека и участка */
+export function TrackDraft({ pts, b, toScreen }: { pts: PlanPoint[]; b: PlanPoint; toScreen: ToScreen }) {
+  const all = [...pts, b]
+  const scr = all.map(toScreen)
+  const last = pts[pts.length - 1]
+  const seg = dist(last, b)
+  const total = all.slice(1).reduce((s, p, i) => s + dist(all[i], p), 0)
+  const pa = scr[scr.length - 2]
+  const pb = scr[scr.length - 1]
   const mx = (pa.x + pb.x) / 2
   const my = (pa.y + pb.y) / 2
   const horiz = Math.abs(pb.y - pa.y) < Math.abs(pb.x - pa.x)
   return (
     <g pointerEvents="none">
-      <line x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y} stroke={TRACK_COLOR} strokeWidth={4} opacity={0.7} />
-      <circle cx={pa.x} cy={pa.y} r={4} fill={TRACK_COLOR} />
-      {len > 0.02 && (
+      <polyline points={scr.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke={TRACK_COLOR} strokeWidth={4} strokeLinejoin="miter" opacity={0.7} />
+      {scr.slice(0, -1).map((p, i) => (
+        <rect key={i} x={p.x - 3.5} y={p.y - 3.5} width={7} height={7} fill={i === 0 ? TRACK_COLOR : "#D4AF37"} />
+      ))}
+      {seg > 0.02 && (
         <text
           x={horiz ? mx : mx - 10}
           y={horiz ? my - 14 : my}
@@ -28,7 +34,7 @@ export function TrackDraft({ a, b, toScreen }: { scheme: PlanScheme; a: PlanPoin
           fill="#fff"
           style={halo}
         >
-          Трек {fmtMm(len)} мм
+          {fmtMm(seg)} мм{pts.length > 1 ? ` · всего ${fmtMm(total)}` : ""}
         </text>
       )}
     </g>

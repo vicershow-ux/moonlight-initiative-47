@@ -28,8 +28,10 @@ import {
   emptyScheme,
   FixtureKind,
   PlanFixture,
+  LightingSettings,
+  lightingSettings,
 } from "@/lib/planner/types"
-import { FLOATING_OFFSET } from "@/lib/planner/fixtures"
+import { FLOATING_OFFSET, trackMid } from "@/lib/planner/fixtures"
 
 const uid = () => Math.random().toString(36).slice(2, 10)
 
@@ -85,6 +87,7 @@ export function usePlannerState(id: string | undefined) {
               panel: raw.panel,
               walls: raw.walls || {},
               fixtures: raw.fixtures || [],
+              lighting: raw.lighting,
             })
           }
           setFileUrl(planData.plan.file_url || null)
@@ -265,8 +268,8 @@ export function usePlannerState(id: string | undefined) {
   }
 
   /** Трек — отрезок a–b; парящий потолок — контур от стен помещения с отступом */
-  const addFixture = (kind: FixtureKind, a: PlanPoint, b: PlanPoint) => {
-    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+  const addFixture = (kind: FixtureKind, a: PlanPoint, b: PlanPoint, points: PlanPoint[] = []) => {
+    const mid = kind === "track" ? trackMid({ a, b, points } as PlanFixture) : { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
     const room = [...scheme.rooms].reverse().find((r) => pointInPolygon(mid, r.points))
     // Парящих потолков в комнате может быть несколько — каждый следующий контур глубже на 100 мм
     let offset = FLOATING_OFFSET
@@ -284,6 +287,7 @@ export function usePlannerState(id: string | undefined) {
       label: "",
       height: room?.height ?? scheme.defaultHeight,
       offset: kind === "floating" ? Math.round(offset * 1000) / 1000 : undefined,
+      points: kind === "track" && points.length ? points : undefined,
     }
     setScheme((s) => ({ ...s, fixtures: [...(s.fixtures || []), fx] }))
     setSelectedFixtureId(fx.id)
@@ -298,8 +302,8 @@ export function usePlannerState(id: string | undefined) {
       fixtures: (s.fixtures || []).map((f) => {
         if (f.id !== fid) return f
         const next = { ...f, ...patch }
-        if (patch.a || patch.b) {
-          const mid = { x: (next.a.x + next.b.x) / 2, y: (next.a.y + next.b.y) / 2 }
+        if (patch.a || patch.b || patch.points) {
+          const mid = next.kind === "track" ? trackMid(next) : { x: (next.a.x + next.b.x) / 2, y: (next.a.y + next.b.y) / 2 }
           next.roomId = [...s.rooms].reverse().find((r) => pointInPolygon(mid, r.points))?.id ?? next.roomId
         }
         return next
@@ -479,6 +483,11 @@ export function usePlannerState(id: string | undefined) {
   }
 
   // panelSettings переводит старый формат ввода в список аппаратов — правим уже его
+  const updateLighting = (patch: Partial<LightingSettings>) => {
+    setScheme((s) => ({ ...s, lighting: { ...lightingSettings(s.lighting), ...patch } }))
+    touch()
+  }
+
   const updatePanel = (patch: Partial<PanelSettings>) => {
     setScheme((s) => {
       const { inputBreaker: _a, mainRcd: _b, ...rest } = { ...panelSettings(s.panel), ...patch }
@@ -636,6 +645,7 @@ export function usePlannerState(id: string | undefined) {
     setAllHeights,
     updateCable,
     updatePanel,
+    updateLighting,
     save,
     exportPdf,
   }

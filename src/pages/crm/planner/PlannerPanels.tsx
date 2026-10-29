@@ -153,7 +153,7 @@ export function PlannerEngineerPicker({
           {tool === "track" && (
             <span className="flex w-full items-center gap-1.5 text-xs text-white/40">
               <Icon name="Ruler" size={12} />
-              Первый щелчок — начало трека, второй — конец. Трек идёт строго по горизонтали или вертикали и прилипает к осям светильников; Alt — под любым углом, Esc — отмена
+              Щелчок — начало трека, каждый следующий — поворот под 90°. Двойной щелчок или Enter — конец, Backspace — убрать поворот, Esc — отмена. Трек прилипает к осям светильников; Alt — под любым углом
             </span>
           )}
           {tool === "floating" && (

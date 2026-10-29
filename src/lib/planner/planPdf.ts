@@ -32,7 +32,7 @@ import { CeilingPlan, ceilingPlan, ceilingRows, ceilingSvg, ceilingTrackRows } f
 import { PHASE_COLORS, SECTION_COLORS, WALL_MATERIALS, WallMaterial, sectionColor, sectionOf } from "@/lib/planner/types"
 import { hatchPattern, materialSwatchImg, usedMaterials } from "@/lib/planner/wallHatch"
 import { NODE_CODES, fixtureLegendItems, nodeLegendImg, nodeLegendItems } from "@/lib/planner/nodeLegend"
-import { FLOATING_OFFSET, fixtureLength, floatingContour, floatingPerimeter } from "@/lib/planner/fixtures"
+import { FLOATING_OFFSET, fixtureLength, floatingContour, floatingPerimeter, trackPath, trackSegments } from "@/lib/planner/fixtures"
 import { Box, LabelCandidate, LabelSpot, alongSegment, aroundPoint, createLabelPlacer, iconBox, textWidth } from "@/lib/planner/labelLayout"
 import { OPENING_HINTS, PDF_OPENING_PALETTE, openingLegendItems, openingSwatchImg } from "@/lib/planner/openingLegend"
 import {
@@ -273,18 +273,24 @@ export function schemeToSvg(
           })
           continue
         }
-        const x1 = sx(f.a.x)
-        const y1 = sy(f.a.y)
-        const x2 = sx(f.b.x)
-        const y2 = sy(f.b.y)
-        const len = Math.hypot(x2 - x1, y2 - y1) || 1
-        const nx = -(y2 - y1) / len
-        const ny = (x2 - x1) / len
+        const path = trackPath(f).map((p) => ({ x: sx(p.x), y: sy(p.y) }))
+        const poly = path.map((p) => `${p.x},${p.y}`).join(" ")
+        const tick = (p: { x: number; y: number }, q: { x: number; y: number }) => {
+          const len = Math.hypot(q.x - p.x, q.y - p.y) || 1
+          const nx = -(q.y - p.y) / len
+          const ny = (q.x - p.x) / len
+          return `<line x1="${p.x - nx * 5}" y1="${p.y - ny * 5}" x2="${p.x + nx * 5}" y2="${p.y + ny * 5}" stroke="#161616" stroke-width="1.4"/>`
+        }
         parts.push(
-          `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#161616" stroke-width="3.5"/>`,
-          `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#ffffff" stroke-width="0.8"/>`,
-          ...[[x1, y1], [x2, y2]].map(([x, y]) => `<line x1="${x - nx * 5}" y1="${y - ny * 5}" x2="${x + nx * 5}" y2="${y + ny * 5}" stroke="#161616" stroke-width="1.4"/>`),
+          `<polyline points="${poly}" fill="none" stroke="#161616" stroke-width="3.5" stroke-linejoin="miter"/>`,
+          `<polyline points="${poly}" fill="none" stroke="#ffffff" stroke-width="0.8" stroke-linejoin="miter"/>`,
+          tick(path[0], path[1]),
+          tick(path[path.length - 1], path[path.length - 2]),
+          ...path.slice(1, -1).map((p) => `<rect x="${p.x - 3}" y="${p.y - 3}" width="6" height="6" fill="#161616"/>`),
         )
+        const segs = trackSegments(f)
+        const lg = segs.reduce((m, x) => (x.length > m.length ? x : m), segs[0])
+        const [x1, y1, x2, y2] = [sx(lg.a.x), sy(lg.a.y), sx(lg.b.x), sy(lg.b.y)]
         const text = `Тр ${fmtMm(fixtureLength(f))}`
         jobs.push({
           prio: 0,
@@ -524,7 +530,7 @@ function trackTable(c: CeilingPlan): string {
   if (!rows.length) return ""
   return `
     <table>
-      <thead><tr><th>№</th><th>Трек</th><th>Длина, мм</th><th>Направление</th><th>Начало от левой стены, мм</th><th>Начало от верхней стены, мм</th><th>Конец до правой, мм</th><th>Конец до нижней, мм</th><th>Высота, мм</th></tr></thead>
+      <thead><tr><th>№</th><th>Трек</th><th>Длина, мм</th><th>Направление / точки поворотов (X×Y от левой и верхней стены), мм</th><th>Начало от левой стены, мм</th><th>Начало от верхней стены, мм</th><th>Конец до правой, мм</th><th>Конец до нижней, мм</th><th>Высота, мм</th></tr></thead>
       <tbody>${rows
         .map(
           (r) => `
