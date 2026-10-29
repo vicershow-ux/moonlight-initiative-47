@@ -31,6 +31,7 @@ import { useTypedLength } from "./useTypedLength"
 import { useLinkRoute } from "./useLinkRoute"
 import { useWheelZoom } from "./useWheelZoom"
 import { TypedLengthHint } from "./TypedLengthHint"
+import { WallLegend } from "./WallLegend"
 
 export type PlanTool = "select" | "draw" | "window" | "door" | "arch" | "node" | "link"
 
@@ -399,6 +400,8 @@ export function PlanCanvas({
       </svg>
 
       {tool === "draw" && draft.length > 0 && cursor && <TypedLengthHint cursor={cursor} typed={typed} toScreen={toScreen} />}
+
+      {layer === "plan" && <WallLegend scheme={scheme} />}
 
       <PlanControls cursor={cursor} gridStep={gridStep} zoomBy={zoomBy} fitView={fitView} />
     </div>

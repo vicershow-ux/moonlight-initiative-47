@@ -29,6 +29,7 @@ import { chaseTotals, elevationRows, elevationSvg, roomElevations } from "@/lib/
 import { CABLE_BUY_SHARE, electricMaterials } from "@/lib/planner/materials"
 import { ceilingPlan, ceilingRows, ceilingSvg } from "@/lib/planner/ceiling"
 import { PHASE_COLORS, SECTION_COLORS, WALL_MATERIALS, WallMaterial, sectionColor, sectionOf } from "@/lib/planner/types"
+import { hatchPattern, materialSwatchImg, usedMaterials } from "@/lib/planner/wallHatch"
 import {
   doorSwing,
   findWall,
@@ -152,25 +153,7 @@ export function schemeToSvg(
       )
     }
   }
-  const hatchDefs = [...hatchIds]
-    .map((m) => {
-      const c = "#161616"
-      // Кирпич — частая косая, бетон — косая с точками, газобетон/блок — редкая косая,
-      // перегородки (ПГП, ГКЛ) — перекрёстная, дерево — волокна вдоль
-      const body =
-        m === "brick"
-          ? `<line x1="0" y1="0" x2="0" y2="6" stroke="${c}" stroke-width="0.7"/>`
-          : m === "concrete"
-            ? `<line x1="0" y1="0" x2="0" y2="8" stroke="${c}" stroke-width="0.7"/><circle cx="4" cy="2" r="0.7" fill="${c}"/><circle cx="5" cy="6" r="0.5" fill="${c}"/>`
-            : m === "aerated" || m === "block"
-              ? `<line x1="0" y1="0" x2="0" y2="10" stroke="${c}" stroke-width="0.6"/>`
-              : m === "wood"
-                ? `<path d="M0 3 Q 2.5 1.5 5 3 T 10 3" fill="none" stroke="${c}" stroke-width="0.5"/>`
-                : `<line x1="0" y1="0" x2="0" y2="7" stroke="${c}" stroke-width="0.5"/><line x1="0" y1="0" x2="7" y2="0" stroke="${c}" stroke-width="0.5"/>`
-      const size = m === "brick" ? 6 : m === "concrete" ? 8 : m === "aerated" || m === "block" ? 10 : m === "wood" ? 10 : 7
-      return `<pattern id="hatch-${m}" patternUnits="userSpaceOnUse" width="${size}" height="${size}" patternTransform="rotate(${m === "wood" ? 0 : 45})"><rect width="${size}" height="${size}" fill="${WALL_MATERIALS[m].color}" fill-opacity="0.45"/>${body}</pattern>`
-    })
-    .join("")
+  const hatchDefs = [...hatchIds].map((m) => hatchPattern(m, `hatch-${m}`, PDF_HATCH_OPACITY, PDF_HATCH_INK)).join("")
   parts.unshift(`<defs>${hatchDefs}</defs>`)
 
   // Размерные линии по внешнему контуру — только на планировке, где они читаются
@@ -428,6 +411,24 @@ function elevationsSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
   ${blocks.join("")}`
 }
 
+const PDF_HATCH_OPACITY = 0.45
+const PDF_HATCH_INK = "#161616"
+const pdfSwatch = (m: WallMaterial, w = 34, h = 16) => materialSwatchImg(m, w, h, PDF_HATCH_OPACITY, PDF_HATCH_INK)
+
+/** Условные обозначения материалов стен под планом: образец штриховки и толщины */
+function wallLegend(scheme: PlanScheme): string {
+  const all = schemeWalls(scheme).all
+  const used = usedMaterials(all.map((w) => w.material))
+  if (!used.length) return ""
+  const items = used
+    .map((m) => {
+      const th = [...new Set(all.filter((w) => w.material === m).map((w) => toMm(w.thickness)))].sort((a, b) => a - b)
+      return `<div class="wl-item">${pdfSwatch(m)}<div><div class="wl-name">${escapeXml(WALL_MATERIALS[m].label)}</div><div class="wl-th">${th.join(", ")} мм</div></div></div>`
+    })
+    .join("")
+  return `<div class="wall-legend"><div class="wl-title">Материалы стен</div><div class="wl-grid">${items}</div></div>`
+}
+
 /** Стены по помещениям: длина, толщина и материал */
 function wallsTable(scheme: PlanScheme): string {
   const all = schemeWalls(scheme).all
@@ -444,15 +445,12 @@ function wallsTable(scheme: PlanScheme): string {
         <td class="num">${w.index + 1}${w.shared ? "*" : ""}</td>
         <td class="num">${toMm(w.length)}</td>
         <td class="num">${toMm(w.thickness)}</td>
-        <td>${escapeXml(WALL_MATERIALS[w.material].label)}</td>
+        <td>${pdfSwatch(w.material, 26, 12)} ${escapeXml(WALL_MATERIALS[w.material].label)}</td>
       </tr>`,
         )
         .join("")
     })
     .join("")
-  const used = [...new Set(all.map((w) => w.material))]
-  const sw = (m: WallMaterial) =>
-    `<svg width="26" height="12" style="vertical-align:middle"><rect width="26" height="12" fill="${WALL_MATERIALS[m].color}" fill-opacity="0.45" stroke="#161616" stroke-width="0.8"/></svg>`
   return `
   <h3>Стены</h3>
   <table>
@@ -460,7 +458,6 @@ function wallsTable(scheme: PlanScheme): string {
     <tbody>${rows}</tbody>
   </table>
   <div class="legend" style="text-align:left">
-    ${used.map((m) => `${sw(m)} ${escapeXml(WALL_MATERIALS[m].label)}`).join(" &nbsp; ")}<br>
     Длина — по внутренней стороне помещения. «*» — общая стена с соседним помещением, на плане её толщина делится
     пополам. Штриховка на плане — по материалу стены.
   </div>`
@@ -584,6 +581,12 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
     .plan-doc tr.sec-row td { background: #f7f2e2; font-weight: bold; font-size: 11px; }
     .plan-doc .elev { page-break-inside: avoid; break-inside: avoid; margin-bottom: 14px; }
     .plan-doc .legend { font-size: 10px; color: #666; text-align: center; margin-bottom: 6px; }
+    .plan-doc .wall-legend { border: 1px solid #ddd; border-radius: 4px; padding: 6px 10px; margin: 4px 0 8px; page-break-inside: avoid; break-inside: avoid; }
+    .plan-doc .wl-title { font-size: 10px; font-weight: bold; color: #161616; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .plan-doc .wl-grid { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+    .plan-doc .wl-item { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #161616; }
+    .plan-doc .wl-name { font-weight: 600; }
+    .plan-doc .wl-th { color: #777; font-size: 9px; }
   </style>
 
   <h2>План помещений — объект ${escapeXml(meta.objectCode)}</h2>
@@ -594,6 +597,7 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
   </div>
 
   <div class="plan-img">${svg}</div>
+  ${wallLegend(scheme)}
   <div class="legend">
     Синим отмечены окна, зелёным — двери, фиолетовым — проёмы. Размеры на чертеже указаны в миллиметрах.
   </div>

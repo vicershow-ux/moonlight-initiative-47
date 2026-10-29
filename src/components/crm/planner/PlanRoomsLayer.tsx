@@ -1,4 +1,3 @@
-import type { ReactNode } from "react"
 import {
   fmtMm,
   fmtNum,
@@ -7,7 +6,8 @@ import {
   polygonCentroid,
   wallSegments,
 } from "@/lib/planner/geometry"
-import { PlanLayer, PlanOpening, PlanScheme, WALL_MATERIALS } from "@/lib/planner/types"
+import { PlanLayer, PlanOpening, PlanScheme, WALL_MATERIALS, WallMaterial } from "@/lib/planner/types"
+import { hatchPattern } from "@/lib/planner/wallHatch"
 import { doorSwing, findWall, openingBand, schemeWalls, wallPieces } from "@/lib/planner/walls"
 import { ToScreen } from "./usePlanView"
 
@@ -212,14 +212,11 @@ export function PlanRoomsLayer({
   return (
     <>
       {/* На инженерных слоях планировка уходит на второй план — она служит подложкой */}
-      <defs>
-        {(Object.keys(WALL_MATERIALS) as (keyof typeof WALL_MATERIALS)[]).map((m) => (
-          <pattern key={m} id={`wall-${m}`} patternUnits="userSpaceOnUse" width={HATCH[m].size} height={HATCH[m].size} patternTransform={`rotate(${HATCH[m].rot})`}>
-            <rect width={HATCH[m].size} height={HATCH[m].size} fill={WALL_MATERIALS[m].color} />
-            {HATCH[m].body}
-          </pattern>
-        ))}
-      </defs>
+      <defs
+        dangerouslySetInnerHTML={{
+          __html: (Object.keys(WALL_MATERIALS) as WallMaterial[]).map((m) => hatchPattern(m, `wall-${m}`)).join(""),
+        }}
+      />
       <g opacity={layer === "plan" ? 1 : 0.42}>
         {scheme.rooms.map(renderRoom)}
         {/* Стены в толщину, цвет — по материалу */}
@@ -241,56 +238,6 @@ export function PlanRoomsLayer({
       </g>
     </>
   )
-}
-
-const INK = "rgba(0,0,0,0.45)"
-
-/** Штриховка материала стены — как на чертеже, чтобы материалы различались не только цветом */
-const HATCH: Record<keyof typeof WALL_MATERIALS, { size: number; rot: number; body: ReactNode }> = {
-  brick: { size: 6, rot: 45, body: <line x1="0" y1="0" x2="0" y2="6" stroke={INK} strokeWidth={1.2} /> },
-  concrete: {
-    size: 8,
-    rot: 45,
-    body: (
-      <>
-        <line x1="0" y1="0" x2="0" y2="8" stroke={INK} strokeWidth={0.8} />
-        <circle cx="4" cy="2" r="0.9" fill={INK} />
-        <circle cx="5.5" cy="6" r="0.7" fill={INK} />
-      </>
-    ),
-  },
-  aerated: { size: 10, rot: 45, body: <line x1="0" y1="0" x2="0" y2="10" stroke={INK} strokeWidth={0.8} /> },
-  block: {
-    size: 8,
-    rot: 0,
-    body: (
-      <>
-        <circle cx="2" cy="2" r="1" fill={INK} />
-        <circle cx="6" cy="6" r="1" fill={INK} />
-      </>
-    ),
-  },
-  pgp: {
-    size: 7,
-    rot: 45,
-    body: (
-      <>
-        <line x1="0" y1="0" x2="0" y2="7" stroke={INK} strokeWidth={0.6} />
-        <line x1="0" y1="0" x2="7" y2="0" stroke={INK} strokeWidth={0.6} />
-      </>
-    ),
-  },
-  gkl: {
-    size: 7,
-    rot: 45,
-    body: (
-      <>
-        <line x1="0" y1="0" x2="0" y2="7" stroke="rgba(255,255,255,0.55)" strokeWidth={0.7} />
-        <line x1="0" y1="0" x2="7" y2="0" stroke="rgba(255,255,255,0.55)" strokeWidth={0.7} />
-      </>
-    ),
-  },
-  wood: { size: 10, rot: 0, body: <path d="M0 3 Q 2.5 1.5 5 3 T 10 3" fill="none" stroke={INK} strokeWidth={0.8} /> },
 }
 
 export default PlanRoomsLayer
