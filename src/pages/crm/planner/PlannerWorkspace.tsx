@@ -199,6 +199,8 @@ export function PlannerWorkspace({ state }: Props) {
           onUpdateHeating={state.updateHeating}
           onDeleteHeating={state.deleteHeating}
           onUpdateFinish={state.updateFinish}
+          onAddRender={state.addRender}
+          onDeleteRender={state.deleteRender}
           onSelectRoom={(rid) => {
             setSelectedRoomId(rid)
             state.setSelectedFurnitureId(null)

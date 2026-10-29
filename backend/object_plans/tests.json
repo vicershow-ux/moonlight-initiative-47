@@ -18,6 +18,13 @@
       "path": "/",
       "body": {"object_id": 1, "scheme": {}},
       "expectedStatus": 401
+    },
+    {
+      "name": "POST render without auth returns 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "render", "object_id": 1, "image": "aGVsbG8="},
+      "expectedStatus": 401
     }
   ]
 }

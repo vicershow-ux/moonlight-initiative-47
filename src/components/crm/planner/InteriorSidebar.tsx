@@ -21,6 +21,8 @@ interface Props {
   onDeleteHeating: (id: string) => void
   onUpdateFinish: (roomId: string, patch: Partial<RoomFinish>, applyToAll?: boolean) => void
   onSelectRoom: (id: string) => void
+  onAddRender?: (roomId: string, dataUrl: string) => Promise<void>
+  onDeleteRender?: (roomId: string, renderId: string) => void
 }
 
 /** Боковая панель слоя «Мебель и отделка»: выбранный предмет, зона тёплого пола, отделка, итоги */
@@ -35,13 +37,15 @@ export function InteriorSidebar({
   onDeleteHeating,
   onUpdateFinish,
   onSelectRoom,
+  onAddRender,
+  onDeleteRender,
 }: Props) {
   const warnings = interiorWarnings(scheme)
   const [view3d, setView3d] = useState<string | null>(null)
   const heat = (scheme.heating || []).map((h) => ({ h, c: heatingCalc(scheme, h) }))
   return (
     <div className="space-y-4">
-      {view3d && <Room3DDialog open onOpenChange={(v) => !v && setView3d(null)} scheme={scheme} roomId={view3d} />}
+      {view3d && <Room3DDialog open onOpenChange={(v) => !v && setView3d(null)} scheme={scheme} roomId={view3d} onAddRender={onAddRender} onDeleteRender={onDeleteRender} />}
       {selectedRoom && (
         <button
           onClick={() => setView3d(selectedRoom.id)}
@@ -89,6 +93,12 @@ export function InteriorSidebar({
                   <div className="font-medium">{r.name}</div>
                   <div className="truncate text-xs text-white/40">{sum || "отделка не задана"}</div>
                 </button>
+                {(scheme.renders?.[r.id] || []).length > 0 && (
+                  <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-white/40" title="Видов в PDF">
+                    <Icon name="Image" size={12} />
+                    {(scheme.renders?.[r.id] || []).length}
+                  </span>
+                )}
                 <button
                   onClick={() => setView3d(r.id)}
                   title="Открыть в 3D"

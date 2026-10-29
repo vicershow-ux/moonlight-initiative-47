@@ -370,6 +370,15 @@ export interface PlanScheme {
   heating?: PlanHeating[]
   /** Отделка помещений по id помещения */
   finishes?: Record<string, RoomFinish>
+  /** Снимки 3D-вида комнат для PDF: по id помещения — несколько ракурсов */
+  renders?: Record<string, RoomRender[]>
+}
+
+export interface RoomRender {
+  id: string
+  url: string
+  /** Когда снят — чтобы понимать, актуален ли вид после правок */
+  at: string
 }
 
 // ——— Мебель ———

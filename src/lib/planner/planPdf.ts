@@ -444,7 +444,29 @@ function interiorSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
   const furniture = scheme.furniture || []
   const heating = scheme.heating || []
   const finished = scheme.rooms.filter((r) => finishSummary(roomFinish(scheme, r.id)))
-  if (!furniture.length && !heating.length && !finished.length) return ""
+  const rendered = scheme.rooms.filter((r) => (scheme.renders?.[r.id] || []).length > 0)
+  if (!furniture.length && !heating.length && !finished.length && !rendered.length) return ""
+
+  // Виды комнат в 3D: по комнате — подпись с отделкой и до трёх ракурсов. Каждая комната не рвётся между страницами
+  const views = rendered
+    .map((r) => {
+      const list = scheme.renders?.[r.id] || []
+      const sum = finishSummary(roomFinish(scheme, r.id))
+      const cols = list.length === 1 ? 1 : 2
+      const imgs = list
+        .map(
+          (x, i) =>
+            `<img src="${escapeXml(x.url)}" crossorigin="anonymous" style="width:100%;${cols === 1 ? "height:auto;max-height:330px;object-fit:cover" : "height:205px;object-fit:cover"};border-radius:4px;border:1px solid #ddd;display:block;${list.length === 3 && i === 0 ? "grid-column:span 2;height:260px" : ""}"/>`,
+        )
+        .join("")
+      return `
+    <div class="render-room" style="page-break-inside:avoid;break-inside:avoid;margin:0 0 14px">
+      <div style="font-size:13px;font-weight:bold;margin:0 0 2px">${escapeXml(r.name)}</div>
+      ${sum ? `<div class="muted" style="margin:0 0 6px">${escapeXml(sum.charAt(0).toUpperCase() + sum.slice(1))}</div>` : ""}
+      <div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:6px">${imgs}</div>
+    </div>`
+    })
+    .join("")
 
   const finishRows = scheme.rooms
     .filter((r) => r.points.length > 2)
@@ -519,7 +541,15 @@ function interiorSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
   </table>`
       : ""
   }
-  ${warns.length ? `<div class="warn">Проверить: ${warns.map((w) => escapeXml(w.text)).join("; ")}.</div>` : ""}`
+  ${warns.length ? `<div class="warn">Проверить: ${warns.map((w) => escapeXml(w.text)).join("; ")}.</div>` : ""}
+  ${
+    views
+      ? `<div class="page-break"></div>
+  <h2>Как будет выглядеть ремонт — объект ${escapeXml(meta.objectCode)}</h2>
+  <div class="meta">Объёмные виды помещений с выбранной отделкой, мебелью и светом. Цвета и фактуры на экране и в печати могут отличаться от образцов материалов.</div>
+  ${views}`
+      : ""
+  }`
 }
 
 /** Тёплый пол на листе электрики: зоны, мощность, терморегулятор, автомат и кабель питания */
@@ -1538,6 +1568,22 @@ export async function downloadPlanPdf(
     img.src = `${window.location.origin}/logo-print.png`
     setTimeout(resolve, 2500)
   })
+  // Снимки 3D-видов грузятся из хранилища — ждём их, иначе в PDF будут пустые рамки
+  const pics = Array.from(root.querySelectorAll<HTMLImageElement>("img.render-img, .render-room img"))
+  await Promise.all(
+    pics.map(
+      (im) =>
+        new Promise<void>((resolve) => {
+          if (im.complete && im.naturalWidth) return resolve()
+          im.onload = () => resolve()
+          im.onerror = () => {
+            im.style.display = "none"
+            resolve()
+          }
+          setTimeout(resolve, 8000)
+        }),
+    ),
+  )
 
   const html2pdf = (await import("html2pdf.js")).default
   const worker = html2pdf()
@@ -1547,7 +1593,8 @@ export async function downloadPlanPdf(
       image: { type: "jpeg", quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
       jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-    })
+      pagebreak: { mode: ["css", "legacy"], before: ".page-break", avoid: [".render-room"] },
+    } as Record<string, unknown>)
     .from(root)
 
   try {

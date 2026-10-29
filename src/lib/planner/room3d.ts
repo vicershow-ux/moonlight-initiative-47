@@ -250,8 +250,8 @@ function furnitureModel(f: PlanFurniture): THREE.Group {
 
 export interface Room3D {
   dispose: () => void
-  /** Снимок текущего вида — для отправки заказчику */
-  snapshot: () => string
+  /** Снимок текущего вида — для отправки заказчику; jpeg — легче для PDF */
+  snapshot: (format?: "png" | "jpeg") => string
 }
 
 export interface RoomScene {
@@ -535,9 +535,9 @@ export function mountRoom3D(el: HTMLElement, scheme: PlanScheme, room: PlanRoom)
   loop()
 
   return {
-    snapshot: () => {
+    snapshot: (format = "png") => {
       renderer.render(scene, camera)
-      return renderer.domElement.toDataURL("image/png")
+      return format === "jpeg" ? renderer.domElement.toDataURL("image/jpeg", 0.88) : renderer.domElement.toDataURL("image/png")
     },
     dispose: () => {
       cancelAnimationFrame(raf)

@@ -85,6 +85,33 @@ def upload_pdf(company_id, object_id, file_name, b64data):
     return url, len(file_bytes), None
 
 
+MAX_IMAGE = 6 * 1024 * 1024
+
+
+def upload_render(company_id, object_id, b64data):
+    """Сохраняет снимок 3D-вида комнаты (PNG/JPEG) и возвращает ссылку на CDN."""
+    if ',' in b64data[:80]:
+        b64data = b64data.split(',', 1)[1]
+    try:
+        img = base64.b64decode(b64data)
+    except Exception:
+        return None, 'Не удалось прочитать картинку'
+    if len(img) > MAX_IMAGE:
+        return None, 'Картинка больше 6 МБ'
+    is_png = img[:8] == b'\x89PNG\r\n\x1a\n'
+    ext, ctype = ('png', 'image/png') if is_png else ('jpg', 'image/jpeg')
+    key = f"objects/{company_id}/{object_id}/render-{uuid.uuid4().hex}.{ext}"
+    s3 = boto3.client(
+        's3',
+        endpoint_url=os.environ.get('S3_ENDPOINT', 'https://bucket.poehali.dev'),
+        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
+    )
+    s3.put_object(Bucket='files', Key=key, Body=img, ContentType=ctype)
+    url = f"{os.environ.get('S3_PUBLIC_URL', 'https://cdn.poehali.dev/projects/' + os.environ['AWS_ACCESS_KEY_ID'] + '/bucket').rstrip('/')}/{key}"
+    return url, None
+
+
 def sync_rooms(cur, company_id, object_id, rooms):
     """Переносит комнаты из плана в помещения объекта: обновляет существующие по имени, добавляет новые."""
     if not isinstance(rooms, list):
@@ -127,7 +154,7 @@ def sync_rooms(cur, company_id, object_id, rooms):
 
 
 def handler(event: dict, context) -> dict:
-    '''Планировщик помещений: хранение схемы объекта, расчёт метража и выгрузка плана в PDF с заменой прежнего файла'''
+    '''Планировщик помещений: хранение схемы объекта, расчёт метража, снимки 3D-вида комнат и выгрузка плана в PDF с заменой прежнего файла'''
     method = event.get('httpMethod', 'GET')
 
     if method == 'OPTIONS':
@@ -167,6 +194,18 @@ def handler(event: dict, context) -> dict:
             return response(200, {'plan': dict(zip(keys, row))})
 
         body = json.loads(event.get('body') or '{}')
+
+        # Снимок 3D-вида комнаты — только загрузка картинки, схема сохраняется обычным запросом
+        if method == 'POST' and body.get('action') == 'render':
+            obj_id = body.get('object_id')
+            if not obj_id:
+                return response(400, {'error': 'Не указан объект'})
+            if not has_access(cur, user, obj_id):
+                return response(403, {'error': 'Нет доступа к объекту'})
+            url, err = upload_render(company_id, obj_id, body.get('image') or '')
+            if err:
+                return response(400, {'error': err})
+            return response(200, {'success': True, 'url': url})
 
         if method == 'POST':
             obj_id = body.get('object_id')

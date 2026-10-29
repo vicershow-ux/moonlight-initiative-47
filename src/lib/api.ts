@@ -966,6 +966,16 @@ export const objectPlansApi = {
       synced_rooms: number
     }>
   },
+
+  /** Снимок 3D-вида комнаты — картинка уходит в хранилище, в ответ ссылка */
+  async uploadRender(objectId: number, image: string) {
+    const res = await fetch(OBJECT_PLANS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ action: "render", object_id: objectId, image }),
+    })
+    return parseResponse(res) as Promise<{ success: boolean; url: string }>
+  },
 }
 
 export interface TeamMember {

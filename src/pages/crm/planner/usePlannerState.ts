@@ -38,6 +38,7 @@ import {
   PlanFurniture,
   PlanHeating,
   RoomFinish,
+  RoomRender,
   roomFinish,
 } from "@/lib/planner/types"
 import { furnitureRoom, snapFurnitureToWall } from "@/lib/planner/interior"
@@ -107,6 +108,7 @@ export function usePlannerState(id: string | undefined) {
               furniture: raw.furniture || [],
               heating: raw.heating || [],
               finishes: raw.finishes || {},
+              renders: raw.renders || {},
             })
           }
           setFileUrl(planData.plan.file_url || null)
@@ -419,6 +421,25 @@ export function usePlannerState(id: string | undefined) {
       for (const id of ids) finishes[id] = { ...roomFinish(s, id), ...patch }
       return { ...s, finishes }
     })
+    touch()
+  }
+
+  /** Снимок 3D-вида: загружаем в хранилище и добавляем к комнате (до 3 ракурсов на комнату) */
+  const addRender = async (roomId: string, dataUrl: string) => {
+    const res = await objectPlansApi.uploadRender(Number(id), dataUrl)
+    const item: RoomRender = { id: uid(), url: res.url, at: new Date().toISOString() }
+    setScheme((s) => {
+      const list = [...(s.renders?.[roomId] || []), item].slice(-3)
+      return { ...s, renders: { ...(s.renders || {}), [roomId]: list } }
+    })
+    touch()
+  }
+
+  const deleteRender = (roomId: string, renderId: string) => {
+    setScheme((s) => ({
+      ...s,
+      renders: { ...(s.renders || {}), [roomId]: (s.renders?.[roomId] || []).filter((r) => r.id !== renderId) },
+    }))
     touch()
   }
 
@@ -735,6 +756,8 @@ export function usePlannerState(id: string | undefined) {
     updateHeating,
     deleteHeating,
     updateFinish,
+    addRender,
+    deleteRender,
     fileUrl,
     dirty,
     syncRooms,
