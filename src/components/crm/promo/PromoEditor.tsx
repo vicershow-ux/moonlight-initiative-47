@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import Icon from "@/components/ui/icon"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { PromoAsset, PromoAssetKind, siteApi } from "@/lib/api"
 import { resizeImageToDataUrl } from "@/lib/imageUpload"
@@ -8,10 +6,13 @@ import type { Orientation, PromoDesign, PromoEl, PromoFormat, PromoSide } from "
 import { FONTS_HREF, FORMATS, pageSize, rescaleDesign, sheetLayout, uid } from "./formats"
 import { Contacts } from "./templates"
 import { EditorCanvas } from "./EditorCanvas"
-import { LeftPanel, PanelTab, TABS } from "./LeftPanel"
+import { LeftPanel, PanelTab } from "./LeftPanel"
 import { PropsBar } from "./PropsBar"
-import { PrintOptions, printDesign } from "./printDesign"
-import { ToolBtn } from "./ui"
+import { PrintOptions } from "./printDesign"
+import { EditorHeader } from "./EditorHeader"
+import { EditorSidebar } from "./EditorSidebar"
+import { EditorFooter } from "./EditorFooter"
+import { PrintDialog } from "./PrintDialog"
 
 interface Props {
   id?: number
@@ -293,98 +294,51 @@ export function PromoEditor({ id, title: initialTitle, design: initial, contacts
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#121212] text-white">
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-white/10 bg-[#1a1a1a] px-3">
-        <button onClick={close} className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm text-white/70 hover:bg-white/10">
-          <Icon name="ArrowLeft" size={16} />
-          <span className="hidden sm:inline">Макеты</span>
-        </button>
-        <input
-          value={title}
-          onChange={(e) => {
-            setTitle(e.target.value)
-            setDirty(true)
-          }}
-          className="h-9 w-44 min-w-0 rounded-md border border-transparent bg-transparent px-2 text-sm font-medium outline-none hover:border-white/10 focus:border-[#D4AF37]/50 md:w-64"
-        />
-        <div className="hidden items-center gap-1 rounded-lg bg-[#161616] p-1 lg:flex">
-          {(Object.keys(FORMATS) as PromoFormat[])
-            .filter((f) => (isCard ? f === "card" : f !== "card"))
-            .map((f) => (
-              <button key={f} onClick={() => setFormat(f, design.orientation)} className={`rounded-md px-2.5 py-1.5 text-xs ${design.format === f ? "bg-white/15 text-white" : "text-white/50 hover:text-white"}`}>
-                {FORMATS[f].label}
-              </button>
-            ))}
-        </div>
-        <div className="flex items-center gap-1 rounded-lg bg-[#161616] p-1">
-          <ToolBtn icon="RectangleVertical" title="Вертикально" active={design.orientation === "portrait"} onClick={() => setFormat(design.format, "portrait")} />
-          <ToolBtn icon="RectangleHorizontal" title="Горизонтально" active={design.orientation === "landscape"} onClick={() => setFormat(design.format, "landscape")} />
-        </div>
-        <div className="ml-auto flex items-center gap-1">
-          <ToolBtn icon="Undo2" title="Отменить (Ctrl+Z)" disabled={!past.current.length} onClick={undo} />
-          <ToolBtn icon="Redo2" title="Повторить (Ctrl+Y)" disabled={!future.current.length} onClick={redo} />
-          <button onClick={() => setPrintOpen(true)} className="ml-1 flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-sm hover:bg-white/15">
-            <Icon name="Printer" size={15} />
-            <span className="hidden sm:inline">Печать</span>
-          </button>
-          <button onClick={save} disabled={saving} className="flex items-center gap-2 rounded-lg bg-[#D4AF37] px-4 py-2 text-sm font-medium text-[#161616] hover:bg-[#B8860B] disabled:opacity-50">
-            <Icon name={saving ? "Loader2" : "Save"} size={15} className={saving ? "animate-spin" : ""} />
-            <span className="hidden sm:inline">{dirty ? "Сохранить" : "Сохранено"}</span>
-          </button>
-        </div>
-      </header>
+      <EditorHeader
+        title={title}
+        design={design}
+        isCard={isCard}
+        canUndo={!!past.current.length}
+        canRedo={!!future.current.length}
+        saving={saving}
+        dirty={dirty}
+        onClose={close}
+        onTitleChange={(v) => {
+          setTitle(v)
+          setDirty(true)
+        }}
+        onFormat={setFormat}
+        onUndo={undo}
+        onRedo={redo}
+        onPrint={() => setPrintOpen(true)}
+        onSave={save}
+      />
 
       <div className="flex min-h-0 flex-1">
-        <nav className="flex w-[68px] shrink-0 flex-col border-r border-white/10 bg-[#1a1a1a] py-2">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => {
-                if (tab === t.id) setPanelOpen((o) => !o)
-                else {
-                  setTab(t.id)
-                  setPanelOpen(true)
-                }
-              }}
-              className={`flex flex-col items-center gap-1 py-3 text-[10px] ${tab === t.id && panelOpen ? "bg-[#D4AF37]/15 text-[#D4AF37]" : "text-white/55 hover:text-white"}`}
-            >
-              <Icon name={t.icon} size={20} />
-              {t.label}
-            </button>
-          ))}
-        </nav>
-
-        {panelOpen && (
-          <aside className="absolute bottom-0 left-[68px] top-14 z-10 w-72 overflow-y-auto border-r border-white/10 bg-[#1f1f1f] p-4 shadow-2xl md:static md:shadow-none">
-            <div className="mb-3 flex items-center justify-between">
-              <span className="text-sm font-medium">{TABS.find((t) => t.id === tab)?.label}</span>
-              <button onClick={() => setPanelOpen(false)} className="rounded p-1 text-white/40 hover:bg-white/10 hover:text-white" aria-label="Скрыть">
-                <Icon name="ChevronsLeft" size={16} />
-              </button>
-            </div>
-            <LeftPanel
-              tab={tab}
-              design={design}
-              side={side}
-              pageW={w}
-              pageH={h}
-              contacts={contacts}
-              uploads={uploads}
-              uploading={uploading}
-              onUpload={upload}
-              onRemoveAsset={removeAsset}
-              onToggleAssetKind={toggleAssetKind}
-              onAdd={addEl}
-              onSide={(patch) => updateSide((s) => ({ ...s, ...patch }))}
-              onTemplate={(d) => {
-                if (side.elements.length && !window.confirm("Заменить текущий макет шаблоном?")) return
-                apply(() => clone(d))
-                setSideIdx(0)
-                setSelected(null)
-                setTab("text")
-              }}
-            />
-          </aside>
-        )}
+        <EditorSidebar tab={tab} panelOpen={panelOpen} setTab={setTab} setPanelOpen={setPanelOpen}>
+          <LeftPanel
+            tab={tab}
+            design={design}
+            side={side}
+            pageW={w}
+            pageH={h}
+            contacts={contacts}
+            uploads={uploads}
+            uploading={uploading}
+            onUpload={upload}
+            onRemoveAsset={removeAsset}
+            onToggleAssetKind={toggleAssetKind}
+            onAdd={addEl}
+            onSide={(patch) => updateSide((s) => ({ ...s, ...patch }))}
+            onTemplate={(d) => {
+              if (side.elements.length && !window.confirm("Заменить текущий макет шаблоном?")) return
+              apply(() => clone(d))
+              setSideIdx(0)
+              setSelected(null)
+              setTab("text")
+            }}
+          />
+        </EditorSidebar>
 
         <main className="flex min-w-0 flex-1 flex-col">
           <div className="flex min-h-12 shrink-0 items-center gap-2 overflow-x-auto border-b border-white/10 bg-[#1a1a1a] px-3 py-2">
@@ -420,126 +374,39 @@ export function PromoEditor({ id, title: initialTitle, design: initial, contacts
             </div>
           </div>
 
-          <footer className="flex h-14 shrink-0 items-center gap-3 border-t border-white/10 bg-[#1a1a1a] px-3">
-            {design.sides.length > 1 ? (
-              <div className="flex rounded-lg bg-[#161616] p-1">
-                {design.sides.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      setSideIdx(i)
-                      setSelected(null)
-                    }}
-                    className={`rounded-md px-3 py-1.5 text-xs ${sideIdx === i ? "bg-[#D4AF37] font-medium text-[#161616]" : "text-white/60 hover:text-white"}`}
-                  >
-                    {i === 0 ? "Лицевая сторона" : "Оборотная сторона"}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <button
-                onClick={() => apply((d) => ({ ...d, sides: [...d.sides, { bg: d.sides[0].bg, elements: [] }] }))}
-                className="flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-2 text-xs text-white/70 hover:bg-white/10"
-              >
-                <Icon name="Plus" size={13} /> Добавить оборот
-              </button>
-            )}
-            {design.sides.length > 1 && (
-              <>
-                <ToolBtn
-                  icon="Copy"
-                  title="Скопировать эту сторону на другую"
-                  onClick={() => {
-                    if (!window.confirm("Скопировать эту сторону на другую? Содержимое другой стороны заменится.")) return
-                    apply((d) => ({ ...d, sides: d.sides.map((s, i) => (i === sideIdx ? s : { ...side, elements: side.elements.map((e) => ({ ...e, id: uid() })) })) }))
-                  }}
-                />
-                {!isCard && (
-                  <ToolBtn
-                    icon="Trash2"
-                    title="Удалить оборот"
-                    onClick={() => {
-                      if (!window.confirm("Удалить оборотную сторону?")) return
-                      apply((d) => ({ ...d, sides: [d.sides[0]] }))
-                      setSideIdx(0)
-                    }}
-                  />
-                )}
-              </>
-            )}
-            <ToolBtn
-              icon="Eraser"
-              title="Очистить сторону"
-              onClick={() => {
-                if (!window.confirm("Удалить все элементы с этой стороны?")) return
-                updateSide((s) => ({ ...s, elements: [], bgImage: "", bgDim: 0 }))
-                setSelected(null)
-              }}
-            />
-            <span className="hidden text-xs text-white/35 md:inline">
-              {w}×{h} мм · пунктир — безопасная зона
-            </span>
-            <div className="ml-auto flex items-center gap-1">
-              <ToolBtn icon="Minus" title="Уменьшить" onClick={() => setZoom((z) => Math.max(0.5, z / 1.2))} />
-              <button onClick={() => setZoom(fitZoom)} className="w-14 rounded-md py-1.5 text-center text-xs text-white/70 hover:bg-white/10" title="Вписать в экран">
-                {Math.round((zoom / fitZoom) * 100)}%
-              </button>
-              <ToolBtn icon="Plus" title="Увеличить" onClick={() => setZoom((z) => Math.min(40, z * 1.2))} />
-            </div>
-          </footer>
+          <EditorFooter
+            design={design}
+            sideIdx={sideIdx}
+            isCard={isCard}
+            w={w}
+            h={h}
+            zoom={zoom}
+            fitZoom={fitZoom}
+            setZoom={setZoom}
+            onSelectSide={(i) => {
+              setSideIdx(i)
+              setSelected(null)
+            }}
+            onAddBack={() => apply((d) => ({ ...d, sides: [...d.sides, { bg: d.sides[0].bg, elements: [] }] }))}
+            onCopySide={() => {
+              if (!window.confirm("Скопировать эту сторону на другую? Содержимое другой стороны заменится.")) return
+              apply((d) => ({ ...d, sides: d.sides.map((s, i) => (i === sideIdx ? s : { ...side, elements: side.elements.map((e) => ({ ...e, id: uid() })) })) }))
+            }}
+            onDeleteBack={() => {
+              if (!window.confirm("Удалить оборотную сторону?")) return
+              apply((d) => ({ ...d, sides: [d.sides[0]] }))
+              setSideIdx(0)
+            }}
+            onClearSide={() => {
+              if (!window.confirm("Удалить все элементы с этой стороны?")) return
+              updateSide((s) => ({ ...s, elements: [], bgImage: "", bgDim: 0 }))
+              setSelected(null)
+            }}
+          />
         </main>
       </div>
 
-      <Dialog open={printOpen} onOpenChange={setPrintOpen}>
-        <DialogContent className="border-white/10 bg-[#1f1f1f] text-white sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Печать на листе А4</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            {design.sides.length > 1 && (
-              <div className="space-y-1.5">
-                <div className="text-xs text-white/50">Что печатать</div>
-                <div className="grid grid-cols-3 gap-1 rounded-lg bg-[#161616] p-1">
-                  {(
-                    [
-                      ["both", "Обе стороны"],
-                      ["front", "Лицевую"],
-                      ["back", "Оборот"],
-                    ] as const
-                  ).map(([v, l]) => (
-                    <button key={v} onClick={() => setPrintOpts((o) => ({ ...o, sides: v }))} className={`rounded-md py-2 text-xs ${printOpts.sides === v ? "bg-[#D4AF37] font-medium text-[#161616]" : "text-white/60"}`}>
-                      {l}
-                    </button>
-                  ))}
-                </div>
-                {printOpts.sides === "both" && <p className="text-[11px] text-white/40">Оборот печатается вторым листом. Вставьте первый лист обратной стороной и напечатайте оборот — визитки совпадут.</p>}
-              </div>
-            )}
-            {perSheet > 1 && (
-              <label className="flex items-center justify-between gap-3 text-sm">
-                <span>Заполнить лист ({perSheet} шт. на А4)</span>
-                <input type="checkbox" checked={printOpts.fill} onChange={(e) => setPrintOpts((o) => ({ ...o, fill: e.target.checked }))} className="h-4 w-4 accent-[#D4AF37]" />
-              </label>
-            )}
-            {perSheet > 1 && (
-              <label className="flex items-center justify-between gap-3 text-sm">
-                <span>Пунктир для отреза</span>
-                <input type="checkbox" checked={printOpts.cutLines} onChange={(e) => setPrintOpts((o) => ({ ...o, cutLines: e.target.checked }))} className="h-4 w-4 accent-[#D4AF37]" />
-              </label>
-            )}
-            <p className="rounded-lg bg-white/5 p-3 text-xs text-white/60">В окне печати выберите масштаб «100%» (или «Фактический размер»), поля «Нет» и включите «Фон и цвета».</p>
-            <button
-              onClick={() => {
-                setPrintOpen(false)
-                printDesign(design, title, printOpts)
-              }}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#D4AF37] py-3 text-sm font-medium text-[#161616] hover:bg-[#B8860B]"
-            >
-              <Icon name="Printer" size={16} /> Печатать
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <PrintDialog open={printOpen} setOpen={setPrintOpen} design={design} title={title} perSheet={perSheet} printOpts={printOpts} setPrintOpts={setPrintOpts} />
     </div>
   )
 }
