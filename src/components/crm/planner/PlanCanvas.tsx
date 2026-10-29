@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useState } from "react"
 import {
   dist,
   distToPolyline,
   linkGeometry,
   openingPosition,
-  orthoPoint,
   pointInPolygon,
   snap,
   wallSegments,
@@ -18,8 +17,6 @@ import {
   PlanScheme,
 } from "@/lib/planner/types"
 import {
-  MAX_SCALE,
-  MIN_SCALE,
   SNAP_STEP,
   eventPoint,
   usePlanView,
@@ -30,6 +27,10 @@ import { PlanDimensionsLayer } from "./PlanDimensionsLayer"
 import { PlanEngineerLayer } from "./PlanEngineerLayer"
 import { PlanControls, PlanDraftLayer } from "./PlanOverlays"
 import { DrawAssist, assistPoint } from "./drawAssist"
+import { useTypedLength } from "./useTypedLength"
+import { useLinkRoute } from "./useLinkRoute"
+import { useWheelZoom } from "./useWheelZoom"
+import { TypedLengthHint } from "./TypedLengthHint"
 
 export type PlanTool = "select" | "draw" | "window" | "door" | "arch" | "node" | "link"
 
@@ -105,10 +106,6 @@ export function PlanCanvas({
     | { type: "bend"; linkId: string; index: number }
     | null
   >(null)
-  /** Длина стены, набранная с клавиатуры, мм */
-  const [typed, setTyped] = useState("")
-  /** Изломы трассы, которую сейчас прокладывают */
-  const [bends, setBends] = useState<PlanPoint[]>([])
 
   const nodes = useMemo(
     () => (scheme.nodes || []).filter((n) => n.layer === layer),
@@ -124,88 +121,13 @@ export function PlanCanvas({
     return map
   }, [scheme.nodes])
 
-  // Начали новую трассу или закончили — изломы предыдущей больше не нужны
-  useEffect(() => {
-    setBends([])
-  }, [linkFromId, tool, layer])
-
-  // Backspace убирает последний излом, Esc отменяет прокладку трассы
-  useEffect(() => {
-    if (tool !== "link" || !linkFromId) return
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null
-      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return
-      if (e.key === "Escape") {
-        setBends([])
-        onCancelLink()
-      } else if (e.key === "Backspace") {
-        e.preventDefault()
-        setBends((b) => b.slice(0, -1))
-      }
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [tool, linkFromId, onCancelLink])
-
-  useEffect(() => {
-    if (tool !== "draw" || draft.length === 0) setTyped("")
-  }, [tool, draft.length])
-
-  /** Точка на набранном расстоянии от последнего угла в сторону курсора */
-  const typedPoint = (): PlanPoint | null => {
-    const mm = parseFloat(typed.replace(",", "."))
-    if (!typed || !Number.isFinite(mm) || mm <= 0 || !cursor || draft.length === 0) return null
-    const prev = draft[draft.length - 1]
-    const dx = cursor.x - prev.x
-    const dy = cursor.y - prev.y
-    const len = Math.hypot(dx, dy)
-    if (len < 1e-6) return null
-    const m = mm / 1000
-    return { x: Math.round((prev.x + (dx / len) * m) * 10000) / 10000, y: Math.round((prev.y + (dy / len) * m) * 10000) / 10000 }
-  }
-
-  const placePoint = (p: PlanPoint) => {
-    if (draft.length >= 3 && dist(p, draft[0]) < 0.005) {
-      onFinishRoom(draft)
-      return
-    }
-    onDraftChange([...draft, p])
-  }
-
-  // Набор длины стены цифрами: 3000 + Enter — стена ровно 3 м в сторону курсора
-  const keyRef = useRef<(e: KeyboardEvent) => void>(() => undefined)
-  keyRef.current = (e: KeyboardEvent) => {
-    if (tool !== "draw" || draft.length === 0) return
-    const target = e.target as HTMLElement | null
-    if (target && (/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.isContentEditable)) return
-    if (/^[0-9]$/.test(e.key) || ((e.key === "," || e.key === ".") && !/[.,]/.test(typed))) {
-      e.preventDefault()
-      if (typed.length < 7) setTyped((t) => t + e.key)
-    } else if (e.key === "Backspace") {
-      e.preventDefault()
-      if (typed) setTyped((t) => t.slice(0, -1))
-      else onDraftChange(draft.slice(0, -1))
-    } else if (e.key === "Enter") {
-      e.preventDefault()
-      const p = typedPoint()
-      if (p) {
-        placePoint(p)
-        setTyped("")
-      } else if (!typed && draft.length >= 3) onFinishRoom(draft)
-    } else if (e.key === "Escape") {
-      if (typed) setTyped("")
-      else onDraftChange([])
-    }
-  }
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => keyRef.current(e)
-    window.addEventListener("keydown", h)
-    return () => window.removeEventListener("keydown", h)
-  }, [])
+  const { typed, setTyped, typedPoint, placePoint } = useTypedLength({ tool, draft, cursor, onDraftChange, onFinishRoom })
 
   const wallById = new Map(schemeWalls(scheme).all.map((w) => [w.id, w]))
 
   const snapPoint = (p: PlanPoint) => ({ x: snap(p.x, SNAP_STEP), y: snap(p.y, SNAP_STEP) })
+
+  const { bends, setBends, nextBend } = useLinkRoute({ tool, layer, linkFromId, nodeById, onCancelLink, snapPoint })
 
   /** Все углы на плане и в текущем контуре — к их уровню прилипает новая точка */
   const assistRefs = (exclude?: { roomId: string; index: number }) => [
@@ -217,20 +139,6 @@ export function PlanCanvas({
     const prev = draft.length ? draft[draft.length - 1] : null
     const before = draft.length > 1 ? draft[draft.length - 2] : null
     return assistPoint(snapPoint(world), prev, before, assistRefs(), view.scale, free)
-  }
-
-  /** Последняя точка прокладываемой трассы: излом либо начальная точка */
-  const routeTail = (): PlanPoint | null => {
-    if (bends.length > 0) return bends[bends.length - 1]
-    const from = linkFromId ? nodeById.get(linkFromId) : null
-    return from ? { x: from.x, y: from.y } : null
-  }
-
-  /** Излом всегда ставится строго по горизонтали или вертикали от предыдущего */
-  const nextBend = (world: PlanPoint, free: boolean): PlanPoint => {
-    const p = snapPoint(world)
-    const tail = routeTail()
-    return tail && !free ? orthoPoint(tail, p) : p
   }
 
   const handleDown = (e: React.MouseEvent) => {
@@ -403,32 +311,7 @@ export function PlanCanvas({
     setDrag(null)
   }
 
-  /**
-   * Колёсико масштабирует план и не прокручивает страницу. React вешает onWheel пассивно —
-   * там preventDefault не работает, поэтому слушаем событие напрямую с passive: false
-   */
-  const svgRef = useRef<SVGSVGElement | null>(null)
-  const wheelRef = useRef<(e: WheelEvent) => void>(() => undefined)
-  wheelRef.current = (e: WheelEvent) => {
-    e.preventDefault()
-    const rect = svgRef.current?.getBoundingClientRect()
-    if (!rect) return
-    const sx = e.clientX - rect.left
-    const sy = e.clientY - rect.top
-    const before = toWorld(sx, sy)
-    // Тачпад шлёт много мелких шагов — масштабируем плавно, пропорционально прокрутке
-    const step = Math.max(-1, Math.min(1, -e.deltaY / 100))
-    const factor = Math.pow(1.12, step)
-    const scale = Math.min(Math.max(view.scale * factor, MIN_SCALE), MAX_SCALE)
-    setView({ scale, tx: sx - before.x * scale, ty: sy - before.y * scale })
-  }
-  useEffect(() => {
-    const el = svgRef.current
-    if (!el) return
-    const onWheel = (e: WheelEvent) => wheelRef.current(e)
-    el.addEventListener("wheel", onWheel, { passive: false })
-    return () => el.removeEventListener("wheel", onWheel)
-  }, [])
+  const svgRef = useWheelZoom(view, setView, toWorld)
 
   return (
     <div ref={wrapRef} className="relative h-[440px] w-full overscroll-contain md:h-[620px]">
@@ -515,25 +398,7 @@ export function PlanCanvas({
         <PlanDraftLayer draft={draft} tool={tool} cursor={typedPoint() || cursor} assist={assist} scale={view.scale} toScreen={toScreen} />
       </svg>
 
-      {tool === "draw" && draft.length > 0 && cursor && (
-        <div
-          className="pointer-events-none absolute z-10 flex items-center gap-1.5 rounded-lg border bg-[#161616]/95 px-2.5 py-1.5 text-xs shadow-lg"
-          style={{
-            left: toScreen(cursor).x + 16,
-            top: toScreen(cursor).y + 14,
-            borderColor: typed ? "#D4AF37" : "rgba(255,255,255,0.12)",
-          }}
-        >
-          {typed ? (
-            <>
-              <span className="font-semibold text-[#D4AF37]">{typed}</span>
-              <span className="text-white/40">мм · Enter</span>
-            </>
-          ) : (
-            <span className="text-white/40">наберите длину, мм</span>
-          )}
-        </div>
-      )}
+      {tool === "draw" && draft.length > 0 && cursor && <TypedLengthHint cursor={cursor} typed={typed} toScreen={toScreen} />}
 
       <PlanControls cursor={cursor} gridStep={gridStep} zoomBy={zoomBy} fitView={fitView} />
     </div>
