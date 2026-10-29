@@ -45,6 +45,8 @@ interface Props {
   toScreen: ToScreen
   /** Весь план — нужен для привязки к стенам и откосам */
   scheme?: PlanScheme
+  /** Подсвеченная группа щита: её кабели и точки ярко, остальное бледно */
+  highlightGroupId?: string | null
 }
 
 const polyPoints = (pts: PlanPoint[], toScreen: ToScreen) =>
@@ -75,6 +77,7 @@ export function PlanEngineerLayer({
   previewBend,
   toScreen,
   scheme,
+  highlightGroupId = null,
 }: Props) {
   const color = layer === "electric" ? "#E8B23A" : "#7FB5E8"
   const groupById = new Map(groups.map((g) => [g.id, g]))
@@ -82,6 +85,20 @@ export function PlanEngineerLayer({
     () => (layer === "electric" ? nodeGroupNums({ groups, links, nodes }) : new Map<string, number[]>()),
     [layer, groups, links, nodes],
   )
+  const hl = layer === "electric" ? highlightGroupId : null
+  // Точки подсвеченной группы — концы её кабелей, включая щит
+  const hlNodes = useMemo(() => {
+    const set = new Set<string>()
+    if (!hl) return set
+    for (const l of links) {
+      if (l.groupId !== hl) continue
+      set.add(l.fromId)
+      set.add(l.toId)
+    }
+    return set
+  }, [hl, links])
+  const DIM = 0.16
+
   // На электрике трасса окрашивается в цвет своего сечения — как в PDF
   const colorOf = (spec?: string | null) => (layer === "electric" && spec ? sectionColor(spec) : color)
 
@@ -92,6 +109,7 @@ export function PlanEngineerLayer({
     const seg = longestSegment(g.route)
     const lc = colorOf(l.spec)
     const grp = l.groupId ? groupById.get(l.groupId) : null
+    const lit = hl ? l.groupId === hl : null
 
     // Подпись — группа и сечение, без длины: длина есть в карточке трассы и в PDF
     let label: React.ReactNode = null
@@ -118,16 +136,27 @@ export function PlanEngineerLayer({
     }
 
     return (
-      <g key={l.id}>
+      <g key={l.id} opacity={lit === false && !selected ? DIM : 1}>
+        {lit && (
+          <polyline
+            points={polyPoints(g.route, toScreen)}
+            fill="none"
+            stroke={lc}
+            strokeWidth={10}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity={0.22}
+          />
+        )}
         <polyline
           points={polyPoints(g.route, toScreen)}
           fill="none"
           stroke={lc}
-          strokeWidth={selected ? 4 : 2.5}
+          strokeWidth={selected ? 4 : lit ? 3.5 : 2.5}
           strokeDasharray={layer === "plumbing" ? "8 4" : undefined}
           strokeLinecap="round"
           strokeLinejoin="round"
-          opacity={selected ? 1 : 0.85}
+          opacity={selected || lit ? 1 : 0.85}
         />
         {label}
         {/* У выбранной трассы показываем изломы — их можно перетаскивать */}
@@ -165,8 +194,10 @@ export function PlanEngineerLayer({
       (WALL_MOUNTED.has(n.kind) ? wallDirection(n, rooms) : null)
     const inReveal = n.mount?.place === "reveal"
 
+    const nodeLit = hl ? hlNodes.has(n.id) : null
     return (
-      <g key={n.id} style={{ cursor: tool === "select" ? "grab" : "pointer" }}>
+      <g key={n.id} style={{ cursor: tool === "select" ? "grab" : "pointer" }} opacity={nodeLit === false && !selected ? DIM + 0.1 : 1}>
+        {nodeLit && <circle cx={p.x} cy={p.y} r={r + 4} fill="#D4AF37" opacity={0.18} stroke="#D4AF37" strokeWidth={1} />}
         {/* Прозрачный круг — чтобы в маленький значок было легко попасть мышью */}
         <circle cx={p.x} cy={p.y} r={r + 3} fill="transparent" />
         {(selected || isFrom) && (

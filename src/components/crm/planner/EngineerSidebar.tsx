@@ -39,6 +39,8 @@ interface Props {
   onUpdateCable: (patch: Partial<CableSettings>) => void
   onUpdatePanel: (patch: Partial<PanelSettings>) => void
   onHoverWall?: (wallId: string | null) => void
+  highlightGroupId?: string | null
+  onHighlightGroup?: (id: string | null) => void
 }
 
 export function EngineerSidebar({
@@ -57,6 +59,8 @@ export function EngineerSidebar({
   onUpdateCable,
   onUpdatePanel,
   onHoverWall,
+  highlightGroupId = null,
+  onHighlightGroup,
 }: Props) {
   const panel = panelSettings(scheme.panel)
   const panelIssues = layer === "electric" ? panelWarnings(scheme) : []
@@ -132,6 +136,8 @@ export function EngineerSidebar({
           onDeleteGroup={onDeleteGroup}
           onUpdatePanel={onUpdatePanel}
           balance={phaseBalance(scheme)}
+          highlightGroupId={highlightGroupId}
+          onHighlightGroup={onHighlightGroup}
         />
       )}
 

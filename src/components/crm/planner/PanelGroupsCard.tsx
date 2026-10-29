@@ -28,6 +28,9 @@ interface Props {
   onDeleteGroup: (id: string) => void
   onUpdatePanel: (patch: Partial<PanelSettings>) => void
   balance?: PhaseBalance | null
+  /** Группа, подсвеченная на схеме */
+  highlightGroupId?: string | null
+  onHighlightGroup?: (id: string | null) => void
 }
 
 export function PanelGroupsCard({
@@ -40,6 +43,8 @@ export function PanelGroupsCard({
   onDeleteGroup,
   onUpdatePanel,
   balance = null,
+  highlightGroupId = null,
+  onHighlightGroup,
 }: Props) {
   return (
     <div className="rounded-xl border border-white/10 bg-[#1f1f1f] p-4">
@@ -102,8 +107,21 @@ export function PanelGroupsCard({
           {groups.map((g) => {
             const sum = summaries.find((x) => x.group?.id === g.id)
             return (
-              <div key={g.id} className="rounded-lg border border-white/10 bg-[#161616] p-3">
+              <div
+                key={g.id}
+                className={`rounded-lg border bg-[#161616] p-3 transition-colors ${highlightGroupId === g.id ? "border-[#D4AF37]/70 ring-1 ring-[#D4AF37]/40" : "border-white/10"}`}
+              >
                 <div className="mb-2 flex items-center gap-2">
+                  {onHighlightGroup ? (
+                    <button
+                      type="button"
+                      onClick={() => onHighlightGroup(highlightGroupId === g.id ? null : g.id)}
+                      title={highlightGroupId === g.id ? "Снять подсветку" : "Показать группу на схеме"}
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${highlightGroupId === g.id ? "bg-[#D4AF37] text-[#161616]" : "text-white/50 hover:bg-white/10 hover:text-white"}`}
+                    >
+                      <Icon name={highlightGroupId === g.id ? "EyeOff" : "Eye"} size={14} />
+                    </button>
+                  ) : null}
                   <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: groupColor(g.num) }} />
                   <input
                     className="w-12 rounded border border-white/10 bg-transparent px-1.5 py-1 text-center text-sm outline-none focus:border-[#D4AF37]/50"

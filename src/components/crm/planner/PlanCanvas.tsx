@@ -65,6 +65,8 @@ interface Props {
   onUpdateLink: (id: string, patch: Partial<PlanLink>) => void
   linkGroupId?: string | null
   linkSpec?: string | null
+  /** Подсвеченная группа щита: её кабели и точки ярко, остальное бледно */
+  highlightGroupId?: string | null
 }
 
 export function PlanCanvas({
@@ -95,6 +97,7 @@ export function PlanCanvas({
   onUpdateLink,
   linkGroupId = null,
   linkSpec = null,
+  highlightGroupId = null,
 }: Props) {
   const { wrapRef, size, view, setView, toScreen, toWorld, gridLines, gridStep, zoomBy, fitView } =
     usePlanView(scheme.rooms)
@@ -384,6 +387,7 @@ export function PlanCanvas({
             rooms={scheme.rooms}
             groups={scheme.groups || []}
             linkGroupId={linkGroupId}
+            highlightGroupId={highlightGroupId}
             linkSpec={linkSpec}
             nodeById={nodeById}
             linkFromId={linkFromId}
