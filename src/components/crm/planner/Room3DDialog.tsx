@@ -21,6 +21,7 @@ export function Room3DDialog({ open, onOpenChange, scheme, roomId, onAddRender, 
   const view = useRef<Room3D | null>(null)
   const [error, setError] = useState("")
   const [adding, setAdding] = useState(false)
+  const [mode, setMode] = useState<"orbit" | "inside">("orbit")
   const [note, setNote] = useState("")
   const room = scheme.rooms.find((r) => r.id === roomId)
 
@@ -38,6 +39,7 @@ export function Room3DDialog({ open, onOpenChange, scheme, roomId, onAddRender, 
         const { mountRoom3D } = await import("@/lib/planner/room3d")
         if (!alive) return
         view.current = mountRoom3D(el, sceneScheme.current, room)
+        setMode("orbit")
       } catch (e) {
         setError(e instanceof Error ? e.message : "Не удалось открыть 3D — браузер не поддерживает WebGL")
       }
@@ -88,11 +90,37 @@ export function Room3DDialog({ open, onOpenChange, scheme, roomId, onAddRender, 
             {sum && <span className="text-xs font-normal text-white/45">{sum}</span>}
           </DialogTitle>
         </DialogHeader>
+        <div className="flex flex-wrap gap-1.5">
+          {(
+            [
+              ["orbit", "Сверху / облёт", "Rotate3d"],
+              ["inside", "Изнутри комнаты", "Eye"],
+            ] as const
+          ).map(([m, label, icon]) => (
+            <button
+              key={m}
+              onClick={() => {
+                setMode(m)
+                view.current?.setMode(m)
+              }}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors ${
+                mode === m ? "bg-white text-[#161616]" : "bg-white/5 text-white/60 hover:bg-white/10"
+              }`}
+            >
+              <Icon name={icon} size={14} />
+              {label}
+            </button>
+          ))}
+        </div>
         <div ref={ref} className="relative h-[62vh] min-h-[360px] w-full overflow-hidden rounded-lg bg-[#1b1b1b]">
           {error && <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm text-red-300">{error}</div>}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-white/45">
-          <span>Мышь — облёт комнаты, колесо — приближение, правая кнопка или Shift — сдвиг. Ближние стены скрываются, чтобы было видно комнату</span>
+          <span>
+            {mode === "inside"
+              ? "Мышь — осмотреться, W/A/S/D или стрелки — шаг по комнате, колесо — шире обзор, правая кнопка — перейти"
+              : "Мышь — облёт комнаты, колесо — приближение, правая кнопка или Shift — сдвиг. Ближние стены скрываются"}
+          </span>
           <div className="flex flex-wrap gap-2">
             <button onClick={save} className="flex min-h-[38px] items-center gap-2 rounded-lg bg-white/5 px-4 text-sm text-white/70 hover:bg-white/10">
               <Icon name="ImageDown" size={15} />

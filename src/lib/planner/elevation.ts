@@ -12,7 +12,10 @@ import {
   WallOverride,
   roomFinish,
   wallFinishOf,
+  wallTileOf,
+  TileSpec,
 } from "./types"
+import { FinishPattern, paintPattern, svgPatternDef, tilePattern, wallpaperPattern } from "./finishTextures"
 import { furnitureCorners } from "./interior"
 import { WallInfo, mountPosition, openingSpan, roomWalls } from "./walls"
 import { toMm } from "./geometry"
@@ -65,6 +68,8 @@ export interface WallElevation {
   finish: WallOverride & { own: boolean }
   /** Плитка от пола до высоты, м (0 — нет) */
   tileH: number
+  /** Плитка стены: размер, шов, раскладка */
+  tile: TileSpec
   /** Мебель у стены — вид спереди, x в метрах на развёртке */
   furniture: ElevFurniture[]
 }
@@ -281,6 +286,7 @@ export function wallElevation(scheme: PlanScheme, wall: WallInfo): WallElevation
     chases: wallChases(points, openings, room.height, traceZ),
     finish: wallFinishOf(rf, wall.id),
     tileH: wallFinishOf(rf, wall.id).wall === "tile" ? room.height : Math.min(rf.tileHeight || 0, room.height),
+    tile: wallTileOf(rf, wallFinishOf(rf, wall.id).own ? wallFinishOf(rf, wall.id) : undefined),
     furniture: wallFurniture(scheme, wall, toX),
   }
 }
@@ -424,6 +430,11 @@ function chain(
  * Развёртка стены в SVG: проёмы, точки на своей высоте, цепочки размеров
  * от углов по горизонтали и размеры от пола до центра каждой коробки
  */
+/** Плитку кладут от пола вверх: отражаем фрагмент, чтобы первый ряд был целым у пола */
+function flipY(p: FinishPattern): FinishPattern {
+  return { ...p, svg: (s) => `<g transform="translate(0 ${p.repeatH * s}) scale(1 -1)">${p.svg(s)}</g>` }
+}
+
 /** Светлее цвета для заливки — чтобы поверх читались размеры */
 const tint = (hex: string, k = 0.55) => {
   const n = parseInt(hex.replace("#", "").padEnd(6, "0").slice(0, 6), 16)
@@ -481,10 +492,17 @@ export function elevationSvg(e: WallElevation, width = 700, mode: ElevationMode 
   const uid = `${e.wall.id.replace(/[^a-z0-9]/gi, "")}-${mode}`
   const finishOn = mode === "finish" || fin.wall !== "none" || e.tileH > 0
   const mainColor = fin.wall !== "none" ? fin.wallColor || WALL_FINISHES[fin.wall].color : "#fbfbfb"
-  const tileColor = fin.wall === "tile" ? mainColor : WALL_FINISHES.tile.color
   const defs: string[] = []
-  if (fin.wall !== "none") defs.push(finishDefs(`fm-${uid}`, fin.wall, mainColor, k))
-  if (e.tileH > 0 && fin.wall !== "tile") defs.push(finishDefs(`ft-${uid}`, "tile", tileColor, k))
+  // Реальный рисунок: плитка нужного размера и раскладки — от левого угла и от пола, обои — полосами
+  const origin = { ox: sx(0), oy: floorY }
+  const real = (kind: string, color: string, tile?: TileSpec) => {
+    if (kind === "tile" && tile) return svgPatternDef(`fm-${uid}`, flipY(tilePattern(tile)), k, origin)
+    if (kind === "wallpaper") return svgPatternDef(`fm-${uid}`, wallpaperPattern(color, fin.rapport || 0.64, 0.53), k, origin)
+    if (kind === "plaster") return svgPatternDef(`fm-${uid}`, paintPattern(color, true), k, origin)
+    return finishDefs(`fm-${uid}`, kind, color, k)
+  }
+  if (fin.wall !== "none") defs.push(real(fin.wall, mainColor, fin.wall === "tile" ? e.tile : undefined))
+  if (e.tileH > 0 && fin.wall !== "tile") defs.push(svgPatternDef(`ft-${uid}`, flipY(tilePattern(e.tile)), k, origin))
   if (defs.length) parts.push(`<defs>${defs.join("")}</defs>`)
   // В режиме электрики отделка — бледной подложкой, чтобы не спорить со штробами
   const fop = mode === "finish" ? 1 : 0.45

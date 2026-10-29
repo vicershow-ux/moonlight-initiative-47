@@ -1,4 +1,5 @@
-import { CEILING_FINISHES, FLOOR_FINISHES, PlanScheme, WALL_FINISHES } from "./types"
+import { CEILING_FINISHES, FLOOR_FINISHES, PlanScheme, TILE_LAYOUTS, TileSpec, WALL_FINISHES, floorTileOf, wallTileOf } from "./types"
+import { tileCount } from "./finishTextures"
 import { MaterialRow, MaterialSection, heatingMaterials } from "./materials"
 import { finishCalc, PAINT_L_PER_M2 } from "./finishes"
 
@@ -9,6 +10,22 @@ const add = (map: Map<string, MaterialRow>, row: MaterialRow) => {
     cur.qty = Math.round((cur.qty + row.qty) * 100) / 100
     if (row.note && cur.note !== row.note) cur.note = [cur.note, row.note].filter(Boolean).join("; ")
   } else map.set(key, { ...row, qty: Math.round(row.qty * 100) / 100 })
+}
+
+/** Затирка зависит от шва и размера плитки: мелкая плитка с широким швом берёт больше */
+const groutKg = (t: TileSpec) => {
+  // Расход, кг/м² = (A + B) / (A × B) × ширина шва × глубина × 1,6; глубина ≈ 8 мм
+  const A = t.w * 1000
+  const B = t.h * 1000
+  return Math.max(((A + B) / (A * B)) * t.joint * 1000 * 8 * 1.6, 0.1)
+}
+const jointMm = (t: TileSpec) => String(Math.round(t.joint * 10000) / 10).replace(".", ",")
+
+const addTile = (map: Map<string, MaterialRow>, base: string, t: TileSpec, cnt: ReturnType<typeof tileCount>, note: string) => {
+  const name = `${base} ${Math.round(t.w * 1000)}×${Math.round(t.h * 1000)}${t.note ? ` — ${t.note}` : ""}`
+  const spec = `${TILE_LAYOUTS[t.layout].label.toLowerCase()}, цвет ${t.color.toUpperCase()}${t.layout === "checker" && t.color2 ? ` + ${t.color2.toUpperCase()}` : ""}, запас ${Math.round(TILE_LAYOUTS[t.layout].waste * 100)}%`
+  add(map, { name, spec, unit: "шт", qty: cnt.pieces, note: `${note} → ${String(cnt.m2).replace(".", ",")} м²` })
+  if (cnt.boxes) add(map, { name: `${name} (коробки)`, spec: `по ${t.perBox} шт`, unit: "уп", qty: cnt.boxes })
 }
 
 const up = (v: number, step = 1) => Math.ceil(v / step - 1e-9) * step
@@ -46,7 +63,14 @@ export function finishMaterials(scheme: PlanScheme): MaterialSection[] {
     // Пол
     if (f.floor !== "none") {
       const info = FLOOR_FINISHES[f.floor]
-      add(floor, { name: info.label, spec: `запас ${Math.round(info.waste * 100)}% на подрезку`, unit: "м²", qty: up(c.floorArea * (1 + info.waste), 0.1), note: name })
+      if (f.floor === "tile" || f.floor === "porcelain") {
+        // Плитка — штуками по своему размеру и раскладке, плюс коробки, если указано сколько в коробке
+        const t = floorTileOf(f)
+        const cnt = tileCount(t, c.floorArea)
+        addTile(floor, info.label, t, cnt, `${name}: ${r1(c.floorArea)} м²`)
+      } else {
+        add(floor, { name: info.label, spec: `запас ${Math.round(info.waste * 100)}% на подрезку`, unit: "м²", qty: up(c.floorArea * (1 + info.waste), 0.1), note: name })
+      }
       if (["parquet", "engineered", "laminate", "vinyl"].includes(f.floor)) {
         add(floor, { name: "Подложка под напольное покрытие", spec: f.floor === "vinyl" ? "2 мм, для SPC" : "3 мм", unit: "м²", qty: up(c.floorArea * 1.05) })
       }
@@ -56,7 +80,7 @@ export function finishMaterials(scheme: PlanScheme): MaterialSection[] {
       }
       if (f.floor === "tile" || f.floor === "porcelain") {
         add(floor, { name: "Клей плиточный", spec: "мешок 25 кг", unit: "уп", qty: up((c.floorArea * NORM.tileGlue * (f.floor === "porcelain" ? 1.2 : 1)) / 25) })
-        add(floor, { name: "Затирка для швов", spec: "мешок 2 кг", unit: "уп", qty: up((c.floorArea * NORM.grout) / 2) })
+        add(floor, { name: "Затирка для швов", spec: `мешок 2 кг, цвет ${floorTileOf(f).grout.toUpperCase()}, шов ${jointMm(floorTileOf(f))} мм`, unit: "уп", qty: up((c.floorArea * groutKg(floorTileOf(f))) / 2) })
         add(floor, { name: "Крестики / СВП для плитки", spec: "упаковка 100 шт", unit: "уп", qty: up(c.floorArea / 4) })
       }
       if (f.floor === "linoleum" || f.floor === "carpet") {
@@ -106,9 +130,22 @@ export function finishMaterials(scheme: PlanScheme): MaterialSection[] {
       }
     }
     if (c.wallTile > 0) {
-      add(walls, { name: "Плитка настенная", spec: "запас 10% на подрезку", unit: "м²", qty: up(c.wallTile * 1.1, 0.1), note: `${name}: ${r1(c.wallTile)} м²` })
+      // Плитка по стенам: своя у акцентной стены, общая — у остальных
+      const byTile = new Map<string, { t: TileSpec; area: number; walls: number[] }>()
+      for (const w of c.walls) {
+        if (w.tile <= 0) continue
+        const t = wallTileOf(f, w.finish.own ? w.finish : undefined)
+        const key = JSON.stringify(t)
+        const g = byTile.get(key) || { t, area: 0, walls: [] }
+        g.area += w.tile
+        g.walls.push(w.index + 1)
+        byTile.set(key, g)
+      }
+      for (const g of byTile.values()) {
+        addTile(walls, "Плитка настенная", g.t, tileCount(g.t, g.area), `${name}${byTile.size > 1 ? `, стены ${g.walls.join(", ")}` : ""}: ${r1(g.area)} м²`)
+        add(walls, { name: "Затирка для швов", spec: `мешок 2 кг, цвет ${g.t.grout.toUpperCase()}, шов ${jointMm(g.t)} мм`, unit: "уп", qty: up((g.area * groutKg(g.t)) / 2) })
+      }
       add(walls, { name: "Клей плиточный", spec: "мешок 25 кг", unit: "уп", qty: up((c.wallTile * NORM.tileGlue) / 25) })
-      add(walls, { name: "Затирка для швов", spec: "мешок 2 кг", unit: "уп", qty: up((c.wallTile * NORM.grout) / 2) })
       add(walls, { name: "Уголок для плитки", spec: "2,5 м", unit: "шт", qty: up(((room.height || scheme.defaultHeight) * 2) / 2.5) })
     }
     if ((f.wallPlaster || 0) > 0) {

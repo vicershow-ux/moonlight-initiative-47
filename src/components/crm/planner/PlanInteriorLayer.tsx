@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { HEATING_PRESETS, PlanLayer, PlanScheme, WALL_FINISHES, roomFinish, wallFinishOf } from "@/lib/planner/types"
+import { HEATING_PRESETS, PlanLayer, PlanScheme, WALL_FINISHES, floorTileOf, roomFinish, wallFinishOf, wallTileOf } from "@/lib/planner/types"
 import { fmtNum } from "@/lib/planner/geometry"
 import { heatingCalc, interiorWarnings, thermostatOf, zoneLayout } from "@/lib/planner/interior"
 import { floorPattern, furnitureSvg, heatingLayoutSvg } from "@/lib/planner/interiorSvg"
@@ -48,15 +48,21 @@ export function PlanInteriorLayer({ scheme, layer, scale, toScreen, selectedFurn
       const f = roomFinish(scheme, room.id)
       if (f.floor !== "none") {
         const id = `floor-${room.id}`
-        defs.push(floorPattern(id, f.floor, scale, f.floorColor))
-        floors.push(<polygon key={id} points={poly(room.points)} fill={`url(#${id})`} opacity={0.85} />)
+        const isTile = f.floor === "tile" || f.floor === "porcelain"
+        defs.push(floorPattern(id, f.floor, scale, isTile ? floorTileOf(f).color : f.floorColor, undefined, isTile ? floorTileOf(f) : undefined, toScreen({ x: 0, y: 0 })))
+        floors.push(<polygon key={id} points={poly(room.points)} fill={`url(#${id})`} opacity={0.95} />)
       }
       // Отделка стен — цветная полоса по внутренней грани; у акцентной стены — свой цвет и толще.
       // Плитка до высоты без основной отделки — пунктиром
       for (const w of roomWalls(room, scheme)) {
         const wf = wallFinishOf(f, w.id)
         if (wf.wall === "none" && !(f.tileHeight || 0)) continue
-        const col = wf.wall !== "none" ? wf.wallColor || WALL_FINISHES[wf.wall].color : WALL_FINISHES.tile.color
+        const col =
+          wf.wall === "tile" || (wf.wall === "none" && (f.tileHeight || 0) > 0)
+            ? wallTileOf(f, wf.own ? wf : undefined).color
+            : wf.wall !== "none"
+              ? wf.wallColor || WALL_FINISHES[wf.wall].color
+              : WALL_FINISHES.tile.color
         const k = w.inner + (wf.own ? 0.05 : 0.03)
         const a = toScreen({ x: w.a.x - w.nx * k, y: w.a.y - w.ny * k })
         const b = toScreen({ x: w.b.x - w.nx * k, y: w.b.y - w.ny * k })

@@ -2,14 +2,16 @@ import * as THREE from "three"
 import {
   CEILING_FINISHES,
   FLOOR_FINISHES,
-  FloorFinish,
   PlanFurniture,
   PlanRoom,
   PlanScheme,
   WALL_FINISHES,
   roomFinish,
   wallFinishOf,
+  floorTileOf,
+  wallTileOf,
 } from "./types"
+import { FinishPattern, floorFinishPattern, paintPattern, shade, tilePattern, wallpaperPattern } from "./finishTextures"
 import { roomWalls, openingSpan } from "./walls"
 
 /** Палитра мебели: дерево, ткань, белая техника и сантехника */
@@ -53,105 +55,30 @@ const FURN_COLOR: Partial<Record<PlanFurniture["kind"], string>> = {
   custom: MAT.woodLight,
 }
 
-/** Обои: мягкий узор поверх цвета — видно, что это не покраска */
-function wallpaperTexture(color: string): THREE.Texture {
+/**
+ * Текстура из рисунка отделки в реальном масштабе. UV геометрии — в метрах,
+ * поэтому repeat = 1 / размер фрагмента: плитка 600×600 на полу ровно 600×600
+ */
+function patternTexture(p: FinishPattern, pxPerM = 512): THREE.CanvasTexture {
+  // Канвас не больше 1024 px: для крупного фрагмента уменьшаем плотность
+  const k = Math.min(pxPerM, 1024 / Math.max(p.repeatW, p.repeatH))
   const c = document.createElement("canvas")
-  c.width = 256
-  c.height = 256
+  c.width = Math.max(Math.round(p.repeatW * k), 8)
+  c.height = Math.max(Math.round(p.repeatH * k), 8)
   const g = c.getContext("2d")!
-  g.fillStyle = color
-  g.fillRect(0, 0, 256, 256)
-  g.strokeStyle = "rgba(255,255,255,0.28)"
-  g.lineWidth = 3
-  for (let i = 0; i < 4; i++) {
-    for (let j = 0; j < 4; j++) {
-      const x = i * 64 + (j % 2) * 32
-      const y = j * 64
-      g.beginPath()
-      g.moveTo(x + 32, y + 8)
-      g.quadraticCurveTo(x + 56, y + 32, x + 32, y + 56)
-      g.quadraticCurveTo(x + 8, y + 32, x + 32, y + 8)
-      g.stroke()
-    }
-  }
-  g.fillStyle = "rgba(0,0,0,0.05)"
-  g.fillRect(0, 0, 2, 256)
+  p.draw(g, k)
   const t = new THREE.CanvasTexture(c)
   t.wrapS = THREE.RepeatWrapping
   t.wrapT = THREE.RepeatWrapping
-  t.colorSpace = THREE.SRGBColorSpace
-  return t
-}
-
-/** Текстура покрытия пола: доска, ёлочка или плитка рисуются на канвасе и повторяются */
-function floorTexture(finish: FloorFinish, color: string): THREE.Texture {
-  const c = document.createElement("canvas")
-  c.width = 512
-  c.height = 512
-  const g = c.getContext("2d")!
-  g.fillStyle = color
-  g.fillRect(0, 0, 512, 512)
-  const info = FLOOR_FINISHES[finish]
-  // Лёгкий разброс оттенка — покрытие не выглядит пластиковым
-  const shade = (k: number) => {
-    const n = parseInt(color.slice(1), 16)
-    const r = Math.min(255, Math.max(0, ((n >> 16) & 255) + k))
-    const gg = Math.min(255, Math.max(0, ((n >> 8) & 255) + k))
-    const b = Math.min(255, Math.max(0, (n & 255) + k))
-    return `rgb(${r},${gg},${b})`
-  }
-  g.strokeStyle = "rgba(0,0,0,0.25)"
-  g.lineWidth = 2
-  if (info.pattern === "planks") {
-    // 512 px = 1,2 м: доски 190 мм, стыки вразбежку
-    const h = 512 / 6
-    for (let i = 0; i < 6; i++) {
-      const off = (i % 3) * 170
-      for (let x = -off; x < 512; x += 512) {
-        g.fillStyle = shade(((i * 37) % 20) - 10)
-        g.fillRect(x, i * h, 512, h)
-        g.strokeRect(x, i * h, 512, h)
-      }
-      g.beginPath()
-      g.moveTo((off + 300) % 512, i * h)
-      g.lineTo((off + 300) % 512, (i + 1) * h)
-      g.stroke()
-    }
-  } else if (info.pattern === "herring") {
-    const s = 64
-    for (let y = -s * 2; y < 512 + s * 2; y += s) {
-      for (let x = -s * 2; x < 512 + s * 2; x += s * 2) {
-        g.save()
-        g.translate(x + ((y / s) % 2) * s, y)
-        g.rotate(Math.PI / 4)
-        g.fillStyle = shade(((x + y) % 30) - 15)
-        g.fillRect(0, 0, s * 1.4, s * 0.35)
-        g.strokeRect(0, 0, s * 1.4, s * 0.35)
-        g.rotate(-Math.PI / 2)
-        g.fillStyle = shade(((x - y) % 30) - 10)
-        g.fillRect(0, 0, s * 1.4, s * 0.35)
-        g.strokeRect(0, 0, s * 1.4, s * 0.35)
-        g.restore()
-      }
-    }
-  } else if (info.pattern === "tiles") {
-    const n = finish === "porcelain" ? 2 : 4
-    const s = 512 / n
-    g.strokeStyle = "rgba(255,255,255,0.7)"
-    g.lineWidth = 4
-    for (let i = 0; i < n; i++)
-      for (let j = 0; j < n; j++) {
-        g.fillStyle = shade(((i + j) % 2) * 6 - 3)
-        g.fillRect(i * s, j * s, s, s)
-        g.strokeRect(i * s, j * s, s, s)
-      }
-  }
-  const t = new THREE.CanvasTexture(c)
-  t.wrapS = THREE.RepeatWrapping
-  t.wrapT = THREE.RepeatWrapping
+  t.repeat.set(1 / p.repeatW, 1 / p.repeatH)
   t.colorSpace = THREE.SRGBColorSpace
   t.anisotropy = 8
   return t
+}
+
+/** Стеновые панели — вертикальные ламели */
+function plankPattern3d(color: string): FinishPattern {
+  return tilePattern({ w: 0.2, h: 2.8, joint: 0.004, layout: "grid", color, grout: shade(color, -35) })
 }
 
 const std = (color: string, extra: Partial<THREE.MeshStandardMaterialParameters> = {}) =>
@@ -281,6 +208,8 @@ function furnitureModel(f: PlanFurniture): THREE.Group {
 
 export interface Room3D {
   dispose: () => void
+  /** Облёт снаружи или вид изнутри с высоты глаз */
+  setMode: (m: "orbit" | "inside") => void
   /** Снимок текущего вида — для отправки заказчику; jpeg — легче для PDF */
   snapshot: (format?: "png" | "jpeg") => string
 }
@@ -318,13 +247,19 @@ export function buildRoomScene(scheme: PlanScheme, room: PlanRoom): RoomScene {
   const floorGeo = track(new THREE.ShapeGeometry(shape))
   floorGeo.rotateX(Math.PI / 2)
   const floorColor = f.floor !== "none" ? f.floorColor || FLOOR_FINISHES[f.floor].color : "#8d8d8d"
-  const tex = f.floor !== "none" ? track(floorTexture(f.floor, floorColor)) : null
-  if (tex) {
-    // UV формы — в метрах; текстура 1,2 м
-    const uv = floorGeo.attributes.uv
-    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 1.2, uv.getY(i) / 1.2)
-  }
-  const floorMat = track(new THREE.MeshStandardMaterial({ color: tex ? "#ffffff" : floorColor, map: tex, roughness: f.floor === "tile" || f.floor === "porcelain" ? 0.25 : 0.6, side: THREE.DoubleSide }))
+  const isTileFloor = f.floor === "tile" || f.floor === "porcelain"
+  const fTile = isTileFloor ? floorTileOf(f) : null
+  const fPat = floorFinishPattern(f.floor, fTile ? fTile.color : floorColor, fTile || undefined)
+  const tex = fPat ? track(patternTexture(fPat)) : null
+  const floorMat = track(
+    new THREE.MeshStandardMaterial({
+      color: tex ? "#ffffff" : floorColor,
+      map: tex,
+      roughness: isTileFloor ? (fTile?.gloss ? 0.12 : 0.35) : f.floor === "carpet" ? 0.95 : 0.55,
+      metalness: 0,
+      side: THREE.DoubleSide,
+    }),
+  )
   const floor = new THREE.Mesh(floorGeo, floorMat)
   floor.receiveShadow = true
   scene.add(floor)
@@ -341,25 +276,27 @@ export function buildRoomScene(scheme: PlanScheme, room: PlanRoom): RoomScene {
   // Стены: внутренняя грань, с вырезами окон и дверей; плитка до высоты — отдельной полосой
   // Материал стены — общий для комнаты или свой у акцентной стены
   const wallMats = new Map<string, THREE.Material>()
+  const matFromPattern = (key: string, p: FinishPattern, rough: number) => {
+    if (!wallMats.has(key)) wallMats.set(key, track(std("#ffffff", { map: track(patternTexture(p)), roughness: rough })))
+    return wallMats.get(key) as THREE.Material
+  }
   const wallMatFor = (wallId: string) => {
     const wf = wallFinishOf(f, wallId)
     const color = wf.wall !== "none" ? wf.wallColor || WALL_FINISHES[wf.wall].color : "#e9e6df"
-    const key = `${wf.wall}|${color}`
-    if (!wallMats.has(key)) {
-      const tex = wf.wall === "wallpaper" ? track(wallpaperTexture(color)) : null
-      wallMats.set(
-        key,
-        track(
-          std(tex ? "#ffffff" : color, {
-            map: tex,
-            roughness: wf.wall === "tile" ? 0.25 : wf.wall === "plaster" ? 1 : 0.9,
-          }),
-        ),
-      )
+    if (wf.wall === "tile") {
+      const t = wallTileOf(f, wf.own ? wf : undefined)
+      return matFromPattern(`tile|${JSON.stringify(t)}`, tilePattern(t), t.gloss ? 0.12 : 0.35)
     }
+    if (wf.wall === "wallpaper") return matFromPattern(`wp|${color}|${wf.rapport || 0}`, wallpaperPattern(color, wf.rapport || 0.64, 0.53), 0.85)
+    if (wf.wall === "plaster") return matFromPattern(`pl|${color}`, paintPattern(color, true), 1)
+    if (wf.wall === "panels") return matFromPattern(`pn|${color}`, plankPattern3d(color), 0.7)
+    const key = `${wf.wall}|${color}`
+    if (!wallMats.has(key)) wallMats.set(key, track(std(color, { roughness: 0.9 })))
     return wallMats.get(key) as THREE.Material
   }
-  const tileMat = track(std("#e4ecee", { roughness: 0.2 }))
+  // Плитка до высоты (фартук, панель в санузле) — своим рисунком
+  const wt = wallTileOf(f)
+  const tileMat = matFromPattern(`tileH|${JSON.stringify(wt)}`, tilePattern(wt), wt.gloss ? 0.12 : 0.35)
   const tileH = f.wall === "tile" ? 0 : Math.min(f.tileHeight || 0, height)
   const glass = track(new THREE.MeshStandardMaterial({ color: "#bfe0f0", transparent: true, opacity: 0.35, roughness: 0.05 }))
   const frame = track(std("#f5f5f5"))
@@ -377,10 +314,8 @@ export function buildRoomScene(scheme: PlanScheme, room: PlanRoom): RoomScene {
       const hole = new THREE.Path([new THREE.Vector2(sp.start, bottom), new THREE.Vector2(sp.end, bottom), new THREE.Vector2(sp.end, top), new THREE.Vector2(sp.start, top)])
       wallShape.holes.push(hole)
     }
+    // UV ExtrudeGeometry — в метрах: рисунок ложится в реальном масштабе от левого угла и от пола
     const geo = track(new THREE.ExtrudeGeometry(wallShape, { depth: T, bevelEnabled: false }))
-    // UV ExtrudeGeometry — в метрах; рисунок обоев 0,53 м по ширине и 0,6 м по высоте
-    const uv = geo.attributes.uv
-    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 0.53, uv.getY(i) / 0.6)
     const mesh = new THREE.Mesh(geo, wallMatFor(w.id))
     // Локальная X — вдоль стены, Y — вверх, Z — толщина наружу
     const ox = w.a.x - w.nx * w.inner
@@ -478,7 +413,9 @@ export function buildRoomScene(scheme: PlanScheme, room: PlanRoom): RoomScene {
     scene.add(pl)
   }
 
-  scene.add(new THREE.HemisphereLight("#ffffff", "#8a7a6a", lamps.length ? 0.55 : 0.9))
+  scene.add(new THREE.HemisphereLight("#ffffff", "#8a7a6a", lamps.length ? 0.7 : 1.05))
+  // Заполняющий свет от окон — отделка видна без провалов в тень
+  scene.add(new THREE.AmbientLight("#fff8ee", 0.35))
   const sun = new THREE.DirectionalLight("#fff6e8", lamps.length ? 0.8 : 1.4)
   sun.position.set(cx + span, height * 2.2, cy + span * 0.6)
   sun.target.position.set(cx, 0, cy)
@@ -524,7 +461,29 @@ export function mountRoom3D(el: HTMLElement, scheme: PlanScheme, room: PlanRoom)
   let theta = Math.PI * 0.25
   let phi = Math.PI * 0.32
   let radius = span * 1.25
+  // Вид изнутри: камера стоит в комнате на высоте 1,6 м, смотрит по yaw/pitch
+  let mode: "orbit" | "inside" = "orbit"
+  const eye = new THREE.Vector3(cx, Math.min(1.6, height - 0.3), cy)
+  let yaw = Math.PI * 0.75
+  let pitch = -0.08
+  const roomPts = room.points
+  const inRoom = (x: number, z: number) => {
+    let ins = false
+    for (let i = 0, j = roomPts.length - 1; i < roomPts.length; j = i++) {
+      const a = roomPts[i]
+      const b = roomPts[j]
+      if (a.y > z !== b.y > z && x < ((b.x - a.x) * (z - a.y)) / (b.y - a.y) + a.x) ins = !ins
+    }
+    return ins
+  }
   const place = () => {
+    if (mode === "inside") {
+      camera.position.copy(eye)
+      camera.lookAt(eye.x + Math.sin(yaw) * Math.cos(pitch), eye.y + Math.sin(pitch), eye.z + Math.cos(yaw) * Math.cos(pitch))
+      for (const m of walls) m.visible = true
+      ceil.visible = true
+      return
+    }
     camera.position.set(target.x + radius * Math.sin(phi) * Math.sin(theta), target.y + radius * Math.cos(phi), target.z + radius * Math.sin(phi) * Math.cos(theta))
     camera.lookAt(target)
     // Стены и потолок между камерой и центром прячем — иначе комнату не видно снаружи
@@ -532,6 +491,18 @@ export function mountRoom3D(el: HTMLElement, scheme: PlanScheme, room: PlanRoom)
     camera.getWorldDirection(v)
     for (const m of walls) m.visible = (m.userData.normal as THREE.Vector3).dot(v) < 0.15 || radius < span * 0.45
     ceil.visible = phi > Math.PI * 0.47 || radius < span * 0.45
+  }
+  // Шаг по комнате: не выходим за стены (отступ 0,25 м проверяем по точке впереди)
+  const walk = (dist: number, side = 0) => {
+    const fx = Math.sin(yaw)
+    const fz = Math.cos(yaw)
+    const nx = eye.x + fx * dist + fz * side
+    const nz = eye.z + fz * dist - fx * side
+    const probe = Math.sign(dist || side) * 0.25
+    if (inRoom(nx + fx * probe, nz + fz * probe) && inRoom(nx, nz)) {
+      eye.x = nx
+      eye.z = nz
+    }
   }
   place()
 
@@ -546,7 +517,13 @@ export function mountRoom3D(el: HTMLElement, scheme: PlanScheme, room: PlanRoom)
     const dy = e.clientY - drag.y
     drag.x = e.clientX
     drag.y = e.clientY
-    if (drag.pan) {
+    if (mode === "inside") {
+      if (drag.pan) walk(dy * 0.01, -dx * 0.01)
+      else {
+        yaw += dx * 0.005
+        pitch = Math.min(Math.max(pitch + dy * 0.004, -1.1), 1.1)
+      }
+    } else if (drag.pan) {
       const right = new THREE.Vector3().subVectors(camera.position, target).cross(new THREE.Vector3(0, 1, 0)).normalize()
       target.addScaledVector(right, dx * 0.004 * radius)
       target.y = Math.min(Math.max(target.y + dy * 0.004 * radius, 0.2), height)
@@ -559,10 +536,31 @@ export function mountRoom3D(el: HTMLElement, scheme: PlanScheme, room: PlanRoom)
   const up = () => (drag = null)
   const wheel = (e: WheelEvent) => {
     e.preventDefault()
-    radius = Math.min(Math.max(radius * (e.deltaY > 0 ? 1.1 : 0.9), 0.4), span * 4)
+    if (mode === "inside") {
+      // Колесо — шире/уже обзор, с Ctrl — шаг вперёд/назад
+      if (e.ctrlKey || e.metaKey) walk(e.deltaY > 0 ? -0.25 : 0.25)
+      else {
+        camera.fov = Math.min(Math.max(camera.fov + (e.deltaY > 0 ? 4 : -4), 35), 95)
+        camera.updateProjectionMatrix()
+      }
+    } else radius = Math.min(Math.max(radius * (e.deltaY > 0 ? 1.1 : 0.9), 0.4), span * 4)
     place()
   }
   const ctx = (e: Event) => e.preventDefault()
+  const key = (e: KeyboardEvent) => {
+    if (mode !== "inside") return
+    const k = e.key.toLowerCase()
+    if (k === "w" || k === "ц" || k === "arrowup") walk(0.2)
+    else if (k === "s" || k === "ы" || k === "arrowdown") walk(-0.2)
+    else if (k === "a" || k === "ф") walk(0, 0.2)
+    else if (k === "d" || k === "в") walk(0, -0.2)
+    else if (k === "arrowleft") yaw += 0.1
+    else if (k === "arrowright") yaw -= 0.1
+    else return
+    e.preventDefault()
+    place()
+  }
+  window.addEventListener("keydown", key)
   renderer.domElement.addEventListener("pointerdown", down)
   renderer.domElement.addEventListener("pointermove", move)
   renderer.domElement.addEventListener("pointerup", up)
@@ -587,6 +585,12 @@ export function mountRoom3D(el: HTMLElement, scheme: PlanScheme, room: PlanRoom)
   loop()
 
   return {
+    setMode: (m) => {
+      mode = m
+      camera.fov = m === "inside" ? 70 : 55
+      camera.updateProjectionMatrix()
+      place()
+    },
     snapshot: (format = "png") => {
       renderer.render(scene, camera)
       return format === "jpeg" ? renderer.domElement.toDataURL("image/jpeg", 0.88) : renderer.domElement.toDataURL("image/png")
@@ -599,6 +603,7 @@ export function mountRoom3D(el: HTMLElement, scheme: PlanScheme, room: PlanRoom)
       renderer.domElement.removeEventListener("pointerup", up)
       renderer.domElement.removeEventListener("wheel", wheel)
       renderer.domElement.removeEventListener("contextmenu", ctx)
+      window.removeEventListener("keydown", key)
       scene.traverse((o) => {
         const m = o as THREE.Mesh
         if (m.geometry) m.geometry.dispose()

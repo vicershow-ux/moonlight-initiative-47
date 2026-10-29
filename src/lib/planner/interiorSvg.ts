@@ -2,36 +2,34 @@ import {
   FLOOR_FINISHES,
   FURNITURE_PRESETS,
   FloorFinish,
+  TileSpec,
   PlanFurniture,
 } from "./types"
 import { furnitureCorners } from "./interior"
+import { floorFinishPattern, svgPatternDef } from "./finishTextures"
 
 type Pt = { x: number; y: number }
 type ToScreen = (p: Pt) => Pt
 
 /**
- * Узоры покрытий пола: доска — полосы со стыками вразбежку, ёлочка — паркет,
- * плитка — клетка со швом. Размер в метрах переводится в пиксели масштабом плана
+ * Покрытие пола на плане — тем же рисунком, что и в 3D, в реальном масштабе:
+ * плитка своего размера, шва и раскладки, доска, паркет ёлочкой.
+ * origin — экранная точка нуля плана: раскладка начинается от одной точки во всех видах
  */
-export function floorPattern(id: string, finish: FloorFinish, scale: number, color?: string, line = "rgba(0,0,0,0.28)"): string {
-  const info = FLOOR_FINISHES[finish]
-  const fill = color || info.color
+export function floorPattern(
+  id: string,
+  finish: FloorFinish,
+  scale: number,
+  color?: string,
+  _line?: string,
+  tile?: TileSpec,
+  origin?: Pt,
+): string {
   if (finish === "none") return ""
-  const px = (m: number) => Math.max(m * scale, 3)
-  if (info.pattern === "planks") {
-    const w = px(1.2)
-    const h = px(0.19)
-    return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${w}" height="${h * 2}"><rect width="${w}" height="${h * 2}" fill="${fill}"/><line x1="0" y1="${h}" x2="${w}" y2="${h}" stroke="${line}" stroke-width="0.6"/><line x1="0" y1="${h * 2}" x2="${w}" y2="${h * 2}" stroke="${line}" stroke-width="0.6"/><line x1="${w * 0.35}" y1="0" x2="${w * 0.35}" y2="${h}" stroke="${line}" stroke-width="0.6"/><line x1="${w * 0.85}" y1="${h}" x2="${w * 0.85}" y2="${h * 2}" stroke="${line}" stroke-width="0.6"/></pattern>`
-  }
-  if (info.pattern === "herring") {
-    const s = px(0.14)
-    return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${s * 2}" height="${s * 2}" patternTransform="rotate(45)"><rect width="${s * 2}" height="${s * 2}" fill="${fill}"/><path d="M0 0 H${s} V${s} H${s * 2} V${s * 2} H${s} V${s} H0 Z" fill="rgba(0,0,0,0.08)" stroke="${line}" stroke-width="0.5"/></pattern>`
-  }
-  if (info.pattern === "tiles") {
-    const s = px(finish === "porcelain" ? 0.6 : 0.3)
-    return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${s}" height="${s}"><rect width="${s}" height="${s}" fill="${fill}"/><path d="M${s} 0 V${s} H0" fill="none" stroke="${line}" stroke-width="0.8"/></pattern>`
-  }
-  return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="10" height="10"><rect width="10" height="10" fill="${fill}"/></pattern>`
+  const isTile = finish === "tile" || finish === "porcelain"
+  const p = floorFinishPattern(finish, color || FLOOR_FINISHES[finish].color, isTile ? tile : undefined)
+  if (!p) return ""
+  return svgPatternDef(id, p, scale, { ox: origin?.x, oy: origin?.y })
 }
 
 /**

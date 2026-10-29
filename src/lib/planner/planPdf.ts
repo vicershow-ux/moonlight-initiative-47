@@ -29,7 +29,7 @@ import { groupPower, kwToAmps, phaseBalance } from "@/lib/planner/phases"
 import { chaseTotals, elevationRows, elevationSvg, roomElevations } from "@/lib/planner/elevation"
 import { CABLE_BUY_SHARE, electricMaterials } from "@/lib/planner/materials"
 import { CeilingPlan, ceilingPlan, ceilingRows, ceilingSvg, ceilingTrackRows } from "@/lib/planner/ceiling"
-import { CEILING_FINISHES, FLOOR_FINISHES, FURNITURE_PRESETS, HEATING_PRESETS, WALL_FINISHES, isEngLayer, roomFinish, wallFinishOf } from "@/lib/planner/types"
+import { CEILING_FINISHES, FLOOR_FINISHES, FURNITURE_PRESETS, HEATING_PRESETS, WALL_FINISHES, isEngLayer, roomFinish, wallFinishOf, floorTileOf } from "@/lib/planner/types"
 import { PHASE_COLORS, SECTION_COLORS, WALL_MATERIALS, WallMaterial, sectionColor, sectionOf } from "@/lib/planner/types"
 import { hatchPattern, materialSwatchImg, usedMaterials } from "@/lib/planner/wallHatch"
 import { floorPattern, furnitureName, furnitureSvg, heatingLayoutSvg } from "@/lib/planner/interiorSvg"
@@ -165,8 +165,9 @@ export function schemeToSvg(
       const f = roomFinish(scheme, room.id)
       if (f.floor === "none") continue
       const id = `pf-${room.id}`
-      interiorDefs.push(floorPattern(id, f.floor, scale, f.floorColor, "rgba(0,0,0,0.35)"))
-      parts.push(`<polygon points="${room.points.map((p) => `${sx(p.x)},${sy(p.y)}`).join(" ")}" fill="url(#${id})" fill-opacity="0.55"/>`)
+      const isTile = f.floor === "tile" || f.floor === "porcelain"
+      interiorDefs.push(floorPattern(id, f.floor, scale, isTile ? floorTileOf(f).color : f.floorColor, undefined, isTile ? floorTileOf(f) : undefined, { x: sx(0), y: sy(0) }))
+      parts.push(`<polygon points="${room.points.map((p) => `${sx(p.x)},${sy(p.y)}`).join(" ")}" fill="url(#${id})" fill-opacity="0.9"/>`)
     }
     // Отделка стен полосой по внутренней грани, акцентные — толще и с номером стены
     for (const room of scheme.rooms) {

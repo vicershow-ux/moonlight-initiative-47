@@ -13,7 +13,10 @@ import {
   WallFinish,
   WallOverride,
   wallFinishOf,
+  floorTileOf,
+  wallTileOf,
 } from "@/lib/planner/types"
+import { TileSpecEditor } from "./TileSpecEditor"
 import { finishCalc } from "@/lib/planner/finishes"
 
 const inputCls =
@@ -35,6 +38,7 @@ export function RoomFinishCard({ room, scheme, onUpdate, onHoverWall }: Props) {
   const [all, setAll] = useState(false)
   const set = (patch: Partial<RoomFinish>) => onUpdate(room.id, patch, all)
   const mm = (v: number | undefined) => toMm(v || 0)
+  const isTileFloor = f.floor === "tile" || f.floor === "porcelain"
   const [openWall, setOpenWall] = useState<string | null>(null)
   // Своя отделка стены — меняем только эту комнату, не все
   const setWall = (wallId: string, patch: Partial<WallOverride> | null) => {
@@ -68,7 +72,7 @@ export function RoomFinishCard({ room, scheme, onUpdate, onHoverWall }: Props) {
               </option>
             ))}
           </select>
-          {f.floor !== "none" && (
+          {f.floor !== "none" && !isTileFloor && (
             <input
               type="color"
               className="h-[38px] w-11 shrink-0 cursor-pointer rounded-lg border border-white/10 bg-[#161616]"
@@ -78,6 +82,11 @@ export function RoomFinishCard({ room, scheme, onUpdate, onHoverWall }: Props) {
             />
           )}
         </div>
+        {isTileFloor && (
+          <div className="mt-2">
+            <TileSpecEditor tile={floorTileOf(f)} area={c.floorArea} onChange={(patch) => set({ floorTile: { ...floorTileOf(f), ...patch } })} />
+          </div>
+        )}
       </div>
 
       <div className="mb-3">
@@ -128,6 +137,12 @@ export function RoomFinishCard({ room, scheme, onUpdate, onHoverWall }: Props) {
         <div className="mb-3">
           <label className={labelCls}>Плитка на стенах до высоты, мм (фартук, панель; 0 — нет)</label>
           <input className={inputCls} type="number" min="0" step="50" value={mm(f.tileHeight)} onChange={(e) => set({ tileHeight: Math.max(fromMm(Number(e.target.value)), 0) })} />
+        </div>
+      )}
+      {(f.wall === "tile" || (f.tileHeight || 0) > 0) && (
+        <div className="mb-3">
+          <label className={labelCls}>Плитка на стенах</label>
+          <TileSpecEditor tile={wallTileOf(f)} area={c.wallTile} onChange={(patch) => set({ wallTile: { ...wallTileOf(f), ...patch } })} />
         </div>
       )}
 
@@ -189,6 +204,13 @@ export function RoomFinishCard({ room, scheme, onUpdate, onHoverWall }: Props) {
                           value={w.finish.note || ""}
                           onChange={(e) => setWall(w.id, { note: e.target.value })}
                         />
+                        {w.finish.wall === "tile" && (
+                          <TileSpecEditor
+                            tile={wallTileOf(f, w.finish)}
+                            area={w.tile}
+                            onChange={(patch) => setWall(w.id, { tile: { ...wallTileOf(f, w.finish), ...patch } })}
+                          />
+                        )}
                         {w.finish.wall === "wallpaper" && (
                           <div className="grid grid-cols-3 gap-2">
                             <div>

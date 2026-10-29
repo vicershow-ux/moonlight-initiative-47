@@ -557,10 +557,54 @@ export const CEILING_FINISHES: Record<CeilingFinish, FinishInfo> = {
   rack: { label: "Реечный", color: "#cbd5e1", waste: 0.1 },
 }
 
+/** Раскладка плитки, как в каталогах: прямая, вразбежку, по диагонали, ёлочкой, шахматкой */
+export type TileLayout = "grid" | "offset" | "third" | "diagonal" | "herringbone" | "checker"
+
+export const TILE_LAYOUTS: Record<TileLayout, { label: string; waste: number }> = {
+  grid: { label: "Прямая", waste: 0.1 },
+  offset: { label: "Вразбежку 1/2", waste: 0.12 },
+  third: { label: "Вразбежку 1/3", waste: 0.12 },
+  diagonal: { label: "По диагонали", waste: 0.15 },
+  herringbone: { label: "Ёлочка", waste: 0.18 },
+  checker: { label: "Шахматка (2 цвета)", waste: 0.1 },
+}
+
+/** Плитка: размер, шов и раскладка — для пола, стен и фартука */
+export interface TileSpec {
+  /** Размер плитки, м: ширина × высота (для пола — вдоль × поперёк) */
+  w: number
+  h: number
+  /** Ширина шва, м */
+  joint: number
+  layout: TileLayout
+  color: string
+  /** Второй цвет для шахматки */
+  color2?: string
+  grout: string
+  /** Глянец — бликует в 3D */
+  gloss?: boolean
+  /** Плиток в коробке и м² в коробке — для сметы; пусто — считаем только м² */
+  perBox?: number
+  /** Артикул или название */
+  note?: string
+}
+
+export const TILE_SIZES: [number, number][] = [
+  [0.1, 0.1], [0.2, 0.2], [0.3, 0.3], [0.45, 0.45], [0.6, 0.6], [0.8, 0.8], [1.2, 0.6], [1.2, 1.2],
+  [0.2, 0.1], [0.3, 0.1], [0.25, 0.4], [0.3, 0.6], [0.2, 0.6], [0.075, 0.3], [0.2, 1.2],
+]
+
+export const DEFAULT_FLOOR_TILE: TileSpec = { w: 0.6, h: 0.6, joint: 0.002, layout: "grid", color: "#cfd6dc", grout: "#9ca3af" }
+export const DEFAULT_WALL_TILE: TileSpec = { w: 0.3, h: 0.6, joint: 0.002, layout: "grid", color: "#eef2f4", grout: "#cbd5e1", gloss: true }
+
 export interface RoomFinish {
   floor: FloorFinish
   /** Цвет пола для визуализации (если свой) */
   floorColor?: string
+  /** Плитка на полу — размер, шов, раскладка (для плитки и керамогранита) */
+  floorTile?: TileSpec
+  /** Плитка на стенах (санузел, фартук) */
+  wallTile?: TileSpec
   wall: WallFinish
   wallColor?: string
   /** Плитка на стенах до высоты, м (для санузла — на всю, для кухни — фартук) */
@@ -588,6 +632,8 @@ export interface RoomFinish {
 export interface WallOverride {
   wall: WallFinish
   wallColor?: string
+  /** Своя плитка на акцентной стене */
+  tile?: TileSpec
   /** Для обоев на акцентной стене — свои рулоны и раппорт */
   rollWidth?: number
   rollLength?: number
@@ -600,7 +646,7 @@ export interface WallOverride {
 export function wallFinishOf(f: RoomFinish, wallId: string): WallOverride & { own: boolean } {
   const o = f.walls?.[wallId]
   if (o) return { ...o, own: true }
-  return { wall: f.wall, wallColor: f.wallColor, rollWidth: f.rollWidth, rollLength: f.rollLength, rapport: f.rapport, own: false }
+  return { wall: f.wall, wallColor: f.wallColor, rollWidth: f.rollWidth, rollLength: f.rollLength, rapport: f.rapport, tile: f.wallTile, own: false }
 }
 
 export const DEFAULT_FINISH: RoomFinish = {
@@ -617,6 +663,20 @@ export const DEFAULT_FINISH: RoomFinish = {
   screed: 0,
   wallPlaster: 0,
 }
+
+/** Плитка пола и стен с учётом умолчаний и старого цвета покрытия */
+export const floorTileOf = (f: RoomFinish): TileSpec => ({
+  ...DEFAULT_FLOOR_TILE,
+  ...(f.floor === "tile" ? { w: 0.3, h: 0.3 } : {}),
+  color: f.floorColor || (f.floor === "tile" ? "#cfd6dc" : "#9aa3aa"),
+  ...(f.floorTile || {}),
+})
+export const wallTileOf = (f: RoomFinish, own?: WallOverride): TileSpec => ({
+  ...DEFAULT_WALL_TILE,
+  ...(f.wallTile || {}),
+  ...(own?.tile || {}),
+  ...(own && own.wall === "tile" && own.wallColor && !own.tile?.color ? { color: own.wallColor } : {}),
+})
 
 export const roomFinish = (scheme: Pick<PlanScheme, "finishes">, roomId: string): RoomFinish => ({
   ...DEFAULT_FINISH,
