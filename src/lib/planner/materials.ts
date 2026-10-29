@@ -5,6 +5,7 @@ import { panelSettings } from "./panelInput"
 import { panelSize, panelSpecification } from "./panelSize"
 import { chaseTotals, roomElevations } from "./elevation"
 import { fixtureLength, floatingContour, floatingPerimeter, trackSegments, trackTurns } from "./fixtures"
+import { contourPerimeter, heatingCalc } from "./interior"
 
 /** Запас на закупку кабеля сверх расчёта: обрезки, подрезка, ошибки трассы */
 export const CABLE_BUY_SHARE = 0.1
@@ -12,7 +13,7 @@ export const CABLE_BUY_SHARE = 0.1
 export interface MaterialRow {
   name: string
   spec: string
-  unit: "м" | "шт" | "уп"
+  unit: "м" | "шт" | "уп" | "м²" | "л" | "кг" | "рул"
   qty: number
   note?: string
 }
@@ -41,6 +42,7 @@ const SWITCHES: Partial<Record<NodeKind, { name: string; spec: string }>> = {
   switch_double: { name: "Выключатель двухклавишный", spec: "10 А, скрытый" },
   switch_pass: { name: "Переключатель проходной одноклавишный", spec: "10 А, скрытый" },
   switch_pass_double: { name: "Переключатель проходной двухклавишный", spec: "10 А, скрытый" },
+  thermostat: { name: "Терморегулятор тёплого пола", spec: "16 А, с выносным датчиком пола, скрытый" },
 }
 const BOXED = new Set<NodeKind>([
   "socket",
@@ -49,6 +51,7 @@ const BOXED = new Set<NodeKind>([
   "switch_double",
   "switch_pass",
   "switch_pass_double",
+  "thermostat",
 ])
 
 /** Шаги крепежа по типовой практике монтажа, м */
@@ -352,6 +355,7 @@ export function electricMaterials(scheme: PlanScheme): MaterialSection[] {
   if (fix.length) sections.push({ title: "Прокладка и крепёж кабеля", rows: fix })
 
   sections.push(...fixtureMaterials(scheme))
+  sections.push(...heatingMaterials(scheme).filter((x) => x.title !== "Тёплый пол (водяной)"))
 
   // Работы по штробам — по развёрткам стен, чтобы прораб сразу видел объём
   const chase = scheme.rooms.reduce(
@@ -525,4 +529,73 @@ export function fixtureMaterials(scheme: PlanScheme): MaterialSection[] {
     }
   }
   return sections
+}
+
+/** Стандартные площади нагревательных матов, м² */
+const MAT_SIZES = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 7, 8, 9, 10, 12]
+/** Длины секций нагревательного кабеля, м */
+const CABLE_SECTIONS = [5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100, 120, 140]
+
+/** Подбор мата: ближайший не больше площади — мат нельзя резать по нагревателю */
+const matFor = (area: number) => [...MAT_SIZES].reverse().find((s) => s <= area + 1e-6) ?? MAT_SIZES[0]
+/** Секция кабеля: ближайшая не длиннее расчётной — шаг подстраивается под неё */
+const cableFor = (len: number) => [...CABLE_SECTIONS].reverse().find((s) => s <= len + 1e-6) ?? CABLE_SECTIONS[0]
+
+/**
+ * Тёплый пол: маты, кабель, плёнка или водяной контур по зонам на плане.
+ * На каждую электрическую зону — терморегулятор с датчиком пола, гофра под датчик,
+ * монтажная лента для кабеля, подложка под плёнку; для водяного — труба, коллектор, смесительный узел
+ */
+export function heatingMaterials(scheme: PlanScheme): MaterialSection[] {
+  const zones = scheme.heating || []
+  if (!zones.length) return []
+  const el = new Map<string, MaterialRow>()
+  const water = new Map<string, MaterialRow>()
+  const thermostats = (scheme.nodes || []).filter((n) => n.kind === "thermostat").length
+  let elZones = 0
+  let waterLoops = 0
+  for (const h of zones) {
+    const c = heatingCalc(scheme, h)
+    if (c.net <= 0) continue
+    if (h.kind === "mat") {
+      elZones++
+      const s = matFor(c.net)
+      add(el, { name: "Нагревательный мат", spec: `${h.power} Вт/м², ${String(s).replace(".", ",")} м²`, unit: "шт", qty: 1, note: `зона ${String(c.net.toFixed(2)).replace(".", ",")} м²` })
+    } else if (h.kind === "cable") {
+      elZones++
+      const L = cableFor(c.length)
+      add(el, { name: "Нагревательный кабель (секция)", spec: `двухжильный, ${L} м`, unit: "шт", qty: 1, note: `шаг ${Math.round(((h.step ?? 0.1) * 1000))} мм, расчёт ${c.length.toFixed(1).replace(".", ",")} м` })
+      add(el, { name: "Монтажная лента для кабеля", spec: "рулон 10 м", unit: "шт", qty: Math.max(1, Math.ceil((Math.sqrt(c.net) * 2 + 2) / 10)) })
+    } else if (h.kind === "film") {
+      elZones++
+      add(el, { name: "Плёнка инфракрасная", spec: `${h.power} Вт/м², ширина 0,5 м`, unit: "м", qty: Math.ceil(c.net / 0.5 * 1.05), note: "полосами по 0,5 м + 5% на обрезку" })
+      add(el, { name: "Контактные зажимы и изоляция для плёнки", spec: "комплект на полосу", unit: "шт", qty: Math.ceil(Math.sqrt(c.net) / 0.5) * 2 })
+      add(el, { name: "Подложка теплоотражающая", spec: "под ИК-плёнку", unit: "м²", qty: Math.ceil(c.gross * 1.1) })
+      add(el, { name: "Плёнка полиэтиленовая защитная", spec: "200 мкм", unit: "м²", qty: Math.ceil(c.gross * 1.1) })
+    } else {
+      // Водяной: петли не длиннее 90 м
+      const loops = Math.max(1, Math.ceil(c.length / 90))
+      waterLoops += loops
+      add(water, { name: "Труба для тёплого пола", spec: "PE-Xa / PE-RT 16×2", unit: "м", qty: Math.ceil((c.length + loops * 4) / 10) * 10, note: `шаг ${Math.round((h.step ?? 0.15) * 1000)} мм + подводка 2×2 м на петлю` })
+      add(water, { name: "Теплоизоляция под трубу", spec: "ЭППС 30 мм", unit: "м²", qty: Math.ceil(c.gross * 1.05) })
+      add(water, { name: "Демпферная лента", spec: "по периметру зоны", unit: "м", qty: Math.ceil(contourPerimeter(h.points) * 1.05) })
+      add(water, { name: "Крепление трубы (скобы/гарпун)", spec: "шаг 0,3 м", unit: "шт", qty: Math.ceil(c.length / 0.3) })
+    }
+  }
+  const out: MaterialSection[] = []
+  if (elZones) {
+    const need = Math.max(elZones - thermostats, 0)
+    add(el, { name: "Терморегулятор тёплого пола", spec: "16 А, с датчиком пола", unit: "шт", qty: Math.max(elZones, thermostats), note: need ? `на плане стоит ${thermostats} — поставьте ещё ${need} на слое «Электрика»` : "по одному на зону" })
+    add(el, { name: "Гофра под датчик пола", spec: "Ø16 мм, с заглушкой", unit: "м", qty: elZones * 2 })
+    add(el, { name: "Подрозетник под терморегулятор", spec: "глубокий Ø68", unit: "шт", qty: Math.max(elZones - thermostats, 0) || 0 })
+    out.push({ title: "Тёплый пол (электрический)", rows: [...el.values()].filter((r) => r.qty > 0) })
+  }
+  if (waterLoops) {
+    add(water, { name: "Коллектор для тёплого пола", spec: `на ${waterLoops} ${waterLoops === 1 ? "петлю" : "петли"}, с расходомерами`, unit: "шт", qty: 1 })
+    add(water, { name: "Смесительный узел", spec: "с насосом и термоголовкой", unit: "шт", qty: 1 })
+    add(water, { name: "Коллекторный шкаф", spec: "встраиваемый", unit: "шт", qty: 1 })
+    add(water, { name: "Евроконус 16×2", spec: "по 2 на петлю", unit: "шт", qty: waterLoops * 2 })
+    out.push({ title: "Тёплый пол (водяной)", rows: [...water.values()] })
+  }
+  return out
 }

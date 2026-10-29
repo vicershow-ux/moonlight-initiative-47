@@ -13,10 +13,11 @@ import {
   PlanLayer,
   PlanScheme,
   groupColor,
+  EngLayer,
 } from "@/lib/planner/types"
 
 interface PickerProps {
-  layer: Exclude<PlanLayer, "plan">
+  layer: EngLayer
   tool: PlanTool
   setTool: (t: PlanTool) => void
   nodeKind: NodeKind

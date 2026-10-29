@@ -6,9 +6,11 @@ import {
   PlanScheme,
   FixtureKind,
   PlanFixture,
+  PlanFurniture,
+  FurnitureKind,
 } from "@/lib/planner/types"
 
-export type PlanTool = "select" | "draw" | "window" | "door" | "arch" | "node" | "link" | "track" | "floating"
+export type PlanTool = "select" | "draw" | "window" | "door" | "arch" | "node" | "link" | "track" | "floating" | "furniture" | "heating"
 
 export interface PlanCanvasProps {
   scheme: PlanScheme
@@ -45,6 +47,14 @@ export interface PlanCanvasProps {
   onSelectFixture?: (id: string | null) => void
   onAddFixture?: (kind: FixtureKind, a: PlanPoint, b: PlanPoint, points?: PlanPoint[]) => void
   onUpdateFixture?: (id: string, patch: Partial<PlanFixture>) => void
+  selectedFurnitureId?: string | null
+  onSelectFurniture?: (id: string | null) => void
+  onAddFurniture?: (p: PlanPoint) => void
+  onUpdateFurniture?: (id: string, patch: Partial<PlanFurniture>) => void
+  furnitureKind?: FurnitureKind
+  selectedHeatingId?: string | null
+  onSelectHeating?: (id: string | null) => void
+  onAddHeating?: (points: PlanPoint[]) => void
 }
 
 /** Что сейчас тащат мышью на холсте */
@@ -54,4 +64,5 @@ export type PlanDrag =
   | { type: "node"; nodeId: string }
   | { type: "bend"; linkId: string; index: number }
   | { type: "fixture"; id: string; grab: PlanPoint; a: PlanPoint; b: PlanPoint; points: PlanPoint[] }
+  | { type: "furniture"; id: string; grab: PlanPoint; x: number; y: number }
   | null

@@ -1,7 +1,9 @@
-import { PlanFixture, PlanLink, PlanNode, PlanPoint } from "@/lib/planner/types"
+import { PlanFixture, PlanLink, PlanNode, PlanPoint, isEngLayer } from "@/lib/planner/types"
+import { PlanInteriorLayer } from "./PlanInteriorLayer"
 import { schemeWalls } from "@/lib/planner/walls"
 import { PlaceAssist } from "@/lib/planner/placeAssist"
 import { FloatingDraft, TrackDraft } from "./FixtureDrafts"
+import { FurnitureGhost } from "./FurnitureGhost"
 import { ToScreen } from "./usePlanView"
 import { PlanRoomsLayer } from "./PlanRoomsLayer"
 import { PlaceAssistLayer } from "./PlaceAssistLayer"
@@ -103,7 +105,16 @@ export function PlanCanvasLayers({
         />
       )}
 
-      {layer !== "plan" && (
+      <PlanInteriorLayer
+        scheme={scheme}
+        layer={layer}
+        scale={scale}
+        toScreen={toScreen}
+        selectedFurnitureId={props.selectedFurnitureId ?? null}
+        selectedHeatingId={props.selectedHeatingId ?? null}
+      />
+
+      {isEngLayer(layer) && (
         <PlanEngineerLayer
           layer={layer}
           tool={tool}
@@ -132,8 +143,11 @@ export function PlanCanvasLayers({
 
       {tool === "track" && trackPts.length > 0 && cursor && <TrackDraft pts={trackPts} b={cursor} toScreen={toScreen} />}
       {tool === "floating" && cursor && <FloatingDraft scheme={scheme} at={cursor} toScreen={toScreen} />}
+      {tool === "furniture" && cursor && props.furnitureKind && (
+        <FurnitureGhost scheme={scheme} kind={props.furnitureKind} at={cursor} toScreen={toScreen} />
+      )}
 
-      {place && layer !== "plan" && <PlaceAssistLayer assist={place} toScreen={toScreen} />}
+      {place && isEngLayer(layer) && <PlaceAssistLayer assist={place} toScreen={toScreen} />}
 
       <PlanDraftLayer draft={draft} tool={tool} cursor={typedPoint() || cursor} assist={assist} scale={scale} toScreen={toScreen} />
     </>

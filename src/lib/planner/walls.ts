@@ -21,6 +21,7 @@ export const FORCE_WALL = new Set<NodeKind>([
   "switch_pass",
   "switch_pass_double",
   "panel",
+  "thermostat",
 ])
 
 export const wallProps = (scheme: PlanScheme, wallId: string): WallProps => ({

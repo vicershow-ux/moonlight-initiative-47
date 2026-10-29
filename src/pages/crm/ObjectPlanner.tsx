@@ -5,6 +5,8 @@ import { usePlannerState } from "./planner/usePlannerState"
 import { PlannerLayerBar, PlannerToolbar } from "./planner/PlannerToolbar"
 import { PlannerEngineerPicker, PlannerSettingsBar } from "./planner/PlannerPanels"
 import { PlannerWorkspace } from "./planner/PlannerWorkspace"
+import { PlannerInteriorPicker } from "./planner/PlannerInteriorPicker"
+import { isEngLayer } from "@/lib/planner/types"
 
 export default function ObjectPlanner() {
   const { id } = useParams<{ id: string }>()
@@ -90,14 +92,26 @@ export default function ObjectPlanner() {
         draft={draft}
         setDraft={setDraft}
         setLinkFromId={setLinkFromId}
-        finishRoom={finishRoom}
+        finishRoom={tool === "heating" ? state.addHeating : finishRoom}
         exportPdf={exportPdf}
         save={save}
         exporting={exporting}
         saving={saving}
       />
 
-      {layer !== "plan" && (
+      {layer === "interior" && (
+        <PlannerInteriorPicker
+          tool={tool}
+          clearDraft={() => setDraft([])}
+          setTool={setTool}
+          furnitureKind={state.furnitureKind}
+          setFurnitureKind={state.setFurnitureKind}
+          heatingKind={state.heatingKind}
+          setHeatingKind={state.setHeatingKind}
+        />
+      )}
+
+      {isEngLayer(layer) && (
         <PlannerEngineerPicker
           layer={layer}
           tool={tool}

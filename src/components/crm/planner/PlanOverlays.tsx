@@ -85,18 +85,21 @@ export function PlanAssistLayer({ assist, toScreen }: { assist: DrawAssist; toSc
 /** Контур помещения, которое сейчас рисуют, с длиной последнего отрезка */
 export function PlanDraftLayer({ draft, tool, cursor, assist, toScreen }: DraftProps) {
   const draftScreen = draft.map(toScreen)
+  // Контур помещения и контур зоны тёплого пола рисуются одинаково
+  const drawing = tool === "draw" || tool === "heating"
+  const color = tool === "heating" ? "#f97316" : "#D4AF37"
   if (draftScreen.length === 0) return assist ? <PlanAssistLayer assist={assist} toScreen={toScreen} /> : null
 
   return (
     <g>
-      {assist && tool === "draw" && <PlanAssistLayer assist={assist} toScreen={toScreen} />}
+      {assist && drawing && <PlanAssistLayer assist={assist} toScreen={toScreen} />}
       <path
         d={
           draftScreen.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ") +
-          (cursor && tool === "draw" ? ` L${toScreen(cursor).x},${toScreen(cursor).y}` : "")
+          (cursor && drawing ? ` L${toScreen(cursor).x},${toScreen(cursor).y}` : "")
         }
         fill="none"
-        stroke="#D4AF37"
+        stroke={color}
         strokeWidth={2.5}
         strokeDasharray="6 4"
       />
@@ -106,17 +109,17 @@ export function PlanDraftLayer({ draft, tool, cursor, assist, toScreen }: DraftP
           cx={p.x}
           cy={p.y}
           r={i === 0 ? 7 : 5}
-          fill={i === 0 ? "#D4AF37" : "#161616"}
-          stroke="#D4AF37"
+          fill={i === 0 ? color : "#161616"}
+          stroke={color}
           strokeWidth={2}
         />
       ))}
-      {cursor && draft.length > 0 && tool === "draw" && (
+      {cursor && draft.length > 0 && drawing && (
         <text
           x={toScreen(cursor).x + 12}
           y={toScreen(cursor).y - 10}
           fontSize="12"
-          fill="#D4AF37"
+          fill={color}
         >
           {fmtMmText(dist(draft[draft.length - 1], cursor))}
         </text>

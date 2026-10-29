@@ -104,6 +104,12 @@ const SYMBOLS: Partial<Record<NodeKind, SymbolPrim[]>> = {
     { kind: "circle", c: [0, 0], r: 0.26, fill: true },
   ],
 
+  // Терморегулятор: квадрат у стены с буквой-волной (нагрев)
+  thermostat: [
+    rect(-0.7, 0, 0.7, 1.1),
+    { kind: "poly", pts: [[-0.45, 0.75], [-0.25, 0.35], [0, 0.75], [0.25, 0.35], [0.45, 0.75]] },
+  ],
+
   // ——— Сантехника ———
   // Ввод воды: круг со стрелкой внутрь помещения
   water_in: [
@@ -166,6 +172,7 @@ export const WALL_MOUNTED = new Set<NodeKind>([
   "switch_pass",
   "switch_pass_double",
   "panel",
+  "thermostat",
   "water_in",
   "water_hot",
   "water_cold",

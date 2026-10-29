@@ -7,6 +7,7 @@ import { CEILING_KINDS } from "@/lib/planner/ceiling"
 import { placeAssist } from "@/lib/planner/placeAssist"
 import { SNAP_STEP } from "./usePlanView"
 import { assistPoint } from "./drawAssist"
+import { furnitureRefs } from "@/lib/planner/interior"
 import type { PlanTool } from "./planCanvasTypes"
 
 interface Args {
@@ -73,7 +74,8 @@ export function usePlanCanvasAssist({ scheme, tool, layer, draft, nodes, fixture
   ]
   const placeFor = (world: PlanPoint, kind: NodeKind, free: boolean, excludeId?: string) => {
     if (FORCE_WALL.has(kind) || !CEILING_KINDS.has(kind)) return null
-    return placeAssist(snapPoint(world), scheme.rooms, ceilingRefs(excludeId), scale, free)
+    // Светильники прилипают и к центрам/краям мебели — ровно над столом или кроватью
+    return placeAssist(snapPoint(world), scheme.rooms, [...ceilingRefs(excludeId), ...furnitureRefs(scheme)], scale, free)
   }
 
   /** Следующая точка трека: от последней строго по горизонтали или вертикали — повороты под 90° (Alt — под любым углом) */

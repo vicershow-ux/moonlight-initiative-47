@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react"
 import Icon from "@/components/ui/icon"
-import { PlanLayer, PlanScheme } from "@/lib/planner/types"
+import { PlanLayer, PlanScheme, EngLayer } from "@/lib/planner/types"
 import { fixtureLegendItems, nodeLegendItems } from "@/lib/planner/nodeLegend"
 import { NodeSymbolIcon } from "./NodeSymbol"
 
 /** Условные обозначения точек на слое электрики или сантехники — сворачиваются */
-export function NodeLegend({ scheme, layer }: { scheme: PlanScheme; layer: Exclude<PlanLayer, "plan"> }) {
+export function NodeLegend({ scheme, layer }: { scheme: PlanScheme; layer: EngLayer }) {
   const [open, setOpen] = useState(true)
   const items = useMemo(() => nodeLegendItems(scheme.nodes || [], layer), [scheme.nodes, layer])
   const fx = useMemo(() => (layer === "electric" ? fixtureLegendItems(scheme.fixtures || []) : []), [scheme.fixtures, layer])

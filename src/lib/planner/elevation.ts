@@ -12,6 +12,7 @@ const ELEVATION_KINDS = new Set<NodeKind>([
   "switch_pass_double",
   "panel",
   "junction",
+  "thermostat",
 ])
 
 /** Насколько далеко от стены может стоять неприкреплённая точка, чтобы попасть на развёртку, м */

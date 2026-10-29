@@ -9,6 +9,7 @@ import {
   PlanScheme,
   PlanFixture,
   LightingSettings,
+  EngLayer,
 } from "@/lib/planner/types"
 import { SelectedFixtureCard } from "./SelectedFixtureCard"
 import { LightingSettingsCard } from "./LightingSettingsCard"
@@ -29,7 +30,7 @@ import { LayerSummaryCard } from "./LayerSummaryCard"
 
 interface Props {
   scheme: PlanScheme
-  layer: Exclude<PlanLayer, "plan">
+  layer: EngLayer
   selectedNode: PlanNode | null
   selectedLink: PlanLink | null
   onUpdateNode: (id: string, patch: Partial<PlanNode>) => void

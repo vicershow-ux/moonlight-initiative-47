@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { PlanNode, PlanPoint } from "@/lib/planner/types"
+import { PlanNode, PlanPoint, isEngLayer } from "@/lib/planner/types"
 import { usePlanView } from "./usePlanView"
 import { PlanControls } from "./PlanOverlays"
 import { useTypedLength } from "./useTypedLength"
@@ -90,7 +90,7 @@ export function PlanCanvas(props: PlanCanvasProps) {
         className="touch-none rounded-xl bg-[#141414]"
         style={{
           cursor:
-            tool === "draw" || tool === "node" || tool === "link" || tool === "track" || tool === "floating"
+            tool === "draw" || tool === "node" || tool === "link" || tool === "track" || tool === "floating" || tool === "furniture" || tool === "heating"
               ? "crosshair"
               : drag
                 ? "grabbing"
@@ -123,7 +123,7 @@ export function PlanCanvas(props: PlanCanvasProps) {
 
       {tool === "draw" && draft.length > 0 && cursor && <TypedLengthHint cursor={cursor} typed={typed} toScreen={toScreen} />}
 
-      {layer === "plan" ? <WallLegend scheme={scheme} /> : <NodeLegend scheme={scheme} layer={layer} />}
+      {layer === "plan" ? <WallLegend scheme={scheme} /> : isEngLayer(layer) ? <NodeLegend scheme={scheme} layer={layer} /> : null}
 
       <PlanControls cursor={cursor} gridStep={gridStep} zoomBy={zoomBy} fitView={fitView} />
     </div>

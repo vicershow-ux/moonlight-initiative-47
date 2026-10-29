@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon"
 import { PlanCanvas } from "@/components/crm/planner/PlanCanvas"
 import { PlanSidebar } from "@/components/crm/planner/PlanSidebar"
 import { EngineerSidebar } from "@/components/crm/planner/EngineerSidebar"
+import { InteriorSidebar } from "@/components/crm/planner/InteriorSidebar"
 import { usePlannerState } from "./usePlannerState"
 
 interface Props {
@@ -62,6 +63,8 @@ export function PlannerWorkspace({ state }: Props) {
     deleteFixture,
   } = state
   const selectedFixture = (scheme.fixtures || []).find((f) => f.id === selectedFixtureId) || null
+  const selectedFurniture = (scheme.furniture || []).find((f) => f.id === state.selectedFurnitureId) || null
+  const selectedHeating = (scheme.heating || []).find((h) => h.id === state.selectedHeatingId) || null
   const [hoverWallId, setHoverWallId] = useState<string | null>(null)
   /** Группа щита, которую подсвечиваем на схеме электрики */
   const [highlightGroupId, setHighlightGroupId] = useState<string | null>(null)
@@ -151,6 +154,14 @@ export function PlannerWorkspace({ state }: Props) {
           onSelectFixture={setSelectedFixtureId}
           onAddFixture={addFixture}
           onUpdateFixture={updateFixture}
+          selectedFurnitureId={state.selectedFurnitureId}
+          onSelectFurniture={state.setSelectedFurnitureId}
+          onAddFurniture={state.addFurniture}
+          onUpdateFurniture={state.updateFurniture}
+          furnitureKind={state.furnitureKind}
+          selectedHeatingId={state.selectedHeatingId}
+          onSelectHeating={state.setSelectedHeatingId}
+          onAddHeating={state.addHeating}
           selectedWallId={hoverWallId ?? (layer === "plan" ? activeWallId : null)}
           onSelectWall={selectWall}
         />
@@ -176,6 +187,23 @@ export function PlannerWorkspace({ state }: Props) {
           onHoverWall={setHoverWallId}
           selectedWallId={activeWallId}
           onSelectWall={selectWall}
+        />
+      ) : layer === "interior" ? (
+        <InteriorSidebar
+          scheme={scheme}
+          selectedRoom={selectedRoom}
+          selectedFurniture={selectedFurniture}
+          selectedHeating={selectedHeating}
+          onUpdateFurniture={state.updateFurniture}
+          onDeleteFurniture={state.deleteFurniture}
+          onUpdateHeating={state.updateHeating}
+          onDeleteHeating={state.deleteHeating}
+          onUpdateFinish={state.updateFinish}
+          onSelectRoom={(rid) => {
+            setSelectedRoomId(rid)
+            state.setSelectedFurnitureId(null)
+            state.setSelectedHeatingId(null)
+          }}
         />
       ) : (
         <EngineerSidebar

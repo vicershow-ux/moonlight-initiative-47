@@ -2,7 +2,7 @@ import Icon from "@/components/ui/icon"
 import { fmtNum, fromMm, toMm } from "@/lib/planner/geometry"
 import { gostSymbol } from "@/lib/planner/symbols"
 import { NodeSymbolIcon } from "./NodeSymbol"
-import { NODE_PRESETS, PlanLayer, PlanLink, PlanNode, CableSettings, LAYING_METHODS, LayingMethod } from "@/lib/planner/types"
+import { NODE_PRESETS, PlanLayer, PlanLink, PlanNode, CableSettings, LAYING_METHODS, LayingMethod, EngLayer } from "@/lib/planner/types"
 import { CableTotals } from "@/lib/planner/cable"
 
 const inputCls =
@@ -29,7 +29,7 @@ function groupNodes(nodes: PlanNode[], roomName: (id: string | null) => string) 
 }
 
 interface Props {
-  layer: Exclude<PlanLayer, "plan">
+  layer: EngLayer
   isElectric: boolean
   nodes: PlanNode[]
   links: PlanLink[]

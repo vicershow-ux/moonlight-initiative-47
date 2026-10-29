@@ -47,7 +47,7 @@ export function PlannerLayerBar({ layer, changeLayer }: LayerProps) {
         </button>
       ))}
       {layer !== "plan" && (
-        <span className="ml-auto pr-2 text-xs text-white/40">
+        <span className="ml-auto hidden pr-2 text-xs text-white/40 xl:inline">
           Планировка показана подложкой — менять её можно на слое «Планировка»
         </span>
       )}
@@ -86,7 +86,7 @@ export function PlannerToolbar({
   return (
     <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex flex-wrap gap-2">
-        {(layer === "plan" ? TOOLS : ENGINEER_TOOLS).map((t) => (
+        {(layer === "plan" ? TOOLS : layer === "interior" ? [] : ENGINEER_TOOLS).map((t) => (
           <button
             key={t.key}
             onClick={() => {

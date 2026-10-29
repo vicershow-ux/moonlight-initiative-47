@@ -1,4 +1,4 @@
-import { FIXTURE_PRESETS, FixtureKind, NODE_PRESETS, NodeKind, PlanFixture, PlanLayer, PlanNode } from "@/lib/planner/types"
+import { FIXTURE_PRESETS, FixtureKind, NODE_PRESETS, NodeKind, PlanFixture, PlanLayer, PlanNode, EngLayer } from "@/lib/planner/types"
 import { fixtureLength } from "@/lib/planner/fixtures"
 import { fmtNum } from "@/lib/planner/geometry"
 import { toMm } from "@/lib/planner/geometry"
@@ -16,6 +16,7 @@ export const NODE_CODES: Partial<Record<NodeKind, string>> = {
   switch_pass_double: "ВП2",
   light: "Св",
   spot: "Сп",
+  thermostat: "ТР",
 }
 
 /** Порядок в легенде — как в справочнике точек */
@@ -31,7 +32,7 @@ export interface NodeLegendItem {
 }
 
 /** Какие точки есть на слое — для легенды */
-export function nodeLegendItems(nodes: PlanNode[], layer: Exclude<PlanLayer, "plan">): NodeLegendItem[] {
+export function nodeLegendItems(nodes: PlanNode[], layer: EngLayer): NodeLegendItem[] {
   return ORDER.filter((k) => NODE_PRESETS[k].layer === layer)
     .map((kind) => {
       const list = nodes.filter((n) => n.layer === layer && n.kind === kind)

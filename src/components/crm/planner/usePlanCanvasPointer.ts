@@ -10,6 +10,8 @@ import {
 } from "@/lib/planner/geometry"
 import { PlanFixture, PlanLink, PlanNode, PlanPoint } from "@/lib/planner/types"
 import { hitFixture, shiftTrack } from "@/lib/planner/fixtures"
+import { hitFurniture, hitHeating, snapFurnitureToWall } from "@/lib/planner/interior"
+import { FURNITURE_PRESETS } from "@/lib/planner/types"
 import { hitWall } from "@/lib/planner/walls"
 import { PlaceAssist, placeAssist } from "@/lib/planner/placeAssist"
 import { SNAP_STEP, eventPoint } from "./usePlanView"
@@ -81,7 +83,13 @@ export function usePlanCanvasPointer({
     onSelectFixture,
     onAddFixture,
     onUpdateFixture,
+    onSelectFurniture,
+    onAddFurniture,
+    onUpdateFurniture,
+    onSelectHeating,
+    onAddHeating,
   } = props
+  const furniture = scheme.furniture || []
   const { trackStart, trackPts, setTrackPts, finishTrack, snapPoint, ceilingRefs, placeFor, trackEnd, assistRefs, drawAssist } = assistApi
   const [, setCursor] = cursorState
 
@@ -122,6 +130,22 @@ export function usePlanCanvasPointer({
       return
     }
 
+    if (tool === "furniture") {
+      onAddFurniture?.(snapPoint(world))
+      return
+    }
+
+    // Контур тёплого пола рисуется как стены: щелчки по углам, замыкание у первой точки
+    if (tool === "heating") {
+      const snapped = drawAssist(world, e.altKey).point
+      if (draft.length >= 3 && dist(snapped, draft[0]) * view.scale < 12) {
+        onAddHeating?.(draft)
+        return
+      }
+      onDraftChange([...draft, snapped])
+      return
+    }
+
     if (tool === "floating") {
       onAddFixture?.("floating", world, world)
       return
@@ -135,6 +159,22 @@ export function usePlanCanvasPointer({
       }
       // Щелчок по пустому месту — ещё один поворот трассы
       if (linkFromId) setBends((b) => [...b, nextBend(world, e.altKey)])
+      return
+    }
+
+    if (tool === "select" && layer === "interior") {
+      const fu = hitFurniture(furniture, world)
+      if (fu) {
+        onSelectFurniture?.(fu.id)
+        onSelectHeating?.(null)
+        setDrag({ type: "furniture", id: fu.id, grab: world, x: fu.x, y: fu.y })
+        return
+      }
+      const hz = hitHeating(scheme.heating || [], world)
+      onSelectFurniture?.(null)
+      onSelectHeating?.(hz ? hz.id : null)
+      const room = [...scheme.rooms].reverse().find((r) => pointInPolygon(world, r.points))
+      onSelectRoom(room ? room.id : null)
       return
     }
 
@@ -255,7 +295,7 @@ export function usePlanCanvasPointer({
   const handleMove = (e: React.MouseEvent) => {
     const { sx, sy } = eventPoint(e)
     const world = toWorld(sx, sy)
-    if (tool === "draw" && !drag) {
+    if ((tool === "draw" || tool === "heating") && !drag) {
       const a = drawAssist(world, e.altKey)
       setAssist(a)
       setCursor(a.point)
@@ -295,6 +335,15 @@ export function usePlanCanvasPointer({
       const dy = pa.point.y - drag.a.y
       onUpdateFixture?.(drag.id, shiftTrack(drag, dx, dy))
       setPlace({ ...pa, dims: [] })
+      return
+    }
+    if (drag.type === "furniture") {
+      const item = furniture.find((f) => f.id === drag.id)
+      if (!item) return
+      const raw = snapPoint({ x: drag.x + world.x - drag.grab.x, y: drag.y + world.y - drag.grab.y })
+      // У стены — прилипает тыльной стороной и разворачивается; Alt — свободно
+      const sn = !e.altKey && FURNITURE_PRESETS[item.kind].wall ? snapFurnitureToWall(scheme, { ...item, ...raw }, 0.25) : null
+      onUpdateFurniture?.(drag.id, sn ? sn : raw)
       return
     }
     if (drag.type === "bend") {

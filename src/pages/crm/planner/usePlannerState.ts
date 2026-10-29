@@ -26,11 +26,21 @@ import {
   WallProps,
   DEFAULT_WALL,
   emptyScheme,
+  isEngLayer,
   FixtureKind,
   PlanFixture,
   LightingSettings,
   lightingSettings,
+  FURNITURE_PRESETS,
+  FurnitureKind,
+  HEATING_PRESETS,
+  HeatingKind,
+  PlanFurniture,
+  PlanHeating,
+  RoomFinish,
+  roomFinish,
 } from "@/lib/planner/types"
+import { furnitureRoom, snapFurnitureToWall } from "@/lib/planner/interior"
 import { FLOATING_OFFSET, trackMid } from "@/lib/planner/fixtures"
 
 const uid = () => Math.random().toString(36).slice(2, 10)
@@ -60,6 +70,12 @@ export function usePlannerState(id: string | undefined) {
   const [selectedOpeningId, setSelectedOpeningId] = useState<string | null>(null)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null)
+  /** Мебель, которую ставим, и выбранный предмет */
+  const [furnitureKind, setFurnitureKind] = useState<FurnitureKind>("bed_double")
+  const [selectedFurnitureId, setSelectedFurnitureId] = useState<string | null>(null)
+  /** Тип тёплого пола для новой зоны и выбранная зона */
+  const [heatingKind, setHeatingKind] = useState<HeatingKind>("mat")
+  const [selectedHeatingId, setSelectedHeatingId] = useState<string | null>(null)
   /** Выбранный трек или парящий потолок */
   const [selectedFixtureId, setSelectedFixtureId] = useState<string | null>(null)
   const [fileUrl, setFileUrl] = useState<string | null>(null)
@@ -88,6 +104,9 @@ export function usePlannerState(id: string | undefined) {
               walls: raw.walls || {},
               fixtures: raw.fixtures || [],
               lighting: raw.lighting,
+              furniture: raw.furniture || [],
+              heating: raw.heating || [],
+              finishes: raw.finishes || {},
             })
           }
           setFileUrl(planData.plan.file_url || null)
@@ -220,7 +239,7 @@ export function usePlannerState(id: string | undefined) {
 
   /** Ставим точку (розетку, щит, вывод воды) в том помещении, куда кликнули */
   const addNode = (point: PlanPoint) => {
-    if (layer === "plan") return
+    if (!isEngLayer(layer)) return
     const preset = NODE_PRESETS[nodeKind]
     const room = [...scheme.rooms].reverse().find((r) => pointInPolygon(point, r.points))
     // Розетки, выключатели и щит садятся на ближайшую стену или в откос проёма
@@ -318,6 +337,91 @@ export function usePlannerState(id: string | undefined) {
     touch()
   }
 
+  /** Предмет мебели: у стены — прижимается к ней тыльной стороной */
+  const addFurniture = (point: PlanPoint) => {
+    const pr = FURNITURE_PRESETS[furnitureKind]
+    const base = { x: point.x, y: point.y, w: pr.w, d: pr.d, rot: 0 }
+    const snapped = pr.wall ? snapFurnitureToWall(scheme, base, 0.8) : null
+    const at = snapped ? { ...base, ...snapped } : base
+    const item: PlanFurniture = {
+      id: uid(),
+      kind: furnitureKind,
+      x: at.x,
+      y: at.y,
+      w: pr.w,
+      d: pr.d,
+      h: pr.h,
+      rot: at.rot,
+      label: "",
+      roomId: furnitureRoom(scheme, at)?.id ?? null,
+    }
+    setScheme((s) => ({ ...s, furniture: [...(s.furniture || []), item] }))
+    setSelectedFurnitureId(item.id)
+    touch()
+  }
+
+  const updateFurniture = (fid: string, patch: Partial<PlanFurniture>) => {
+    setScheme((s) => ({
+      ...s,
+      furniture: (s.furniture || []).map((f) => {
+        if (f.id !== fid) return f
+        const next = { ...f, ...patch }
+        if (patch.x !== undefined || patch.y !== undefined) next.roomId = furnitureRoom(s, next)?.id ?? null
+        return next
+      }),
+    }))
+    touch()
+  }
+
+  const deleteFurniture = (fid: string) => {
+    setScheme((s) => ({ ...s, furniture: (s.furniture || []).filter((f) => f.id !== fid) }))
+    setSelectedFurnitureId(null)
+    touch()
+  }
+
+  /** Зона тёплого пола по нарисованному контуру */
+  const addHeating = (points: PlanPoint[]) => {
+    if (points.length < 3) return
+    const pr = HEATING_PRESETS[heatingKind]
+    const c = { x: points.reduce((a, p) => a + p.x, 0) / points.length, y: points.reduce((a, p) => a + p.y, 0) / points.length }
+    const zone: PlanHeating = {
+      id: uid(),
+      kind: heatingKind,
+      points: squareUp(points),
+      roomId: furnitureRoom(scheme, c)?.id ?? null,
+      power: pr.power,
+      step: pr.step,
+      cutFurniture: true,
+      label: "",
+    }
+    setScheme((s) => ({ ...s, heating: [...(s.heating || []), zone] }))
+    setSelectedHeatingId(zone.id)
+    setDraft([])
+    touch()
+  }
+
+  const updateHeating = (hid: string, patch: Partial<PlanHeating>) => {
+    setScheme((s) => ({ ...s, heating: (s.heating || []).map((h) => (h.id === hid ? { ...h, ...patch } : h)) }))
+    touch()
+  }
+
+  const deleteHeating = (hid: string) => {
+    setScheme((s) => ({ ...s, heating: (s.heating || []).filter((h) => h.id !== hid) }))
+    setSelectedHeatingId(null)
+    touch()
+  }
+
+  /** Отделка помещения; applyToAll — на все помещения сразу */
+  const updateFinish = (roomId: string, patch: Partial<RoomFinish>, applyToAll = false) => {
+    setScheme((s) => {
+      const finishes = { ...(s.finishes || {}) }
+      const ids = applyToAll ? s.rooms.map((r) => r.id) : [roomId]
+      for (const id of ids) finishes[id] = { ...roomFinish(s, id), ...patch }
+      return { ...s, finishes }
+    })
+    touch()
+  }
+
   const deleteNode = (nodeId: string) => {
     setScheme((s) => ({
       ...s,
@@ -372,7 +476,7 @@ export function usePlannerState(id: string | undefined) {
    * изломы трассы. Линия получает текущее сечение и идёт под прямыми углами
    */
   const handleLinkClick = (nodeId: string, bends: PlanPoint[] = []) => {
-    if (layer === "plan") return
+    if (!isEngLayer(layer)) return
     if (!linkFromId) {
       setLinkFromId(nodeId)
       setSelectedNodeId(nodeId)
@@ -467,7 +571,10 @@ export function usePlannerState(id: string | undefined) {
     setSelectedNodeId(null)
     setSelectedLinkId(null)
     setSelectedFixtureId(null)
+    setSelectedFurnitureId(null)
+    setSelectedHeatingId(null)
     setDraft([])
+    if (next === "interior") setTool("furniture")
     if (next === "electric") {
       setNodeKind("socket")
       setLinkSpec(LINK_SPECS.electric[1])
@@ -613,6 +720,21 @@ export function usePlannerState(id: string | undefined) {
     addFixture,
     updateFixture,
     deleteFixture,
+    furnitureKind,
+    setFurnitureKind,
+    selectedFurnitureId,
+    setSelectedFurnitureId,
+    addFurniture,
+    updateFurniture,
+    deleteFurniture,
+    heatingKind,
+    setHeatingKind,
+    selectedHeatingId,
+    setSelectedHeatingId,
+    addHeating,
+    updateHeating,
+    deleteHeating,
+    updateFinish,
     fileUrl,
     dirty,
     syncRooms,

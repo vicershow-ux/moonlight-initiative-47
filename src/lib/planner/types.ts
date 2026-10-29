@@ -35,7 +35,10 @@ export interface PlanRoom {
   notes: string
 }
 
-export type PlanLayer = "plan" | "electric" | "plumbing"
+export type PlanLayer = "plan" | "interior" | "electric" | "plumbing"
+/** Инженерные слои — на них ставятся точки и прокладываются линии */
+export type EngLayer = "electric" | "plumbing"
+export const isEngLayer = (l: PlanLayer): l is EngLayer => l === "electric" || l === "plumbing"
 
 export type NodeKind =
   | "panel"
@@ -48,6 +51,7 @@ export type NodeKind =
   | "switch_pass_double"
   | "light"
   | "spot"
+  | "thermostat"
   | "water_in"
   | "water_hot"
   | "water_cold"
@@ -61,7 +65,7 @@ export type NodeKind =
 /** Точка на схеме: щит, розетка, выключатель, вывод воды и т.п. */
 export interface PlanNode {
   id: string
-  layer: Exclude<PlanLayer, "plan">
+  layer: EngLayer
   kind: NodeKind
   x: number
   y: number
@@ -124,7 +128,7 @@ export const DEFAULT_WALL: WallProps = { thickness: 0.25, material: "brick" }
  */
 export interface PlanLink {
   id: string
-  layer: Exclude<PlanLayer, "plan">
+  layer: EngLayer
   fromId: string
   toId: string
   spec: string
@@ -360,17 +364,209 @@ export interface PlanScheme {
   fixtures?: PlanFixture[]
   /** Мощности трековых светильников и ленты для сметы */
   lighting?: LightingSettings
+  /** Мебель и сантехника на плане */
+  furniture?: PlanFurniture[]
+  /** Зоны тёплого пола */
+  heating?: PlanHeating[]
+  /** Отделка помещений по id помещения */
+  finishes?: Record<string, RoomFinish>
 }
+
+// ——— Мебель ———
+
+export type FurnitureKind =
+  | "bed_double" | "bed_single" | "sofa" | "armchair" | "wardrobe" | "dresser" | "nightstand"
+  | "table" | "desk" | "chair" | "tv_stand" | "shelf"
+  | "kitchen_base" | "kitchen_wall" | "fridge" | "stove" | "sink_kitchen" | "dishwasher"
+  | "bath" | "shower" | "toilet_f" | "washbasin" | "washer" | "boiler_f" | "towel_rail"
+  | "custom"
+
+export interface FurniturePreset {
+  label: string
+  group: "Спальня" | "Гостиная" | "Кухня" | "Санузел" | "Прочее"
+  /** Ширина × глубина × высота, м */
+  w: number
+  d: number
+  h: number
+  /** Стоит у стены — при расстановке прилипает тыльной стороной */
+  wall: boolean
+  /** Под ним нельзя класть тёплый пол */
+  blocksHeating: boolean
+  /** Закрывает розетки и выключатели на стене за собой */
+  blocksSockets: boolean
+}
+
+export const FURNITURE_PRESETS: Record<FurnitureKind, FurniturePreset> = {
+  bed_double: { label: "Кровать двуспальная", group: "Спальня", w: 1.6, d: 2.0, h: 0.5, wall: true, blocksHeating: true, blocksSockets: false },
+  bed_single: { label: "Кровать односпальная", group: "Спальня", w: 0.9, d: 2.0, h: 0.5, wall: true, blocksHeating: true, blocksSockets: false },
+  wardrobe: { label: "Шкаф", group: "Спальня", w: 1.8, d: 0.6, h: 2.4, wall: true, blocksHeating: true, blocksSockets: true },
+  dresser: { label: "Комод", group: "Спальня", w: 1.0, d: 0.45, h: 0.85, wall: true, blocksHeating: true, blocksSockets: false },
+  nightstand: { label: "Тумба прикроватная", group: "Спальня", w: 0.45, d: 0.4, h: 0.5, wall: true, blocksHeating: false, blocksSockets: false },
+  sofa: { label: "Диван", group: "Гостиная", w: 2.2, d: 0.95, h: 0.85, wall: true, blocksHeating: true, blocksSockets: false },
+  armchair: { label: "Кресло", group: "Гостиная", w: 0.85, d: 0.85, h: 0.85, wall: false, blocksHeating: false, blocksSockets: false },
+  table: { label: "Стол обеденный", group: "Гостиная", w: 1.4, d: 0.85, h: 0.75, wall: false, blocksHeating: false, blocksSockets: false },
+  desk: { label: "Стол письменный", group: "Гостиная", w: 1.2, d: 0.6, h: 0.75, wall: true, blocksHeating: false, blocksSockets: false },
+  chair: { label: "Стул", group: "Гостиная", w: 0.45, d: 0.5, h: 0.9, wall: false, blocksHeating: false, blocksSockets: false },
+  tv_stand: { label: "ТВ-тумба", group: "Гостиная", w: 1.8, d: 0.4, h: 0.5, wall: true, blocksHeating: true, blocksSockets: false },
+  shelf: { label: "Стеллаж", group: "Гостиная", w: 0.8, d: 0.35, h: 2.0, wall: true, blocksHeating: true, blocksSockets: true },
+  kitchen_base: { label: "Кухня нижние шкафы", group: "Кухня", w: 2.4, d: 0.6, h: 0.9, wall: true, blocksHeating: true, blocksSockets: true },
+  kitchen_wall: { label: "Кухня верхние шкафы", group: "Кухня", w: 2.4, d: 0.32, h: 0.7, wall: true, blocksHeating: false, blocksSockets: false },
+  fridge: { label: "Холодильник", group: "Кухня", w: 0.6, d: 0.65, h: 1.9, wall: true, blocksHeating: true, blocksSockets: false },
+  stove: { label: "Плита / варочная", group: "Кухня", w: 0.6, d: 0.6, h: 0.9, wall: true, blocksHeating: true, blocksSockets: true },
+  sink_kitchen: { label: "Мойка кухонная", group: "Кухня", w: 0.8, d: 0.6, h: 0.9, wall: true, blocksHeating: true, blocksSockets: true },
+  dishwasher: { label: "Посудомойка", group: "Кухня", w: 0.6, d: 0.6, h: 0.85, wall: true, blocksHeating: true, blocksSockets: false },
+  bath: { label: "Ванна", group: "Санузел", w: 1.7, d: 0.75, h: 0.6, wall: true, blocksHeating: true, blocksSockets: true },
+  shower: { label: "Душевой поддон", group: "Санузел", w: 0.9, d: 0.9, h: 0.15, wall: true, blocksHeating: true, blocksSockets: true },
+  toilet_f: { label: "Унитаз", group: "Санузел", w: 0.38, d: 0.65, h: 0.4, wall: true, blocksHeating: true, blocksSockets: false },
+  washbasin: { label: "Раковина с тумбой", group: "Санузел", w: 0.6, d: 0.48, h: 0.85, wall: true, blocksHeating: true, blocksSockets: false },
+  washer: { label: "Стиральная машина", group: "Санузел", w: 0.6, d: 0.6, h: 0.85, wall: true, blocksHeating: true, blocksSockets: false },
+  boiler_f: { label: "Водонагреватель", group: "Санузел", w: 0.45, d: 0.45, h: 0.8, wall: true, blocksHeating: false, blocksSockets: false },
+  towel_rail: { label: "Полотенцесушитель", group: "Санузел", w: 0.5, d: 0.12, h: 0.8, wall: true, blocksHeating: false, blocksSockets: false },
+  custom: { label: "Свой предмет", group: "Прочее", w: 1.0, d: 0.6, h: 0.8, wall: false, blocksHeating: true, blocksSockets: false },
+}
+
+export interface PlanFurniture {
+  id: string
+  kind: FurnitureKind
+  /** Центр, м */
+  x: number
+  y: number
+  /** Ширина вдоль «лица», глубина от стены, высота, м */
+  w: number
+  d: number
+  h: number
+  /** Поворот, градусы: 0 — тыльной стороной вверх (к стене с меньшим Y) */
+  rot: number
+  label: string
+  roomId: string | null
+}
+
+// ——— Тёплый пол ———
+
+export type HeatingKind = "mat" | "cable" | "film" | "water"
+
+export const HEATING_PRESETS: Record<
+  HeatingKind,
+  { label: string; hint: string; power: number; step?: number; color: string }
+> = {
+  mat: { label: "Нагревательный мат", hint: "в клей под плитку", power: 150, color: "#f97316" },
+  cable: { label: "Нагревательный кабель", hint: "в стяжку", power: 150, step: 0.1, color: "#ef4444" },
+  film: { label: "Плёночный (ИК)", hint: "под ламинат и паркет", power: 150, color: "#eab308" },
+  water: { label: "Водяной", hint: "трубы в стяжке, коллектор", power: 80, step: 0.15, color: "#38bdf8" },
+}
+
+export interface PlanHeating {
+  id: string
+  kind: HeatingKind
+  /** Контур зоны, м */
+  points: PlanPoint[]
+  roomId: string | null
+  /** Удельная мощность, Вт/м² (у водяного — расчётная теплоотдача) */
+  power: number
+  /** Шаг укладки кабеля или трубы, м */
+  step?: number
+  /** Вырезать места под мебелью, которая не пропускает тепло */
+  cutFurniture: boolean
+  label: string
+}
+
+// ——— Отделка ———
+
+export type FloorFinish = "none" | "parquet" | "laminate" | "engineered" | "tile" | "porcelain" | "linoleum" | "vinyl" | "carpet"
+export type WallFinish = "none" | "wallpaper" | "paint" | "tile" | "plaster" | "panels"
+export type CeilingFinish = "none" | "paint" | "stretch" | "gkl" | "rack"
+
+export interface FinishInfo {
+  label: string
+  color: string
+  /** Запас на подрезку, доля */
+  waste: number
+}
+
+export const FLOOR_FINISHES: Record<FloorFinish, FinishInfo & { pattern: "planks" | "tiles" | "plain" | "herring" }> = {
+  none: { label: "Не задано", color: "transparent", waste: 0, pattern: "plain" },
+  parquet: { label: "Паркет (ёлочка)", color: "#b5834a", waste: 0.15, pattern: "herring" },
+  engineered: { label: "Инженерная доска", color: "#a8794a", waste: 0.08, pattern: "planks" },
+  laminate: { label: "Ламинат", color: "#c49a6c", waste: 0.07, pattern: "planks" },
+  vinyl: { label: "Кварцвинил (SPC)", color: "#b9a58a", waste: 0.07, pattern: "planks" },
+  tile: { label: "Плитка керамическая", color: "#cfd6dc", waste: 0.1, pattern: "tiles" },
+  porcelain: { label: "Керамогранит", color: "#9aa3aa", waste: 0.1, pattern: "tiles" },
+  linoleum: { label: "Линолеум", color: "#9fb8a8", waste: 0.05, pattern: "plain" },
+  carpet: { label: "Ковролин", color: "#8e8aa8", waste: 0.05, pattern: "plain" },
+}
+
+export const WALL_FINISHES: Record<WallFinish, FinishInfo> = {
+  none: { label: "Не задано", color: "#888888", waste: 0 },
+  wallpaper: { label: "Обои", color: "#c084fc", waste: 0 },
+  paint: { label: "Покраска", color: "#60a5fa", waste: 0 },
+  tile: { label: "Плитка", color: "#2dd4bf", waste: 0.1 },
+  plaster: { label: "Декоративная штукатурка", color: "#f59e0b", waste: 0.05 },
+  panels: { label: "Стеновые панели", color: "#a3e635", waste: 0.08 },
+}
+
+export const CEILING_FINISHES: Record<CeilingFinish, FinishInfo> = {
+  none: { label: "Не задано", color: "#888888", waste: 0 },
+  paint: { label: "Покраска", color: "#e5e7eb", waste: 0 },
+  stretch: { label: "Натяжной", color: "#f0f9ff", waste: 0 },
+  gkl: { label: "ГКЛ под покраску", color: "#e2e8f0", waste: 0.1 },
+  rack: { label: "Реечный", color: "#cbd5e1", waste: 0.1 },
+}
+
+export interface RoomFinish {
+  floor: FloorFinish
+  /** Цвет пола для визуализации (если свой) */
+  floorColor?: string
+  wall: WallFinish
+  wallColor?: string
+  /** Плитка на стенах до высоты, м (для санузла — на всю, для кухни — фартук) */
+  tileHeight?: number
+  /** Обои: ширина рулона, длина рулона, раппорт, м */
+  rollWidth?: number
+  rollLength?: number
+  rapport?: number
+  /** Покраска: число слоёв, расход л/м² за слой */
+  paintCoats?: number
+  ceiling: CeilingFinish
+  /** Плинтус напольный */
+  skirting: boolean
+  /** Потолочный плинтус/багет */
+  cornice: boolean
+  /** Черновые: стяжка пола, толщина, м (0 — не нужна) */
+  screed?: number
+  /** Черновые: выравнивание стен штукатуркой, толщина, м */
+  wallPlaster?: number
+}
+
+export const DEFAULT_FINISH: RoomFinish = {
+  floor: "none",
+  wall: "none",
+  ceiling: "none",
+  skirting: true,
+  cornice: false,
+  rollWidth: 1.06,
+  rollLength: 10.05,
+  rapport: 0,
+  paintCoats: 2,
+  tileHeight: 0,
+  screed: 0,
+  wallPlaster: 0,
+}
+
+export const roomFinish = (scheme: Pick<PlanScheme, "finishes">, roomId: string): RoomFinish => ({
+  ...DEFAULT_FINISH,
+  ...(scheme.finishes?.[roomId] || {}),
+})
 
 export const LAYERS: { value: PlanLayer; label: string; icon: string }[] = [
   { value: "plan", label: "Планировка", icon: "Ruler" },
+  { value: "interior", label: "Мебель и отделка", icon: "Sofa" },
   { value: "electric", label: "Электрика", icon: "Zap" },
   { value: "plumbing", label: "Сантехника", icon: "Droplets" },
 ]
 
 export const NODE_PRESETS: Record<
   NodeKind,
-  { label: string; layer: Exclude<PlanLayer, "plan">; height: number; color: string; icon: string }
+  { label: string; layer: EngLayer; height: number; color: string; icon: string }
 > = {
   panel: { label: "Щит", layer: "electric", height: 1.6, color: "#E8B23A", icon: "LayoutGrid" },
   junction: { label: "Распаячная коробка", layer: "electric", height: 2.3, color: "#E8B23A", icon: "Box" },
@@ -382,6 +578,7 @@ export const NODE_PRESETS: Record<
   switch_pass_double: { label: "Проходной двойной", layer: "electric", height: 0.9, color: "#8FCF5C", icon: "ToggleRight" },
   light: { label: "Светильник", layer: "electric", height: 2.7, color: "#F2DC7E", icon: "Lightbulb" },
   spot: { label: "Точечный светильник", layer: "electric", height: 2.7, color: "#F2DC7E", icon: "Circle" },
+  thermostat: { label: "Терморегулятор тёплого пола", layer: "electric", height: 0.9, color: "#f97316", icon: "Thermometer" },
 
   water_in: { label: "Ввод воды", layer: "plumbing", height: 0.4, color: "#7FB5E8", icon: "Pipette" },
   water_hot: { label: "Горячая вода", layer: "plumbing", height: 0.6, color: "#E87F7F", icon: "Flame" },
@@ -395,7 +592,7 @@ export const NODE_PRESETS: Record<
 }
 
 /** Сечения кабеля и диаметры труб — подставляются в подпись линии */
-export const LINK_SPECS: Record<Exclude<PlanLayer, "plan">, string[]> = {
+export const LINK_SPECS: Record<EngLayer, string[]> = {
   electric: ["1.5 мм²", "2.5 мм²", "4 мм²", "6 мм²", "10 мм²"],
   plumbing: ["16 мм", "20 мм", "25 мм", "32 мм", "40 мм", "50 мм", "110 мм"],
 }

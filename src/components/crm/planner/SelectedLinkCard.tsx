@@ -1,7 +1,7 @@
 import Icon from "@/components/ui/icon"
 import { DeleteButton } from "@/components/ui/delete-button"
 import { fmtNum, toMm } from "@/lib/planner/geometry"
-import { LAYING_METHODS, LINK_SPECS, LayingMethod, PlanGroup, PlanLayer, PlanLink } from "@/lib/planner/types"
+import { LAYING_METHODS, LINK_SPECS, LayingMethod, PlanGroup, PlanLayer, PlanLink, EngLayer } from "@/lib/planner/types"
 import { CableTotals } from "@/lib/planner/cable"
 
 const inputCls =
@@ -11,7 +11,7 @@ const labelCls = "mb-1.5 block text-xs text-white/50"
 
 interface Props {
   selectedLink: PlanLink
-  layer: Exclude<PlanLayer, "plan">
+  layer: EngLayer
   isElectric: boolean
   groups: PlanGroup[]
   linkCable: (l: PlanLink) => CableTotals
