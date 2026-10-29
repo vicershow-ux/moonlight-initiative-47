@@ -88,6 +88,7 @@ export function usePlanCanvasPointer({
     onUpdateFurniture,
     onSelectHeating,
     onAddHeating,
+    onUpdateHeating,
   } = props
   const furniture = scheme.furniture || []
   const { trackStart, trackPts, setTrackPts, finishTrack, snapPoint, ceilingRefs, placeFor, trackEnd, assistRefs, drawAssist } = assistApi
@@ -170,9 +171,8 @@ export function usePlanCanvasPointer({
         setDrag({ type: "furniture", id: fu.id, grab: world, x: fu.x, y: fu.y })
         return
       }
-      const hz = hitHeating(scheme.heating || [], world)
       onSelectFurniture?.(null)
-      onSelectHeating?.(hz ? hz.id : null)
+      onSelectHeating?.(null)
       const room = [...scheme.rooms].reverse().find((r) => pointInPolygon(world, r.points))
       onSelectRoom(room ? room.id : null)
       return
@@ -215,6 +215,27 @@ export function usePlanCanvasPointer({
           onSelectLink(null)
           if (fx.kind === "track") setDrag({ type: "fixture", id: fx.id, grab: world, a: fx.a, b: fx.b, points: fx.points || [] })
           return
+        }
+        // Тёплый пол на электрике: углы выбранной зоны тянутся, зона целиком — переносится
+        if (layer === "electric") {
+          const selZone = (scheme.heating || []).find((h) => h.id === props.selectedHeatingId)
+          if (selZone) {
+            const vi = selZone.points.findIndex((p) => dist(p, world) * view.scale < 9)
+            if (vi >= 0) {
+              setDrag({ type: "heatingVertex", id: selZone.id, index: vi })
+              return
+            }
+          }
+          const hz = hitHeating(scheme.heating || [], world)
+          if (hz) {
+            onSelectHeating?.(hz.id)
+            onSelectFixture?.(null)
+            onSelectNode(null)
+            onSelectLink(null)
+            setDrag({ type: "heating", id: hz.id, grab: world, points: hz.points })
+            return
+          }
+          onSelectHeating?.(null)
         }
         onSelectFixture?.(null)
         onSelectNode(null)
@@ -335,6 +356,18 @@ export function usePlanCanvasPointer({
       const dy = pa.point.y - drag.a.y
       onUpdateFixture?.(drag.id, shiftTrack(drag, dx, dy))
       setPlace({ ...pa, dims: [] })
+      return
+    }
+    if (drag.type === "heating") {
+      const d = snapPoint({ x: world.x - drag.grab.x, y: world.y - drag.grab.y })
+      onUpdateHeating?.(drag.id, { points: drag.points.map((p) => ({ x: p.x + d.x, y: p.y + d.y })) })
+      return
+    }
+    if (drag.type === "heatingVertex") {
+      const zone = (scheme.heating || []).find((h) => h.id === drag.id)
+      if (!zone) return
+      const p = snapPoint(world)
+      onUpdateHeating?.(drag.id, { points: zone.points.map((q, i) => (i === drag.index ? p : q)) })
       return
     }
     if (drag.type === "furniture") {

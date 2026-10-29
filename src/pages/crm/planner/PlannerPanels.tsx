@@ -14,6 +14,8 @@ import {
   PlanScheme,
   groupColor,
   EngLayer,
+  HEATING_PRESETS,
+  HeatingKind,
 } from "@/lib/planner/types"
 
 interface PickerProps {
@@ -29,6 +31,8 @@ interface PickerProps {
   linkGroupId: string | null
   setLinkGroupId: (id: string | null) => void
   addGroup: () => string
+  heatingKind?: HeatingKind
+  setHeatingKind?: (k: HeatingKind) => void
 }
 
 /** Выбор элемента для установки на план либо сечения новой линии */
@@ -45,6 +49,8 @@ export function PlannerEngineerPicker({
   linkGroupId,
   setLinkGroupId,
   addGroup,
+  heatingKind,
+  setHeatingKind,
 }: PickerProps) {
   const sorted = [...groups].sort((a, b) => a.num - b.num)
   return (
@@ -162,11 +168,26 @@ export function PlannerEngineerPicker({
                 {FIXTURE_PRESETS[k].label}
               </button>
             ))}
-          {tool === "heating" && (
-            <span className="flex w-full items-center gap-1.5 text-xs text-white/40">
-              <Icon name="Ruler" size={12} />
-              Обведите зону по углам и замкните у первой точки — мощность, ток и кабель посчитаются справа. Тип и Вт/м² меняются на слое «Мебель и отделка». Терморегулятор — точка «Терморегулятор тёплого пола», к нему проведите кабель от щита
-            </span>
+          {tool === "heating" && heatingKind && setHeatingKind && (
+            <div className="flex w-full flex-wrap items-center gap-1.5">
+              {(Object.keys(HEATING_PRESETS) as HeatingKind[]).map((k) => (
+                <button
+                  key={k}
+                  onClick={() => setHeatingKind(k)}
+                  className={`flex min-h-[34px] items-center gap-1.5 rounded-lg px-2.5 text-sm transition-colors ${
+                    heatingKind === k ? "bg-[#D4AF37] text-[#161616]" : "bg-white/5 text-white/60 hover:bg-white/10"
+                  }`}
+                >
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: HEATING_PRESETS[k].color }} />
+                  {HEATING_PRESETS[k].label}
+                  <span className="text-xs opacity-60">· {HEATING_PRESETS[k].hint}</span>
+                </button>
+              ))}
+              <span className="flex w-full items-center gap-1.5 text-xs text-white/40">
+                <Icon name="Ruler" size={12} />
+                Обведите зону по углам и замкните у первой точки. Раскладка строится сама: змейка кабеля или трубы, полосы мата или плёнки в обход мебели, датчик и подводка к терморегулятору. Выбрать зону — инструмент «Выбор», щелчок внутри зоны
+              </span>
+            </div>
           )}
           {tool === "track" && (
             <span className="flex w-full items-center gap-1.5 text-xs text-white/40">

@@ -1,4 +1,19 @@
-import { NODE_PRESETS, NodeKind, OPENING_PRESETS, PlanNode, PlanOpening, PlanRoom, PlanScheme } from "./types"
+import {
+  FURNITURE_PRESETS,
+  NODE_PRESETS,
+  NodeKind,
+  OPENING_PRESETS,
+  PlanFurniture,
+  PlanNode,
+  PlanOpening,
+  PlanRoom,
+  PlanScheme,
+  WALL_FINISHES,
+  WallOverride,
+  roomFinish,
+  wallFinishOf,
+} from "./types"
+import { furnitureCorners } from "./interior"
 import { WallInfo, mountPosition, openingSpan, roomWalls } from "./walls"
 import { toMm } from "./geometry"
 
@@ -46,6 +61,56 @@ export interface WallElevation {
   points: ElevPoint[]
   openings: ElevOpening[]
   chases: Chase[]
+  /** Отделка стены: материал, цвет, акцент */
+  finish: WallOverride & { own: boolean }
+  /** Плитка от пола до высоты, м (0 — нет) */
+  tileH: number
+  /** Мебель у стены — вид спереди, x в метрах на развёртке */
+  furniture: ElevFurniture[]
+}
+
+/** Предмет у стены на развёртке */
+export interface ElevFurniture {
+  f: PlanFurniture
+  x0: number
+  x1: number
+  z0: number
+  z1: number
+  /** Расстояние от стены до тыльной стороны, м */
+  gap: number
+}
+
+/** Насколько далеко от стены предмет ещё показываем на развёртке, м */
+const FURN_DIST = 0.25
+
+/** Предметы, которые висят на стене, а не стоят на полу — их низ поднят */
+const FURN_LIFT: Partial<Record<PlanFurniture["kind"], number>> = {
+  kitchen_wall: 1.45,
+  boiler_f: 1.2,
+  towel_rail: 0.7,
+}
+
+function wallFurniture(scheme: PlanScheme, wall: WallInfo, toX: (s: number) => number): ElevFurniture[] {
+  const out: ElevFurniture[] = []
+  const fx = wall.a.x - wall.nx * wall.inner
+  const fy = wall.a.y - wall.ny * wall.inner
+  for (const f of scheme.furniture || []) {
+    if (f.roomId && f.roomId !== wall.roomId) continue
+    const cs = furnitureCorners(f)
+    // Проекция углов на стену: вдоль — s, от грани внутрь комнаты — d
+    const ss = cs.map((c) => (c.x - fx) * wall.ux + (c.y - fy) * wall.uy)
+    const ds = cs.map((c) => -((c.x - fx) * wall.nx + (c.y - fy) * wall.ny))
+    const gap = Math.min(...ds)
+    if (gap > FURN_DIST || gap < -0.05) continue
+    const s0 = Math.max(Math.min(...ss), 0)
+    const s1 = Math.min(Math.max(...ss), wall.length)
+    if (s1 - s0 < 0.02) continue
+    const a = toX(s0)
+    const b = toX(s1)
+    const lift = FURN_LIFT[f.kind] ?? 0
+    out.push({ f, x0: Math.min(a, b), x1: Math.max(a, b), z0: lift, z1: lift + f.h, gap: Math.max(gap, 0) })
+  }
+  return out.sort((p, q) => p.x0 - q.x0)
 }
 
 /**
@@ -159,6 +224,7 @@ export function wallElevation(scheme: PlanScheme, wall: WallInfo): WallElevation
   if (!room) return null
   const L = wall.length
   const toX = (s: number) => (rightAligned(wall) ? s : L - s)
+  const rf = roomFinish(scheme, room.id)
   const walls = roomWalls(room, scheme)
 
   const openings: ElevOpening[] = scheme.openings
@@ -213,6 +279,9 @@ export function wallElevation(scheme: PlanScheme, wall: WallInfo): WallElevation
     points,
     openings,
     chases: wallChases(points, openings, room.height, traceZ),
+    finish: wallFinishOf(rf, wall.id),
+    tileH: wallFinishOf(rf, wall.id).wall === "tile" ? room.height : Math.min(rf.tileHeight || 0, room.height),
+    furniture: wallFurniture(scheme, wall, toX),
   }
 }
 
@@ -355,7 +424,38 @@ function chain(
  * Развёртка стены в SVG: проёмы, точки на своей высоте, цепочки размеров
  * от углов по горизонтали и размеры от пола до центра каждой коробки
  */
-export function elevationSvg(e: WallElevation, width = 700): string {
+/** Светлее цвета для заливки — чтобы поверх читались размеры */
+const tint = (hex: string, k = 0.55) => {
+  const n = parseInt(hex.replace("#", "").padEnd(6, "0").slice(0, 6), 16)
+  const mix = (c: number) => Math.round(c + (255 - c) * k)
+  return `rgb(${mix((n >> 16) & 255)},${mix((n >> 8) & 255)},${mix(n & 255)})`
+}
+
+/** Узор отделки поверх заливки: обои — ромбы, плитка — сетка, штукатурка — точки, панели — полосы */
+function finishDefs(id: string, kind: string, color: string, k: number): string {
+  const ink = "rgba(0,0,0,0.18)"
+  if (kind === "wallpaper") {
+    const s = Math.max(0.2 * k, 8)
+    return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${s}" height="${s}"><rect width="${s}" height="${s}" fill="${tint(color, 0.35)}"/><path d="M${s / 2} ${s * 0.15} L${s * 0.85} ${s / 2} L${s / 2} ${s * 0.85} L${s * 0.15} ${s / 2} Z" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="0.8"/></pattern>`
+  }
+  if (kind === "tile") {
+    const w = Math.max(0.3 * k, 6)
+    const h = Math.max(0.2 * k, 4)
+    return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${w}" height="${h}"><rect width="${w}" height="${h}" fill="${tint(color, 0.45)}"/><path d="M${w} 0 V${h} H0" fill="none" stroke="${ink}" stroke-width="0.7"/></pattern>`
+  }
+  if (kind === "plaster") {
+    return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="7" height="7"><rect width="7" height="7" fill="${tint(color, 0.4)}"/><circle cx="2" cy="2" r="0.6" fill="${ink}"/><circle cx="5.5" cy="5" r="0.5" fill="${ink}"/></pattern>`
+  }
+  if (kind === "panels") {
+    const w = Math.max(0.25 * k, 6)
+    return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${w}" height="10"><rect width="${w}" height="10" fill="${tint(color, 0.4)}"/><line x1="${w}" y1="0" x2="${w}" y2="10" stroke="${ink}" stroke-width="0.8"/></pattern>`
+  }
+  return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="10" height="10"><rect width="10" height="10" fill="${tint(color, 0.45)}"/></pattern>`
+}
+
+export type ElevationMode = "electric" | "finish"
+
+export function elevationSvg(e: WallElevation, width = 700, mode: ElevationMode = "electric"): string {
   const L = e.length
   const H = e.height
   const left = 62
@@ -368,16 +468,41 @@ export function elevationSvg(e: WallElevation, width = 700): string {
   const sz = (m: number) => top + wallH - m * k
   const floorY = top + wallH
 
-  const pointMarks = e.points.map((p) => p.x)
+  const pointMarks = mode === "electric" ? e.points.map((p) => p.x) : []
   const openMarks = e.openings.flatMap((o) => [o.x0, o.x1])
-  const rows = [pointMarks.length ? 1 : 0, openMarks.length ? 1 : 0].reduce((a, b) => a + b, 0) + 1
+  const furnMarks = mode === "finish" ? e.furniture.flatMap((f) => [f.x0, f.x1]) : []
+  const rows = [pointMarks.length ? 1 : 0, openMarks.length ? 1 : 0, furnMarks.length ? 1 : 0].reduce((a, b) => a + b, 0) + 1
   const height = floorY + 24 + rows * 26 + 10
 
   const parts: string[] = [`<rect width="${width}" height="${height}" fill="#ffffff"/>`]
 
+  // Отделка стены: заливка цветом и узором материала, плитка до высоты — отдельной зоной
+  const fin = e.finish
+  const uid = `${e.wall.id.replace(/[^a-z0-9]/gi, "")}-${mode}`
+  const finishOn = mode === "finish" || fin.wall !== "none" || e.tileH > 0
+  const mainColor = fin.wall !== "none" ? fin.wallColor || WALL_FINISHES[fin.wall].color : "#fbfbfb"
+  const tileColor = fin.wall === "tile" ? mainColor : WALL_FINISHES.tile.color
+  const defs: string[] = []
+  if (fin.wall !== "none") defs.push(finishDefs(`fm-${uid}`, fin.wall, mainColor, k))
+  if (e.tileH > 0 && fin.wall !== "tile") defs.push(finishDefs(`ft-${uid}`, "tile", tileColor, k))
+  if (defs.length) parts.push(`<defs>${defs.join("")}</defs>`)
+  // В режиме электрики отделка — бледной подложкой, чтобы не спорить со штробами
+  const fop = mode === "finish" ? 1 : 0.45
+
   // Стена, пол и потолок
   parts.push(
     `<rect x="${sx(0)}" y="${top}" width="${wallW}" height="${wallH}" fill="#fbfbfb" stroke="${INK}" stroke-width="1.6"/>`,
+    ...(fin.wall !== "none" && finishOn ? [`<rect x="${sx(0)}" y="${top}" width="${wallW}" height="${wallH}" fill="url(#fm-${uid})" opacity="${fop}"/>`] : []),
+    ...(e.tileH > 0 && fin.wall !== "tile"
+      ? [
+          `<rect x="${sx(0)}" y="${sz(e.tileH)}" width="${wallW}" height="${e.tileH * k}" fill="url(#ft-${uid})" opacity="${fop}"/>`,
+          `<line x1="${sx(0)}" y1="${sz(e.tileH)}" x2="${sx(L)}" y2="${sz(e.tileH)}" stroke="#0f766e" stroke-width="1" stroke-dasharray="5 2"/>`,
+          ...(mode === "finish"
+            ? [`<text x="${sx(0) + 4}" y="${sz(e.tileH) - 4}" font-size="8.5" font-weight="bold" fill="#0f766e" ${FONT}>плитка до ${toMm(e.tileH)} мм</text>`]
+            : []),
+        ]
+      : []),
+    `<rect x="${sx(0)}" y="${top}" width="${wallW}" height="${wallH}" fill="none" stroke="${INK}" stroke-width="1.6"/>`,
     `<line x1="${sx(0) - 14}" y1="${floorY}" x2="${sx(L) + 14}" y2="${floorY}" stroke="${INK}" stroke-width="2.2"/>`,
     `<text x="${sx(0) - 16}" y="${floorY + 3}" text-anchor="end" font-size="8.5" fill="${DIM}" ${FONT}>пол</text>`,
     `<text x="${sx(0) - 16}" y="${top + 3}" text-anchor="end" font-size="8.5" fill="${DIM}" ${FONT}>потолок</text>`,
@@ -424,9 +549,32 @@ export function elevationSvg(e: WallElevation, width = 700): string {
     }
   }
 
+  // Мебель у стены — вид спереди: контур, подпись и размеры
+  for (const it of e.furniture) {
+    const x0 = sx(it.x0)
+    const x1 = sx(it.x1)
+    const y0 = sz(Math.min(it.z1, H))
+    const y1 = sz(it.z0)
+    const strong = mode === "finish"
+    parts.push(
+      `<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" fill="${strong ? "rgba(255,255,255,0.72)" : "rgba(255,255,255,0.35)"}" stroke="${strong ? "#3f3f46" : "#9ca3af"}" stroke-width="${strong ? 1.1 : 0.7}" stroke-dasharray="${strong ? "" : "4 2"}"/>`,
+    )
+    if (strong) {
+      const name = it.f.label || FURNITURE_PRESETS[it.f.kind].label
+      const fits = x1 - x0 > name.length * 4.6
+      parts.push(
+        `<text x="${(x0 + x1) / 2}" y="${(y0 + y1) / 2}" text-anchor="middle" font-size="8.5" font-weight="bold" fill="#27272a" ${FONT}>${esc(fits ? name : name.slice(0, Math.max(Math.floor((x1 - x0) / 4.6) - 1, 3)) + "…")}</text>`,
+        `<text x="${(x0 + x1) / 2}" y="${(y0 + y1) / 2 + 10}" text-anchor="middle" font-size="7.5" fill="${DIM}" ${FONT}>${toMm(it.x1 - it.x0)}×${toMm(it.z1 - it.z0)}${it.gap > 0.005 ? ` · от стены ${toMm(it.gap)}` : ""}</text>`,
+      )
+      if (it.z0 > 0.01) {
+        parts.push(`<text x="${(x0 + x1) / 2}" y="${y1 + 9}" text-anchor="middle" font-size="7.5" fill="${DIM}" ${FONT}>низ ${toMm(it.z0)}</text>`)
+      }
+    }
+  }
+
   // Штробы: широкая серая полоса с пунктиром по оси и размер длины
   const CH = "#9a6b2f"
-  for (const c of e.chases) {
+  for (const c of mode === "electric" ? e.chases : []) {
     const x0 = sx(c.x0)
     const y0 = sz(c.z0)
     const x1 = sx(c.x1)
@@ -450,7 +598,7 @@ export function elevationSvg(e: WallElevation, width = 700): string {
     }
   }
   // Трасса под потолком, куда выходят штробы
-  if (e.chases.some((c) => c.kind === "up")) {
+  if (mode === "electric" && e.chases.some((c) => c.kind === "up")) {
     const tz = sz(Math.max(...e.chases.filter((c) => c.kind === "up").map((c) => c.z1)))
     parts.push(
       `<line x1="${sx(0)}" y1="${tz}" x2="${sx(L)}" y2="${tz}" stroke="${CH}" stroke-width="0.6" stroke-dasharray="8 3 2 3"/>`,
@@ -461,7 +609,7 @@ export function elevationSvg(e: WallElevation, width = 700): string {
   // Размеры от пола до центра: у каждой точки своя выносная, при совпадении по X — со сдвигом
   const sameX = new Map<number, number>()
   const dimmed: ElevPoint[] = []
-  for (const p of e.points) {
+  for (const p of mode === "electric" ? e.points : []) {
     // Соседняя точка той же высоты уже с размером — второй не рисуем, иначе цифры слипаются
     if (dimmed.some((q) => Math.abs(q.z - p.z) < 0.005 && Math.abs(q.x - p.x) < 0.9)) continue
     dimmed.push(p)
@@ -486,7 +634,7 @@ export function elevationSvg(e: WallElevation, width = 700): string {
   }
 
   // Точки и номера
-  for (const p of e.points) {
+  for (const p of mode === "electric" ? e.points : []) {
     const cx = sx(p.x)
     const cy = sz(p.z)
     parts.push(pointSymbol(p, cx, cy, k))
@@ -504,6 +652,11 @@ export function elevationSvg(e: WallElevation, width = 700): string {
   if (pointMarks.length) {
     parts.push(chain(pointMarks, L, cy, sx, ACCENT, true))
     parts.push(`<text x="${sx(L) + 8}" y="${cy + 3}" font-size="8" fill="${ACCENT}" ${FONT}>до центров</text>`)
+    cy += 26
+  }
+  if (furnMarks.length) {
+    parts.push(chain(furnMarks, L, cy, sx, "#3f3f46"))
+    parts.push(`<text x="${sx(L) + 8}" y="${cy + 3}" font-size="8" fill="#3f3f46" ${FONT}>мебель</text>`)
     cy += 26
   }
   if (openMarks.length) {
@@ -546,4 +699,17 @@ export function elevationRows(e: WallElevation) {
         ? ""
         : "не закреплена на стене — проверьте место",
   }))
+}
+
+/** Строка ведомости отделки стены для таблицы под развёрткой */
+export function finishLegend(e: WallElevation, net: number, main: number): { material: string; color: string; note: string } {
+  const f = e.finish
+  const parts: string[] = []
+  if (f.wall !== "none") parts.push(`${WALL_FINISHES[f.wall].label}${f.own ? " (акцент)" : ""} — ${main.toFixed(2).replace(".", ",")} м²`)
+  if (e.tileH > 0 && f.wall !== "tile") parts.push(`плитка до ${toMm(e.tileH)} мм — ${(net - main).toFixed(2).replace(".", ",")} м²`)
+  return {
+    material: parts.join("; ") || "отделка не задана",
+    color: f.wall !== "none" ? f.wallColor || WALL_FINISHES[f.wall].color : "",
+    note: f.own && f.note ? f.note : "",
+  }
 }

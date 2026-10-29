@@ -10,6 +10,7 @@ import {
 } from "./types"
 import { dist, pointInPolygon, polygonArea, polygonPerimeter, distToSegment } from "./geometry"
 import { roomWalls } from "./walls"
+import { HeatingLayout, heatingLayout } from "./heatingLayout"
 
 /** Углы предмета мебели с учётом поворота: тыльная сторона — первые две точки */
 export function furnitureCorners(f: Pick<PlanFurniture, "x" | "y" | "w" | "d" | "rot">): PlanPoint[] {
@@ -95,6 +96,23 @@ export interface HeatingCalc {
   amps: number
 }
 
+/** Раскладка зоны: полосы и змейка в обход мебели, начало — со стороны терморегулятора */
+export function zoneLayout(scheme: PlanScheme, h: PlanHeating): HeatingLayout {
+  const blocked = h.cutFurniture
+    ? (scheme.furniture || []).filter((f) => furnitureProps(f).blocksHeating).map((f) => furnitureCorners(f))
+    : []
+  const tid = thermostatOf(scheme, h)
+  const th = tid ? (scheme.nodes || []).find((n) => n.id === tid) || null : null
+  return heatingLayout(h.points, {
+    kind: h.kind,
+    step: h.step ?? HEATING_PRESETS[h.kind].step ?? 0.1,
+    margin: h.margin ?? 0.05,
+    dir: h.dir,
+    blocked,
+    thermostat: th ? { x: th.x, y: th.y } : null,
+  })
+}
+
 export function heatingCalc(scheme: PlanScheme, h: PlanHeating): HeatingCalc {
   const gross = absArea(h.points)
   const blocked = h.cutFurniture
@@ -102,10 +120,13 @@ export function heatingCalc(scheme: PlanScheme, h: PlanHeating): HeatingCalc {
         .filter((f) => furnitureProps(f).blocksHeating)
         .reduce((s, f) => s + overlapArea(h.points, furnitureCorners(f)), 0)
     : 0
-  const net = Math.max(gross - blocked, 0)
+  const free = Math.max(gross - blocked, 0)
+  const lay = zoneLayout(scheme, h)
+  // Мат и плёнка — уложенная площадь полос; кабель и труба — площадь, которую закрывает змейка
+  const net = h.kind === "mat" || h.kind === "film" ? Math.min(lay.laid, free) : Math.min(lay.lanes ? lay.length * (lay.step || 0.1) : free, free)
   const watts = net * h.power
-  const step = h.step ?? HEATING_PRESETS[h.kind].step ?? 0
-  const length = (h.kind === "cable" || h.kind === "water") && step > 0 ? net / step : 0
+  // Холодные концы и подводка к терморегулятору: 2 × 2 м у кабеля и трубы
+  const length = h.kind === "cable" || h.kind === "water" ? lay.length : 0
   return {
     gross: Math.round(gross * 100) / 100,
     blocked: Math.round(blocked * 100) / 100,
@@ -114,6 +135,16 @@ export function heatingCalc(scheme: PlanScheme, h: PlanHeating): HeatingCalc {
     length: Math.round(length * 10) / 10,
     amps: h.kind === "water" ? 0 : Math.round((watts / 230) * 10) / 10,
   }
+}
+
+/** Терморегулятор зоны: заданный вручную или ближайший в той же комнате */
+export function thermostatOf(scheme: PlanScheme, h: PlanHeating): string | null {
+  if (h.kind === "water") return null
+  const ths = (scheme.nodes || []).filter((n) => n.kind === "thermostat")
+  if (h.thermostatId && ths.some((t) => t.id === h.thermostatId)) return h.thermostatId
+  const c = centroid(h.points)
+  const same = ths.filter((t) => t.roomId && t.roomId === h.roomId).sort((a, b) => dist(a, c) - dist(b, c))
+  return same[0]?.id ?? null
 }
 
 export const heatingRoom = (scheme: Pick<PlanScheme, "rooms">, h: PlanHeating): PlanRoom | null =>
@@ -312,18 +343,9 @@ export function heatingSupply(watts: number): HeatingSupply {
 
 /** Электрические зоны, привязанные к терморегулятору; без привязки — ближайший терморегулятор в той же комнате */
 export function thermostatZones(scheme: PlanScheme): Map<string, PlanHeating[]> {
-  const ths = (scheme.nodes || []).filter((n) => n.kind === "thermostat")
   const out = new Map<string, PlanHeating[]>()
   for (const h of scheme.heating || []) {
-    if (h.kind === "water") continue
-    let id = h.thermostatId && ths.some((t) => t.id === h.thermostatId) ? h.thermostatId : null
-    if (!id) {
-      const c = centroid(h.points)
-      const same = ths.filter((t) => t.roomId && t.roomId === h.roomId)
-      const pool = same.length ? same : []
-      const best = pool.sort((a, b) => dist(a, c) - dist(b, c))[0]
-      id = best ? best.id : null
-    }
+    const id = thermostatOf(scheme, h)
     if (!id) continue
     out.set(id, [...(out.get(id) || []), h])
   }

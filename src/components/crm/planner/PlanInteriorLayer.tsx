@@ -1,8 +1,8 @@
 import { useMemo } from "react"
-import { PlanLayer, PlanScheme, WALL_FINISHES, roomFinish, wallFinishOf } from "@/lib/planner/types"
+import { HEATING_PRESETS, PlanLayer, PlanScheme, WALL_FINISHES, roomFinish, wallFinishOf } from "@/lib/planner/types"
 import { fmtNum } from "@/lib/planner/geometry"
-import { heatingCalc, interiorWarnings } from "@/lib/planner/interior"
-import { floorPattern, furnitureSvg, heatingPattern } from "@/lib/planner/interiorSvg"
+import { heatingCalc, interiorWarnings, thermostatOf, zoneLayout } from "@/lib/planner/interior"
+import { floorPattern, furnitureSvg, heatingLayoutSvg } from "@/lib/planner/interiorSvg"
 import { roomWalls } from "@/lib/planner/walls"
 import { ToScreen } from "./usePlanView"
 
@@ -86,22 +86,29 @@ export function PlanInteriorLayer({ scheme, layer, scale, toScreen, selectedFurn
     }
   }
 
-  const zones = heating.map((h) => {
-    const id = `heat-${h.id}`
-    defs.push(heatingPattern(id, h, scale))
+  // Тёплый пол — на слое «Электрика» с полной раскладкой; на интерьере — только бледный контур для ориентира
+  const zones = (layer === "plumbing" ? [] : heating).map((h) => {
     const sel = h.id === selectedHeatingId
+    const lay = zoneLayout(scheme, h)
     const c = heatingCalc(scheme, h)
+    const tid = thermostatOf(scheme, h)
+    const th = tid ? (scheme.nodes || []).find((n) => n.id === tid) || null : null
     const pts = h.points.map(toScreen)
     const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length
     const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length
+    const color = HEATING_PRESETS[h.kind].color
+    if (active) {
+      return <polygon key={h.id} points={poly(h.points)} fill="none" stroke={color} strokeWidth={1} strokeDasharray="5 3" opacity={0.5} />
+    }
     return (
-      <g key={h.id} opacity={active ? 1 : 0.55}>
-        <polygon points={poly(h.points)} fill={`url(#${id})`} stroke={sel ? "#D4AF37" : "#f97316"} strokeWidth={sel ? 2.4 : 1.4} strokeDasharray="5 3" />
-        {(active || sel) && (
-          <text x={cx} y={cy + 24} textAnchor="middle" fontSize="10" fontWeight="700" fill="#fdba74" style={halo}>
-            ТП {fmtNum(c.net, 2)} м² · {c.watts} Вт
-          </text>
-        )}
+      <g key={h.id}>
+        <polygon points={poly(h.points)} fill={color} fillOpacity={0.05} stroke={sel ? "#D4AF37" : color} strokeWidth={sel ? 2.4 : 1.4} strokeDasharray="5 3" />
+        <g dangerouslySetInnerHTML={{ __html: heatingLayoutSvg(lay, toScreen, { color, thermostat: th ? { x: th.x, y: th.y } : null, strong: sel }) }} />
+        {sel &&
+          pts.map((p, i) => <rect key={i} x={p.x - 5} y={p.y - 5} width={10} height={10} fill="#161616" stroke="#D4AF37" strokeWidth={1.6} />)}
+        <text x={cx} y={cy + 24} textAnchor="middle" fontSize="10" fontWeight="700" fill="#fdba74" style={halo}>
+          {HEATING_PRESETS[h.kind].label.split(" ")[0]} {fmtNum(c.net, 2)} м² · {c.watts} Вт{c.length ? ` · ${fmtNum(c.length, 1)} м` : ""}
+        </text>
       </g>
     )
   })

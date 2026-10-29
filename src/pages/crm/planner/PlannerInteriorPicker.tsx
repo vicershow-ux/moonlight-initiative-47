@@ -1,6 +1,6 @@
 import Icon from "@/components/ui/icon"
 import { PlanTool } from "@/components/crm/planner/PlanCanvas"
-import { FURNITURE_PRESETS, FurnitureKind, HEATING_PRESETS, HeatingKind, LibraryItem } from "@/lib/planner/types"
+import { FURNITURE_PRESETS, FurnitureKind, LibraryItem } from "@/lib/planner/types"
 
 interface Props {
   tool: PlanTool
@@ -8,8 +8,6 @@ interface Props {
   setTool: (t: PlanTool) => void
   furnitureKind: FurnitureKind
   setFurnitureKind: (k: FurnitureKind) => void
-  heatingKind: HeatingKind
-  setHeatingKind: (k: HeatingKind) => void
   library: LibraryItem[]
   libraryItemId: number | null
   setLibraryItemId: (id: number | null) => void
@@ -31,8 +29,6 @@ export function PlannerInteriorPicker({
   setTool,
   furnitureKind,
   setFurnitureKind,
-  heatingKind,
-  setHeatingKind,
   library,
   libraryItemId,
   setLibraryItemId,
@@ -55,12 +51,8 @@ export function PlannerInteriorPicker({
           <Icon name="Sofa" size={15} />
           Мебель
         </button>
-        <button className={btn(tool === "heating")} onClick={() => pick("heating")}>
-          <Icon name="Thermometer" size={15} />
-          Тёплый пол
-        </button>
         <span className="flex items-center pl-1 text-xs text-white/40">
-          Отделку пола, стен и потолка задайте в карточке помещения справа — щёлкните по комнате
+          Отделку пола, стен и потолка задайте в карточке помещения справа — щёлкните по комнате. Тёплый пол — на слое «Электрика»
         </span>
       </div>
 
@@ -114,22 +106,6 @@ export function PlannerInteriorPicker({
         </div>
       )}
 
-      {tool === "heating" && (
-        <div className="space-y-2">
-          <div className="flex flex-wrap gap-1.5">
-            {(Object.keys(HEATING_PRESETS) as HeatingKind[]).map((k) => (
-              <button key={k} className={btn(heatingKind === k)} onClick={() => setHeatingKind(k)}>
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: HEATING_PRESETS[k].color }} />
-                {HEATING_PRESETS[k].label}
-                <span className="text-xs opacity-60">· {HEATING_PRESETS[k].hint}</span>
-              </button>
-            ))}
-          </div>
-          <div className="text-xs text-white/40">
-            Обведите зону по углам щелчками и замкните у первой точки. Места под мебелью без ножек вычитаются автоматически. Терморегулятор поставьте на слое «Электрика»
-          </div>
-        </div>
-      )}
     </div>
   )
 }

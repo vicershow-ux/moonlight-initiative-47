@@ -2,9 +2,7 @@ import {
   FLOOR_FINISHES,
   FURNITURE_PRESETS,
   FloorFinish,
-  HEATING_PRESETS,
   PlanFurniture,
-  PlanHeating,
 } from "./types"
 import { furnitureCorners } from "./interior"
 
@@ -34,19 +32,6 @@ export function floorPattern(id: string, finish: FloorFinish, scale: number, col
     return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${s}" height="${s}"><rect width="${s}" height="${s}" fill="${fill}"/><path d="M${s} 0 V${s} H0" fill="none" stroke="${line}" stroke-width="0.8"/></pattern>`
   }
   return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="10" height="10"><rect width="10" height="10" fill="${fill}"/></pattern>`
-}
-
-/** Узор зоны тёплого пола: змейка кабеля/трубы или сетка мата */
-export function heatingPattern(id: string, h: PlanHeating, scale: number, ink?: string): string {
-  const c = ink || HEATING_PRESETS[h.kind].color
-  const step = Math.max((h.step ?? HEATING_PRESETS[h.kind].step ?? 0.1) * scale, 4)
-  if (h.kind === "film") {
-    const w = Math.max(0.5 * scale, 8)
-    return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${w}" height="${w}"><rect width="${w}" height="${w}" fill="${c}" fill-opacity="0.14"/><line x1="${w * 0.05}" y1="0" x2="${w * 0.05}" y2="${w}" stroke="${c}" stroke-width="1"/><line x1="${w * 0.95}" y1="0" x2="${w * 0.95}" y2="${w}" stroke="${c}" stroke-width="1"/><line x1="0" y1="${w * 0.5}" x2="${w}" y2="${w * 0.5}" stroke="${c}" stroke-width="0.5" stroke-dasharray="2 2"/></pattern>`
-  }
-  // Змейка: дуга на каждом шаге — читается как уложенный кабель или труба
-  const s = step
-  return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${s * 2}" height="${s * 6}"><rect width="${s * 2}" height="${s * 6}" fill="${c}" fill-opacity="0.1"/><path d="M${s * 0.5} 0 V${s * 5.5} A${s * 0.5} ${s * 0.5} 0 0 0 ${s * 1.5} ${s * 5.5} V0" fill="none" stroke="${c}" stroke-width="${h.kind === "water" ? 1.4 : 1}"/></pattern>`
 }
 
 /**
@@ -144,3 +129,110 @@ export function furnitureSvg(f: PlanFurniture, toScreen: ToScreen, stroke: strin
 }
 
 export const furnitureName = (f: PlanFurniture) => f.label || FURNITURE_PRESETS[f.kind].label
+
+/**
+ * Раскладка тёплого пола: полосы мата/плёнки, змейка кабеля или трубы, переходы,
+ * датчик пола (синий), начало укладки и подводка к терморегулятору (зелёный)
+ */
+export function heatingLayoutSvg(
+  lay: import("./heatingLayout").HeatingLayout,
+  toScreen: ToScreen,
+  opts: { color: string; thermostat?: Pt | null; strong?: boolean; print?: boolean },
+): string {
+  const P = (p: Pt) => {
+    const s = toScreen(p)
+    return `${s.x.toFixed(1)},${s.y.toFixed(1)}`
+  }
+  const c = opts.color
+  const sw = opts.print ? 0.9 : opts.strong ? 1.6 : 1.2
+  const parts: string[] = []
+  if (lay.band > 0) {
+    for (const run of lay.runs) {
+      for (const ln of run.lanes) {
+        const pts = laneRectPts(ln, lay.band, lay.axis)
+        parts.push(`<polygon points="${pts.map(P).join(" ")}" fill="${c}" fill-opacity="${opts.print ? 0.14 : 0.2}" stroke="${c}" stroke-width="${sw * 0.8}"/>`)
+        // Мат — сетка с кабелем внутри (мелкая змейка), плёнка — две медные шины по краям
+        const [a, b] = laneAxis(ln, lay.axis)
+        if (lay.kind === "mat") {
+          const n = Math.max(Math.round(Math.hypot(b.x - a.x, b.y - a.y) / 0.08), 2)
+          const ux = (b.x - a.x) / n
+          const uy = (b.y - a.y) / n
+          const px = lay.axis === "x" ? 0 : lay.band * 0.38
+          const py = lay.axis === "x" ? lay.band * 0.38 : 0
+          const zz: Pt[] = []
+          for (let i = 0; i <= n; i++) {
+            const sgn = i % 2 === 0 ? 1 : -1
+            zz.push({ x: a.x + ux * i + px * sgn, y: a.y + uy * i + py * sgn })
+          }
+          parts.push(`<polyline points="${zz.map(P).join(" ")}" fill="none" stroke="${c}" stroke-width="${sw * 0.55}" stroke-linejoin="round"/>`)
+        } else {
+          const off = lay.band * 0.42
+          for (const sgn of [-1, 1]) {
+            const dx = lay.axis === "x" ? 0 : off * sgn
+            const dy = lay.axis === "x" ? off * sgn : 0
+            parts.push(`<line x1="${toScreen({ x: a.x + dx, y: a.y + dy }).x}" y1="${toScreen({ x: a.x + dx, y: a.y + dy }).y}" x2="${toScreen({ x: b.x + dx, y: b.y + dy }).x}" y2="${toScreen({ x: b.x + dx, y: b.y + dy }).y}" stroke="#b45309" stroke-width="${sw * 0.7}"/>`)
+          }
+          // Поперечные графитовые полосы
+          const n = Math.max(Math.round(Math.hypot(b.x - a.x, b.y - a.y) / 0.1), 1)
+          for (let i = 1; i < n; i++) {
+            const t = i / n
+            const m = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
+            const d = lay.axis === "x" ? { x: 0, y: off } : { x: off, y: 0 }
+            parts.push(`<line x1="${toScreen({ x: m.x - d.x, y: m.y - d.y }).x}" y1="${toScreen({ x: m.x - d.x, y: m.y - d.y }).y}" x2="${toScreen({ x: m.x + d.x, y: m.y + d.y }).x}" y2="${toScreen({ x: m.x + d.x, y: m.y + d.y }).y}" stroke="${c}" stroke-width="${sw * 0.35}" opacity="0.6"/>`)
+          }
+        }
+      }
+    }
+  }
+  if (lay.path.length) {
+    const segs: Pt[][] = [[]]
+    for (const p of lay.path) {
+      if (Number.isNaN(p.x)) segs.push([])
+      else segs[segs.length - 1].push(p)
+    }
+    for (const sg of segs) {
+      if (sg.length < 2) continue
+      parts.push(`<polyline points="${sg.map(P).join(" ")}" fill="none" stroke="${c}" stroke-width="${lay.kind === "water" ? sw * 1.5 : sw}" stroke-linejoin="round" stroke-linecap="round"/>`)
+    }
+  }
+  for (const [a, b] of lay.jumpers) {
+    parts.push(`<polyline points="${P(a)} ${P({ x: a.x, y: b.y })} ${P(b)}" fill="none" stroke="${c}" stroke-width="${sw}" stroke-dasharray="4 3"/>`)
+  }
+  // Подводка: холодный конец / подача-обратка до терморегулятора или коллектора
+  if (lay.start && opts.thermostat) {
+    parts.push(`<polyline points="${P(lay.start)} ${P({ x: opts.thermostat.x, y: lay.start.y })} ${P(opts.thermostat)}" fill="none" stroke="#16a34a" stroke-width="${sw}" stroke-dasharray="6 3"/>`)
+  }
+  if (lay.kind === "film" && lay.bus.length > 1) {
+    parts.push(`<polyline points="${lay.bus.map(P).join(" ")}" fill="none" stroke="#16a34a" stroke-width="${sw}" stroke-dasharray="6 3"/>`)
+  }
+  if (lay.start) {
+    const s = toScreen(lay.start)
+    parts.push(`<circle cx="${s.x}" cy="${s.y}" r="${opts.print ? 3 : 4}" fill="#16a34a" stroke="#fff" stroke-width="1"/>`)
+  }
+  if (lay.sensor && lay.kind !== "water") {
+    const s = toScreen(lay.sensor)
+    parts.push(
+      `<circle cx="${s.x}" cy="${s.y}" r="${opts.print ? 3.2 : 4.5}" fill="#2563eb" stroke="#fff" stroke-width="1"/>`,
+      `<text x="${s.x + 6}" y="${s.y - 5}" font-size="${opts.print ? 7.5 : 9}" font-weight="700" fill="#2563eb" font-family="Arial" stroke="#fff" stroke-width="2.5" paint-order="stroke">датчик</text>`,
+    )
+    if (opts.thermostat) {
+      parts.push(`<polyline points="${P(lay.sensor)} ${P({ x: lay.sensor.x, y: opts.thermostat.y })} ${P(opts.thermostat)}" fill="none" stroke="#2563eb" stroke-width="${sw * 0.7}" stroke-dasharray="2 2"/>`)
+    }
+  }
+  return parts.join("")
+}
+
+const laneRectPts = (l: { y: number; x0: number; x1: number }, band: number, axis: "x" | "y"): Pt[] => {
+  const pts = [
+    { x: l.x0, y: l.y - band / 2 },
+    { x: l.x1, y: l.y - band / 2 },
+    { x: l.x1, y: l.y + band / 2 },
+    { x: l.x0, y: l.y + band / 2 },
+  ]
+  return axis === "x" ? pts : pts.map((p) => ({ x: p.y, y: p.x }))
+}
+
+const laneAxis = (l: { y: number; x0: number; x1: number }, axis: "x" | "y"): [Pt, Pt] =>
+  axis === "x"
+    ? [{ x: l.x0, y: l.y }, { x: l.x1, y: l.y }]
+    : [{ x: l.y, y: l.x0 }, { x: l.y, y: l.x1 }]

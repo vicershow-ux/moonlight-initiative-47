@@ -32,9 +32,10 @@ import { CeilingPlan, ceilingPlan, ceilingRows, ceilingSvg, ceilingTrackRows } f
 import { CEILING_FINISHES, FLOOR_FINISHES, FURNITURE_PRESETS, HEATING_PRESETS, WALL_FINISHES, isEngLayer, roomFinish, wallFinishOf } from "@/lib/planner/types"
 import { PHASE_COLORS, SECTION_COLORS, WALL_MATERIALS, WallMaterial, sectionColor, sectionOf } from "@/lib/planner/types"
 import { hatchPattern, materialSwatchImg, usedMaterials } from "@/lib/planner/wallHatch"
-import { floorPattern, furnitureName, furnitureSvg, heatingPattern } from "@/lib/planner/interiorSvg"
-import { heatingCalc, heatingSupply, interiorWarnings, thermostatZones } from "@/lib/planner/interior"
+import { floorPattern, furnitureName, furnitureSvg, heatingLayoutSvg } from "@/lib/planner/interiorSvg"
+import { heatingCalc, heatingSupply, interiorWarnings, thermostatOf, thermostatZones, zoneLayout } from "@/lib/planner/interior"
 import { finishCalc, finishSummary } from "@/lib/planner/finishes"
+import { finishLegend } from "@/lib/planner/elevation"
 import { finishMaterials } from "@/lib/planner/finishMaterials"
 import { NODE_CODES, fixtureLegendItems, nodeLegendImg, nodeLegendItems } from "@/lib/planner/nodeLegend"
 import { FLOATING_OFFSET, fixtureLength, floatingContour, floatingPerimeter, trackPath, trackSegments } from "@/lib/planner/fixtures"
@@ -190,24 +191,19 @@ export function schemeToSvg(
     }
   }
   if (layer === "interior" || layer === "electric") {
-    for (const h of scheme.heating || []) {
-      const id = `ph-${h.id}`
-      interiorDefs.push(heatingPattern(id, h, scale, "#e8590c"))
-      parts.push(
-        `<polygon points="${h.points.map((p) => `${sx(p.x)},${sy(p.y)}`).join(" ")}" fill="url(#${id})" stroke="#e8590c" stroke-width="1" stroke-dasharray="5 3" opacity="${layer === "interior" ? 1 : 0.6}"/>`,
-      )
-      if (layer === "interior") {
-        const c = heatingCalc(scheme, h)
-        const cx = h.points.reduce((a, p) => a + sx(p.x), 0) / h.points.length
-        const cy = h.points.reduce((a, p) => a + sy(p.y), 0) / h.points.length
-        parts.push(
-          `<text x="${cx}" y="${cy + 26}" text-anchor="middle" font-size="9" font-weight="bold" fill="#c2410c" font-family="Arial" stroke="#fff" stroke-width="2.5" paint-order="stroke">ТП ${fmtNum(c.net, 2)} м² · ${c.watts} Вт</text>`,
-        )
-      }
-    }
+    // Мебель — под раскладкой, чтобы обход был виден
     for (const f of scheme.furniture || []) {
       parts.push(
         `<g opacity="${layer === "interior" ? 1 : 0.35}">${furnitureSvg(f, toScr, "#161616", "#ffffff", layer === "interior" ? 0.9 : 0.7)}</g>`,
+      )
+    }
+    // Тёплый пол: на электрике — полная раскладка, на интерьере — контур
+    for (const h of layer === "electric" ? scheme.heating || [] : []) {
+      const tid = thermostatOf(scheme, h)
+      const th = tid ? (scheme.nodes || []).find((n) => n.id === tid) : null
+      parts.push(
+        `<polygon points="${h.points.map((p) => `${sx(p.x)},${sy(p.y)}`).join(" ")}" fill="none" stroke="#e8590c" stroke-width="0.8" stroke-dasharray="5 3"/>`,
+        heatingLayoutSvg(zoneLayout(scheme, h), toScr, { color: h.kind === "water" ? "#0369a1" : "#e8590c", thermostat: th ? { x: th.x, y: th.y } : null, print: true }),
       )
     }
   }
@@ -577,6 +573,76 @@ function interiorSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
   }`
 }
 
+/**
+ * Лист раскладки тёплого пола: по каждой зоне — помещение крупно, мебель, змейка или полосы,
+ * датчик и подводка к терморегулятору, рядом — ведомость для монтажника
+ */
+function heatingLayoutSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
+  const zones = scheme.heating || []
+  if (!zones.length) return ""
+  const blocks = zones
+    .map((h, i) => {
+      const room = scheme.rooms.find((r) => r.id === h.roomId)
+      const pts = room ? room.points : h.points
+      const lay = zoneLayout(scheme, h)
+      const c = heatingCalc(scheme, h)
+      const tid = thermostatOf(scheme, h)
+      const th = tid ? (scheme.nodes || []).find((n) => n.id === tid) || null : null
+      const ths = (scheme.nodes || []).filter((n) => n.kind === "thermostat")
+      // Масштаб под помещение: лист шириной 420 px, высота — до 300 px
+      const xs = pts.map((p) => p.x)
+      const ys = pts.map((p) => p.y)
+      const pad = 0.35
+      const minX = Math.min(...xs) - pad
+      const minY = Math.min(...ys) - pad
+      const W = Math.max(...xs) - minX + pad
+      const H = Math.max(...ys) - minY + pad
+      const k = Math.min(420 / W, 300 / H)
+      const T = (p: { x: number; y: number }) => ({ x: (p.x - minX) * k, y: (p.y - minY) * k })
+      const P = (arr: { x: number; y: number }[]) => arr.map((p) => `${T(p).x.toFixed(1)},${T(p).y.toFixed(1)}`).join(" ")
+      const svg: string[] = []
+      if (room) svg.push(`<polygon points="${P(room.points)}" fill="#fafafa" stroke="#161616" stroke-width="2"/>`)
+      for (const f of scheme.furniture || []) {
+        if (room && f.roomId !== room.id) continue
+        svg.push(furnitureSvg(f, T, "#9ca3af", "#f3f4f6", 0.8))
+      }
+      svg.push(`<polygon points="${P(h.points)}" fill="none" stroke="#e8590c" stroke-width="0.9" stroke-dasharray="5 3"/>`)
+      const color = h.kind === "water" ? "#0369a1" : "#e8590c"
+      svg.push(heatingLayoutSvg(lay, T, { color, thermostat: th ? { x: th.x, y: th.y } : null, print: true }))
+      if (th) {
+        const p = T(th)
+        svg.push(`<rect x="${p.x - 6}" y="${p.y - 6}" width="12" height="12" fill="#fff" stroke="#16a34a" stroke-width="1.6"/><text x="${p.x}" y="${p.y + 3}" text-anchor="middle" font-size="7" font-weight="bold" fill="#16a34a" font-family="Arial">ТР</text>`)
+      }
+      const svgW = W * k
+      const svgH = H * k
+      const rows: [string, string][] = [
+        ["Тип", HEATING_PRESETS[h.kind].label],
+        ["Площадь контура", `${fmtNum(c.gross, 2)} м²`],
+        ["Под мебелью", `${fmtNum(c.blocked, 2)} м²`],
+        [h.kind === "mat" || h.kind === "film" ? "Уложено полосами" : "Обогрев", `${fmtNum(c.net, 2)} м²`],
+        [h.kind === "water" ? "Теплоотдача" : "Мощность", `${h.power} Вт/м² · ${c.watts} Вт${c.amps ? ` · ${fmtNum(c.amps, 1)} А` : ""}`],
+        ...(h.kind === "cable" || h.kind === "water" ? ([[h.kind === "water" ? "Труба по раскладке" : "Кабель по раскладке", `${fmtNum(c.length, 1)} м, шаг ${toMm(lay.step)} мм`]] as [string, string][]) : []),
+        ...(h.kind === "mat" || h.kind === "film" ? ([["Полос", `${lay.lanes} × ${toMm(lay.band)} мм`]] as [string, string][]) : []),
+        ["Укладка", `${lay.axis === "x" ? "по горизонтали" : "по вертикали"} плана, отступ ${toMm(h.margin ?? 0.05)} мм`],
+        ...(h.kind !== "water" ? ([["Терморегулятор", th ? `ТР${ths.findIndex((t) => t.id === th.id) + 1}` : "не назначен"]] as [string, string][]) : []),
+      ]
+      return `
+    <div style="page-break-inside:avoid;break-inside:avoid;margin:0 0 16px;display:flex;gap:14px;align-items:flex-start">
+      <svg xmlns="http://www.w3.org/2000/svg" width="${svgW.toFixed(0)}" height="${svgH.toFixed(0)}" viewBox="0 0 ${svgW.toFixed(0)} ${svgH.toFixed(0)}" style="flex-shrink:0;border:1px solid #e5e5e5;border-radius:4px">${svg.join("")}</svg>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:bold;margin-bottom:4px">${i + 1}. ${escapeXml(room?.name || "Зона")}</div>
+        <table style="margin:0">${rows.map(([a, b]) => `<tr><td class="muted" style="padding:2px 6px 2px 0">${a}</td><td class="strong" style="padding:2px 0">${escapeXml(b)}</td></tr>`).join("")}</table>
+      </div>
+    </div>`
+    })
+    .join("")
+  return `
+  <div class="page-break"></div>
+  <h2>Раскладка тёплого пола — объект ${escapeXml(meta.objectCode)}</h2>
+  <div class="meta">Укладка в обход мебели без ножек и сантехники. Синий — датчик пола в гофре между витками, зелёный — начало укладки, холодный конец и подводка к терморегулятору. Пунктир — переход между участками.</div>
+  ${blocks}`
+}
+
 /** Тёплый пол на листе электрики: зоны, мощность, терморегулятор, автомат и кабель питания */
 function heatingElectricTable(scheme: PlanScheme): string {
   const zones = (scheme.heating || []).filter((h) => h.kind !== "water")
@@ -616,6 +682,53 @@ function heatingElectricTable(scheme: PlanScheme): string {
     <tbody>${rows}</tbody>
   </table>
   <div class="legend" style="text-align:left">Площадь — без мест под мебелью без ножек и сантехникой. Мощность тёплого пола учтена в нагрузке группы и в распределении по фазам.</div>`
+}
+
+/** Развёртки стен для отделочника: материал и цвет каждой стены, плитка до высоты, мебель у стены с размерами */
+function finishElevationsSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
+  const blocks: string[] = []
+  for (const room of scheme.rooms) {
+    if (room.points.length < 3) continue
+    const calc = finishCalc(scheme, room)
+    for (const e of roomElevations(scheme, room)) {
+      if (e.finish.wall === "none" && e.tileH <= 0 && e.furniture.length === 0) continue
+      const wc = calc.walls.find((w) => w.id === e.wall.id)
+      const lg = wc ? finishLegend(e, wc.net, wc.main) : null
+      const sw = lg?.color ? `<span style="display:inline-block;width:11px;height:11px;border-radius:2px;background:${lg.color};border:1px solid #999;vertical-align:middle;margin-right:5px"></span>` : ""
+      const furn = e.furniture
+        .map(
+          (it) => `<tr>
+          <td>${escapeXml(it.f.label || FURNITURE_PRESETS[it.f.kind].label)}</td>
+          <td class="num strong">${toMm(it.x0)}</td>
+          <td class="num">${toMm(it.x1 - it.x0)}</td>
+          <td class="num">${toMm(e.length - it.x1)}</td>
+          <td class="num">${toMm(it.z0)} / ${toMm(it.z1)}</td>
+          <td class="num">${it.gap > 0.005 ? toMm(it.gap) : "вплотную"}</td>
+        </tr>`,
+        )
+        .join("")
+      blocks.push(`
+  <div class="elev">
+    <h3>${escapeXml(room.name)} — стена ${e.wall.index + 1}, ${toMm(e.length)} мм${e.finish.own ? " · акцентная" : ""}</h3>
+    <div class="plan-img">${elevationSvg(e, 700, "finish")}</div>
+    ${lg ? `<div class="meta" style="margin:4px 0 6px">${sw}<b>${escapeXml(lg.material)}</b>${lg.color ? ` · цвет ${lg.color.toUpperCase()}` : ""}${lg.note ? ` · ${escapeXml(lg.note)}` : ""}${wc ? ` · стена без проёмов ${fmtNum(wc.net, 2)} м²` : ""}</div>` : ""}
+    ${
+      furn
+        ? `<table>
+      <thead><tr><th>Предмет у стены</th><th>От левого угла, мм</th><th>Ширина, мм</th><th>До правого угла, мм</th><th>Низ / верх, мм</th><th>От стены, мм</th></tr></thead>
+      <tbody>${furn}</tbody>
+    </table>`
+        : ""
+    }
+  </div>`)
+    }
+  }
+  if (!blocks.length) return ""
+  return `
+  <div class="page-break"></div>
+  <h2>Развёртки стен — отделка и мебель — объект ${escapeXml(meta.objectCode)}</h2>
+  <div class="meta">Вид на стену из комнаты. Цвет и узор показывают материал отделки, бирюзовый пунктир — верх плитки. Мебель у стены — контуром с размерами от левого угла.</div>
+  ${blocks.join("")}`
 }
 
 /** Смета отделки и черновых материалов */
@@ -1104,8 +1217,10 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
 
   ${wallsTable(scheme)}
   ${interiorSection(scheme, meta)}
+  ${finishElevationsSection(scheme, meta)}
   ${finishMaterialsSection(scheme, meta)}
   ${engineerSection(scheme, "electric", meta)}
+  ${heatingLayoutSection(scheme, meta)}
   ${panelSection(scheme, meta)}
   ${materialsSection(scheme, meta)}
   ${elevationsSection(scheme, meta)}

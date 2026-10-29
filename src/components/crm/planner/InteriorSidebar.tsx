@@ -1,6 +1,7 @@
 import { useState } from "react"
 import Icon from "@/components/ui/icon"
 import { Room3DDialog } from "./Room3DDialog"
+import { WallElevationsDialog } from "./WallElevationsDialog"
 import { fmtNum } from "@/lib/planner/geometry"
 import { FURNITURE_PRESETS, LibraryItem, PlanFurniture, PlanHeating, PlanRoom, PlanScheme, RoomFinish } from "@/lib/planner/types"
 import { heatingCalc, interiorWarnings } from "@/lib/planner/interior"
@@ -8,7 +9,6 @@ import { finishSummary } from "@/lib/planner/finishes"
 import { roomFinish } from "@/lib/planner/types"
 import { RoomFinishCard } from "./RoomFinishCard"
 import { SelectedFurnitureCard } from "./SelectedFurnitureCard"
-import { SelectedHeatingCard } from "./SelectedHeatingCard"
 
 interface Props {
   scheme: PlanScheme
@@ -50,9 +50,11 @@ export function InteriorSidebar({
 }: Props) {
   const warnings = interiorWarnings(scheme)
   const [view3d, setView3d] = useState<string | null>(null)
+  const [elev, setElev] = useState<string | null>(null)
   const heat = (scheme.heating || []).map((h) => ({ h, c: heatingCalc(scheme, h) }))
   return (
     <div className="space-y-4">
+      {elev && <WallElevationsDialog open onOpenChange={(v) => !v && setElev(null)} scheme={scheme} roomId={elev} initialMode="finish" />}
       {view3d && <Room3DDialog open onOpenChange={(v) => !v && setView3d(null)} scheme={scheme} roomId={view3d} onAddRender={onAddRender} onDeleteRender={onDeleteRender} />}
       {selectedRoom && (
         <button
@@ -61,6 +63,15 @@ export function InteriorSidebar({
         >
           <Icon name="Box" size={16} />
           3D-вид: {selectedRoom.name}
+        </button>
+      )}
+      {selectedRoom && (
+        <button
+          onClick={() => setElev(selectedRoom.id)}
+          className="flex min-h-[40px] w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 text-sm text-white/80 hover:bg-white/10"
+        >
+          <Icon name="PanelsTopLeft" size={15} />
+          Развёртки стен с отделкой
         </button>
       )}
       {selectedFurniture && (
@@ -74,10 +85,7 @@ export function InteriorSidebar({
           onUpdateLibraryItem={onUpdateLibraryItem}
         />
       )}
-      {selectedHeating && (
-        <SelectedHeatingCard zone={selectedHeating} scheme={scheme} onUpdate={onUpdateHeating} onDelete={onDeleteHeating} />
-      )}
-      {selectedRoom && !selectedFurniture && !selectedHeating && (
+      {selectedRoom && !selectedFurniture && (
         <RoomFinishCard room={selectedRoom} scheme={scheme} onUpdate={onUpdateFinish} onHoverWall={onHoverWall} />
       )}
 
@@ -150,7 +158,7 @@ export function InteriorSidebar({
 
       {heat.length > 0 && (
         <div className="rounded-xl border border-white/10 bg-[#1f1f1f] p-4">
-          <div className="mb-2 text-xs uppercase text-white/40">Тёплый пол</div>
+          <div className="mb-2 text-xs uppercase text-white/40">Тёплый пол — настраивается на слое «Электрика»</div>
           <div className="space-y-0.5 text-sm text-white/70">
             {heat.map(({ h, c }) => (
               <div key={h.id} className="flex justify-between">

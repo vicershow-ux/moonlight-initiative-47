@@ -163,6 +163,7 @@ export function PlannerWorkspace({ state }: Props) {
           selectedHeatingId={state.selectedHeatingId}
           onSelectHeating={state.setSelectedHeatingId}
           onAddHeating={state.addHeating}
+          onUpdateHeating={state.updateHeating}
           selectedWallId={hoverWallId ?? (layer === "plan" ? activeWallId : null)}
           onSelectWall={selectWall}
         />
@@ -237,6 +238,8 @@ export function PlannerWorkspace({ state }: Props) {
           onDeleteFixture={deleteFixture}
           onUpdateLighting={state.updateLighting}
           onUpdateHeating={state.updateHeating}
+          selectedHeating={selectedHeating}
+          onDeleteHeating={state.deleteHeating}
         />
       )}
     </div>

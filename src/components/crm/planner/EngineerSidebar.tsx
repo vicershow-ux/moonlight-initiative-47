@@ -15,6 +15,7 @@ import {
 import { SelectedFixtureCard } from "./SelectedFixtureCard"
 import { LightingSettingsCard } from "./LightingSettingsCard"
 import { HeatingElectricCard } from "./HeatingElectricCard"
+import { SelectedHeatingCard } from "./SelectedHeatingCard"
 import { groupSummaries } from "@/lib/planner/groups"
 import { phaseBalance } from "@/lib/planner/phases"
 import { panelSettings, panelWarnings } from "@/lib/planner/panelDiagram"
@@ -53,6 +54,8 @@ interface Props {
   onDeleteFixture?: (id: string) => void
   onUpdateLighting?: (patch: Partial<LightingSettings>) => void
   onUpdateHeating?: (id: string, patch: Partial<PlanHeating>) => void
+  selectedHeating?: PlanHeating | null
+  onDeleteHeating?: (id: string) => void
 }
 
 export function EngineerSidebar({
@@ -78,6 +81,8 @@ export function EngineerSidebar({
   onDeleteFixture,
   onUpdateLighting,
   onUpdateHeating,
+  selectedHeating,
+  onDeleteHeating,
 }: Props) {
   const panel = panelSettings(scheme.panel)
   const panelIssues = layer === "electric" ? panelWarnings(scheme) : []
@@ -144,6 +149,10 @@ export function EngineerSidebar({
           onAddGroup={onAddGroup}
           defaultLaying={scheme.cable?.laying || "chase"}
         />
+      )}
+
+      {layer === "electric" && selectedHeating && onUpdateHeating && onDeleteHeating && (
+        <SelectedHeatingCard zone={selectedHeating} scheme={scheme} onUpdate={onUpdateHeating} onDelete={onDeleteHeating} />
       )}
 
       {layer === "electric" && onUpdateHeating && (

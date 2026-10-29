@@ -7,6 +7,7 @@ import {
   FixtureKind,
   PlanFixture,
   PlanFurniture,
+  PlanHeating,
   FurnitureKind,
   LibraryItem,
 } from "@/lib/planner/types"
@@ -58,6 +59,7 @@ export interface PlanCanvasProps {
   selectedHeatingId?: string | null
   onSelectHeating?: (id: string | null) => void
   onAddHeating?: (points: PlanPoint[]) => void
+  onUpdateHeating?: (id: string, patch: Partial<PlanHeating>) => void
 }
 
 /** Что сейчас тащат мышью на холсте */
@@ -68,4 +70,6 @@ export type PlanDrag =
   | { type: "bend"; linkId: string; index: number }
   | { type: "fixture"; id: string; grab: PlanPoint; a: PlanPoint; b: PlanPoint; points: PlanPoint[] }
   | { type: "furniture"; id: string; grab: PlanPoint; x: number; y: number }
+  | { type: "heating"; id: string; grab: PlanPoint; points: PlanPoint[] }
+  | { type: "heatingVertex"; id: string; index: number }
   | null

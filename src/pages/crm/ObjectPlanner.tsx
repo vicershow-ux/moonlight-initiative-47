@@ -109,8 +109,6 @@ export default function ObjectPlanner() {
           setTool={setTool}
           furnitureKind={state.furnitureKind}
           setFurnitureKind={state.setFurnitureKind}
-          heatingKind={state.heatingKind}
-          setHeatingKind={state.setHeatingKind}
           library={state.library}
           libraryItemId={state.libraryItemId}
           setLibraryItemId={(lid) => {
@@ -145,6 +143,8 @@ export default function ObjectPlanner() {
           linkGroupId={linkGroupId}
           setLinkGroupId={setLinkGroupId}
           addGroup={addGroup}
+          heatingKind={state.heatingKind}
+          setHeatingKind={state.setHeatingKind}
         />
       )}
 
