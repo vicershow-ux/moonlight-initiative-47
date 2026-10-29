@@ -22,7 +22,10 @@ import {
   usePlanView,
 } from "./usePlanView"
 import { PlanRoomsLayer } from "./PlanRoomsLayer"
-import { hitWall, schemeWalls } from "@/lib/planner/walls"
+import { FORCE_WALL, hitWall, schemeWalls } from "@/lib/planner/walls"
+import { CEILING_KINDS } from "@/lib/planner/ceiling"
+import { PlaceAssist, placeAssist } from "@/lib/planner/placeAssist"
+import { PlaceAssistLayer } from "./PlaceAssistLayer"
 import { PlanDimensionsLayer } from "./PlanDimensionsLayer"
 import { PlanEngineerLayer } from "./PlanEngineerLayer"
 import { PlanControls, PlanDraftLayer } from "./PlanOverlays"
@@ -104,6 +107,7 @@ export function PlanCanvas({
 
   const [cursor, setCursor] = useState<PlanPoint | null>(null)
   const [assist, setAssist] = useState<DrawAssist | null>(null)
+  const [place, setPlace] = useState<PlaceAssist | null>(null)
   const [drag, setDrag] = useState<
     | { type: "pan"; startX: number; startY: number; tx: number; ty: number }
     | { type: "vertex"; roomId: string; index: number }
@@ -132,6 +136,13 @@ export function PlanCanvas({
 
   const snapPoint = (p: PlanPoint) => ({ x: snap(p.x, SNAP_STEP), y: snap(p.y, SNAP_STEP) })
 
+  /** Потолочные точки (светильники, споты, коробки) ставятся с размерами до стен и соседей */
+  const placeFor = (world: PlanPoint, kind: NodeKind, free: boolean, excludeId?: string) => {
+    if (FORCE_WALL.has(kind) || !CEILING_KINDS.has(kind)) return null
+    const refs = nodes.filter((n) => n.id !== excludeId && CEILING_KINDS.has(n.kind)).map((n) => ({ x: n.x, y: n.y }))
+    return placeAssist(snapPoint(world), scheme.rooms, refs, view.scale, free)
+  }
+
   const { bends, setBends, nextBend } = useLinkRoute({ tool, layer, linkFromId, nodeById, onCancelLink, snapPoint })
 
   /** Все углы на плане и в текущем контуре — к их уровню прилипает новая точка */
@@ -159,7 +170,8 @@ export function PlanCanvas({
       [...nodes].reverse().find((n) => dist({ x: n.x, y: n.y }, world) * view.scale < 14) || null
 
     if (tool === "node") {
-      onAddNode({ x: snap(world.x, SNAP_STEP), y: snap(world.y, SNAP_STEP) })
+      const pa = placeFor(world, nodeKind, e.altKey)
+      onAddNode(pa ? pa.point : { x: snap(world.x, SNAP_STEP), y: snap(world.y, SNAP_STEP) })
       return
     }
 
@@ -284,8 +296,14 @@ export function PlanCanvas({
       const a = drawAssist(world, e.altKey)
       setAssist(a)
       setCursor(a.point)
+    } else if (tool === "node" && !drag) {
+      if (assist) setAssist(null)
+      const pa = placeFor(world, nodeKind, e.altKey)
+      setPlace(pa)
+      setCursor(pa ? pa.point : snapPoint(world))
     } else {
       if (assist && !drag) setAssist(null)
+      if (place && !drag) setPlace(null)
       setCursor(snapPoint(world))
     }
 
@@ -295,7 +313,10 @@ export function PlanCanvas({
       return
     }
     if (drag.type === "node") {
-      onMoveNode(drag.nodeId, snapPoint(world))
+      const moving = nodes.find((n) => n.id === drag.nodeId)
+      const pa = moving ? placeFor(world, moving.kind, e.altKey, moving.id) : null
+      setPlace(pa)
+      onMoveNode(drag.nodeId, pa ? pa.point : snapPoint(world))
       return
     }
     if (drag.type === "bend") {
@@ -313,6 +334,7 @@ export function PlanCanvas({
 
   const handleUp = () => {
     if (drag?.type === "vertex") setAssist(null)
+    if (drag?.type === "node") setPlace(null)
     setDrag(null)
   }
 
@@ -339,6 +361,7 @@ export function PlanCanvas({
         onMouseLeave={() => {
           handleUp()
           setAssist(null)
+          setPlace(null)
         }}
         onContextMenu={(e) => e.preventDefault()}
       >
@@ -400,6 +423,8 @@ export function PlanCanvas({
             scheme={scheme}
           />
         )}
+
+        {place && layer !== "plan" && <PlaceAssistLayer assist={place} toScreen={toScreen} />}
 
         <PlanDraftLayer draft={draft} tool={tool} cursor={typedPoint() || cursor} assist={assist} scale={view.scale} toScreen={toScreen} />
       </svg>

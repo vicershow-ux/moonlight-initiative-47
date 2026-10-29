@@ -1,3 +1,4 @@
+import { CEILING_KINDS } from "@/lib/planner/ceiling"
 import Icon from "@/components/ui/icon"
 import { fromMm, toMm } from "@/lib/planner/geometry"
 import { PlanTool } from "@/components/crm/planner/PlanCanvas"
@@ -135,6 +136,13 @@ export function PlannerEngineerPicker({
                 {NODE_PRESETS[k].label}
               </button>
             ))}
+          {tool === "node" && CEILING_KINDS.has(nodeKind) && (
+            <span className="flex w-full items-center gap-1.5 text-xs text-white/40">
+              <Icon name="Ruler" size={12} />
+              Золотые размеры — до стен, синие — до соседней точки. Синий пунктир — на одной оси с точкой, розовый — по центру комнаты,
+              «равный шаг» — тот же интервал, что в ряду. Alt — ставить без прилипания
+            </span>
+          )}
         </div>
       )}
     </div>
