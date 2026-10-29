@@ -32,6 +32,7 @@ import { useLinkRoute } from "./useLinkRoute"
 import { useWheelZoom } from "./useWheelZoom"
 import { TypedLengthHint } from "./TypedLengthHint"
 import { WallLegend } from "./WallLegend"
+import { NodeLegend } from "./NodeLegend"
 
 export type PlanTool = "select" | "draw" | "window" | "door" | "arch" | "node" | "link"
 
@@ -401,7 +402,7 @@ export function PlanCanvas({
 
       {tool === "draw" && draft.length > 0 && cursor && <TypedLengthHint cursor={cursor} typed={typed} toScreen={toScreen} />}
 
-      {layer === "plan" && <WallLegend scheme={scheme} />}
+      {layer === "plan" ? <WallLegend scheme={scheme} /> : <NodeLegend scheme={scheme} layer={layer} />}
 
       <PlanControls cursor={cursor} gridStep={gridStep} zoomBy={zoomBy} fitView={fitView} />
     </div>

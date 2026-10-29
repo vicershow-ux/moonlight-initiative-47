@@ -15,6 +15,7 @@ import { FORCE_WALL, mountPosition, nodeDirection, snapToWall } from "@/lib/plan
 import { WALL_MOUNTED, gostSymbol, placeSymbol, wallDirection } from "@/lib/planner/symbols"
 import { ToScreen } from "./usePlanView"
 import { SymbolShapes } from "./NodeSymbol"
+import { NODE_CODES } from "@/lib/planner/nodeLegend"
 import type { PlanTool } from "./PlanCanvas"
 
 interface Props {
@@ -168,7 +169,7 @@ export function PlanEngineerLayer({
             cy={p.y}
             r={r + 6}
             fill="none"
-            stroke={isFrom ? "#fff" : preset.color}
+            stroke={isFrom ? "#fff" : symColor(n.kind, true)}
             strokeWidth={1.5}
             strokeDasharray="3 3"
           />
@@ -176,7 +177,7 @@ export function PlanEngineerLayer({
         {prims ? (
           <SymbolShapes
             prims={placeSymbol(prims, p, 9, dir)}
-            color={preset.color}
+            color={symColor(n.kind, selected)}
             bg="#161616"
             strokeWidth={selected ? 2.2 : 1.6}
           />
@@ -193,11 +194,18 @@ export function PlanEngineerLayer({
             <circle cx={p.x} cy={p.y} r={4} fill={preset.color} />
           </>
         )}
-        {scale > 26 && (
+        {scale > 26 ? (
           <text x={p.x + r + 4} y={p.y + 4} fontSize="10" fill="rgba(255,255,255,0.75)">
+            {NODE_CODES[n.kind] && <tspan fontWeight="700" fill="#D4AF37">{NODE_CODES[n.kind]} </tspan>}
             {n.label || preset.label}
             {inReveal ? " · откос" : ""}
           </text>
+        ) : (
+          NODE_CODES[n.kind] && (
+            <text x={p.x + r + 2} y={p.y + 4} fontSize="9" fontWeight="700" fill="#D4AF37">
+              {NODE_CODES[n.kind]}
+            </text>
+          )
         )}
       </g>
     )
@@ -262,7 +270,7 @@ export function PlanEngineerLayer({
         return (
           <SymbolShapes
             prims={placeSymbol(prims, at, 9, dir)}
-            color={NODE_PRESETS[nodeKind].color}
+            color={symColor(nodeKind, false)}
             bg="transparent"
             strokeWidth={1.5}
             opacity={0.6}
@@ -272,5 +280,12 @@ export function PlanEngineerLayer({
     </g>
   )
 }
+
+/**
+ * Электрика рисуется единым цветом, как условные обозначения на чертеже,
+ * — тип точки читается по значку и букве, а не по цвету. Сантехника — по смыслу (горячая/холодная)
+ */
+const symColor = (kind: NodeKind, selected: boolean) =>
+  NODE_PRESETS[kind].layer === "electric" ? (selected ? "#D4AF37" : "#ECECEC") : NODE_PRESETS[kind].color
 
 export default PlanEngineerLayer

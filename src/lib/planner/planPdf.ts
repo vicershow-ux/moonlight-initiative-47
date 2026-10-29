@@ -30,6 +30,7 @@ import { CABLE_BUY_SHARE, electricMaterials } from "@/lib/planner/materials"
 import { ceilingPlan, ceilingRows, ceilingSvg } from "@/lib/planner/ceiling"
 import { PHASE_COLORS, SECTION_COLORS, WALL_MATERIALS, WallMaterial, sectionColor, sectionOf } from "@/lib/planner/types"
 import { hatchPattern, materialSwatchImg, usedMaterials } from "@/lib/planner/wallHatch"
+import { NODE_CODES, nodeLegendImg, nodeLegendItems } from "@/lib/planner/nodeLegend"
 import { OPENING_HINTS, PDF_OPENING_PALETTE, openingLegendItems, openingSwatchImg } from "@/lib/planner/openingLegend"
 import {
   doorSwing,
@@ -277,10 +278,13 @@ export function schemeToSvg(
         parts.push(`<circle cx="${px}" cy="${py}" r="3.5" fill="${preset.color}"/>`)
       }
       // У правого края листа подпись ставим слева от значка, иначе она обрежется
+      const code = NODE_CODES[n.kind]
       const text = escapeXml(n.label || preset.label)
-      const nearRight = px + 12 + text.length * 5 > width - 8
+      const full = code ? `${code} ${text}` : text
+      const nearRight = px + 12 + full.length * 5 > width - 8
+      const codeSpan = code ? `<tspan font-weight="bold" fill="#161616">${escapeXml(code)}</tspan> ` : ""
       parts.push(
-        `<text x="${nearRight ? px - 12 : px + 12}" y="${py + 3.5}" text-anchor="${nearRight ? "end" : "start"}" font-size="9" fill="#333" font-family="Arial">${text}</text>`,
+        `<text x="${nearRight ? px - 12 : px + 12}" y="${py + 3.5}" text-anchor="${nearRight ? "end" : "start"}" font-size="9" fill="#333" font-family="Arial">${codeSpan}${text}</text>`,
       )
     })
   }
@@ -428,6 +432,19 @@ function wallLegend(scheme: PlanScheme): string {
     })
     .join("")
   return `<div class="wall-legend"><div class="wl-title">Материалы стен</div><div class="wl-grid">${items}</div></div>`
+}
+
+/** Условные обозначения точек под схемой электрики или сантехники: значок, буква, количество, высота */
+function nodeLegend(scheme: PlanScheme, layer: Exclude<PlanLayer, "plan">): string {
+  const items = nodeLegendItems(scheme.nodes || [], layer)
+  if (!items.length) return ""
+  const html = items
+    .map(
+      (i) =>
+        `<div class="wl-item">${nodeLegendImg(i.kind)}<div><div class="wl-name">${i.code ? `<b>${escapeXml(i.code)}</b> — ` : ""}${escapeXml(i.label)} — ${i.count} шт.</div><div class="wl-th">высота ${i.heights.join(", ")} мм от пола</div></div></div>`,
+    )
+    .join("")
+  return `<div class="wall-legend"><div class="wl-title">Условные обозначения</div><div class="wl-grid">${html}</div></div>`
 }
 
 /** Условные обозначения окон, дверей и проёмов под планом */
@@ -796,6 +813,8 @@ function engineerSection(
         : "Пунктир — трубы, подпись у линии — диаметр."
     }
   </div>
+
+  ${nodeLegend(scheme, layer)}
 
   <h3>Условные обозначения и ведомость точек</h3>
   <table>
