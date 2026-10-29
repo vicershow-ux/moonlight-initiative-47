@@ -151,7 +151,7 @@ export function PlanCanvasLayers({
         return it ? <FurnitureDimsLayer dims={furnitureWallDims(scheme, it)} toScreen={toScreen} /> : null
       })()}
       {tool === "furniture" && cursor && props.furnitureKind && (
-        <FurnitureGhost scheme={scheme} kind={props.furnitureKind} at={cursor} toScreen={toScreen} />
+        <FurnitureGhost scheme={scheme} kind={props.furnitureKind} at={cursor} toScreen={toScreen} lib={props.furnitureLib} />
       )}
 
       {place && isEngLayer(layer) && <PlaceAssistLayer assist={place} toScreen={toScreen} />}

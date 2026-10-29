@@ -159,6 +159,7 @@ export function PlannerWorkspace({ state }: Props) {
           onAddFurniture={state.addFurniture}
           onUpdateFurniture={state.updateFurniture}
           furnitureKind={state.furnitureKind}
+          furnitureLib={state.library.find((l) => l.id === state.libraryItemId) || null}
           selectedHeatingId={state.selectedHeatingId}
           onSelectHeating={state.setSelectedHeatingId}
           onAddHeating={state.addHeating}
@@ -201,6 +202,7 @@ export function PlannerWorkspace({ state }: Props) {
           onUpdateFinish={state.updateFinish}
           onAddRender={state.addRender}
           onDeleteRender={state.deleteRender}
+          onHoverWall={setHoverWallId}
           onSelectRoom={(rid) => {
             setSelectedRoomId(rid)
             state.setSelectedFurnitureId(null)

@@ -40,8 +40,11 @@ import {
   RoomFinish,
   RoomRender,
   roomFinish,
+  LibraryItem,
+  furnitureProps,
 } from "@/lib/planner/types"
 import { furnitureRoom, snapFurnitureToWall } from "@/lib/planner/interior"
+import { furnitureLibraryApi } from "@/lib/api"
 import { FLOATING_OFFSET, trackMid } from "@/lib/planner/fixtures"
 
 const uid = () => Math.random().toString(36).slice(2, 10)
@@ -74,6 +77,15 @@ export function usePlannerState(id: string | undefined) {
   /** Мебель, которую ставим, и выбранный предмет */
   const [furnitureKind, setFurnitureKind] = useState<FurnitureKind>("bed_double")
   const [selectedFurnitureId, setSelectedFurnitureId] = useState<string | null>(null)
+  /** Библиотека своих предметов компании и выбранный для постановки */
+  const [library, setLibrary] = useState<LibraryItem[]>([])
+  const [libraryItemId, setLibraryItemId] = useState<number | null>(null)
+  useEffect(() => {
+    furnitureLibraryApi
+      .list()
+      .then((r) => setLibrary(r.items || []))
+      .catch(() => setLibrary([]))
+  }, [])
   /** Тип тёплого пола для новой зоны и выбранная зона */
   const [heatingKind, setHeatingKind] = useState<HeatingKind>("mat")
   const [selectedHeatingId, setSelectedHeatingId] = useState<string | null>(null)
@@ -341,21 +353,31 @@ export function usePlannerState(id: string | undefined) {
 
   /** Предмет мебели: у стены — прижимается к ней тыльной стороной */
   const addFurniture = (point: PlanPoint) => {
-    const pr = FURNITURE_PRESETS[furnitureKind]
-    const base = { x: point.x, y: point.y, w: pr.w, d: pr.d, rot: 0 }
-    const snapped = pr.wall ? snapFurnitureToWall(scheme, base, 0.8) : null
+    const lib = libraryItemId ? library.find((l) => l.id === libraryItemId) : null
+    const pr = FURNITURE_PRESETS[lib ? lib.base_kind : furnitureKind]
+    const size = lib ? { w: lib.width, d: lib.depth, h: lib.height } : { w: pr.w, d: pr.d, h: pr.h }
+    const atWall = lib ? lib.at_wall : pr.wall
+    const base = { x: point.x, y: point.y, w: size.w, d: size.d, rot: 0 }
+    const snapped = atWall ? snapFurnitureToWall(scheme, base, 0.8) : null
     const at = snapped ? { ...base, ...snapped } : base
     const item: PlanFurniture = {
       id: uid(),
-      kind: furnitureKind,
+      kind: lib ? lib.base_kind : furnitureKind,
       x: at.x,
       y: at.y,
-      w: pr.w,
-      d: pr.d,
-      h: pr.h,
+      ...size,
       rot: at.rot,
-      label: "",
+      label: lib ? lib.name : "",
       roomId: furnitureRoom(scheme, at)?.id ?? null,
+      ...(lib
+        ? {
+            libraryId: lib.id,
+            atWall: lib.at_wall,
+            blocksHeating: lib.blocks_heating,
+            blocksSockets: lib.blocks_sockets,
+            color: lib.color || undefined,
+          }
+        : {}),
     }
     setScheme((s) => ({ ...s, furniture: [...(s.furniture || []), item] }))
     setSelectedFurnitureId(item.id)
@@ -373,6 +395,44 @@ export function usePlannerState(id: string | undefined) {
       }),
     }))
     touch()
+  }
+
+  /** Сохранить предмет в библиотеку компании — с его названием, размерами и свойствами */
+  const saveToLibrary = async (f: PlanFurniture) => {
+    const pr = furnitureProps(f)
+    const res = await furnitureLibraryApi.create({
+      name: f.label || FURNITURE_PRESETS[f.kind].label,
+      base_kind: f.kind,
+      width: f.w,
+      depth: f.d,
+      height: f.h,
+      at_wall: pr.wall,
+      blocks_heating: pr.blocksHeating,
+      blocks_sockets: pr.blocksSockets,
+      color: f.color || null,
+    })
+    setLibrary((l) => [...l, res.item].sort((a, b) => a.name.localeCompare(b.name, "ru")))
+    updateFurniture(f.id, { libraryId: res.item.id, label: res.item.name })
+    return res.item
+  }
+
+  const updateLibraryItem = async (item: LibraryItem) => {
+    const res = await furnitureLibraryApi.update(item)
+    setLibrary((l) => l.map((x) => (x.id === item.id ? res.item : x)))
+  }
+
+  /** Новый предмет в библиотеку из формы; сразу выбираем его для расстановки */
+  const createLibraryItem = async (data: Omit<LibraryItem, "id">) => {
+    const res = await furnitureLibraryApi.create(data)
+    setLibrary((l) => [...l, res.item].sort((a, b) => a.name.localeCompare(b.name, "ru")))
+    setLibraryItemId(res.item.id)
+    setTool("furniture")
+  }
+
+  const deleteLibraryItem = async (lid: number) => {
+    await furnitureLibraryApi.remove(lid)
+    setLibrary((l) => l.filter((x) => x.id !== lid))
+    if (libraryItemId === lid) setLibraryItemId(null)
   }
 
   const deleteFurniture = (fid: string) => {
@@ -742,7 +802,17 @@ export function usePlannerState(id: string | undefined) {
     updateFixture,
     deleteFixture,
     furnitureKind,
-    setFurnitureKind,
+    setFurnitureKind: (k: FurnitureKind) => {
+      setFurnitureKind(k)
+      setLibraryItemId(null)
+    },
+    library,
+    libraryItemId,
+    setLibraryItemId,
+    saveToLibrary,
+    createLibraryItem,
+    updateLibraryItem,
+    deleteLibraryItem,
     selectedFurnitureId,
     setSelectedFurnitureId,
     addFurniture,

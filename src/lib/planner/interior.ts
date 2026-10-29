@@ -6,6 +6,7 @@ import {
   PlanPoint,
   PlanRoom,
   PlanScheme,
+  furnitureProps,
 } from "./types"
 import { dist, pointInPolygon, polygonArea, polygonPerimeter, distToSegment } from "./geometry"
 import { roomWalls } from "./walls"
@@ -98,7 +99,7 @@ export function heatingCalc(scheme: PlanScheme, h: PlanHeating): HeatingCalc {
   const gross = absArea(h.points)
   const blocked = h.cutFurniture
     ? (scheme.furniture || [])
-        .filter((f) => FURNITURE_PRESETS[f.kind].blocksHeating)
+        .filter((f) => furnitureProps(f).blocksHeating)
         .reduce((s, f) => s + overlapArea(h.points, furnitureCorners(f)), 0)
     : 0
   const net = Math.max(gross - blocked, 0)
@@ -169,7 +170,7 @@ export function interiorWarnings(scheme: PlanScheme): InteriorWarning[] {
   const furniture = scheme.furniture || []
   const nodes = (scheme.nodes || []).filter((n) => n.layer === "electric")
   for (const f of furniture) {
-    const pr = FURNITURE_PRESETS[f.kind]
+    const pr = { ...FURNITURE_PRESETS[f.kind], ...furnitureProps(f) }
     const corners = furnitureCorners(f)
     // Чуть расширяем контур — розетка на стене стоит у самой грани
     const grown = furnitureCorners({ ...f, w: f.w + 0.04, d: f.d + 0.1 })
@@ -193,7 +194,7 @@ export function interiorWarnings(scheme: PlanScheme): InteriorWarning[] {
   }
   for (const h of scheme.heating || []) {
     const c = heatingCalc(scheme, h)
-    if (!h.cutFurniture && furniture.some((f) => FURNITURE_PRESETS[f.kind].blocksHeating && overlapArea(h.points, furnitureCorners(f)) > 0.05)) {
+    if (!h.cutFurniture && furniture.some((f) => furnitureProps(f).blocksHeating && overlapArea(h.points, furnitureCorners(f)) > 0.05)) {
       out.push({ text: "Тёплый пол заходит под мебель — включите вырез под мебелью", at: centroid(h.points) })
     }
     if (h.kind !== "water" && c.amps > 16) out.push({ text: `Тёплый пол ${c.watts} Вт — больше 16 А, нужен контактор или две зоны`, at: centroid(h.points) })

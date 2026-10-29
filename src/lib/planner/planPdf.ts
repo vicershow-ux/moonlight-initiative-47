@@ -29,7 +29,7 @@ import { groupPower, kwToAmps, phaseBalance } from "@/lib/planner/phases"
 import { chaseTotals, elevationRows, elevationSvg, roomElevations } from "@/lib/planner/elevation"
 import { CABLE_BUY_SHARE, electricMaterials } from "@/lib/planner/materials"
 import { CeilingPlan, ceilingPlan, ceilingRows, ceilingSvg, ceilingTrackRows } from "@/lib/planner/ceiling"
-import { CEILING_FINISHES, FLOOR_FINISHES, FURNITURE_PRESETS, HEATING_PRESETS, WALL_FINISHES, isEngLayer, roomFinish } from "@/lib/planner/types"
+import { CEILING_FINISHES, FLOOR_FINISHES, FURNITURE_PRESETS, HEATING_PRESETS, WALL_FINISHES, isEngLayer, roomFinish, wallFinishOf } from "@/lib/planner/types"
 import { PHASE_COLORS, SECTION_COLORS, WALL_MATERIALS, WallMaterial, sectionColor, sectionOf } from "@/lib/planner/types"
 import { hatchPattern, materialSwatchImg, usedMaterials } from "@/lib/planner/wallHatch"
 import { floorPattern, furnitureName, furnitureSvg, heatingPattern } from "@/lib/planner/interiorSvg"
@@ -48,6 +48,7 @@ import {
   openingBand,
   schemeWalls,
   wallPieces,
+  roomWalls,
 } from "@/lib/planner/walls"
 import {
   CableTotals,
@@ -165,6 +166,27 @@ export function schemeToSvg(
       const id = `pf-${room.id}`
       interiorDefs.push(floorPattern(id, f.floor, scale, f.floorColor, "rgba(0,0,0,0.35)"))
       parts.push(`<polygon points="${room.points.map((p) => `${sx(p.x)},${sy(p.y)}`).join(" ")}" fill="url(#${id})" fill-opacity="0.55"/>`)
+    }
+    // Отделка стен полосой по внутренней грани, акцентные — толще и с номером стены
+    for (const room of scheme.rooms) {
+      if (room.points.length < 3) continue
+      const f = roomFinish(scheme, room.id)
+      for (const w of roomWalls(room, scheme)) {
+        const wf = wallFinishOf(f, w.id)
+        if (wf.wall === "none") continue
+        const col = wf.wallColor || WALL_FINISHES[wf.wall].color
+        const k = w.inner + (wf.own ? 0.05 : 0.03)
+        parts.push(
+          `<line x1="${sx(w.a.x - w.nx * k)}" y1="${sy(w.a.y - w.ny * k)}" x2="${sx(w.b.x - w.nx * k)}" y2="${sy(w.b.y - w.ny * k)}" stroke="${col}" stroke-width="${wf.own ? 4.5 : 2.5}"/>`,
+        )
+        if (wf.own) {
+          const mx = (sx(w.a.x) + sx(w.b.x)) / 2 - w.nx * 16
+          const my = (sy(w.a.y) + sy(w.b.y)) / 2 - w.ny * 16
+          parts.push(
+            `<text x="${mx}" y="${my + 3}" text-anchor="middle" font-size="8" font-weight="bold" fill="#161616" font-family="Arial" stroke="#fff" stroke-width="2.5" paint-order="stroke">ст.${w.index + 1}</text>`,
+          )
+        }
+      }
     }
   }
   if (layer === "interior" || layer === "electric") {
@@ -478,7 +500,10 @@ function interiorSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
       <tr>
         <td><b>${escapeXml(r.name)}</b></td>
         <td>${f.floor !== "none" ? `${sw(f.floorColor || FLOOR_FINISHES[f.floor].color)}${FLOOR_FINISHES[f.floor].label}` : "—"}<div class="muted">${fmtNum(c.floorArea, 2)} м²</div></td>
-        <td>${f.wall !== "none" ? `${sw(f.wallColor || WALL_FINISHES[f.wall].color)}${WALL_FINISHES[f.wall].label}` : "—"}${c.wallTile > 0 && f.wall !== "tile" ? `<div class="muted">+ плитка до ${toMm(f.tileHeight || 0)} мм, ${fmtNum(c.wallTile, 2)} м²</div>` : ""}<div class="muted">${fmtNum(c.wallNet, 2)} м² без проёмов</div></td>
+        <td>${f.wall !== "none" ? `${sw(f.wallColor || WALL_FINISHES[f.wall].color)}${WALL_FINISHES[f.wall].label}` : "—"}${c.wallTile > 0 && f.wall !== "tile" ? `<div class="muted">+ плитка до ${toMm(f.tileHeight || 0)} мм, ${fmtNum(c.wallTile, 2)} м²</div>` : ""}<div class="muted">${fmtNum(c.wallNet, 2)} м² без проёмов</div>${c.walls
+          .filter((w) => w.finish.own)
+          .map((w) => `<div style="margin-top:3px">${sw(w.finish.wallColor || WALL_FINISHES[w.finish.wall].color)}<b>стена ${w.index + 1}</b> — ${WALL_FINISHES[w.finish.wall].label.toLowerCase()}${w.finish.note ? `, ${escapeXml(w.finish.note)}` : ""}<span class="muted"> · ${fmtNum(w.main, 2)} м²</span></div>`)
+          .join("")}</td>
         <td>${f.ceiling !== "none" ? CEILING_FINISHES[f.ceiling].label : "—"}<div class="muted">${fmtNum(c.ceilingArea, 2)} м²</div></td>
         <td class="num">${c.skirting > 0 ? fmtNum(c.skirting, 2) : "—"}</td>
       </tr>`

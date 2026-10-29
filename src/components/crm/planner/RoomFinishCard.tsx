@@ -11,6 +11,8 @@ import {
   RoomFinish,
   WALL_FINISHES,
   WallFinish,
+  WallOverride,
+  wallFinishOf,
 } from "@/lib/planner/types"
 import { finishCalc } from "@/lib/planner/finishes"
 
@@ -22,15 +24,26 @@ interface Props {
   room: PlanRoom
   scheme: PlanScheme
   onUpdate: (roomId: string, patch: Partial<RoomFinish>, applyToAll?: boolean) => void
+  /** Подсветка стены на плане при наведении на строку */
+  onHoverWall?: (wallId: string | null) => void
 }
 
 /** Отделка помещения: пол, стены, потолок, плинтусы, черновые работы и расчёт объёмов */
-export function RoomFinishCard({ room, scheme, onUpdate }: Props) {
+export function RoomFinishCard({ room, scheme, onUpdate, onHoverWall }: Props) {
   const c = finishCalc(scheme, room)
   const f = c.finish
   const [all, setAll] = useState(false)
   const set = (patch: Partial<RoomFinish>) => onUpdate(room.id, patch, all)
   const mm = (v: number | undefined) => toMm(v || 0)
+  const [openWall, setOpenWall] = useState<string | null>(null)
+  // Своя отделка стены — меняем только эту комнату, не все
+  const setWall = (wallId: string, patch: Partial<WallOverride> | null) => {
+    const cur = { ...(f.walls || {}) }
+    if (patch === null) delete cur[wallId]
+    else cur[wallId] = { ...wallFinishOf(f, wallId), ...(cur[wallId] || {}), ...patch }
+    if (cur[wallId]) delete (cur[wallId] as WallOverride & { own?: boolean }).own
+    onUpdate(room.id, { walls: cur })
+  }
 
   return (
     <div className="rounded-xl border border-[#D4AF37]/30 bg-[#1f1f1f] p-4">
@@ -119,6 +132,99 @@ export function RoomFinishCard({ room, scheme, onUpdate }: Props) {
       )}
 
       <div className="mb-3">
+        <div className={labelCls}>Отделка по стенам — акцентная стена другим цветом или обоями</div>
+        <div className="space-y-1.5">
+          {c.walls.map((w) => {
+            const own = w.finish.own
+            const open = openWall === w.id
+            const col = w.finish.wall !== "none" ? w.finish.wallColor || WALL_FINISHES[w.finish.wall].color : "transparent"
+            return (
+              <div
+                key={w.id}
+                className={`rounded-lg border ${own ? "border-[#D4AF37]/40 bg-[#D4AF37]/5" : "border-white/10 bg-[#161616]"}`}
+                onMouseEnter={() => onHoverWall?.(w.id)}
+                onMouseLeave={() => onHoverWall?.(null)}
+              >
+                <button onClick={() => setOpenWall(open ? null : w.id)} className="flex w-full items-center gap-2 px-2.5 py-2 text-left text-sm">
+                  <span className="h-3.5 w-3.5 shrink-0 rounded-sm border border-white/20" style={{ background: col }} />
+                  <span className="font-medium">Стена {w.index + 1}</span>
+                  <span className="text-xs text-white/40">{toMm(w.length)} мм · {fmtNum(w.net, 2)} м²</span>
+                  <span className={`ml-auto truncate text-xs ${own ? "text-[#D4AF37]" : "text-white/40"}`}>
+                    {own ? `акцент: ${WALL_FINISHES[w.finish.wall].label.toLowerCase()}` : "как в комнате"}
+                  </span>
+                  <Icon name={open ? "ChevronUp" : "ChevronDown"} size={14} className="shrink-0 text-white/40" />
+                </button>
+                {open && (
+                  <div className="space-y-2 border-t border-white/10 p-2.5">
+                    <div className="flex gap-2">
+                      <select
+                        className={inputCls}
+                        value={own ? w.finish.wall : "__room"}
+                        onChange={(e) => (e.target.value === "__room" ? setWall(w.id, null) : setWall(w.id, { wall: e.target.value as WallFinish }))}
+                      >
+                        <option value="__room">Как в комнате ({WALL_FINISHES[f.wall].label.toLowerCase()})</option>
+                        {(Object.keys(WALL_FINISHES) as WallFinish[])
+                          .filter((k) => k !== "none")
+                          .map((k) => (
+                            <option key={k} value={k}>
+                              {WALL_FINISHES[k].label}
+                            </option>
+                          ))}
+                      </select>
+                      {own && (
+                        <input
+                          type="color"
+                          className="h-[38px] w-11 shrink-0 cursor-pointer rounded-lg border border-white/10 bg-[#161616]"
+                          value={w.finish.wallColor || WALL_FINISHES[w.finish.wall].color}
+                          onChange={(e) => setWall(w.id, { wallColor: e.target.value })}
+                          title="Цвет стены"
+                        />
+                      )}
+                    </div>
+                    {own && (
+                      <>
+                        <input
+                          className={inputCls}
+                          placeholder="Артикул или название для сметы, например «Обои Marburg 31038»"
+                          value={w.finish.note || ""}
+                          onChange={(e) => setWall(w.id, { note: e.target.value })}
+                        />
+                        {w.finish.wall === "wallpaper" && (
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <label className="mb-1 block text-[11px] text-white/40">Ширина рулона</label>
+                              <input className={inputCls} type="number" step="10" value={mm(w.finish.rollWidth || 1.06)} onChange={(e) => setWall(w.id, { rollWidth: Math.max(fromMm(Number(e.target.value)), 0.3) })} />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-[11px] text-white/40">Длина рулона</label>
+                              <input className={inputCls} type="number" step="10" value={mm(w.finish.rollLength || 10.05)} onChange={(e) => setWall(w.id, { rollLength: Math.max(fromMm(Number(e.target.value)), 1) })} />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-[11px] text-white/40">Раппорт</label>
+                              <input className={inputCls} type="number" step="10" min="0" value={mm(w.finish.rapport)} onChange={(e) => setWall(w.id, { rapport: Math.max(fromMm(Number(e.target.value)), 0) })} />
+                            </div>
+                          </div>
+                        )}
+                        <div className="text-[11px] text-white/40">
+                          Под отделку: {fmtNum(w.main, 2)} м²
+                          {(() => {
+                            const g = c.groups.find((x) => x.walls.includes(w.index + 1) && x.accent)
+                            if (!g) return ""
+                            return g.finish.wall === "wallpaper" ? ` · ${g.rolls} рул.` : g.finish.wall === "paint" ? ` · ${fmtNum(g.paint, 1)} л краски` : ""
+                          })()}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+        <div className="mt-1 text-[11px] text-white/35">Наведите на стену — она подсветится на плане</div>
+      </div>
+
+      <div className="mb-3">
         <label className={labelCls}>Потолок</label>
         <select className={inputCls} value={f.ceiling} onChange={(e) => set({ ceiling: e.target.value as CeilingFinish })}>
           {(Object.keys(CEILING_FINISHES) as CeilingFinish[]).map((k) => (
@@ -156,7 +262,7 @@ export function RoomFinishCard({ room, scheme, onUpdate }: Props) {
           ["Пол", `${fmtNum(c.floorArea, 2)} м²`],
           ["Стены без проёмов", `${fmtNum(c.wallNet, 2)} м²`],
           ...(c.wallTile > 0 ? [["Плитка на стенах", `${fmtNum(c.wallTile, 2)} м²`]] : []),
-          ...(f.wall === "wallpaper" ? [["Обои", `${c.rolls} рул. (${c.stripsPerRoll} полос/рул.)`]] : []),
+          ...(c.rolls > 0 ? [["Обои", `${c.rolls} рул.${c.groups.some((g) => g.accent) ? " (с акцентом)" : ` (${c.stripsPerRoll} полос/рул.)`}`]] : []),
           ...(c.paintWall > 0 ? [["Краска стен", `${fmtNum(c.paintWall, 1)} л`]] : []),
           ...(c.paintCeiling > 0 ? [["Краска потолка", `${fmtNum(c.paintCeiling, 1)} л`]] : []),
           ...(c.skirting > 0 ? [["Плинтус", `${fmtNum(c.skirting, 2)} м (без дверей)`]] : []),

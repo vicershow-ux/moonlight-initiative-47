@@ -1,7 +1,8 @@
 import Icon from "@/components/ui/icon"
 import { DeleteButton } from "@/components/ui/delete-button"
 import { fromMm, toMm } from "@/lib/planner/geometry"
-import { FURNITURE_PRESETS, PlanFurniture, PlanScheme } from "@/lib/planner/types"
+import { useState } from "react"
+import { FURNITURE_PRESETS, LibraryItem, PlanFurniture, PlanScheme, furnitureProps } from "@/lib/planner/types"
 import { furnitureWallDims, setFurnitureGap, snapFurnitureToWall } from "@/lib/planner/interior"
 
 const SIDE = { back: "Сзади (к стене)", front: "Спереди", left: "Слева", right: "Справа" } as const
@@ -15,11 +16,42 @@ interface Props {
   scheme: PlanScheme
   onUpdate: (id: string, patch: Partial<PlanFurniture>) => void
   onDelete: (id: string) => void
+  onSaveToLibrary?: (f: PlanFurniture) => Promise<LibraryItem>
+  library?: LibraryItem[]
+  onUpdateLibraryItem?: (item: LibraryItem) => Promise<void>
 }
 
 /** Карточка предмета мебели: подпись, размеры, поворот, прижать к стене */
-export function SelectedFurnitureCard({ item, scheme, onUpdate, onDelete }: Props) {
-  const pr = FURNITURE_PRESETS[item.kind]
+export function SelectedFurnitureCard({ item, scheme, onUpdate, onDelete, onSaveToLibrary, library = [], onUpdateLibraryItem }: Props) {
+  const [libBusy, setLibBusy] = useState(false)
+  const [libNote, setLibNote] = useState("")
+  const libItem = item.libraryId ? library.find((l) => l.id === item.libraryId) || null : null
+  // Отличается ли предмет на плане от сохранённого в библиотеке — тогда можно обновить библиотеку
+  const libDiffers =
+    !!libItem &&
+    (Math.abs(libItem.width - item.w) > 0.0005 ||
+      Math.abs(libItem.depth - item.d) > 0.0005 ||
+      Math.abs(libItem.height - item.h) > 0.0005 ||
+      (item.label && item.label !== libItem.name))
+  const toLibrary = async () => {
+    if (!onSaveToLibrary) return
+    setLibBusy(true)
+    setLibNote("")
+    try {
+      if (libItem && onUpdateLibraryItem) {
+        await onUpdateLibraryItem({ ...libItem, name: item.label || libItem.name, width: item.w, depth: item.d, height: item.h })
+        setLibNote("Библиотека обновлена")
+      } else {
+        const it = await onSaveToLibrary(item)
+        setLibNote(`«${it.name}» сохранён — он в разделе «Мои» на любом объекте`)
+      }
+    } catch (e) {
+      setLibNote(e instanceof Error ? e.message : "Не удалось сохранить")
+    } finally {
+      setLibBusy(false)
+    }
+  }
+  const pr = { ...FURNITURE_PRESETS[item.kind], ...furnitureProps(item) }
   const dims = furnitureWallDims(scheme, item)
   const num = (field: "w" | "d" | "h", label: string) => (
     <div>
@@ -106,6 +138,28 @@ export function SelectedFurnitureCard({ item, scheme, onUpdate, onDelete }: Prop
         </div>
         <div className="mt-1 text-[11px] text-white/35">Сзади — сторона, которой предмет стоит к стене. Введите число — предмет сдвинется</div>
       </div>
+
+      {onSaveToLibrary && (
+        <div className="mb-3">
+          {(!libItem || libDiffers) && (
+            <button
+              onClick={toLibrary}
+              disabled={libBusy}
+              className="flex min-h-[38px] w-full items-center justify-center gap-2 rounded-lg border border-[#D4AF37]/40 text-sm text-[#D4AF37] hover:bg-[#D4AF37]/10 disabled:opacity-50"
+            >
+              <Icon name={libBusy ? "Loader2" : "BookmarkPlus"} size={15} className={libBusy ? "animate-spin" : ""} />
+              {libItem ? "Обновить в библиотеке" : "В библиотеку"}
+            </button>
+          )}
+          {libItem && !libDiffers && (
+            <div className="flex items-center gap-1.5 text-xs text-[#D4AF37]/80">
+              <Icon name="BookmarkCheck" size={13} />
+              Из библиотеки: {libItem.name}
+            </div>
+          )}
+          {libNote && <div className="mt-1 text-xs text-white/50">{libNote}</div>}
+        </div>
+      )}
 
       <div className="text-xs text-white/40">
         {pr.blocksHeating ? "Под предметом тёплый пол не укладывается. " : ""}

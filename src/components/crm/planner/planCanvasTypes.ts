@@ -8,6 +8,7 @@ import {
   PlanFixture,
   PlanFurniture,
   FurnitureKind,
+  LibraryItem,
 } from "@/lib/planner/types"
 
 export type PlanTool = "select" | "draw" | "window" | "door" | "arch" | "node" | "link" | "track" | "floating" | "furniture" | "heating"
@@ -52,6 +53,8 @@ export interface PlanCanvasProps {
   onAddFurniture?: (p: PlanPoint) => void
   onUpdateFurniture?: (id: string, patch: Partial<PlanFurniture>) => void
   furnitureKind?: FurnitureKind
+  /** Свой предмет из библиотеки, который ставим */
+  furnitureLib?: LibraryItem | null
   selectedHeatingId?: string | null
   onSelectHeating?: (id: string | null) => void
   onAddHeating?: (points: PlanPoint[]) => void

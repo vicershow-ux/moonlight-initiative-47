@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useNavigate, useParams } from "@/lib/router-compat"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
@@ -6,6 +7,7 @@ import { PlannerLayerBar, PlannerToolbar } from "./planner/PlannerToolbar"
 import { PlannerEngineerPicker, PlannerSettingsBar } from "./planner/PlannerPanels"
 import { PlannerWorkspace } from "./planner/PlannerWorkspace"
 import { PlannerInteriorPicker } from "./planner/PlannerInteriorPicker"
+import { LibraryItemDialog } from "@/components/crm/planner/LibraryItemDialog"
 import { isEngLayer } from "@/lib/planner/types"
 
 export default function ObjectPlanner() {
@@ -13,6 +15,7 @@ export default function ObjectPlanner() {
   const navigate = useNavigate()
 
   const state = usePlannerState(id)
+  const [libDialog, setLibDialog] = useState(false)
   const {
     object,
     scheme,
@@ -108,6 +111,23 @@ export default function ObjectPlanner() {
           setFurnitureKind={state.setFurnitureKind}
           heatingKind={state.heatingKind}
           setHeatingKind={state.setHeatingKind}
+          library={state.library}
+          libraryItemId={state.libraryItemId}
+          setLibraryItemId={(lid) => {
+            state.setLibraryItemId(lid)
+            setTool("furniture")
+          }}
+          onDeleteLibraryItem={state.deleteLibraryItem}
+          onCreateLibraryItem={() => setLibDialog(true)}
+        />
+      )}
+      {layer === "interior" && (
+        <LibraryItemDialog
+          open={libDialog}
+          onOpenChange={setLibDialog}
+          onSave={async (data) => {
+            await state.createLibraryItem(data)
+          }}
         />
       )}
 

@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { PlanLayer, PlanScheme, WALL_FINISHES, roomFinish } from "@/lib/planner/types"
+import { PlanLayer, PlanScheme, WALL_FINISHES, roomFinish, wallFinishOf } from "@/lib/planner/types"
 import { fmtNum } from "@/lib/planner/geometry"
 import { heatingCalc, interiorWarnings } from "@/lib/planner/interior"
 import { floorPattern, furnitureSvg, heatingPattern } from "@/lib/planner/interiorSvg"
@@ -51,24 +51,35 @@ export function PlanInteriorLayer({ scheme, layer, scale, toScreen, selectedFurn
         defs.push(floorPattern(id, f.floor, scale, f.floorColor))
         floors.push(<polygon key={id} points={poly(room.points)} fill={`url(#${id})`} opacity={0.85} />)
       }
-      // Отделка стен — цветная полоса по внутренней грани; плитка до высоты — пунктиром
-      if (f.wall !== "none" || (f.tileHeight || 0) > 0) {
-        const col = f.wall !== "none" ? f.wallColor || WALL_FINISHES[f.wall].color : WALL_FINISHES.tile.color
-        for (const w of roomWalls(room, scheme)) {
-          const a = toScreen({ x: w.a.x - w.nx * (w.inner + 0.03), y: w.a.y - w.ny * (w.inner + 0.03) })
-          const b = toScreen({ x: w.b.x - w.nx * (w.inner + 0.03), y: w.b.y - w.ny * (w.inner + 0.03) })
+      // Отделка стен — цветная полоса по внутренней грани; у акцентной стены — свой цвет и толще.
+      // Плитка до высоты без основной отделки — пунктиром
+      for (const w of roomWalls(room, scheme)) {
+        const wf = wallFinishOf(f, w.id)
+        if (wf.wall === "none" && !(f.tileHeight || 0)) continue
+        const col = wf.wall !== "none" ? wf.wallColor || WALL_FINISHES[wf.wall].color : WALL_FINISHES.tile.color
+        const k = w.inner + (wf.own ? 0.05 : 0.03)
+        const a = toScreen({ x: w.a.x - w.nx * k, y: w.a.y - w.ny * k })
+        const b = toScreen({ x: w.b.x - w.nx * k, y: w.b.y - w.ny * k })
+        wallBands.push(
+          <line
+            key={`wb-${w.id}`}
+            x1={a.x}
+            y1={a.y}
+            x2={b.x}
+            y2={b.y}
+            stroke={col}
+            strokeWidth={wf.own ? 7 : 4}
+            strokeDasharray={wf.wall === "none" ? "6 3" : undefined}
+            opacity={0.95}
+          />,
+        )
+        if (wf.own) {
+          const m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+          const n = { x: -w.nx, y: -w.ny }
           wallBands.push(
-            <line
-              key={`wb-${w.id}`}
-              x1={a.x}
-              y1={a.y}
-              x2={b.x}
-              y2={b.y}
-              stroke={col}
-              strokeWidth={4}
-              strokeDasharray={f.wall === "none" ? "6 3" : undefined}
-              opacity={0.9}
-            />,
+            <text key={`wt-${w.id}`} x={m.x + n.x * 16} y={m.y + n.y * 16 + 3} textAnchor="middle" fontSize="9" fontWeight="700" fill={col} style={halo}>
+              акцент
+            </text>,
           )
         }
       }

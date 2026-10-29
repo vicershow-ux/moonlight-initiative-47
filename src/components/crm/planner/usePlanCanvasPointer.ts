@@ -11,7 +11,7 @@ import {
 import { PlanFixture, PlanLink, PlanNode, PlanPoint } from "@/lib/planner/types"
 import { hitFixture, shiftTrack } from "@/lib/planner/fixtures"
 import { hitFurniture, hitHeating, snapFurnitureToWall } from "@/lib/planner/interior"
-import { FURNITURE_PRESETS } from "@/lib/planner/types"
+import { furnitureProps } from "@/lib/planner/types"
 import { hitWall } from "@/lib/planner/walls"
 import { PlaceAssist, placeAssist } from "@/lib/planner/placeAssist"
 import { SNAP_STEP, eventPoint } from "./usePlanView"
@@ -342,7 +342,7 @@ export function usePlanCanvasPointer({
       if (!item) return
       const raw = snapPoint({ x: drag.x + world.x - drag.grab.x, y: drag.y + world.y - drag.grab.y })
       // У стены — прилипает тыльной стороной и разворачивается; Alt — свободно
-      const sn = !e.altKey && FURNITURE_PRESETS[item.kind].wall ? snapFurnitureToWall(scheme, { ...item, ...raw }, 0.25) : null
+      const sn = !e.altKey && furnitureProps(item).wall ? snapFurnitureToWall(scheme, { ...item, ...raw }, 0.25) : null
       onUpdateFurniture?.(drag.id, sn ? sn : raw)
       return
     }

@@ -1,6 +1,6 @@
 import Icon from "@/components/ui/icon"
 import { PlanTool } from "@/components/crm/planner/PlanCanvas"
-import { FURNITURE_PRESETS, FurnitureKind, HEATING_PRESETS, HeatingKind } from "@/lib/planner/types"
+import { FURNITURE_PRESETS, FurnitureKind, HEATING_PRESETS, HeatingKind, LibraryItem } from "@/lib/planner/types"
 
 interface Props {
   tool: PlanTool
@@ -10,6 +10,11 @@ interface Props {
   setFurnitureKind: (k: FurnitureKind) => void
   heatingKind: HeatingKind
   setHeatingKind: (k: HeatingKind) => void
+  library: LibraryItem[]
+  libraryItemId: number | null
+  setLibraryItemId: (id: number | null) => void
+  onDeleteLibraryItem: (id: number) => Promise<void>
+  onCreateLibraryItem: () => void
 }
 
 const GROUPS = ["Спальня", "Гостиная", "Кухня", "Санузел", "Прочее"] as const
@@ -20,7 +25,20 @@ const btn = (on: boolean) =>
   }`
 
 /** Что ставим на слое «Мебель и отделка»: предметы по группам и зоны тёплого пола */
-export function PlannerInteriorPicker({ tool, clearDraft, setTool, furnitureKind, setFurnitureKind, heatingKind, setHeatingKind }: Props) {
+export function PlannerInteriorPicker({
+  tool,
+  clearDraft,
+  setTool,
+  furnitureKind,
+  setFurnitureKind,
+  heatingKind,
+  setHeatingKind,
+  library,
+  libraryItemId,
+  setLibraryItemId,
+  onDeleteLibraryItem,
+  onCreateLibraryItem,
+}: Props) {
   const kinds = Object.keys(FURNITURE_PRESETS) as FurnitureKind[]
   const pick = (t: PlanTool) => {
     setTool(t)
@@ -48,13 +66,43 @@ export function PlannerInteriorPicker({ tool, clearDraft, setTool, furnitureKind
 
       {tool === "furniture" && (
         <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-[#D4AF37]/25 bg-[#D4AF37]/5 p-1.5">
+            <span className="w-20 shrink-0 pl-1 text-xs uppercase text-[#D4AF37]/80">Мои</span>
+            {library.map((l) => (
+              <span key={l.id} className="group relative">
+                <button className={btn(libraryItemId === l.id)} onClick={() => setLibraryItemId(l.id)} title={`${Math.round(l.width * 1000)}×${Math.round(l.depth * 1000)}×${Math.round(l.height * 1000)} мм`}>
+                  {l.color && <span className="h-2.5 w-2.5 rounded-sm" style={{ background: l.color }} />}
+                  {l.name}
+                  <span className="text-[11px] opacity-50">
+                    {Math.round(l.width * 1000)}×{Math.round(l.depth * 1000)}
+                  </span>
+                </button>
+                <button
+                  onClick={() => {
+                    if (window.confirm(`Удалить «${l.name}» из библиотеки? На уже расставленных планах предмет останется`)) onDeleteLibraryItem(l.id)
+                  }}
+                  title="Удалить из библиотеки"
+                  className="absolute -right-1.5 -top-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-[#2a2a2a] text-white/60 hover:text-red-300 group-hover:flex"
+                >
+                  <Icon name="X" size={11} />
+                </button>
+              </span>
+            ))}
+            <button onClick={onCreateLibraryItem} className="flex min-h-[34px] items-center gap-1 rounded-lg border border-dashed border-[#D4AF37]/40 px-2.5 text-sm text-[#D4AF37] hover:bg-[#D4AF37]/10">
+              <Icon name="Plus" size={14} />
+              Новый предмет
+            </button>
+            {library.length === 0 && (
+              <span className="text-xs text-white/40">Сохраняйте свои предметы — кнопка «В библиотеку» в карточке предмета</span>
+            )}
+          </div>
           {GROUPS.map((g) => (
             <div key={g} className="flex flex-wrap items-center gap-1.5">
               <span className="w-20 shrink-0 text-xs uppercase text-white/35">{g}</span>
               {kinds
                 .filter((k) => FURNITURE_PRESETS[k].group === g)
                 .map((k) => (
-                  <button key={k} className={btn(furnitureKind === k)} onClick={() => setFurnitureKind(k)}>
+                  <button key={k} className={btn(furnitureKind === k && !libraryItemId)} onClick={() => setFurnitureKind(k)}>
                     {FURNITURE_PRESETS[k].label}
                   </button>
                 ))}

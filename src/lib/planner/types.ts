@@ -390,6 +390,30 @@ export type FurnitureKind =
   | "bath" | "shower" | "toilet_f" | "washbasin" | "washer" | "boiler_f" | "towel_rail"
   | "custom"
 
+/** Свой предмет из библиотеки компании */
+export interface LibraryItem {
+  id: number
+  name: string
+  base_kind: FurnitureKind
+  width: number
+  depth: number
+  height: number
+  at_wall: boolean
+  blocks_heating: boolean
+  blocks_sockets: boolean
+  color: string | null
+}
+
+/** Свойства предмета с учётом библиотеки: у своих предметов они хранятся в самом предмете */
+export const furnitureProps = (f: Pick<PlanFurniture, "kind" | "atWall" | "blocksHeating" | "blocksSockets">) => {
+  const p = FURNITURE_PRESETS[f.kind]
+  return {
+    wall: f.atWall ?? p.wall,
+    blocksHeating: f.blocksHeating ?? p.blocksHeating,
+    blocksSockets: f.blocksSockets ?? p.blocksSockets,
+  }
+}
+
 export interface FurniturePreset {
   label: string
   group: "Спальня" | "Гостиная" | "Кухня" | "Санузел" | "Прочее"
@@ -437,6 +461,12 @@ export const FURNITURE_PRESETS: Record<FurnitureKind, FurniturePreset> = {
 export interface PlanFurniture {
   id: string
   kind: FurnitureKind
+  /** Предмет из библиотеки компании: свои свойства вместо типовых */
+  libraryId?: number
+  color?: string
+  atWall?: boolean
+  blocksHeating?: boolean
+  blocksSockets?: boolean
   /** Центр, м */
   x: number
   y: number
@@ -546,6 +576,27 @@ export interface RoomFinish {
   screed?: number
   /** Черновые: выравнивание стен штукатуркой, толщина, м */
   wallPlaster?: number
+  /** Своя отделка отдельных стен (акцентная стена) — по id стены «room:index» */
+  walls?: Record<string, WallOverride>
+}
+
+/** Отделка одной стены поверх общей отделки комнаты */
+export interface WallOverride {
+  wall: WallFinish
+  wallColor?: string
+  /** Для обоев на акцентной стене — свои рулоны и раппорт */
+  rollWidth?: number
+  rollLength?: number
+  rapport?: number
+  /** Подпись для сметы, например «Обои акцентные Marburg 31038» */
+  note?: string
+}
+
+/** Отделка конкретной стены: своя или общая отделка комнаты */
+export function wallFinishOf(f: RoomFinish, wallId: string): WallOverride & { own: boolean } {
+  const o = f.walls?.[wallId]
+  if (o) return { ...o, own: true }
+  return { wall: f.wall, wallColor: f.wallColor, rollWidth: f.rollWidth, rollLength: f.rollLength, rapport: f.rapport, own: false }
 }
 
 export const DEFAULT_FINISH: RoomFinish = {

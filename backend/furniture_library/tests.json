@@ -1,0 +1,8 @@
+{
+  "tests": [
+    {"name": "OPTIONS CORS", "method": "OPTIONS", "path": "/", "expectedStatus": 200},
+    {"name": "GET without auth", "method": "GET", "path": "/", "expectedStatus": 401},
+    {"name": "POST without auth", "method": "POST", "path": "/", "body": {"name": "Шкаф", "width": 1, "depth": 0.6, "height": 2}, "expectedStatus": 401},
+    {"name": "DELETE without auth", "method": "DELETE", "path": "/?id=1", "expectedStatus": 401}
+  ]
+}

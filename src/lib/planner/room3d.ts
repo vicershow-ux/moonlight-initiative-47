@@ -8,6 +8,7 @@ import {
   PlanScheme,
   WALL_FINISHES,
   roomFinish,
+  wallFinishOf,
 } from "./types"
 import { roomWalls, openingSpan } from "./walls"
 
@@ -50,6 +51,36 @@ const FURN_COLOR: Partial<Record<PlanFurniture["kind"], string>> = {
   boiler_f: MAT.white,
   towel_rail: MAT.steel,
   custom: MAT.woodLight,
+}
+
+/** Обои: мягкий узор поверх цвета — видно, что это не покраска */
+function wallpaperTexture(color: string): THREE.Texture {
+  const c = document.createElement("canvas")
+  c.width = 256
+  c.height = 256
+  const g = c.getContext("2d")!
+  g.fillStyle = color
+  g.fillRect(0, 0, 256, 256)
+  g.strokeStyle = "rgba(255,255,255,0.28)"
+  g.lineWidth = 3
+  for (let i = 0; i < 4; i++) {
+    for (let j = 0; j < 4; j++) {
+      const x = i * 64 + (j % 2) * 32
+      const y = j * 64
+      g.beginPath()
+      g.moveTo(x + 32, y + 8)
+      g.quadraticCurveTo(x + 56, y + 32, x + 32, y + 56)
+      g.quadraticCurveTo(x + 8, y + 32, x + 32, y + 8)
+      g.stroke()
+    }
+  }
+  g.fillStyle = "rgba(0,0,0,0.05)"
+  g.fillRect(0, 0, 2, 256)
+  const t = new THREE.CanvasTexture(c)
+  t.wrapS = THREE.RepeatWrapping
+  t.wrapT = THREE.RepeatWrapping
+  t.colorSpace = THREE.SRGBColorSpace
+  return t
 }
 
 /** Текстура покрытия пола: доска, ёлочка или плитка рисуются на канвасе и повторяются */
@@ -142,7 +173,7 @@ function box(w: number, d: number, h: number, mat: THREE.Material, x = 0, y = 0,
 function furnitureModel(f: PlanFurniture): THREE.Group {
   const g = new THREE.Group()
   const { w, d, h } = f
-  const col = FURN_COLOR[f.kind] || MAT.woodLight
+  const col = f.color || FURN_COLOR[f.kind] || MAT.woodLight
   const m = std(col)
   const wood = std(MAT.wood)
   const white = std(MAT.white, { roughness: 0.4 })
@@ -308,9 +339,27 @@ export function buildRoomScene(scheme: PlanScheme, room: PlanRoom): RoomScene {
   scene.add(ceil)
 
   // Стены: внутренняя грань, с вырезами окон и дверей; плитка до высоты — отдельной полосой
-  const wallColor = f.wall !== "none" ? f.wallColor || WALL_FINISHES[f.wall].color : "#e9e6df"
-  const wallMat = track(std(wallColor, { roughness: f.wall === "tile" ? 0.25 : 0.9 }))
-  const tileMat = track(std(WALL_FINISHES.tile.color === wallColor ? "#e8eef0" : "#e4ecee", { roughness: 0.2 }))
+  // Материал стены — общий для комнаты или свой у акцентной стены
+  const wallMats = new Map<string, THREE.Material>()
+  const wallMatFor = (wallId: string) => {
+    const wf = wallFinishOf(f, wallId)
+    const color = wf.wall !== "none" ? wf.wallColor || WALL_FINISHES[wf.wall].color : "#e9e6df"
+    const key = `${wf.wall}|${color}`
+    if (!wallMats.has(key)) {
+      const tex = wf.wall === "wallpaper" ? track(wallpaperTexture(color)) : null
+      wallMats.set(
+        key,
+        track(
+          std(tex ? "#ffffff" : color, {
+            map: tex,
+            roughness: wf.wall === "tile" ? 0.25 : wf.wall === "plaster" ? 1 : 0.9,
+          }),
+        ),
+      )
+    }
+    return wallMats.get(key) as THREE.Material
+  }
+  const tileMat = track(std("#e4ecee", { roughness: 0.2 }))
   const tileH = f.wall === "tile" ? 0 : Math.min(f.tileHeight || 0, height)
   const glass = track(new THREE.MeshStandardMaterial({ color: "#bfe0f0", transparent: true, opacity: 0.35, roughness: 0.05 }))
   const frame = track(std("#f5f5f5"))
@@ -329,7 +378,10 @@ export function buildRoomScene(scheme: PlanScheme, room: PlanRoom): RoomScene {
       wallShape.holes.push(hole)
     }
     const geo = track(new THREE.ExtrudeGeometry(wallShape, { depth: T, bevelEnabled: false }))
-    const mesh = new THREE.Mesh(geo, wallMat)
+    // UV ExtrudeGeometry — в метрах; рисунок обоев 0,53 м по ширине и 0,6 м по высоте
+    const uv = geo.attributes.uv
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 0.53, uv.getY(i) / 0.6)
+    const mesh = new THREE.Mesh(geo, wallMatFor(w.id))
     // Локальная X — вдоль стены, Y — вверх, Z — толщина наружу
     const ox = w.a.x - w.nx * w.inner
     const oy = w.a.y - w.ny * w.inner

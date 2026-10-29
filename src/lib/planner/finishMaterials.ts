@@ -68,25 +68,42 @@ export function finishMaterials(scheme: PlanScheme): MaterialSection[] {
       }
     }
 
-    // Стены
-    if (f.wall === "wallpaper" && c.rolls > 0) {
-      add(walls, {
-        name: "Обои",
-        spec: `рулон ${String(f.rollWidth || 1.06).replace(".", ",")}×${String(f.rollLength || 10.05).replace(".", ",")} м${f.rapport ? `, раппорт ${Math.round((f.rapport || 0) * 1000)} мм` : ""}`,
-        unit: "рул",
-        qty: c.rolls,
-        note: `${name}: ${c.stripsPerRoll} полос из рулона`,
-      })
-      add(walls, { name: "Клей для обоев", spec: "пачка 250 г ≈ 10 м²", unit: "уп", qty: up(c.wallMain / 10) })
-    }
-    if (f.wall === "paint" && c.paintWall > 0) {
-      add(walls, { name: "Краска для стен", spec: `${f.paintCoats || 2} слоя, ${String(PAINT_L_PER_M2).replace(".", ",")} л/м² за слой`, unit: "л", qty: up(c.paintWall * 1.05, 0.5), note: `${name}: ${r1(c.wallMain)} м²` })
-    }
-    if (f.wall === "plaster") {
-      add(walls, { name: "Декоративная штукатурка", spec: "1,2 кг/м²", unit: "кг", qty: up(c.wallMain * 1.2 * 1.05) })
-    }
-    if (f.wall === "panels") {
-      add(walls, { name: "Стеновые панели", spec: `запас ${Math.round(WALL_FINISHES.panels.waste * 100)}%`, unit: "м²", qty: up(c.wallMain * (1 + WALL_FINISHES.panels.waste), 0.1) })
+    // Стены — по группам одинаковой отделки; акцентные стены идут отдельными строками
+    for (const g of c.groups) {
+      const wf = g.finish
+      const where = `${name}${g.accent ? `, акцентная стена ${g.walls.join(", ")}` : g.walls.length < c.walls.length ? `, стены ${g.walls.join(", ")}` : ""}`
+      const label = (base: string) => (g.accent ? `${base} (акцент)` : base)
+      const color = wf.wallColor ? `, цвет ${wf.wallColor.toUpperCase()}` : ""
+      const own = g.accent && wf.note ? ` — ${wf.note}` : ""
+      if (wf.wall === "wallpaper" && g.rolls > 0) {
+        add(walls, {
+          name: label("Обои") + own,
+          spec: `рулон ${String(wf.rollWidth || 1.06).replace(".", ",")}×${String(wf.rollLength || 10.05).replace(".", ",")} м${wf.rapport ? `, раппорт ${Math.round((wf.rapport || 0) * 1000)} мм` : ""}`,
+          unit: "рул",
+          qty: g.rolls,
+          note: `${where}: ${r1(g.main)} м², полос из рулона — ${g.stripsPerRoll}`,
+        })
+        add(walls, { name: "Клей для обоев", spec: "пачка 250 г ≈ 10 м²", unit: "уп", qty: up(g.main / 10) })
+      }
+      if (wf.wall === "paint" && g.paint > 0) {
+        add(walls, {
+          name: label("Краска для стен") + own,
+          spec: `${f.paintCoats || 2} слоя, ${String(PAINT_L_PER_M2).replace(".", ",")} л/м² за слой${color}`,
+          unit: "л",
+          qty: up(g.paint * 1.05, 0.5),
+          note: `${where}: ${r1(g.main)} м²`,
+        })
+      }
+      if (wf.wall === "plaster") {
+        add(walls, { name: label("Декоративная штукатурка") + own, spec: `1,2 кг/м²${color}`, unit: "кг", qty: up(g.main * 1.2 * 1.05), note: `${where}: ${r1(g.main)} м²` })
+      }
+      if (wf.wall === "panels") {
+        add(walls, { name: label("Стеновые панели") + own, spec: `запас ${Math.round(WALL_FINISHES.panels.waste * 100)}%`, unit: "м²", qty: up(g.main * (1 + WALL_FINISHES.panels.waste), 0.1), note: where })
+      }
+      // Под обои и покраску — финишная шпаклёвка
+      if ((wf.wall === "wallpaper" || wf.wall === "paint") && g.main > 0) {
+        add(rough, { name: "Шпаклёвка финишная", spec: "мешок 20 кг, слой 1 мм", unit: "уп", qty: up((g.main * NORM.putty * (wf.wall === "paint" ? 2 : 1)) / 20) })
+      }
     }
     if (c.wallTile > 0) {
       add(walls, { name: "Плитка настенная", spec: "запас 10% на подрезку", unit: "м²", qty: up(c.wallTile * 1.1, 0.1), note: `${name}: ${r1(c.wallTile)} м²` })
@@ -94,16 +111,12 @@ export function finishMaterials(scheme: PlanScheme): MaterialSection[] {
       add(walls, { name: "Затирка для швов", spec: "мешок 2 кг", unit: "уп", qty: up((c.wallTile * NORM.grout) / 2) })
       add(walls, { name: "Уголок для плитки", spec: "2,5 м", unit: "шт", qty: up(((room.height || scheme.defaultHeight) * 2) / 2.5) })
     }
-    // Под обои и покраску — финишная шпаклёвка
-    if ((f.wall === "wallpaper" || f.wall === "paint") && c.wallMain > 0) {
-      add(rough, { name: "Шпаклёвка финишная", spec: "мешок 20 кг, слой 1 мм", unit: "уп", qty: up((c.wallMain * NORM.putty * (f.wall === "paint" ? 2 : 1)) / 20) })
-    }
     if ((f.wallPlaster || 0) > 0) {
       const mm = (f.wallPlaster || 0) * 1000
       add(rough, { name: "Штукатурка гипсовая", spec: `мешок 30 кг, слой ${Math.round(mm)} мм`, unit: "уп", qty: up((c.wallNet * NORM.plaster * (mm / 10)) / 30) })
       add(rough, { name: "Маяк штукатурный", spec: "6 мм, 3 м", unit: "шт", qty: up(c.perimeter / 1.2) })
     }
-    if (f.wall !== "none" || c.wallTile > 0) {
+    if (c.walls.some((w) => w.finish.wall !== "none") || c.wallTile > 0) {
       add(rough, { name: "Грунтовка для стен", spec: "глубокого проникновения, 1 слой", unit: "л", qty: up(c.wallNet * NORM.primer) })
     }
 

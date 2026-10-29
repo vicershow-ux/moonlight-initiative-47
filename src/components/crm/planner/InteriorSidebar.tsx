@@ -2,7 +2,7 @@ import { useState } from "react"
 import Icon from "@/components/ui/icon"
 import { Room3DDialog } from "./Room3DDialog"
 import { fmtNum } from "@/lib/planner/geometry"
-import { FURNITURE_PRESETS, PlanFurniture, PlanHeating, PlanRoom, PlanScheme, RoomFinish } from "@/lib/planner/types"
+import { FURNITURE_PRESETS, LibraryItem, PlanFurniture, PlanHeating, PlanRoom, PlanScheme, RoomFinish } from "@/lib/planner/types"
 import { heatingCalc, interiorWarnings } from "@/lib/planner/interior"
 import { finishSummary } from "@/lib/planner/finishes"
 import { roomFinish } from "@/lib/planner/types"
@@ -23,6 +23,10 @@ interface Props {
   onSelectRoom: (id: string) => void
   onAddRender?: (roomId: string, dataUrl: string) => Promise<void>
   onDeleteRender?: (roomId: string, renderId: string) => void
+  onHoverWall?: (wallId: string | null) => void
+  library?: LibraryItem[]
+  onSaveToLibrary?: (f: PlanFurniture) => Promise<LibraryItem>
+  onUpdateLibraryItem?: (item: LibraryItem) => Promise<void>
 }
 
 /** Боковая панель слоя «Мебель и отделка»: выбранный предмет, зона тёплого пола, отделка, итоги */
@@ -39,6 +43,10 @@ export function InteriorSidebar({
   onSelectRoom,
   onAddRender,
   onDeleteRender,
+  onHoverWall,
+  library,
+  onSaveToLibrary,
+  onUpdateLibraryItem,
 }: Props) {
   const warnings = interiorWarnings(scheme)
   const [view3d, setView3d] = useState<string | null>(null)
@@ -56,13 +64,21 @@ export function InteriorSidebar({
         </button>
       )}
       {selectedFurniture && (
-        <SelectedFurnitureCard item={selectedFurniture} scheme={scheme} onUpdate={onUpdateFurniture} onDelete={onDeleteFurniture} />
+        <SelectedFurnitureCard
+          item={selectedFurniture}
+          scheme={scheme}
+          onUpdate={onUpdateFurniture}
+          onDelete={onDeleteFurniture}
+          library={library}
+          onSaveToLibrary={onSaveToLibrary}
+          onUpdateLibraryItem={onUpdateLibraryItem}
+        />
       )}
       {selectedHeating && (
         <SelectedHeatingCard zone={selectedHeating} scheme={scheme} onUpdate={onUpdateHeating} onDelete={onDeleteHeating} />
       )}
       {selectedRoom && !selectedFurniture && !selectedHeating && (
-        <RoomFinishCard room={selectedRoom} scheme={scheme} onUpdate={onUpdateFinish} />
+        <RoomFinishCard room={selectedRoom} scheme={scheme} onUpdate={onUpdateFinish} onHoverWall={onHoverWall} />
       )}
 
       {warnings.length > 0 && (
