@@ -105,6 +105,8 @@ export function PlanCanvas({
     | { type: "bend"; linkId: string; index: number }
     | null
   >(null)
+  /** Длина стены, набранная с клавиатуры, мм */
+  const [typed, setTyped] = useState("")
   /** Изломы трассы, которую сейчас прокладывают */
   const [bends, setBends] = useState<PlanPoint[]>([])
 
@@ -144,6 +146,62 @@ export function PlanCanvas({
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [tool, linkFromId, onCancelLink])
+
+  useEffect(() => {
+    if (tool !== "draw" || draft.length === 0) setTyped("")
+  }, [tool, draft.length])
+
+  /** Точка на набранном расстоянии от последнего угла в сторону курсора */
+  const typedPoint = (): PlanPoint | null => {
+    const mm = parseFloat(typed.replace(",", "."))
+    if (!typed || !Number.isFinite(mm) || mm <= 0 || !cursor || draft.length === 0) return null
+    const prev = draft[draft.length - 1]
+    const dx = cursor.x - prev.x
+    const dy = cursor.y - prev.y
+    const len = Math.hypot(dx, dy)
+    if (len < 1e-6) return null
+    const m = mm / 1000
+    return { x: Math.round((prev.x + (dx / len) * m) * 10000) / 10000, y: Math.round((prev.y + (dy / len) * m) * 10000) / 10000 }
+  }
+
+  const placePoint = (p: PlanPoint) => {
+    if (draft.length >= 3 && dist(p, draft[0]) < 0.005) {
+      onFinishRoom(draft)
+      return
+    }
+    onDraftChange([...draft, p])
+  }
+
+  // Набор длины стены цифрами: 3000 + Enter — стена ровно 3 м в сторону курсора
+  const keyRef = useRef<(e: KeyboardEvent) => void>(() => undefined)
+  keyRef.current = (e: KeyboardEvent) => {
+    if (tool !== "draw" || draft.length === 0) return
+    const target = e.target as HTMLElement | null
+    if (target && (/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.isContentEditable)) return
+    if (/^[0-9]$/.test(e.key) || ((e.key === "," || e.key === ".") && !/[.,]/.test(typed))) {
+      e.preventDefault()
+      if (typed.length < 7) setTyped((t) => t + e.key)
+    } else if (e.key === "Backspace") {
+      e.preventDefault()
+      if (typed) setTyped((t) => t.slice(0, -1))
+      else onDraftChange(draft.slice(0, -1))
+    } else if (e.key === "Enter") {
+      e.preventDefault()
+      const p = typedPoint()
+      if (p) {
+        placePoint(p)
+        setTyped("")
+      } else if (!typed && draft.length >= 3) onFinishRoom(draft)
+    } else if (e.key === "Escape") {
+      if (typed) setTyped("")
+      else onDraftChange([])
+    }
+  }
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => keyRef.current(e)
+    window.addEventListener("keydown", h)
+    return () => window.removeEventListener("keydown", h)
+  }, [])
 
   const wallById = new Map(schemeWalls(scheme).all.map((w) => [w.id, w]))
 
@@ -271,6 +329,12 @@ export function PlanCanvas({
     }
 
     if (tool === "draw") {
+      const tp = typedPoint()
+      if (tp) {
+        placePoint(tp)
+        setTyped("")
+        return
+      }
       const snapped = drawAssist(world, e.altKey).point
       // Замыкаем контур, если щёлкнули рядом с первой точкой (12 пикселей на экране)
       if (draft.length >= 3 && dist(snapped, draft[0]) * view.scale < 12) {
@@ -448,8 +512,28 @@ export function PlanCanvas({
           />
         )}
 
-        <PlanDraftLayer draft={draft} tool={tool} cursor={cursor} assist={assist} scale={view.scale} toScreen={toScreen} />
+        <PlanDraftLayer draft={draft} tool={tool} cursor={typedPoint() || cursor} assist={assist} scale={view.scale} toScreen={toScreen} />
       </svg>
+
+      {tool === "draw" && draft.length > 0 && cursor && (
+        <div
+          className="pointer-events-none absolute z-10 flex items-center gap-1.5 rounded-lg border bg-[#161616]/95 px-2.5 py-1.5 text-xs shadow-lg"
+          style={{
+            left: toScreen(cursor).x + 16,
+            top: toScreen(cursor).y + 14,
+            borderColor: typed ? "#D4AF37" : "rgba(255,255,255,0.12)",
+          }}
+        >
+          {typed ? (
+            <>
+              <span className="font-semibold text-[#D4AF37]">{typed}</span>
+              <span className="text-white/40">мм · Enter</span>
+            </>
+          ) : (
+            <span className="text-white/40">наберите длину, мм</span>
+          )}
+        </div>
+      )}
 
       <PlanControls cursor={cursor} gridStep={gridStep} zoomBy={zoomBy} fitView={fitView} />
     </div>

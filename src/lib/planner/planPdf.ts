@@ -168,7 +168,7 @@ export function schemeToSvg(
                 ? `<path d="M0 3 Q 2.5 1.5 5 3 T 10 3" fill="none" stroke="${c}" stroke-width="0.5"/>`
                 : `<line x1="0" y1="0" x2="0" y2="7" stroke="${c}" stroke-width="0.5"/><line x1="0" y1="0" x2="7" y2="0" stroke="${c}" stroke-width="0.5"/>`
       const size = m === "brick" ? 6 : m === "concrete" ? 8 : m === "aerated" || m === "block" ? 10 : m === "wood" ? 10 : 7
-      return `<pattern id="hatch-${m}" patternUnits="userSpaceOnUse" width="${size}" height="${size}" patternTransform="rotate(${m === "wood" ? 0 : 45})"><rect width="${size}" height="${size}" fill="${WALL_MATERIALS[m].color}" fill-opacity="0.28"/>${body}</pattern>`
+      return `<pattern id="hatch-${m}" patternUnits="userSpaceOnUse" width="${size}" height="${size}" patternTransform="rotate(${m === "wood" ? 0 : 45})"><rect width="${size}" height="${size}" fill="${WALL_MATERIALS[m].color}" fill-opacity="0.45"/>${body}</pattern>`
     })
     .join("")
   parts.unshift(`<defs>${hatchDefs}</defs>`)

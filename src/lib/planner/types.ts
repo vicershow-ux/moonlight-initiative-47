@@ -106,13 +106,13 @@ export const WALL_MATERIALS: Record<
   WallMaterial,
   { label: string; thicknesses: number[]; color: string }
 > = {
-  brick: { label: "Кирпич", thicknesses: [0.12, 0.25, 0.38, 0.51, 0.64], color: "#C8664A" },
-  concrete: { label: "Бетон / монолит", thicknesses: [0.16, 0.18, 0.2, 0.25, 0.3], color: "#8E9AA6" },
-  aerated: { label: "Газобетон", thicknesses: [0.1, 0.15, 0.2, 0.3, 0.375, 0.4], color: "#D9C9A3" },
-  block: { label: "Керамзито- / шлакоблок", thicknesses: [0.09, 0.19, 0.39], color: "#A88F72" },
-  pgp: { label: "Пазогребневые плиты", thicknesses: [0.08, 0.1], color: "#E5E1D8" },
-  gkl: { label: "Гипсокартон на каркасе", thicknesses: [0.075, 0.1, 0.125, 0.15], color: "#CFD8E3" },
-  wood: { label: "Дерево / брус", thicknesses: [0.1, 0.15, 0.2], color: "#B98A55" },
+  brick: { label: "Кирпич", thicknesses: [0.12, 0.25, 0.38, 0.51, 0.64], color: "#D2553A" },
+  concrete: { label: "Бетон / монолит", thicknesses: [0.16, 0.18, 0.2, 0.25, 0.3], color: "#7B8794" },
+  aerated: { label: "Газобетон", thicknesses: [0.1, 0.15, 0.2, 0.3, 0.375, 0.4], color: "#EBD95E" },
+  block: { label: "Керамзито- / шлакоблок", thicknesses: [0.09, 0.19, 0.39], color: "#8B5A34" },
+  pgp: { label: "Пазогребневые плиты", thicknesses: [0.08, 0.1], color: "#F4F4F4" },
+  gkl: { label: "Гипсокартон на каркасе", thicknesses: [0.075, 0.1, 0.125, 0.15], color: "#4FA3E8" },
+  wood: { label: "Дерево / брус", thicknesses: [0.1, 0.15, 0.2], color: "#E39A3B" },
 }
 
 export const DEFAULT_WALL: WallProps = { thickness: 0.25, material: "brick" }
