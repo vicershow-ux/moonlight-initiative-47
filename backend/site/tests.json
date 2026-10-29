@@ -53,6 +53,12 @@
       "method": "GET",
       "path": "/?resource=promo",
       "expectedStatus": 401
+    },
+    {
+      "name": "Unauthorized promo assets",
+      "method": "GET",
+      "path": "/?resource=promo_assets",
+      "expectedStatus": 401
     }
   ]
 }

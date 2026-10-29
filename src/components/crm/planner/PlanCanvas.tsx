@@ -29,6 +29,7 @@ import { hitWall, schemeWalls } from "@/lib/planner/walls"
 import { PlanDimensionsLayer } from "./PlanDimensionsLayer"
 import { PlanEngineerLayer } from "./PlanEngineerLayer"
 import { PlanControls, PlanDraftLayer } from "./PlanOverlays"
+import { DrawAssist, assistPoint } from "./drawAssist"
 
 export type PlanTool = "select" | "draw" | "window" | "door" | "arch" | "node" | "link"
 
@@ -96,6 +97,7 @@ export function PlanCanvas({
     usePlanView(scheme.rooms)
 
   const [cursor, setCursor] = useState<PlanPoint | null>(null)
+  const [assist, setAssist] = useState<DrawAssist | null>(null)
   const [drag, setDrag] = useState<
     | { type: "pan"; startX: number; startY: number; tx: number; ty: number }
     | { type: "vertex"; roomId: string; index: number }
@@ -146,6 +148,18 @@ export function PlanCanvas({
   const wallById = new Map(schemeWalls(scheme).all.map((w) => [w.id, w]))
 
   const snapPoint = (p: PlanPoint) => ({ x: snap(p.x, SNAP_STEP), y: snap(p.y, SNAP_STEP) })
+
+  /** Все углы на плане и в текущем контуре — к их уровню прилипает новая точка */
+  const assistRefs = (exclude?: { roomId: string; index: number }) => [
+    ...scheme.rooms.flatMap((r) => r.points.filter((_, i) => !(exclude && r.id === exclude.roomId && i === exclude.index))),
+    ...draft,
+  ]
+
+  const drawAssist = (world: PlanPoint, free: boolean) => {
+    const prev = draft.length ? draft[draft.length - 1] : null
+    const before = draft.length > 1 ? draft[draft.length - 2] : null
+    return assistPoint(snapPoint(world), prev, before, assistRefs(), view.scale, free)
+  }
 
   /** Последняя точка прокладываемой трассы: излом либо начальная точка */
   const routeTail = (): PlanPoint | null => {
@@ -257,7 +271,7 @@ export function PlanCanvas({
     }
 
     if (tool === "draw") {
-      const snapped = snapPoint(world)
+      const snapped = drawAssist(world, e.altKey).point
       // Замыкаем контур, если щёлкнули рядом с первой точкой (12 пикселей на экране)
       if (draft.length >= 3 && dist(snapped, draft[0]) * view.scale < 12) {
         onFinishRoom(draft)
@@ -289,7 +303,14 @@ export function PlanCanvas({
   const handleMove = (e: React.MouseEvent) => {
     const { sx, sy } = eventPoint(e)
     const world = toWorld(sx, sy)
-    setCursor(snapPoint(world))
+    if (tool === "draw" && !drag) {
+      const a = drawAssist(world, e.altKey)
+      setAssist(a)
+      setCursor(a.point)
+    } else {
+      if (assist && !drag) setAssist(null)
+      setCursor(snapPoint(world))
+    }
 
     if (!drag) return
     if (drag.type === "pan") {
@@ -307,13 +328,16 @@ export function PlanCanvas({
       onUpdateLink(link.id, { points: pts })
       return
     }
-    onMoveVertex(drag.roomId, drag.index, {
-      x: snap(world.x, SNAP_STEP),
-      y: snap(world.y, SNAP_STEP),
-    })
+    const a = assistPoint(snapPoint(world), null, null, assistRefs({ roomId: drag.roomId, index: drag.index }), view.scale, e.altKey)
+    setAssist(a)
+    setCursor(a.point)
+    onMoveVertex(drag.roomId, drag.index, a.point)
   }
 
-  const handleUp = () => setDrag(null)
+  const handleUp = () => {
+    if (drag?.type === "vertex") setAssist(null)
+    setDrag(null)
+  }
 
   /**
    * Колёсико масштабирует план и не прокручивает страницу. React вешает onWheel пассивно —
@@ -360,7 +384,10 @@ export function PlanCanvas({
         onMouseDown={handleDown}
         onMouseMove={handleMove}
         onMouseUp={handleUp}
-        onMouseLeave={handleUp}
+        onMouseLeave={() => {
+          handleUp()
+          setAssist(null)
+        }}
         onContextMenu={(e) => e.preventDefault()}
       >
         {gridLines.map((l, i) => (
@@ -421,7 +448,7 @@ export function PlanCanvas({
           />
         )}
 
-        <PlanDraftLayer draft={draft} tool={tool} cursor={cursor} toScreen={toScreen} />
+        <PlanDraftLayer draft={draft} tool={tool} cursor={cursor} assist={assist} scale={view.scale} toScreen={toScreen} />
       </svg>
 
       <PlanControls cursor={cursor} gridStep={gridStep} zoomBy={zoomBy} fitView={fitView} />

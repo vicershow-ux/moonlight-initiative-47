@@ -1,6 +1,7 @@
 import { ChangeEvent, useRef, useState } from "react"
 import Icon from "@/components/ui/icon"
 import type { PromoDesign, PromoEl, PromoSide } from "@/lib/promoTypes"
+import type { PromoAsset, PromoAssetKind } from "@/lib/api"
 import { ICONS, PHOTOS, uid } from "./formats"
 import { Contacts, TEMPLATES } from "./templates"
 import { ColorButton, DesignThumb } from "./ui"
@@ -23,9 +24,11 @@ interface Props {
   pageW: number
   pageH: number
   contacts: Contacts
-  uploads: string[]
+  uploads: PromoAsset[]
   uploading: boolean
-  onUpload: (file: File) => Promise<string | null>
+  onUpload: (file: File, kind?: PromoAssetKind) => Promise<string | null>
+  onRemoveAsset: (a: PromoAsset) => void
+  onToggleAssetKind: (a: PromoAsset) => void
   onAdd: (el: PromoEl) => void
   onSide: (patch: Partial<PromoSide>) => void
   onTemplate: (d: PromoDesign) => void
@@ -33,9 +36,10 @@ interface Props {
 
 const card = "rounded-lg border border-white/10 bg-[#161616] hover:border-[#D4AF37]/60 transition-colors"
 
-export function LeftPanel({ tab, design, side, pageW, pageH, contacts, uploads, uploading, onUpload, onAdd, onSide, onTemplate }: Props) {
+export function LeftPanel({ tab, design, side, pageW, pageH, contacts, uploads, uploading, onUpload, onRemoveAsset, onToggleAssetKind, onAdd, onSide, onTemplate }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
   const bgFileRef = useRef<HTMLInputElement>(null)
+  const logoFileRef = useRef<HTMLInputElement>(null)
   const [qrValue, setQrValue] = useState(`https://${contacts.website}`)
   const k = Math.min(pageW, pageH) / 50
   const isCard = design.format === "card"
@@ -55,15 +59,38 @@ export function LeftPanel({ tab, design, side, pageW, pageH, contacts, uploads, 
     onAdd({ id: uid(), type: "image", src, fit: "cover", ...center(w, w * 0.66) })
   }
 
-  const pickFile = async (e: ChangeEvent<HTMLInputElement>, asBg: boolean) => {
-    const f = e.target.files?.[0]
+  const addLogo = (src: string) => onAdd({ id: uid(), type: "image", src, fit: "contain", ...center(20 * k, 12 * k) })
+
+  const pickFile = async (e: ChangeEvent<HTMLInputElement>, mode: "photo" | "bg" | "logo") => {
+    const files = Array.from(e.target.files || [])
     e.target.value = ""
-    if (!f) return
-    const url = await onUpload(f)
-    if (!url) return
-    if (asBg) onSide({ bgImage: url })
-    else addImage(url)
+    for (const [i, f] of files.entries()) {
+      const url = await onUpload(f, mode === "logo" ? "logo" : "photo")
+      if (!url || i > 0) continue
+      if (mode === "bg") onSide({ bgImage: url })
+      else if (mode === "logo") addLogo(url)
+      else addImage(url)
+    }
   }
+
+  const photos = uploads.filter((u) => u.kind !== "logo")
+  const logos = uploads.filter((u) => u.kind === "logo")
+
+  const assetTile = (a: PromoAsset, onPick: () => void, contain = false) => (
+    <div key={a.id} className={`${card} group relative aspect-square overflow-hidden`}>
+      <button type="button" onClick={onPick} className={`h-full w-full ${contain ? "bg-[repeating-conic-gradient(#2a2a2a_0_25%,#202020_0_50%)] bg-[length:12px_12px] p-1.5" : ""}`} title={a.name || "Добавить на макет"}>
+        <img src={a.url} alt="" className={`h-full w-full ${contain ? "object-contain" : "object-cover"}`} loading="lazy" />
+      </button>
+      <div className="absolute right-1 top-1 hidden gap-1 group-hover:flex">
+        <button type="button" onClick={() => onToggleAssetKind(a)} title={a.kind === "logo" ? "Перенести в фото" : "Перенести в логотипы"} className="rounded bg-black/70 p-1 text-white/80 hover:text-[#D4AF37]">
+          <Icon name={a.kind === "logo" ? "Image" : "BadgeCheck"} size={12} />
+        </button>
+        <button type="button" onClick={() => onRemoveAsset(a)} title="Удалить из библиотеки" className="rounded bg-black/70 p-1 text-white/80 hover:text-red-400">
+          <Icon name="Trash2" size={12} />
+        </button>
+      </div>
+    </div>
+  )
 
   if (tab === "templates") {
     const list = TEMPLATES.filter((t) => (isCard ? t.kind === "card" : t.kind === "flyer"))
@@ -125,26 +152,35 @@ export function LeftPanel({ tab, design, side, pageW, pageH, contacts, uploads, 
   if (tab === "photo") {
     return (
       <div className="space-y-3">
-        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={(e) => pickFile(e, false)} />
-        <button type="button" disabled={uploading} onClick={() => fileRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#D4AF37] py-2.5 text-sm font-medium text-[#161616] hover:bg-[#B8860B] disabled:opacity-50">
-          <Icon name={uploading ? "Loader2" : "Upload"} size={15} className={uploading ? "animate-spin" : ""} />
-          Загрузить своё фото
-        </button>
-        <button type="button" onClick={() => onAdd({ id: uid(), type: "image", src: "/fixkey-logo.svg", fit: "contain", ...center(20 * k, 12 * k) })} className={`${card} flex w-full items-center gap-2 px-3 py-2 text-xs`}>
-          <img src="/fixkey-logo.svg" alt="" className="h-6 w-10 object-contain" /> Логотип FixKey
-        </button>
-        {uploads.length > 0 && (
+        <input ref={fileRef} type="file" multiple accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={(e) => pickFile(e, "photo")} />
+        <input ref={logoFileRef} type="file" multiple accept="image/png,image/svg+xml,image/webp,image/jpeg" hidden onChange={(e) => pickFile(e, "logo")} />
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" disabled={uploading} onClick={() => fileRef.current?.click()} className="flex items-center justify-center gap-1.5 rounded-lg bg-[#D4AF37] py-2.5 text-xs font-medium text-[#161616] hover:bg-[#B8860B] disabled:opacity-50">
+            <Icon name={uploading ? "Loader2" : "Upload"} size={14} className={uploading ? "animate-spin" : ""} />
+            Фото
+          </button>
+          <button type="button" disabled={uploading} onClick={() => logoFileRef.current?.click()} className="flex items-center justify-center gap-1.5 rounded-lg bg-white/10 py-2.5 text-xs font-medium hover:bg-white/15 disabled:opacity-50">
+            <Icon name={uploading ? "Loader2" : "BadgeCheck"} size={14} className={uploading ? "animate-spin" : ""} />
+            Логотип
+          </button>
+        </div>
+        <p className="text-[11px] text-white/35">Всё загруженное сохраняется в библиотеку и доступно во всех макетах.</p>
+
+        <div className="text-xs text-white/40">Мои логотипы</div>
+        <div className="grid grid-cols-3 gap-2">
+          <button type="button" onClick={() => addLogo("/fixkey-logo.svg")} className={`${card} aspect-square overflow-hidden bg-[repeating-conic-gradient(#2a2a2a_0_25%,#202020_0_50%)] bg-[length:12px_12px] p-1.5`} title="Логотип FixKey">
+            <img src="/fixkey-logo.svg" alt="" className="h-full w-full object-contain" />
+          </button>
+          {logos.map((a) => assetTile(a, () => addLogo(a.url), true))}
+        </div>
+
+        {photos.length > 0 && (
           <>
-            <div className="text-xs text-white/40">Загруженные</div>
-            <div className="grid grid-cols-3 gap-2">
-              {uploads.map((src) => (
-                <button key={src} type="button" onClick={() => addImage(src)} className={`${card} aspect-square overflow-hidden`}>
-                  <img src={src} alt="" className="h-full w-full object-cover" />
-                </button>
-              ))}
-            </div>
+            <div className="text-xs text-white/40">Мои фото</div>
+            <div className="grid grid-cols-3 gap-2">{photos.map((a) => assetTile(a, () => addImage(a.url)))}</div>
           </>
         )}
+
         <div className="text-xs text-white/40">Фото для ремонта</div>
         <div className="grid grid-cols-2 gap-2">
           {PHOTOS.map((p) => (
@@ -166,13 +202,13 @@ export function LeftPanel({ tab, design, side, pageW, pageH, contacts, uploads, 
         </div>
         <div className="space-y-2">
           <div className="text-xs text-white/40">Фото на весь макет</div>
-          <input ref={bgFileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => pickFile(e, true)} />
+          <input ref={bgFileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => pickFile(e, "bg")} />
           <button type="button" disabled={uploading} onClick={() => bgFileRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-lg bg-white/10 py-2.5 text-sm hover:bg-white/15 disabled:opacity-50">
             <Icon name={uploading ? "Loader2" : "Upload"} size={15} className={uploading ? "animate-spin" : ""} />
             Загрузить фото на фон
           </button>
           <div className="grid grid-cols-3 gap-2">
-            {[...uploads, ...PHOTOS.map((p) => p.src)].map((src) => (
+            {[...photos.map((p) => p.url), ...PHOTOS.map((p) => p.src)].map((src) => (
               <button key={src} type="button" onClick={() => onSide({ bgImage: src })} className={`${card} aspect-square overflow-hidden ${side.bgImage === src ? "!border-[#D4AF37]" : ""}`}>
                 <img src={src} alt="" className="h-full w-full object-cover" loading="lazy" />
               </button>

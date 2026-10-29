@@ -4,6 +4,7 @@ import { fmtNum, fromMm, roomMetrics, toMm } from "@/lib/planner/geometry"
 import { RoomWallsEditor } from "./RoomWallsEditor"
 import { SelectedWallCard } from "./SelectedWallCard"
 import { WallElevationsDialog } from "./WallElevationsDialog"
+import { squareUp } from "./drawAssist"
 import { useState } from "react"
 import {
   OPENING_PRESETS,
@@ -219,6 +220,19 @@ export function PlanSidebar({
             <div className="text-xs uppercase text-white/40">Помещение</div>
             <DeleteButton onConfirm={() => onDeleteRoom(selectedRoom.id)} />
           </div>
+          {(() => {
+            const fixed = squareUp(selectedRoom.points, 8)
+            const crooked = fixed.some((p, i) => Math.abs(p.x - selectedRoom.points[i].x) > 1e-4 || Math.abs(p.y - selectedRoom.points[i].y) > 1e-4)
+            return crooked ? (
+              <button
+                onClick={() => onUpdateRoom(selectedRoom.id, { points: fixed })}
+                className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg border border-orange-400/40 bg-orange-400/10 px-3 py-2 text-sm text-orange-300 transition-colors hover:bg-orange-400/20"
+              >
+                <Icon name="SquareDashed" size={14} />
+                Выровнять стены под 90°
+              </button>
+            ) : null
+          })()}
           <div className="mb-3">
             <button
               onClick={() => setElev({ roomId: selectedRoom.id, wallId: null })}
@@ -345,6 +359,8 @@ export function PlanSidebar({
         <ul className="space-y-1">
           <li>Инструмент «Стены»: щёлкайте по углам комнаты</li>
           <li>Чтобы замкнуть — щёлкните по первой точке</li>
+          <li>Возле стены видно отклонение в градусах, почти ровная стена выпрямляется сама</li>
+          <li>Синий пунктир — вы на одном уровне с другим углом. Alt — чертить без помощника</li>
           <li>«Окно» и «Дверь»: щёлкните по нужной стене</li>
           <li>«Выбор»: тащите углы или введите длину стены в мм</li>
           <li>Колесо мыши — масштаб, правая кнопка — сдвиг</li>

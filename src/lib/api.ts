@@ -1296,6 +1296,13 @@ export interface PageSeo {
 }
 
 export type PromoKind = "flyer" | "card"
+export type PromoAssetKind = "photo" | "logo"
+export interface PromoAsset {
+  id: number
+  url: string
+  kind: PromoAssetKind
+  name: string
+}
 
 export interface PromoItem {
   id: number
@@ -1409,13 +1416,29 @@ export const siteApi = {
       })
       return parseResponse(res) as Promise<PromoItem>
     },
-    async upload(file: string) {
+    async upload(file: string, kind: PromoAssetKind = "photo", name = "") {
       const res = await fetch(`${SITE_URL}?resource=promo&action=upload`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify({ file }),
+        body: JSON.stringify({ file, kind, name }),
       })
-      return parseResponse(res) as Promise<{ url: string }>
+      return parseResponse(res) as Promise<PromoAsset>
+    },
+    async assets() {
+      const res = await fetch(`${SITE_URL}?resource=promo_assets`, { headers: authHeaders() })
+      return parseResponse(res) as Promise<{ items: PromoAsset[] }>
+    },
+    async setAssetKind(id: number, kind: PromoAssetKind) {
+      const res = await fetch(`${SITE_URL}?resource=promo_assets&id=${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ kind }),
+      })
+      return parseResponse(res)
+    },
+    async removeAsset(id: number) {
+      const res = await fetch(`${SITE_URL}?resource=promo_assets&id=${id}`, { method: "DELETE", headers: authHeaders() })
+      return parseResponse(res)
     },
     async remove(id: number) {
       const res = await fetch(`${SITE_URL}?resource=promo&id=${id}`, { method: "DELETE", headers: { ...authHeaders() } })

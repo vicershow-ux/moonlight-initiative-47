@@ -438,6 +438,26 @@ def handler(event: dict, context) -> dict:
 
             return response(405, {'error': 'Метод не поддерживается'})
 
+        if resource == 'promo_assets':
+            if method == 'GET':
+                cur.execute(
+                    "SELECT id, url, kind, name FROM site_promo_assets WHERE company_id = %s ORDER BY created_at DESC LIMIT 500",
+                    (company_id,)
+                )
+                return response(200, {'items': [{'id': r[0], 'url': r[1], 'kind': r[2], 'name': r[3]} for r in cur.fetchall()]})
+            asset_id = params.get('id')
+            if method == 'PUT' and asset_id:
+                body = json.loads(event.get('body') or '{}')
+                asset_kind = 'logo' if body.get('kind') == 'logo' else 'photo'
+                cur.execute("UPDATE site_promo_assets SET kind = %s WHERE id = %s AND company_id = %s", (asset_kind, asset_id, company_id))
+                conn.commit()
+                return response(200, {'success': True})
+            if method == 'DELETE' and asset_id:
+                cur.execute("DELETE FROM site_promo_assets WHERE id = %s AND company_id = %s", (asset_id, company_id))
+                conn.commit()
+                return response(200, {'success': True})
+            return response(405, {'error': 'Метод не поддерживается'})
+
         if resource == 'promo':
             item_id = params.get('id')
             cols = "id, kind, title, data, created_at, updated_at"
@@ -458,7 +478,16 @@ def handler(event: dict, context) -> dict:
                 file_data = body.get('file') or ''
                 if not file_data:
                     return response(400, {'error': 'Нет файла'})
-                return response(200, {'url': upload_image(company_id, file_data, 'promo')})
+                url = upload_image(company_id, file_data, 'promo')
+                asset_kind = 'logo' if body.get('kind') == 'logo' else 'photo'
+                name = str(body.get('name') or '').strip()[:200]
+                cur.execute(
+                    "INSERT INTO site_promo_assets (company_id, url, kind, name) VALUES (%s, %s, %s, %s) RETURNING id",
+                    (company_id, url, asset_kind, name)
+                )
+                asset_id = cur.fetchone()[0]
+                conn.commit()
+                return response(200, {'id': asset_id, 'url': url, 'kind': asset_kind, 'name': name})
 
             kind = body.get('kind') if body.get('kind') in ('flyer', 'card') else 'flyer'
             title = str(body.get('title') or '').strip()[:200] or 'Без названия'

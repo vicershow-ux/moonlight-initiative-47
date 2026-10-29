@@ -1,3 +1,4 @@
+import { squareUp } from "@/components/crm/planner/drawAssist"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { PlanTool } from "@/components/crm/planner/PlanCanvas"
 import { objectsApi, objectPlansApi, ObjectItem } from "@/lib/api"
@@ -110,7 +111,7 @@ export function usePlannerState(id: string | undefined) {
         id: uid(),
         name: `Помещение ${scheme.rooms.length + 1}`,
         room_type: "",
-        points,
+        points: squareUp(points),
         height: scheme.defaultHeight,
         notes: "",
       }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import Icon from "@/components/ui/icon"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { siteApi } from "@/lib/api"
+import { PromoAsset, PromoAssetKind, siteApi } from "@/lib/api"
 import { resizeImageToDataUrl } from "@/lib/imageUpload"
 import type { Orientation, PromoDesign, PromoEl, PromoFormat, PromoSide } from "@/lib/promoTypes"
 import { FONTS_HREF, FORMATS, pageSize, rescaleDesign, sheetLayout, uid } from "./formats"
@@ -38,7 +38,7 @@ export function PromoEditor({ id, title: initialTitle, design: initial, contacts
   const [dirty, setDirty] = useState(!id)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [uploads, setUploads] = useState<string[]>([])
+  const [uploads, setUploads] = useState<PromoAsset[]>([])
   const [printOpen, setPrintOpen] = useState(false)
   const [printOpts, setPrintOpts] = useState<PrintOptions>({ sides: "both", cutLines: true, fill: true })
   const past = useRef<PromoDesign[]>([])
@@ -218,13 +218,36 @@ export function PromoEditor({ id, title: initialTitle, design: initial, contacts
     return () => window.removeEventListener("beforeunload", h)
   }, [dirty])
 
-  const upload = async (file: File): Promise<string | null> => {
+  useEffect(() => {
+    siteApi.promo
+      .assets()
+      .then((r) => setUploads(r.items || []))
+      .catch(() => undefined)
+  }, [])
+
+  const removeAsset = async (a: PromoAsset) => {
+    if (!window.confirm("Удалить из библиотеки? В уже готовых макетах картинка останется.")) return
+    try {
+      await siteApi.promo.removeAsset(a.id)
+      setUploads((u) => u.filter((x) => x.id !== a.id))
+    } catch (e) {
+      toast({ variant: "destructive", title: "Не удалось удалить", description: e instanceof Error ? e.message : "" })
+    }
+  }
+
+  const toggleAssetKind = async (a: PromoAsset) => {
+    const kind: PromoAssetKind = a.kind === "logo" ? "photo" : "logo"
+    setUploads((u) => u.map((x) => (x.id === a.id ? { ...x, kind } : x)))
+    siteApi.promo.setAssetKind(a.id, kind).catch(() => undefined)
+  }
+
+  const upload = async (file: File, kind: PromoAssetKind = "photo"): Promise<string | null> => {
     setUploading(true)
     try {
-      const data = await resizeImageToDataUrl(file, 2400, 0.88)
-      const { url } = await siteApi.promo.upload(data)
-      setUploads((u) => [url, ...u])
-      return url
+      const data = await resizeImageToDataUrl(file, kind === "logo" ? 1600 : 2400, 0.88)
+      const asset = await siteApi.promo.upload(data, kind, file.name.replace(/\.[^.]+$/, ""))
+      setUploads((u) => [asset, ...u])
+      return asset.url
     } catch (e) {
       toast({ variant: "destructive", title: "Не удалось загрузить фото", description: e instanceof Error ? e.message : "" })
       return null
@@ -348,6 +371,8 @@ export function PromoEditor({ id, title: initialTitle, design: initial, contacts
               uploads={uploads}
               uploading={uploading}
               onUpload={upload}
+              onRemoveAsset={removeAsset}
+              onToggleAssetKind={toggleAssetKind}
               onAdd={addEl}
               onSide={(patch) => updateSide((s) => ({ ...s, ...patch }))}
               onTemplate={(d) => {
