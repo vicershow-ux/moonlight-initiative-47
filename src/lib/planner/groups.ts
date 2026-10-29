@@ -1,5 +1,7 @@
 import { CableTotals, addCable, cableLength, emptyTotals } from "./cable"
+import { thermostatWatts } from "./interior"
 import {
+  breakerAmps,
   MIN_SECTION,
   NODE_PRESETS,
   NodeKind,
@@ -23,6 +25,8 @@ export interface GroupSummary {
   minSection: number
   /** Предупреждение, если автомат слишком мощный для кабеля */
   warning: string | null
+  /** Тёплый пол за терморегуляторами группы, кВт */
+  heatingKw: number
 }
 
 /**
@@ -64,6 +68,18 @@ export function groupSummaries(scheme: PlanScheme): GroupSummary[] {
         ? `Под ${group.breaker} нужен кабель от ${String(need).replace(".", ",")} мм², в группе есть ${String(minSection).replace(".", ",")} мм²`
         : null
 
+    // Тёплый пол — по зонам за терморегуляторами, подключёнными к группе
+    let heatW = 0
+    for (const id of nodeIds) {
+      const n = nodeById.get(id)
+      if (n?.kind === "thermostat") heatW += thermostatWatts(scheme, n.id)
+    }
+    const heatingKw = Math.round(heatW / 10) / 100
+    const heatWarn =
+      group && heatingKw > 0 && breakerAmps(group.breaker) > 0 && (heatingKw * 1000) / 230 > breakerAmps(group.breaker)
+        ? `Тёплый пол ${Math.round(heatingKw * 1000)} Вт больше автомата ${group.breaker}`
+        : null
+
     return {
       group,
       bySpec,
@@ -72,7 +88,8 @@ export function groupSummaries(scheme: PlanScheme): GroupSummary[] {
       linkCount: own.length,
       nodeCounts,
       minSection,
-      warning,
+      warning: warning || heatWarn,
+      heatingKw,
     }
   }
 

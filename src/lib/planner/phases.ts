@@ -32,7 +32,8 @@ export function groupPower(sum: GroupSummary): { kw: number; estimated: boolean 
     raw += (NODE_POWER[kind as NodeKind] || 0) * (n || 0)
     count += n || 0
   }
-  let kw = raw * demandFactor(count)
+  // Тёплый пол работает долго и одновременно — считаем без коэффициента
+  let kw = raw * demandFactor(count) + (sum.heatingKw || 0)
   const cap = g ? (breakerAmps(g.breaker) * PHASE_VOLTAGE) / 1000 : 0
   if (cap > 0) kw = Math.min(kw, cap)
   return { kw: Math.round(kw * 100) / 100, estimated: true }

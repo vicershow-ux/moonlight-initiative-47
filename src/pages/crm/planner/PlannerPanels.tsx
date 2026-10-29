@@ -138,6 +138,17 @@ export function PlannerEngineerPicker({
                 {NODE_PRESETS[k].label}
               </button>
             ))}
+          {layer === "electric" && (
+            <button
+              onClick={() => setTool("heating")}
+              className={`flex min-h-[38px] items-center gap-2 rounded-lg px-3 text-sm transition-colors ${
+                tool === "heating" ? "bg-[#D4AF37] text-[#161616]" : "bg-white/5 text-white/60 hover:bg-white/10"
+              }`}
+            >
+              <Icon name="Thermometer" size={15} />
+              Зона тёплого пола
+            </button>
+          )}
           {layer === "electric" &&
             (["track", "floating"] as const).map((k) => (
               <button
@@ -151,6 +162,12 @@ export function PlannerEngineerPicker({
                 {FIXTURE_PRESETS[k].label}
               </button>
             ))}
+          {tool === "heating" && (
+            <span className="flex w-full items-center gap-1.5 text-xs text-white/40">
+              <Icon name="Ruler" size={12} />
+              Обведите зону по углам и замкните у первой точки — мощность, ток и кабель посчитаются справа. Тип и Вт/м² меняются на слое «Мебель и отделка». Терморегулятор — точка «Терморегулятор тёплого пола», к нему проведите кабель от щита
+            </span>
+          )}
           {tool === "track" && (
             <span className="flex w-full items-center gap-1.5 text-xs text-white/40">
               <Icon name="Ruler" size={12} />

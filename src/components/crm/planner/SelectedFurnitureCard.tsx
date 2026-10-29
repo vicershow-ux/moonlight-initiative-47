@@ -2,7 +2,9 @@ import Icon from "@/components/ui/icon"
 import { DeleteButton } from "@/components/ui/delete-button"
 import { fromMm, toMm } from "@/lib/planner/geometry"
 import { FURNITURE_PRESETS, PlanFurniture, PlanScheme } from "@/lib/planner/types"
-import { snapFurnitureToWall } from "@/lib/planner/interior"
+import { furnitureWallDims, setFurnitureGap, snapFurnitureToWall } from "@/lib/planner/interior"
+
+const SIDE = { back: "Сзади (к стене)", front: "Спереди", left: "Слева", right: "Справа" } as const
 
 const inputCls =
   "w-full bg-[#161616] border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50"
@@ -18,6 +20,7 @@ interface Props {
 /** Карточка предмета мебели: подпись, размеры, поворот, прижать к стене */
 export function SelectedFurnitureCard({ item, scheme, onUpdate, onDelete }: Props) {
   const pr = FURNITURE_PRESETS[item.kind]
+  const dims = furnitureWallDims(scheme, item)
   const num = (field: "w" | "d" | "h", label: string) => (
     <div>
       <label className={labelCls}>{label}, мм</label>
@@ -77,6 +80,33 @@ export function SelectedFurnitureCard({ item, scheme, onUpdate, onDelete }: Prop
           К стене
         </button>
       </div>
+      <div className="mb-3">
+        <div className={labelCls}>Отступ от стен, мм</div>
+        <div className="grid grid-cols-2 gap-2">
+          {(["back", "front", "left", "right"] as const).map((side) => {
+            const d = dims.find((x) => x.side === side)
+            return (
+              <div key={side}>
+                <label className="mb-1 block text-[11px] text-white/40">{SIDE[side]}</label>
+                <input
+                  className={inputCls}
+                  type="number"
+                  min="0"
+                  step="10"
+                  disabled={!d}
+                  value={d ? toMm(d.length) : ""}
+                  onChange={(e) => {
+                    const p = setFurnitureGap(scheme, item, side, Math.max(fromMm(Number(e.target.value)), 0))
+                    if (p) onUpdate(item.id, p)
+                  }}
+                />
+              </div>
+            )
+          })}
+        </div>
+        <div className="mt-1 text-[11px] text-white/35">Сзади — сторона, которой предмет стоит к стене. Введите число — предмет сдвинется</div>
+      </div>
+
       <div className="text-xs text-white/40">
         {pr.blocksHeating ? "Под предметом тёплый пол не укладывается. " : ""}
         {pr.blocksSockets ? "Закрывает розетки на стене за собой — проверьте их высоту." : ""}

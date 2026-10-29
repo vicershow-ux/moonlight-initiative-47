@@ -232,6 +232,7 @@ export function PlannerWorkspace({ state }: Props) {
           onUpdateFixture={updateFixture}
           onDeleteFixture={deleteFixture}
           onUpdateLighting={state.updateLighting}
+          onUpdateHeating={state.updateHeating}
         />
       )}
     </div>

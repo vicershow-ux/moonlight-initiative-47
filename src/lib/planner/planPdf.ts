@@ -33,7 +33,7 @@ import { CEILING_FINISHES, FLOOR_FINISHES, FURNITURE_PRESETS, HEATING_PRESETS, W
 import { PHASE_COLORS, SECTION_COLORS, WALL_MATERIALS, WallMaterial, sectionColor, sectionOf } from "@/lib/planner/types"
 import { hatchPattern, materialSwatchImg, usedMaterials } from "@/lib/planner/wallHatch"
 import { floorPattern, furnitureName, furnitureSvg, heatingPattern } from "@/lib/planner/interiorSvg"
-import { heatingCalc, interiorWarnings } from "@/lib/planner/interior"
+import { heatingCalc, heatingSupply, interiorWarnings, thermostatZones } from "@/lib/planner/interior"
 import { finishCalc, finishSummary } from "@/lib/planner/finishes"
 import { finishMaterials } from "@/lib/planner/finishMaterials"
 import { NODE_CODES, fixtureLegendItems, nodeLegendImg, nodeLegendItems } from "@/lib/planner/nodeLegend"
@@ -520,6 +520,47 @@ function interiorSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
       : ""
   }
   ${warns.length ? `<div class="warn">Проверить: ${warns.map((w) => escapeXml(w.text)).join("; ")}.</div>` : ""}`
+}
+
+/** Тёплый пол на листе электрики: зоны, мощность, терморегулятор, автомат и кабель питания */
+function heatingElectricTable(scheme: PlanScheme): string {
+  const zones = (scheme.heating || []).filter((h) => h.kind !== "water")
+  if (!zones.length) return ""
+  const byTh = thermostatZones(scheme)
+  const thOf = new Map<string, string>()
+  for (const [tid, list] of byTh) for (const h of list) thOf.set(h.id, tid)
+  const ths = (scheme.nodes || []).filter((n) => n.kind === "thermostat")
+  const groupOf = (tid: string) => {
+    const l = (scheme.links || []).find((x) => x.layer === "electric" && (x.fromId === tid || x.toId === tid) && x.groupId)
+    return l ? (scheme.groups || []).find((g) => g.id === l.groupId) || null : null
+  }
+  const rows = zones
+    .map((h) => {
+      const c = heatingCalc(scheme, h)
+      const tid = thOf.get(h.id)
+      const thW = tid ? (byTh.get(tid) || []).reduce((s, z) => s + heatingCalc(scheme, z).watts, 0) : c.watts
+      const sup = heatingSupply(thW)
+      const g = tid ? groupOf(tid) : null
+      const thNo = tid ? ths.findIndex((t) => t.id === tid) + 1 : 0
+      return `<tr>
+        <td>${escapeXml(scheme.rooms.find((r) => r.id === h.roomId)?.name || "—")}</td>
+        <td>${HEATING_PRESETS[h.kind].label}</td>
+        <td class="num">${fmtNum(c.net, 2)}</td>
+        <td class="num">${h.power}</td>
+        <td class="num strong">${c.watts}</td>
+        <td class="num">${fmtNum(c.amps, 1)}</td>
+        <td>${thNo ? `ТР${thNo}` : '<span class="warn">нет</span>'}</td>
+        <td>${g ? `гр.${g.num} · ${g.breaker}` : '<span class="warn">не подключён</span>'}</td>
+        <td>${sup.breaker}, ВВГнг-LS 3×${sup.section.replace(" мм²", "").replace(".", ",")}${sup.contactor ? ", контактор" : ""}</td>
+      </tr>`
+    })
+    .join("")
+  return `<h3>Тёплый пол</h3>
+  <table>
+    <thead><tr><th>Помещение</th><th>Тип</th><th>Обогрев, м²</th><th>Вт/м²</th><th>Мощность, Вт</th><th>Ток, А</th><th>Терморег.</th><th>Группа щита</th><th>Рекомендуемое питание</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="legend" style="text-align:left">Площадь — без мест под мебелью без ножек и сантехникой. Мощность тёплого пола учтена в нагрузке группы и в распределении по фазам.</div>`
 }
 
 /** Смета отделки и черновых материалов */
@@ -1134,6 +1175,8 @@ function engineerSection(
   </div>
 
   ${nodeLegend(scheme, layer)}
+
+  ${layer === "electric" ? heatingElectricTable(scheme) : ""}
 
   <h3>Условные обозначения и ведомость точек</h3>
   <table>

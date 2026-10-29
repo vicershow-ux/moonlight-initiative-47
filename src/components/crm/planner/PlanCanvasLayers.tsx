@@ -4,6 +4,8 @@ import { schemeWalls } from "@/lib/planner/walls"
 import { PlaceAssist } from "@/lib/planner/placeAssist"
 import { FloatingDraft, TrackDraft } from "./FixtureDrafts"
 import { FurnitureGhost } from "./FurnitureGhost"
+import { FurnitureDimsLayer } from "./FurnitureDimsLayer"
+import { furnitureWallDims } from "@/lib/planner/interior"
 import { ToScreen } from "./usePlanView"
 import { PlanRoomsLayer } from "./PlanRoomsLayer"
 import { PlaceAssistLayer } from "./PlaceAssistLayer"
@@ -143,6 +145,11 @@ export function PlanCanvasLayers({
 
       {tool === "track" && trackPts.length > 0 && cursor && <TrackDraft pts={trackPts} b={cursor} toScreen={toScreen} />}
       {tool === "floating" && cursor && <FloatingDraft scheme={scheme} at={cursor} toScreen={toScreen} />}
+      {/* Выбранный или перетаскиваемый предмет — с отступами от стен */}
+      {layer === "interior" && props.selectedFurnitureId && (() => {
+        const it = (scheme.furniture || []).find((f) => f.id === props.selectedFurnitureId)
+        return it ? <FurnitureDimsLayer dims={furnitureWallDims(scheme, it)} toScreen={toScreen} /> : null
+      })()}
       {tool === "furniture" && cursor && props.furnitureKind && (
         <FurnitureGhost scheme={scheme} kind={props.furnitureKind} at={cursor} toScreen={toScreen} />
       )}

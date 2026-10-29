@@ -207,6 +207,12 @@ export function PanelGroupsCard({
                     </span>
                   )}
                 </div>
+                {sum && sum.heatingKw > 0 && (
+                  <div className="mb-2 flex items-center gap-1.5 text-xs text-[#fdba74]">
+                    <Icon name="Thermometer" size={12} />
+                    в т.ч. тёплый пол {fmtNum(sum.heatingKw, 2)} кВт · {fmtNum(kwToAmps(sum.heatingKw), 1)} А
+                  </div>
+                )}
 
                 {balance && (
                   <div className="mb-2 flex items-center gap-1 text-xs text-white/50">

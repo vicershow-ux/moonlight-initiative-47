@@ -1,4 +1,6 @@
+import { useState } from "react"
 import Icon from "@/components/ui/icon"
+import { Room3DDialog } from "./Room3DDialog"
 import { fmtNum } from "@/lib/planner/geometry"
 import { FURNITURE_PRESETS, PlanFurniture, PlanHeating, PlanRoom, PlanScheme, RoomFinish } from "@/lib/planner/types"
 import { heatingCalc, interiorWarnings } from "@/lib/planner/interior"
@@ -35,9 +37,20 @@ export function InteriorSidebar({
   onSelectRoom,
 }: Props) {
   const warnings = interiorWarnings(scheme)
+  const [view3d, setView3d] = useState<string | null>(null)
   const heat = (scheme.heating || []).map((h) => ({ h, c: heatingCalc(scheme, h) }))
   return (
     <div className="space-y-4">
+      {view3d && <Room3DDialog open onOpenChange={(v) => !v && setView3d(null)} scheme={scheme} roomId={view3d} />}
+      {selectedRoom && (
+        <button
+          onClick={() => setView3d(selectedRoom.id)}
+          className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-[#D4AF37] text-sm font-medium text-[#161616] hover:bg-[#B8860B]"
+        >
+          <Icon name="Box" size={16} />
+          3D-вид: {selectedRoom.name}
+        </button>
+      )}
       {selectedFurniture && (
         <SelectedFurnitureCard item={selectedFurniture} scheme={scheme} onUpdate={onUpdateFurniture} onDelete={onDeleteFurniture} />
       )}
@@ -68,14 +81,23 @@ export function InteriorSidebar({
           {scheme.rooms.map((r) => {
             const sum = finishSummary(roomFinish(scheme, r.id))
             return (
-              <button
+              <div
                 key={r.id}
-                onClick={() => onSelectRoom(r.id)}
-                className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${selectedRoom?.id === r.id ? "bg-[#D4AF37]/15 text-white" : "bg-[#161616] text-white/70 hover:bg-white/5"}`}
+                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${selectedRoom?.id === r.id ? "bg-[#D4AF37]/15 text-white" : "bg-[#161616] text-white/70 hover:bg-white/5"}`}
               >
-                <div className="font-medium">{r.name}</div>
-                <div className="text-xs text-white/40">{sum || "отделка не задана"}</div>
-              </button>
+                <button onClick={() => onSelectRoom(r.id)} className="min-w-0 flex-1 text-left">
+                  <div className="font-medium">{r.name}</div>
+                  <div className="truncate text-xs text-white/40">{sum || "отделка не задана"}</div>
+                </button>
+                <button
+                  onClick={() => setView3d(r.id)}
+                  title="Открыть в 3D"
+                  className="flex h-8 shrink-0 items-center gap-1 rounded-md bg-white/5 px-2 text-xs text-[#D4AF37] hover:bg-white/10"
+                >
+                  <Icon name="Box" size={13} />
+                  3D
+                </button>
+              </div>
             )
           })}
         </div>

@@ -468,6 +468,8 @@ export interface PlanHeating {
   /** Вырезать места под мебелью, которая не пропускает тепло */
   cutFurniture: boolean
   label: string
+  /** Терморегулятор, который управляет зоной (точка на слое «Электрика») */
+  thermostatId?: string | null
 }
 
 // ——— Отделка ———

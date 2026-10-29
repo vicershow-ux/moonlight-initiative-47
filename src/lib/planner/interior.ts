@@ -205,3 +205,131 @@ export function interiorWarnings(scheme: PlanScheme): InteriorWarning[] {
 export function furnitureRefs(scheme: PlanScheme): PlanPoint[] {
   return (scheme.furniture || []).flatMap((f) => [{ x: f.x, y: f.y }, ...furnitureCorners(f)])
 }
+
+/** Размер от стороны предмета до стены: точка на стороне, точка на стене, длина */
+export interface FurnitureDim {
+  a: PlanPoint
+  b: PlanPoint
+  length: number
+  /** Сторона предмета: слева, справа, сзади (у стены), спереди */
+  side: "left" | "right" | "back" | "front"
+}
+
+/** Расстояние от точки до внутренней грани стен комнаты по лучу (dx, dy — единичный вектор) */
+function rayToWalls(p: PlanPoint, dx: number, dy: number, room: PlanRoom, scheme: PlanScheme): number | null {
+  let best: number | null = null
+  for (const w of roomWalls(room, scheme)) {
+    const a = { x: w.a.x - w.nx * w.inner, y: w.a.y - w.ny * w.inner }
+    const b = { x: w.b.x - w.nx * w.inner, y: w.b.y - w.ny * w.inner }
+    const ex = b.x - a.x
+    const ey = b.y - a.y
+    const den = dx * ey - dy * ex
+    if (Math.abs(den) < 1e-9) continue
+    const t = ((a.x - p.x) * ey - (a.y - p.y) * ex) / den
+    const u = ((a.x - p.x) * dy - (a.y - p.y) * dx) / den
+    if (t > -1e-6 && u >= -1e-6 && u <= 1 + 1e-6 && (best === null || t < best)) best = Math.max(t, 0)
+  }
+  return best
+}
+
+/**
+ * Отступы предмета от стен: из середины каждой стороны — перпендикулярно наружу до стены.
+ * Монтажник видит, сколько от шкафа до угла, от кровати до окна и т.п.
+ */
+export function furnitureWallDims(scheme: PlanScheme, f: Pick<PlanFurniture, "x" | "y" | "w" | "d" | "rot">): FurnitureDim[] {
+  const room = furnitureRoom(scheme, f)
+  if (!room) return []
+  const r = (f.rot * Math.PI) / 180
+  const ux = { x: Math.cos(r), y: Math.sin(r) }
+  const uy = { x: -Math.sin(r), y: Math.cos(r) }
+  const sides: { side: FurnitureDim["side"]; n: PlanPoint; half: number }[] = [
+    { side: "left", n: { x: -ux.x, y: -ux.y }, half: f.w / 2 },
+    { side: "right", n: { x: ux.x, y: ux.y }, half: f.w / 2 },
+    { side: "back", n: { x: -uy.x, y: -uy.y }, half: f.d / 2 },
+    { side: "front", n: { x: uy.x, y: uy.y }, half: f.d / 2 },
+  ]
+  const out: FurnitureDim[] = []
+  for (const s of sides) {
+    const a = { x: f.x + s.n.x * s.half, y: f.y + s.n.y * s.half }
+    const t = rayToWalls(a, s.n.x, s.n.y, room, scheme)
+    if (t === null) continue
+    out.push({ a, b: { x: a.x + s.n.x * t, y: a.y + s.n.y * t }, length: t, side: s.side })
+  }
+  return out
+}
+
+/**
+ * Поставить предмет на заданный отступ от стены с нужной стороны —
+ * сдвигаем вдоль нормали стороны так, чтобы зазор стал равен value
+ */
+export function setFurnitureGap(
+  scheme: PlanScheme,
+  f: Pick<PlanFurniture, "x" | "y" | "w" | "d" | "rot">,
+  side: FurnitureDim["side"],
+  value: number,
+): { x: number; y: number } | null {
+  const d = furnitureWallDims(scheme, f).find((x) => x.side === side)
+  if (!d) return null
+  // Направление стороны наружу — по повороту предмета
+  const r = (f.rot * Math.PI) / 180
+  const dir =
+    side === "left"
+      ? { x: -Math.cos(r), y: -Math.sin(r) }
+      : side === "right"
+        ? { x: Math.cos(r), y: Math.sin(r) }
+        : side === "back"
+          ? { x: Math.sin(r), y: -Math.cos(r) }
+          : { x: -Math.sin(r), y: Math.cos(r) }
+  const delta = d.length - value
+  return { x: Math.round((f.x + dir.x * delta) * 1000) / 1000, y: Math.round((f.y + dir.y * delta) * 1000) / 1000 }
+}
+
+/** Рекомендация по питанию зоны тёплого пола: автомат, сечение и нужен ли контактор */
+export interface HeatingSupply {
+  watts: number
+  amps: number
+  breaker: string
+  section: string
+  contactor: boolean
+}
+
+export function heatingSupply(watts: number): HeatingSupply {
+  const amps = watts / 230
+  // Терморегулятор обычно на 16 А; больше — через контактор
+  const pick =
+    amps <= 8
+      ? { breaker: "C10", section: "1.5 мм²" }
+      : amps <= 13
+        ? { breaker: "C16", section: "2.5 мм²" }
+        : amps <= 16
+          ? { breaker: "C20", section: "2.5 мм²" }
+          : amps <= 25
+            ? { breaker: "C25", section: "4 мм²" }
+            : { breaker: "C32", section: "6 мм²" }
+  return { watts, amps: Math.round(amps * 10) / 10, ...pick, contactor: amps > 16 }
+}
+
+/** Электрические зоны, привязанные к терморегулятору; без привязки — ближайший терморегулятор в той же комнате */
+export function thermostatZones(scheme: PlanScheme): Map<string, PlanHeating[]> {
+  const ths = (scheme.nodes || []).filter((n) => n.kind === "thermostat")
+  const out = new Map<string, PlanHeating[]>()
+  for (const h of scheme.heating || []) {
+    if (h.kind === "water") continue
+    let id = h.thermostatId && ths.some((t) => t.id === h.thermostatId) ? h.thermostatId : null
+    if (!id) {
+      const c = centroid(h.points)
+      const same = ths.filter((t) => t.roomId && t.roomId === h.roomId)
+      const pool = same.length ? same : []
+      const best = pool.sort((a, b) => dist(a, c) - dist(b, c))[0]
+      id = best ? best.id : null
+    }
+    if (!id) continue
+    out.set(id, [...(out.get(id) || []), h])
+  }
+  return out
+}
+
+/** Мощность тёплого пола за терморегулятором, Вт */
+export function thermostatWatts(scheme: PlanScheme, thermostatId: string): number {
+  return (thermostatZones(scheme).get(thermostatId) || []).reduce((s, h) => s + heatingCalc(scheme, h).watts, 0)
+}
