@@ -264,17 +264,16 @@ export function usePlannerState(id: string | undefined) {
     touch()
   }
 
-  /** Трек — отрезок a–b; парящий потолок — по одному на помещение, контур от его стен */
+  /** Трек — отрезок a–b; парящий потолок — контур от стен помещения с отступом */
   const addFixture = (kind: FixtureKind, a: PlanPoint, b: PlanPoint) => {
     const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
     const room = [...scheme.rooms].reverse().find((r) => pointInPolygon(mid, r.points))
+    // Парящих потолков в комнате может быть несколько — каждый следующий контур глубже на 100 мм
+    let offset = FLOATING_OFFSET
     if (kind === "floating") {
       if (!room) return
-      const exists = (scheme.fixtures || []).find((f) => f.kind === "floating" && f.roomId === room.id)
-      if (exists) {
-        setSelectedFixtureId(exists.id)
-        return
-      }
+      const same = (scheme.fixtures || []).filter((f) => f.kind === "floating" && f.roomId === room.id)
+      if (same.length) offset = Math.max(...same.map((f) => f.offset ?? FLOATING_OFFSET)) + FLOATING_OFFSET
     }
     const fx: PlanFixture = {
       id: uid(),
@@ -284,7 +283,7 @@ export function usePlannerState(id: string | undefined) {
       roomId: room ? room.id : null,
       label: "",
       height: room?.height ?? scheme.defaultHeight,
-      offset: kind === "floating" ? FLOATING_OFFSET : undefined,
+      offset: kind === "floating" ? Math.round(offset * 1000) / 1000 : undefined,
     }
     setScheme((s) => ({ ...s, fixtures: [...(s.fixtures || []), fx] }))
     setSelectedFixtureId(fx.id)

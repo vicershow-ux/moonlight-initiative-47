@@ -159,7 +159,7 @@ export function PlannerEngineerPicker({
           {tool === "floating" && (
             <span className="flex w-full items-center gap-1.5 text-xs text-white/40">
               <Icon name="Ruler" size={12} />
-              Щёлкните в помещении — светящийся контур встанет по его стенам с отступом 100 мм; отступ меняется в карточке справа
+              Щёлкните в помещении — светящийся контур встанет по его стенам с отступом 100 мм. Повторный щелчок добавит ещё один контур глубже; отступ каждого меняется в карточке справа
             </span>
           )}
           {tool === "node" && CEILING_KINDS.has(nodeKind) && (

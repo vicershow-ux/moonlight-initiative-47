@@ -39,8 +39,9 @@ export function TrackDraft({ a, b, toScreen }: { scheme: PlanScheme; a: PlanPoin
 export function FloatingDraft({ scheme, at, toScreen }: { scheme: PlanScheme; at: PlanPoint; toScreen: ToScreen }) {
   const room = [...scheme.rooms].reverse().find((r) => r.points.length > 2 && pointInPolygon(at, r.points))
   if (!room) return null
-  const has = (scheme.fixtures || []).some((f) => f.kind === "floating" && f.roomId === room.id)
-  const c = insetPolygon(room.points, FLOATING_OFFSET)
+  const same = (scheme.fixtures || []).filter((f) => f.kind === "floating" && f.roomId === room.id)
+  const offset = same.length ? Math.max(...same.map((f) => f.offset ?? FLOATING_OFFSET)) + FLOATING_OFFSET : FLOATING_OFFSET
+  const c = insetPolygon(room.points, offset)
   const pts = c
     .map((p) => {
       const s = toScreen(p)
@@ -52,7 +53,7 @@ export function FloatingDraft({ scheme, at, toScreen }: { scheme: PlanScheme; at
     <g pointerEvents="none">
       <polygon points={pts} fill={FLOATING_COLOR} fillOpacity={0.05} stroke={FLOATING_COLOR} strokeWidth={1.5} strokeDasharray="10 4 2 4" opacity={0.7} />
       <text x={s.x + 12} y={s.y - 10} fontSize="11" fontWeight="700" fill={FLOATING_COLOR} style={halo}>
-        {has ? "Уже есть — щёлкните, чтобы выбрать" : `Парящий потолок · отступ ${fmtMm(FLOATING_OFFSET)} мм`}
+        {same.length ? `Ещё один контур · отступ ${fmtMm(offset)} мм` : `Парящий потолок · отступ ${fmtMm(offset)} мм`}
       </text>
     </g>
   )

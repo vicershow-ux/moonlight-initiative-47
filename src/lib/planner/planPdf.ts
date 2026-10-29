@@ -28,11 +28,11 @@ import { PanelSize, SPARE_SHARE, panelSize, panelSpecification } from "@/lib/pla
 import { groupPower, kwToAmps, phaseBalance } from "@/lib/planner/phases"
 import { chaseTotals, elevationRows, elevationSvg, roomElevations } from "@/lib/planner/elevation"
 import { CABLE_BUY_SHARE, electricMaterials } from "@/lib/planner/materials"
-import { ceilingPlan, ceilingRows, ceilingSvg } from "@/lib/planner/ceiling"
+import { CeilingPlan, ceilingPlan, ceilingRows, ceilingSvg, ceilingTrackRows } from "@/lib/planner/ceiling"
 import { PHASE_COLORS, SECTION_COLORS, WALL_MATERIALS, WallMaterial, sectionColor, sectionOf } from "@/lib/planner/types"
 import { hatchPattern, materialSwatchImg, usedMaterials } from "@/lib/planner/wallHatch"
 import { NODE_CODES, fixtureLegendItems, nodeLegendImg, nodeLegendItems } from "@/lib/planner/nodeLegend"
-import { FLOATING_OFFSET, fixtureLength, floatingContour } from "@/lib/planner/fixtures"
+import { FLOATING_OFFSET, fixtureLength, floatingContour, floatingPerimeter } from "@/lib/planner/fixtures"
 import { Box, LabelCandidate, LabelSpot, alongSegment, aroundPoint, createLabelPlacer, iconBox, textWidth } from "@/lib/planner/labelLayout"
 import { OPENING_HINTS, PDF_OPENING_PALETTE, openingLegendItems, openingSwatchImg } from "@/lib/planner/openingLegend"
 import {
@@ -426,7 +426,7 @@ function elevationsSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
   for (const room of scheme.rooms) {
     // Потолок помещения — светильники, споты и распаячные коробки
     const c = ceilingPlan(scheme, room)
-    if (c && c.points.length) {
+    if (c && (c.points.length || c.tracks.length || c.floating.length)) {
       const crow = ceilingRows(c)
         .map(
           (r) => `
@@ -446,10 +446,16 @@ function elevationsSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
   <div class="elev">
     <h3>${escapeXml(room.name)} — потолок</h3>
     <div class="plan-img">${ceilingSvg(scheme, c, 700)}</div>
-    <table>
+    ${
+      crow
+        ? `<table>
       <thead><tr><th>№</th><th>Обозн.</th><th>Точка</th><th>От левой стены, мм</th><th>От верхней стены, мм</th><th>До правой, мм</th><th>До нижней, мм</th><th>Высота, мм</th></tr></thead>
       <tbody>${crow}</tbody>
-    </table>
+    </table>`
+        : ""
+    }
+    ${trackTable(c)}
+    ${floatingNote(scheme, c)}
   </div>`)
     }
     for (const e of roomElevations(scheme, room)) {
@@ -510,6 +516,43 @@ function wallLegend(scheme: PlanScheme): string {
     })
     .join("")
   return `<div class="wall-legend"><div class="wl-title">Материалы стен</div><div class="wl-grid">${items}</div></div>`
+}
+
+/** Ведомость треков на листе потолка — по ней трек размечают рулеткой */
+function trackTable(c: CeilingPlan): string {
+  const rows = ceilingTrackRows(c)
+  if (!rows.length) return ""
+  return `
+    <table>
+      <thead><tr><th>№</th><th>Трек</th><th>Длина, мм</th><th>Направление</th><th>Начало от левой стены, мм</th><th>Начало от верхней стены, мм</th><th>Конец до правой, мм</th><th>Конец до нижней, мм</th><th>Высота, мм</th></tr></thead>
+      <tbody>${rows
+        .map(
+          (r) => `
+        <tr>
+          <td class="num strong">Т${r.no}</td>
+          <td>${escapeXml(r.name)}</td>
+          <td class="num strong">${r.length}</td>
+          <td>${r.dir}</td>
+          <td class="num strong">${r.fromLeft}</td>
+          <td class="num strong">${r.fromTop}</td>
+          <td class="num">${r.toRight}</td>
+          <td class="num">${r.toBottom}</td>
+          <td class="num">${r.height}</td>
+        </tr>`,
+        )
+        .join("")}</tbody>
+    </table>`
+}
+
+/** Парящие потолки помещения — отступы и длина подсветки */
+function floatingNote(scheme: PlanScheme, c: CeilingPlan): string {
+  if (!c.floating.length) return ""
+  const items = c.floating.map((f, i) => {
+    const cn = floatingContour(scheme, f)
+    const per = cn ? floatingPerimeter(cn) : 0
+    return `ПП${c.floating.length > 1 ? i + 1 : ""} — отступ от стен ${toMm(f.offset ?? FLOATING_OFFSET)} мм, периметр подсветки ${fmtNum(per, 2)} м`
+  })
+  return `<div class="muted">Парящий потолок: ${items.map(escapeXml).join("; ")}.</div>`
 }
 
 /** Условные обозначения точек под схемой электрики или сантехники: значок, буква, количество, высота */

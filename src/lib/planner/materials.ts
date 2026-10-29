@@ -4,6 +4,7 @@ import { linkGeometry } from "./geometry"
 import { panelSettings } from "./panelInput"
 import { panelSize, panelSpecification } from "./panelSize"
 import { chaseTotals, roomElevations } from "./elevation"
+import { fixtureLength, floatingContour, floatingPerimeter } from "./fixtures"
 
 /** Запас на закупку кабеля сверх расчёта: обрезки, подрезка, ошибки трассы */
 export const CABLE_BUY_SHARE = 0.1
@@ -350,6 +351,8 @@ export function electricMaterials(scheme: PlanScheme): MaterialSection[] {
   const fix = layingFasteners(lay, scheme.cable?.corrugatedFix || "dowel")
   if (fix.length) sections.push({ title: "Прокладка и крепёж кабеля", rows: fix })
 
+  sections.push(...fixtureMaterials(scheme))
+
   // Работы по штробам — по развёрткам стен, чтобы прораб сразу видел объём
   const chase = scheme.rooms.reduce(
     (acc, r) => acc + roomElevations(scheme, r).reduce((s, e) => s + chaseTotals(e).total, 0),
@@ -371,5 +374,138 @@ export function electricMaterials(scheme: PlanScheme): MaterialSection[] {
     })
   }
 
+  return sections
+}
+
+/** Стандартные длины шинопровода магнитного трека, м */
+const TRACK_PIECES = [3, 2, 1]
+/** Мощность на метр трека для подбора блока питания, Вт/м — типовая плотность светильников */
+const TRACK_W_PER_M = 20
+/** Мощность светодиодной ленты подсветки, Вт/м */
+const STRIP_W_PER_M = 14.4
+/** Запас мощности блока питания */
+const PSU_RESERVE = 1.25
+const PSU_SIZES = [60, 100, 150, 200, 240, 320, 400]
+/** Длина хлыста профиля парящего потолка, м */
+const PROFILE_PIECE = 2
+/** Длина катушки ленты, м */
+const STRIP_ROLL = 5
+
+/** Раскрой трека на стандартные куски: сначала по 3 м, остаток — 2 м или 1 м */
+export function trackPieces(length: number): number[] {
+  const need = Math.ceil(length - 1e-6)
+  const pieces: number[] = []
+  let rest = need
+  while (rest > 0) {
+    const p = TRACK_PIECES.find((x) => x <= rest) ?? 1
+    pieces.push(p)
+    rest -= p
+  }
+  return pieces
+}
+
+const psuFor = (watts: number) => PSU_SIZES.find((s) => s >= watts) ?? PSU_SIZES[PSU_SIZES.length - 1]
+
+/**
+ * Магнитные треки и парящие потолки: шинопровод кусками 1/2/3 м, прямые коннекторы
+ * между кусками, заглушки, вводы питания и блоки питания 48 В; для парящего потолка —
+ * профиль, рассеиватель, лента по периметру с запасом и блок питания 24 В на контур
+ */
+export function fixtureMaterials(scheme: PlanScheme): MaterialSection[] {
+  const fixtures = scheme.fixtures || []
+  const sections: MaterialSection[] = []
+  const tracks = fixtures.filter((f) => f.kind === "track")
+  const floats = fixtures.filter((f) => f.kind === "floating")
+
+  if (tracks.length) {
+    const rows = new Map<string, MaterialRow>()
+    let total = 0
+    let joints = 0
+    const psu = new Map<number, number>()
+    for (const t of tracks) {
+      const len = fixtureLength(t)
+      total += len
+      const pieces = trackPieces(len)
+      for (const p of pieces) add(rows, { name: "Шинопровод магнитного трека", spec: `48 В, ${p} м`, unit: "шт", qty: 1 })
+      joints += pieces.length - 1
+      const w = psuFor(len * TRACK_W_PER_M * PSU_RESERVE)
+      psu.set(w, (psu.get(w) || 0) + 1)
+    }
+    const totalRow: MaterialRow = {
+      name: "Магнитный трек — итого по проекту",
+      spec: `${tracks.length} шт.`,
+      unit: "м",
+      qty: Math.round(total * 100) / 100,
+      note: "сумма длин по плану; ниже — раскрой на стандартные куски",
+    }
+    const list: MaterialRow[] = [totalRow, ...rows.values()]
+    if (joints > 0) list.push({ name: "Коннектор прямой для трека", spec: "соединение двух шинопроводов", unit: "шт", qty: joints })
+    list.push({ name: "Заглушка торцевая для трека", spec: "на оба конца каждого трека", unit: "шт", qty: tracks.length * 2 })
+    list.push({ name: "Ввод питания для трека", spec: "торцевой / в разрез", unit: "шт", qty: tracks.length })
+    for (const [w, n] of [...psu.entries()].sort((a, b) => a[0] - b[0])) {
+      list.push({
+        name: "Блок питания для магнитного трека",
+        spec: `48 В, ${w} Вт`,
+        unit: "шт",
+        qty: n,
+        note: `из расчёта ${TRACK_W_PER_M} Вт/м + ${Math.round((PSU_RESERVE - 1) * 100)}% запаса — уточнить по светильникам`,
+      })
+    }
+    list.push({
+      name: "Крепление трека к потолку",
+      spec: "клипса / подвес, шаг 0,5 м",
+      unit: "шт",
+      qty: tracks.reduce((s, t) => s + Math.ceil(fixtureLength(t) / 0.5) + 1, 0),
+    })
+    sections.push({ title: "Магнитные треки", rows: list })
+  }
+
+  if (floats.length) {
+    let per = 0
+    let corners = 0
+    const psu = new Map<number, number>()
+    for (const f of floats) {
+      const cn = floatingContour(scheme, f)
+      if (!cn) continue
+      const p = floatingPerimeter(cn)
+      per += p
+      corners += cn.length
+      const w = psuFor(p * STRIP_W_PER_M * PSU_RESERVE)
+      psu.set(w, (psu.get(w) || 0) + 1)
+    }
+    if (per > 0) {
+      const profilePcs = Math.ceil((per * 1.05) / PROFILE_PIECE)
+      const stripM = per * 1.1
+      const list: MaterialRow[] = [
+        {
+          name: "Профиль для парящего потолка",
+          spec: `с каналом под ленту, хлыст ${PROFILE_PIECE} м`,
+          unit: "шт",
+          qty: profilePcs,
+          note: `периметр ${per.toFixed(2).replace(".", ",")} м + 5% на подрезку углов`,
+        },
+        { name: "Вставка-рассеиватель", spec: "по длине профиля", unit: "м", qty: Math.ceil(per * 1.05) },
+        {
+          name: "Светодиодная лента подсветки",
+          spec: `24 В, ${String(STRIP_W_PER_M).replace(".", ",")} Вт/м, катушка ${STRIP_ROLL} м`,
+          unit: "шт",
+          qty: Math.ceil(stripM / STRIP_ROLL),
+          note: `${stripM.toFixed(1).replace(".", ",")} м с запасом 10%`,
+        },
+        { name: "Коннектор питания ленты", spec: "с проводом", unit: "шт", qty: floats.length * 2, note: "по два на контур — подача с двух концов" },
+        { name: "Коннектор угловой для ленты", spec: "L-образный, на углы контура", unit: "шт", qty: corners },
+      ]
+      for (const [w, n] of [...psu.entries()].sort((a, b) => a[0] - b[0])) {
+        list.push({
+          name: "Блок питания для светодиодной ленты",
+          spec: `24 В, ${w} Вт`,
+          unit: "шт",
+          qty: n,
+          note: `по мощности ленты + ${Math.round((PSU_RESERVE - 1) * 100)}% запаса`,
+        })
+      }
+      sections.push({ title: "Парящий потолок", rows: list })
+    }
+  }
   return sections
 }

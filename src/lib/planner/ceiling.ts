@@ -1,7 +1,8 @@
-import { NODE_PRESETS, NodeKind, PlanNode, PlanRoom, PlanScheme, sectionColor } from "./types"
+import { NODE_PRESETS, NodeKind, PlanFixture, PlanNode, PlanRoom, PlanScheme, sectionColor } from "./types"
 import { pointInPolygon, toMm } from "./geometry"
 import { gostSymbol, placeSymbol, symbolToSvg } from "./symbols"
 import { linkGeometry } from "./geometry"
+import { FLOATING_OFFSET, fixtureLength, fixtureRoom, floatingContour } from "./fixtures"
 
 /** Что ставится на потолок или под ним — светильники, споты, распаечные коробки */
 export const CEILING_KINDS = new Set<NodeKind>(["light", "spot", "junction"])
@@ -17,8 +18,27 @@ export interface CeilingPoint {
   ry: number
 }
 
+/** Трек на потолке: начало и конец от левой и верхней стены, м */
+export interface CeilingTrack {
+  fixture: PlanFixture
+  no: number
+  horiz: boolean
+  /** Начало (левый/верхний конец) и конец */
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  length: number
+  /** До правой и нижней стены от дальнего конца, м */
+  rx: number
+  ry: number
+}
+
 export interface CeilingPlan {
   room: PlanRoom
+  tracks: CeilingTrack[]
+  /** Парящие потолки помещения */
+  floating: PlanFixture[]
   minX: number
   minY: number
   width: number
@@ -42,8 +62,31 @@ export function ceilingPlan(scheme: PlanScheme, room: PlanRoom): CeilingPlan | n
     .filter((n) => n.layer === "electric" && CEILING_KINDS.has(n.kind))
     .filter((n) => (n.roomId ? n.roomId === room.id : pointInPolygon(n, room.points)))
     .sort((a, b) => a.y - b.y || a.x - b.x)
+  const own = (scheme.fixtures || []).filter((f) => fixtureRoom(scheme, f)?.id === room.id)
+  const tracks = own
+    .filter((f) => f.kind === "track")
+    .map((f) => {
+      const lo = f.a.x + f.a.y <= f.b.x + f.b.y ? f.a : f.b
+      const hi = lo === f.a ? f.b : f.a
+      return { f, lo, hi }
+    })
+    .sort((a, b) => a.lo.y - b.lo.y || a.lo.x - b.lo.x)
+    .map(({ f, lo, hi }, i): CeilingTrack => ({
+      fixture: f,
+      no: i + 1,
+      horiz: Math.abs(hi.y - lo.y) <= Math.abs(hi.x - lo.x),
+      x1: lo.x - minX,
+      y1: lo.y - minY,
+      x2: hi.x - minX,
+      y2: hi.y - minY,
+      length: fixtureLength(f),
+      rx: maxX - Math.max(lo.x, hi.x),
+      ry: maxY - Math.max(lo.y, hi.y),
+    }))
   return {
     room,
+    tracks,
+    floating: own.filter((f) => f.kind === "floating").sort((a, b) => (a.offset ?? 0) - (b.offset ?? 0)),
     minX,
     minY,
     width: maxX - minX,
@@ -62,6 +105,8 @@ export function ceilingPlan(scheme: PlanScheme, room: PlanRoom): CeilingPlan | n
 const FONT = 'font-family="Arial, sans-serif"'
 const INK = "#161616"
 const ACC = "#B8860B"
+const TRK = "#2563eb"
+const FLOAT = "#0891b2"
 
 /** Цепочка размеров вдоль оси: от стены через все отметки до противоположной стены */
 function chain(marks: number[], L: number, fixed: number, s: (m: number) => number, horizontal: boolean, color: string): string {
@@ -100,7 +145,8 @@ function chain(marks: number[], L: number, fixed: number, s: (m: number) => numb
  * трассы электрики между ними цветом сечения, цепочки размеров по X и Y от стен
  */
 export function ceilingSvg(scheme: PlanScheme, c: CeilingPlan, width = 700): string {
-  const pad = { l: 50, r: 30, t: 46, b: 30 }
+  const both = c.points.length > 0 && c.tracks.length > 0
+  const pad = { l: both ? 68 : 50, r: 30, t: both ? 64 : 46, b: 30 }
   const k = Math.min((width - pad.l - pad.r) / Math.max(c.width, 0.5), 340 / Math.max(c.depth, 0.5))
   const H = c.depth * k
   const height = pad.t + H + pad.b + 30
@@ -120,6 +166,48 @@ export function ceilingSvg(scheme: PlanScheme, c: CeilingPlan, width = 700): str
     if (!g) continue
     parts.push(
       `<polyline points="${g.route.map((p) => `${sx(p.x)},${sy(p.y)}`).join(" ")}" fill="none" stroke="${sectionColor(l.spec, true)}" stroke-width="1.6" stroke-dasharray="6 3"/>`,
+    )
+  }
+
+  // Парящие потолки — штрихпунктирные контуры, подписаны отступом от стен
+  c.floating.forEach((f, i) => {
+    const cn = floatingContour(scheme, f)
+    if (!cn) return
+    parts.push(
+      `<polygon points="${cn.map((p) => `${sx(p.x)},${sy(p.y)}`).join(" ")}" fill="none" stroke="${FLOAT}" stroke-width="1.3" stroke-dasharray="9 3 2 3"/>`,
+    )
+    const off = f.offset ?? FLOATING_OFFSET
+    const tx = sx(c.minX + off) + 4 + i * 2
+    const ty = sy(c.minY + c.depth) - off * k - 5 - i * 11
+    parts.push(
+      `<text x="${tx}" y="${ty}" font-size="8" font-weight="bold" fill="${FLOAT}" ${FONT} stroke="#fff" stroke-width="2.5" paint-order="stroke">ПП${c.floating.length > 1 ? i + 1 : ""} · ${toMm(off)}</text>`,
+    )
+  })
+
+  // Треки — толстой линией с засечками, номер в квадрате
+  for (const t of c.tracks) {
+    const x1 = pad.l + t.x1 * k
+    const y1 = pad.t + t.y1 * k
+    const x2 = pad.l + t.x2 * k
+    const y2 = pad.t + t.y2 * k
+    const L = Math.hypot(x2 - x1, y2 - y1) || 1
+    const nx = -(y2 - y1) / L
+    const ny = (x2 - x1) / L
+    parts.push(
+      `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${INK}" stroke-width="3.5"/>`,
+      `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#fff" stroke-width="0.8"/>`,
+      ...[[x1, y1], [x2, y2]].map(([x, y]) => `<line x1="${x - nx * 5}" y1="${y - ny * 5}" x2="${x + nx * 5}" y2="${y + ny * 5}" stroke="${INK}" stroke-width="1.4"/>`),
+      // Оси концов трека — к цепочкам размеров
+      ...[[x1, y1], [x2, y2]].flatMap(([x, y]) => [
+        `<line x1="${x}" y1="${pad.t - 14}" x2="${x}" y2="${y}" stroke="${TRK}" stroke-width="0.4" stroke-dasharray="2 2"/>`,
+        `<line x1="${pad.l - 14}" y1="${y}" x2="${x}" y2="${y}" stroke="${TRK}" stroke-width="0.4" stroke-dasharray="2 2"/>`,
+      ]),
+    )
+    const mx = (x1 + x2) / 2 + nx * 11
+    const my = (y1 + y2) / 2 + ny * 11
+    parts.push(
+      `<rect x="${mx - 9}" y="${my - 7}" width="18" height="12" rx="2" fill="${TRK}"/>`,
+      `<text x="${mx}" y="${my + 2}" text-anchor="middle" font-size="7.5" font-weight="bold" fill="#fff" ${FONT}>Т${t.no}</text>`,
     )
   }
 
@@ -145,11 +233,22 @@ export function ceilingSvg(scheme: PlanScheme, c: CeilingPlan, width = 700): str
     )
   }
 
-  parts.push(chain(c.points.map((p) => p.dx), c.width, pad.t - 18, (m) => pad.l + m * k, true, ACC))
-  parts.push(chain(c.points.map((p) => p.dy), c.depth, pad.l - 18, (m) => pad.t + m * k, false, ACC))
+  // Цепочки размеров: светильники — сверху/слева, треки (концы) — отдельной цепочкой ещё дальше от плана
+  const hasPts = c.points.length > 0
+  const hasTr = c.tracks.length > 0
+  if (hasPts) {
+    parts.push(chain(c.points.map((p) => p.dx), c.width, pad.t - 18, (m) => pad.l + m * k, true, ACC))
+    parts.push(chain(c.points.map((p) => p.dy), c.depth, pad.l - 18, (m) => pad.t + m * k, false, ACC))
+  }
+  if (hasTr) {
+    const tx = c.tracks.flatMap((t) => [t.x1, t.x2])
+    const ty = c.tracks.flatMap((t) => [t.y1, t.y2])
+    parts.push(chain(tx, c.width, pad.t - (hasPts ? 36 : 18), (m) => pad.l + m * k, true, TRK))
+    parts.push(chain(ty, c.depth, pad.l - (hasPts ? 36 : 18), (m) => pad.t + m * k, false, TRK))
+  }
   parts.push(chain([], c.width, pad.t + H + 18, (m) => pad.l + m * k, true, INK))
   parts.push(
-    `<text x="${pad.l}" y="${height - 6}" font-size="8.5" fill="#666" ${FONT}>Вид снизу на потолок, ориентация как на плане. Размеры — до центра, мм.</text>`,
+    `<text x="${pad.l}" y="${height - 6}" font-size="8.5" fill="#666" ${FONT}>Вид снизу на потолок, ориентация как на плане. Размеры, мм: золотые — до центров светильников, синие — до концов треков.</text>`,
   )
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${parts.join("")}</svg>`
 }
@@ -164,5 +263,20 @@ export function ceilingRows(c: CeilingPlan) {
     fromRight: toMm(p.rx),
     fromBottom: toMm(p.ry),
     height: toMm(p.node.height),
+  }))
+}
+
+/** Ведомость треков потолка: отступы концов от стен */
+export function ceilingTrackRows(c: CeilingPlan) {
+  return c.tracks.map((t) => ({
+    no: t.no,
+    name: t.fixture.label || "Магнитный трек",
+    length: toMm(t.length),
+    dir: t.horiz ? "вдоль X" : "вдоль Y",
+    fromLeft: toMm(t.x1),
+    fromTop: toMm(t.y1),
+    toRight: toMm(t.rx),
+    toBottom: toMm(t.ry),
+    height: toMm(t.fixture.height),
   }))
 }
