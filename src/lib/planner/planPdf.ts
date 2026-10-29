@@ -30,6 +30,7 @@ import { CABLE_BUY_SHARE, electricMaterials } from "@/lib/planner/materials"
 import { ceilingPlan, ceilingRows, ceilingSvg } from "@/lib/planner/ceiling"
 import { PHASE_COLORS, SECTION_COLORS, WALL_MATERIALS, WallMaterial, sectionColor, sectionOf } from "@/lib/planner/types"
 import { hatchPattern, materialSwatchImg, usedMaterials } from "@/lib/planner/wallHatch"
+import { OPENING_HINTS, PDF_OPENING_PALETTE, openingLegendItems, openingSwatchImg } from "@/lib/planner/openingLegend"
 import {
   doorSwing,
   findWall,
@@ -429,6 +430,19 @@ function wallLegend(scheme: PlanScheme): string {
   return `<div class="wall-legend"><div class="wl-title">Материалы стен</div><div class="wl-grid">${items}</div></div>`
 }
 
+/** Условные обозначения окон, дверей и проёмов под планом */
+function openingLegend(scheme: PlanScheme): string {
+  const items = openingLegendItems(scheme.openings)
+  if (!items.length) return ""
+  const html = items
+    .map(
+      (i) =>
+        `<div class="wl-item">${openingSwatchImg(i.kind, PDF_OPENING_PALETTE)}<div><div class="wl-name">${i.label} — ${i.count} шт.</div><div class="wl-th">${OPENING_HINTS[i.kind]}${i.sizes.length ? ` · ${i.sizes.join(", ")} мм` : ""}</div></div></div>`,
+    )
+    .join("")
+  return `<div class="wall-legend"><div class="wl-title">Окна, двери и проёмы</div><div class="wl-grid">${html}</div></div>`
+}
+
 /** Стены по помещениям: длина, толщина и материал */
 function wallsTable(scheme: PlanScheme): string {
   const all = schemeWalls(scheme).all
@@ -538,7 +552,7 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
       const ow = findWall(scheme, o.wallId)
       return `
         <tr>
-          <td>${kind}</td>
+          <td>${openingSwatchImg(o.kind, PDF_OPENING_PALETTE, 34, 17)} ${kind}</td>
           <td>${escapeXml(room?.name || "—")}</td>
           <td class="num">${ow ? toMm(ow.thickness) : "—"}</td>
           <td class="num">${toMm(o.width)}</td>
@@ -598,9 +612,8 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
 
   <div class="plan-img">${svg}</div>
   ${wallLegend(scheme)}
-  <div class="legend">
-    Синим отмечены окна, зелёным — двери, фиолетовым — проёмы. Размеры на чертеже указаны в миллиметрах.
-  </div>
+  ${openingLegend(scheme)}
+  <div class="legend">Размеры на чертеже указаны в миллиметрах.</div>
 
   <h3>Сводка по объекту</h3>
   <div class="cards">
