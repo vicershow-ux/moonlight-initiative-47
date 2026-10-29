@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import { dist, linkGeometry, linkRoute, longestSegment } from "@/lib/planner/geometry"
 import {
   NODE_PRESETS,
@@ -16,6 +17,7 @@ import { WALL_MOUNTED, gostSymbol, placeSymbol, wallDirection } from "@/lib/plan
 import { ToScreen } from "./usePlanView"
 import { SymbolShapes } from "./NodeSymbol"
 import { NODE_CODES } from "@/lib/planner/nodeLegend"
+import { groupTag, nodeGroupNums } from "@/lib/planner/groups"
 import type { PlanTool } from "./PlanCanvas"
 
 interface Props {
@@ -76,6 +78,10 @@ export function PlanEngineerLayer({
 }: Props) {
   const color = layer === "electric" ? "#E8B23A" : "#7FB5E8"
   const groupById = new Map(groups.map((g) => [g.id, g]))
+  const nodeGroups = useMemo(
+    () => (layer === "electric" ? nodeGroupNums({ groups, links, nodes }) : new Map<string, number[]>()),
+    [layer, groups, links, nodes],
+  )
   // На электрике трасса окрашивается в цвет своего сечения — как в PDF
   const colorOf = (spec?: string | null) => (layer === "electric" && spec ? sectionColor(spec) : color)
 
@@ -194,19 +200,25 @@ export function PlanEngineerLayer({
             <circle cx={p.x} cy={p.y} r={4} fill={preset.color} />
           </>
         )}
-        {scale > 26 ? (
-          <text x={p.x + r + 4} y={p.y + 4} fontSize="10" fill="rgba(255,255,255,0.75)">
-            {NODE_CODES[n.kind] && <tspan fontWeight="700" fill="#D4AF37">{NODE_CODES[n.kind]} </tspan>}
-            {n.label || preset.label}
-            {inReveal ? " · откос" : ""}
-          </text>
-        ) : (
-          NODE_CODES[n.kind] && (
+        {(() => {
+          const code = NODE_CODES[n.kind]
+          const grp = groupTag(nodeGroups.get(n.id))
+          const tag = [code, grp].filter(Boolean).join(" · ")
+          if (scale > 26) {
+            return (
+              <text x={p.x + r + 4} y={p.y + 4} fontSize="10" fill="rgba(255,255,255,0.75)">
+                {tag && <tspan fontWeight="700" fill="#D4AF37">{tag} </tspan>}
+                {n.label || preset.label}
+                {inReveal ? " · откос" : ""}
+              </text>
+            )
+          }
+          return tag ? (
             <text x={p.x + r + 2} y={p.y + 4} fontSize="9" fontWeight="700" fill="#D4AF37">
-              {NODE_CODES[n.kind]}
+              {tag}
             </text>
-          )
-        )}
+          ) : null
+        })()}
       </g>
     )
   }

@@ -88,3 +88,28 @@ export function describeNodes(counts: Partial<Record<NodeKind, number>>): string
     .map(([kind, n]) => `${NODE_PRESETS[kind as NodeKind].label.toLowerCase()} — ${n}`)
     .join(", ")
 }
+
+/**
+ * Номера групп для каждой точки электрики — по кабелям, которые к ней подходят.
+ * Щит не подписываем: от него идут все группы. У распаячной коробки может быть несколько групп
+ */
+export function nodeGroupNums(scheme: Pick<PlanScheme, "groups" | "links" | "nodes">): Map<string, number[]> {
+  const groupNum = new Map((scheme.groups || []).map((g) => [g.id, g.num]))
+  const kindById = new Map((scheme.nodes || []).map((n) => [n.id, n.kind]))
+  const result = new Map<string, Set<number>>()
+  for (const l of scheme.links || []) {
+    if (l.layer !== "electric" || !l.groupId) continue
+    const num = groupNum.get(l.groupId)
+    if (num === undefined) continue
+    for (const id of [l.fromId, l.toId]) {
+      if (kindById.get(id) === "panel") continue
+      const set = result.get(id) || new Set<number>()
+      set.add(num)
+      result.set(id, set)
+    }
+  }
+  return new Map([...result].map(([id, set]) => [id, [...set].sort((a, b) => a - b)]))
+}
+
+/** Подпись группы у точки: «гр.3» или «гр.2,5» */
+export const groupTag = (nums: number[] | undefined) => (nums && nums.length ? `гр.${nums.join(",")}` : "")

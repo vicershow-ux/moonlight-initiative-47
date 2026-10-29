@@ -21,7 +21,7 @@ import {
   PlanScheme,
   groupColor,
 } from "@/lib/planner/types"
-import { describeNodes, groupSummaries } from "@/lib/planner/groups"
+import { describeNodes, groupSummaries, groupTag, nodeGroupNums } from "@/lib/planner/groups"
 import { panelDiagramSvg, panelSettings, panelWarnings } from "@/lib/planner/panelDiagram"
 import { PanelSize, SPARE_SHARE, panelSize, panelSpecification } from "@/lib/planner/panelSize"
 import { groupPower, kwToAmps, phaseBalance } from "@/lib/planner/phases"
@@ -261,6 +261,7 @@ export function schemeToSvg(
       )
     })
 
+    const nodeGroups = layer === "electric" ? nodeGroupNums(scheme) : new Map<string, number[]>()
     nodes.forEach((n) => {
       const px = sx(n.x)
       const py = sy(n.y)
@@ -278,7 +279,7 @@ export function schemeToSvg(
         parts.push(`<circle cx="${px}" cy="${py}" r="3.5" fill="${preset.color}"/>`)
       }
       // У правого края листа подпись ставим слева от значка, иначе она обрежется
-      const code = NODE_CODES[n.kind]
+      const code = [NODE_CODES[n.kind], groupTag(nodeGroups.get(n.id))].filter(Boolean).join(" · ")
       const text = escapeXml(n.label || preset.label)
       const full = code ? `${code} ${text}` : text
       const nearRight = px + 12 + full.length * 5 > width - 8
@@ -771,18 +772,20 @@ function engineerSection(
     .join("")
 
   // Одинаковые точки в одном помещении (тип, подпись, высота) — одной строкой с количеством
-  const grouped = new Map<string, { room: string; name: string; kind: NodeKind; height: number; qty: number; places: string[] }>()
+  const grouped = new Map<string, { room: string; name: string; kind: NodeKind; height: number; qty: number; places: string[]; grp: string }>()
+  const listGroups0 = isElectric ? nodeGroupNums(scheme) : new Map<string, number[]>()
   for (const n of nodes) {
     const room = roomName(n.roomId)
     const name = n.label || NODE_PRESETS[n.kind].label
-    const key = `${room}|${n.kind}|${name}|${toMm(n.height)}`
+    const grp = groupTag(listGroups0.get(n.id))
+    const key = `${room}|${n.kind}|${name}|${toMm(n.height)}|${grp}`
     const place = mountLabel(scheme, n)
     const row = grouped.get(key)
     if (row) {
       row.qty += 1
       if (place !== "—" && !row.places.includes(place)) row.places.push(place)
     } else {
-      grouped.set(key, { room, name, kind: n.kind, height: n.height, qty: 1, places: place !== "—" ? [place] : [] })
+      grouped.set(key, { room, name, kind: n.kind, height: n.height, qty: 1, places: place !== "—" ? [place] : [], grp })
     }
   }
   const listGroups = [...grouped.values()].sort((a, b) => a.room.localeCompare(b.room, "ru") || a.kind.localeCompare(b.kind))
@@ -794,7 +797,7 @@ function engineerSection(
       return `${head}
       <tr>
         <td class="sym">${symbolImg(r.kind, 40, 24)}</td>
-        <td>${escapeXml(r.name)}${r.name !== NODE_PRESETS[r.kind].label ? `<div class="muted">${escapeXml(NODE_PRESETS[r.kind].label)}</div>` : ""}</td>
+        <td>${NODE_CODES[r.kind] || r.grp ? `<b>${escapeXml([NODE_CODES[r.kind], r.grp].filter(Boolean).join(" · "))}</b> ` : ""}${escapeXml(r.name)}${r.name !== NODE_PRESETS[r.kind].label ? `<div class="muted">${escapeXml(NODE_PRESETS[r.kind].label)}</div>` : ""}</td>
         <td>${escapeXml(r.places.join("; ") || "—")}</td>
         <td class="num">${toMm(r.height)}</td>
         <td class="num strong">${r.qty}</td>
