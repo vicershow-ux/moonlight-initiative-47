@@ -83,7 +83,7 @@ export function PlannerWorkspace({ state }: Props) {
   const activeWallId = wallExists ? selectedWallId : null
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] [&>*]:min-w-0">
       <div className="relative self-start overflow-hidden rounded-xl border border-white/10 bg-[#141414] lg:sticky lg:top-4">
         {activeHighlight && (() => {
           const g = (scheme.groups || []).find((x) => x.id === activeHighlight)

@@ -51,7 +51,7 @@ export function RoomFinishCard({ room, scheme, onUpdate, onHoverWall }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-[#D4AF37]/30 bg-[#1f1f1f] p-4">
+    <div className="min-w-0 overflow-hidden rounded-xl border border-[#D4AF37]/30 bg-[#1f1f1f] p-4">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-medium">
           <Icon name="Paintbrush" size={15} />

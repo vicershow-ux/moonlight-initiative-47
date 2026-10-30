@@ -65,7 +65,7 @@ def to_num(v, default=0):
         return default
 
 
-MAX_SIZE = 15 * 1024 * 1024
+MAX_SIZE = 40 * 1024 * 1024
 
 
 def upload_pdf(company_id, object_id, file_name, b64data):
@@ -189,6 +189,39 @@ def save_album(cur, user, company_id, body):
     return 200, {'success': True, 'file_url': url, 'sent': sent}
 
 
+def s3_client():
+    return boto3.client(
+        's3',
+        endpoint_url=os.environ.get('S3_ENDPOINT', 'https://bucket.poehali.dev'),
+        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
+    )
+
+
+def pdf_chunk(company_id, body):
+    '''Часть большого PDF: кладём во временное хранилище, склеиваем по команде done'''
+    up = ''.join(ch for ch in str(body.get('upload_id') or '') if ch.isalnum())[:40]
+    idx = int(body.get('index') or 0)
+    if not up or idx < 0 or idx > 60:
+        return 400, {'error': 'Неверная часть файла'}
+    try:
+        data = base64.b64decode(body.get('data') or '')
+    except Exception:
+        return 400, {'error': 'Не удалось прочитать часть файла'}
+    s3_client().put_object(Bucket='files', Key=f"tmp/{company_id}/{up}/{idx:03d}", Body=data)
+    return 200, {'success': True}
+
+
+def pdf_assemble(company_id, up, count):
+    s3 = s3_client()
+    parts = []
+    for i in range(count):
+        key = f"tmp/{company_id}/{up}/{i:03d}"
+        parts.append(s3.get_object(Bucket='files', Key=key)['Body'].read())
+        s3.delete_object(Bucket='files', Key=key)
+    return base64.b64encode(b''.join(parts)).decode()
+
+
 def sync_rooms(cur, company_id, object_id, rooms):
     """Переносит комнаты из плана в помещения объекта: обновляет существующие по имени, добавляет новые."""
     if not isinstance(rooms, list):
@@ -273,6 +306,15 @@ def handler(event: dict, context) -> dict:
         body = json.loads(event.get('body') or '{}')
 
         # Снимок 3D-вида комнаты — только загрузка картинки, схема сохраняется обычным запросом
+        if method == 'POST' and body.get('action') == 'pdf_chunk':
+            code, payload = pdf_chunk(company_id, body)
+            return response(code, payload)
+
+        # Склейка частей PDF: дальше — как обычный PDF в запросе (сохранение плана или альбома)
+        if method == 'POST' and body.get('upload_id') and body.get('chunks'):
+            up = ''.join(ch for ch in str(body.get('upload_id')) if ch.isalnum())[:40]
+            body['pdf_data'] = pdf_assemble(company_id, up, min(int(body.get('chunks') or 0), 60))
+
         if method == 'POST' and body.get('action') == 'album':
             if user.get('role') == 'client':
                 return response(403, {'error': 'Недостаточно прав'})
@@ -345,7 +387,12 @@ def handler(event: dict, context) -> dict:
                     )
                     new_file_id = cur.fetchone()[0]
 
-            if plan_id:
+            if plan_id and body.get('pdf_only'):
+                cur.execute(
+                    "UPDATE object_plans SET file_id = %s, updated_at = now() WHERE id = %s AND company_id = %s",
+                    (new_file_id, plan_id, company_id),
+                )
+            elif plan_id:
                 cur.execute(
                     "UPDATE object_plans SET scheme = %s, default_height = %s, "
                     "total_floor_area = %s, total_wall_area = %s, total_perimeter = %s, "

@@ -956,6 +956,9 @@ export const objectPlansApi = {
     pdf_data?: string
     file_name?: string
     sync_rooms?: boolean
+    pdf_only?: boolean
+    upload_id?: string
+    chunks?: number
   }) {
     const res = await fetch(OBJECT_PLANS_URL, {
       method: "POST",
@@ -970,12 +973,35 @@ export const objectPlansApi = {
     }>
   },
 
+  /**
+   * Большой PDF уходит частями по ~2,5 МБ: у функции ограничение на размер запроса.
+   * Возвращает поля, которые нужно добавить в основной запрос вместо pdf_data
+   */
+  async uploadPdfChunks(objectId: number, base64: string): Promise<{ upload_id: string; chunks: number }> {
+    const bin = atob(base64)
+    const size = 2_500_000
+    const uploadId = `u${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+    let chunks = 0
+    for (let i = 0; i < bin.length; i += size) {
+      const res = await fetch(OBJECT_PLANS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ action: "pdf_chunk", object_id: objectId, upload_id: uploadId, index: chunks, data: btoa(bin.slice(i, i + size)) }),
+      })
+      await parseResponse(res)
+      chunks++
+    }
+    return { upload_id: uploadId, chunks }
+  },
+
   /** Альбом визуализаций: PDF в файлы объекта, при указанной почте — письмо заказчику */
   async saveAlbum(payload: { object_id: number; pdf_data: string; email?: string; message?: string }) {
+    const { pdf_data, ...rest } = payload
+    const parts = await objectPlansApi.uploadPdfChunks(payload.object_id, pdf_data)
     const res = await fetch(OBJECT_PLANS_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify({ action: "album", ...payload }),
+      body: JSON.stringify({ action: "album", ...rest, ...parts }),
     })
     return parseResponse(res) as Promise<{ success: boolean; file_url: string; sent: boolean }>
   },

@@ -186,18 +186,19 @@ export function MaterialPicker({ value, onChange, prefer = [], only, label = "С
   }, [lib.items, prefer, only])
 
   return (
-    <div>
+    <div className="min-w-0">
       <div className="mb-1 text-[11px] text-white/45">{label}</div>
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2">
         <button
           onClick={() => setOpen((v) => !v)}
-          className={`flex min-h-[40px] flex-1 items-center gap-2 rounded-lg border px-2 text-left text-sm ${value ? "border-[#D4AF37]/40 bg-[#D4AF37]/5" : "border-white/10 bg-[#161616] text-white/50"}`}
+          title={value?.name}
+          className={`flex min-h-[40px] min-w-0 flex-1 items-center gap-2 overflow-hidden rounded-lg border px-2 text-left text-sm ${value ? "border-[#D4AF37]/40 bg-[#D4AF37]/5" : "border-white/10 bg-[#161616] text-white/50"}`}
         >
           {value ? (
             <>
               <img src={value.url} alt="" className="h-7 w-7 shrink-0 rounded object-cover" />
-              <span className="truncate">{value.name}</span>
-              <span className="ml-auto shrink-0 text-[11px] text-white/40">
+              <span className="min-w-0 flex-1 truncate">{value.name}</span>
+              <span className="shrink-0 text-[11px] text-white/40">
                 {value.mode === "panel" ? "панно " : ""}
                 {toMm(value.w)}×{toMm(value.h)}
               </span>
@@ -210,7 +211,7 @@ export function MaterialPicker({ value, onChange, prefer = [], only, label = "С
           )}
         </button>
         {value && (
-          <button onClick={() => onChange(undefined)} title="Убрать материал" className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/5 text-white/50 hover:text-red-300">
+          <button onClick={() => onChange(undefined)} title="Убрать материал" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/5 text-white/50 hover:text-red-300">
             <Icon name="X" size={15} />
           </button>
         )}
