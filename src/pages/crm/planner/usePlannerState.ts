@@ -729,13 +729,21 @@ export function usePlannerState(id: string | undefined) {
     setSaving(true)
     setError("")
     try {
-      const blob = (await downloadPlanPdf(scheme, meta, "blob")) as Blob
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(String(reader.result).split(",")[1] || "")
-        reader.onerror = reject
-        reader.readAsDataURL(blob)
-      })
+      // PDF — по возможности; если не собрался, схему всё равно сохраняем, иначе пропадёт работа
+      let base64 = ""
+      let pdfError = ""
+      try {
+        const blob = (await downloadPlanPdf(scheme, meta, "blob")) as Blob
+        base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(String(reader.result).split(",")[1] || "")
+          reader.onerror = reject
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) {
+        console.error("plan pdf", e)
+        pdfError = e instanceof Error ? e.message : "PDF не собрался"
+      }
 
       const res = await objectPlansApi.save({
         object_id: Number(id),
@@ -754,13 +762,13 @@ export function usePlannerState(id: string | undefined) {
         },
         default_height: scheme.defaultHeight,
         totals: { floor: totals.floor, wall: totals.wallNet, perimeter: totals.perimeter },
-        pdf_data: base64,
-        file_name: `План помещений ${object.object_code}.pdf`,
+        ...(base64 ? { pdf_data: base64, file_name: `План помещений ${object.object_code}.pdf` } : {}),
         sync_rooms: syncRooms,
       })
 
       setFileUrl(res.file_url || fileUrl)
       setDirty(false)
+      if (pdfError) setError(`План сохранён, но PDF не обновился: ${pdfError}`)
       setMessage(
         res.synced_rooms > 0
           ? `План сохранён, PDF в файлах объекта. Помещений обновлено: ${res.synced_rooms}`

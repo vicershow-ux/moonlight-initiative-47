@@ -1688,6 +1688,45 @@ function panelSizeBlock(scheme: PlanScheme): string {
   </div>`
 }
 
+type H2PWorker = { toContainer: () => H2PWorker; toPdf: () => H2PWorker; get: (k: string) => Promise<unknown> }
+
+async function withStamps(worker: H2PWorker, scheme: PlanScheme, meta: PlanPdfMeta) {
+  // Раскладка с разрывами страниц — по ней узнаём, какой чертёж на каком листе
+  const holder = (await worker.toContainer().get("container")) as HTMLElement
+  const inner = (await worker.get("pageSize")) as { inner: { ratio: number } }
+  const pagePx = holder.getBoundingClientRect().width * inner.inner.ratio
+  const top0 = holder.getBoundingClientRect().top
+  const heads = Array.from(holder.querySelectorAll("h2")).map((h) => ({
+    page: Math.floor((h.getBoundingClientRect().top - top0) / pagePx),
+    title: (h.textContent || "").replace(/\s+—\s+объект.*$/, "").trim(),
+  }))
+  const pdf = (await worker.toPdf().get("pdf")) as import("jspdf").jsPDF
+
+  const { appendVizSheets, defaultSheets, stampImage } = await import("./vizAlbum")
+  const stamp = planStamp(scheme, meta)
+  const viz = defaultSheets(scheme, {})
+  const n = pdf.getNumberOfPages()
+  const total = n + viz.length
+  const no = (p: number) => (p === 1 ? 1 : p + viz.length)
+
+  // Штамп на каждом листе чертежей: название листа — по последнему заголовку на нём или до него
+  for (let p = 1; p <= n; p++) {
+    const h = [...heads].reverse().find((x) => x.page <= p - 1)
+    const st = await stampImage(stamp, h?.title || "План помещений", no(p), total)
+    pdf.setPage(p)
+    const w = 190
+    const hh = w * st.ratio
+    pdf.addImage(st.data, "PNG", 10, 297 - 7 - hh, w, hh)
+  }
+
+  // Визуализации — крупными листами сразу за обложкой
+  if (viz.length) {
+    await appendVizSheets(pdf, viz, stamp, (i) => 2 + i, total)
+    for (let j = 0; j < viz.length; j++) pdf.movePage(n + 1 + j, 2 + j)
+  }
+  return pdf
+}
+
 export async function downloadPlanPdf(
   scheme: PlanScheme,
   meta: PlanPdfMeta,
@@ -1746,43 +1785,26 @@ export async function downloadPlanPdf(
       jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
       pagebreak: { mode: ["css", "legacy"], before: ".page-break", avoid: [".render-room"] },
     } as Record<string, unknown>)
-    .from(root)
+    .from(root) as unknown as H2PWorker
 
   try {
-    // Раскладка с разрывами страниц — по ней узнаём, какой чертёж на каком листе
-    const holder = (await worker.toContainer().get("container")) as HTMLElement
-    const inner = (await worker.get("pageSize")) as { inner: { ratio: number } }
-    const pagePx = holder.getBoundingClientRect().width * inner.inner.ratio
-    const top0 = holder.getBoundingClientRect().top
-    const heads = Array.from(holder.querySelectorAll("h2")).map((h) => ({
-      page: Math.floor((h.getBoundingClientRect().top - top0) / pagePx),
-      title: (h.textContent || "").replace(/\s+—\s+объект.*$/, "").trim(),
-    }))
-    const pdf = (await worker.toPdf().get("pdf")) as import("jspdf").jsPDF
-
-    const { appendVizSheets, defaultSheets, stampImage } = await import("./vizAlbum")
-    const stamp = planStamp(scheme, meta)
-    const viz = defaultSheets(scheme, {})
-    const n = pdf.getNumberOfPages()
-    const total = n + viz.length
-    const no = (p: number) => (p === 1 ? 1 : p + viz.length)
-
-    // Штамп на каждом листе чертежей: название листа — по последнему заголовку на нём или до него
-    for (let p = 1; p <= n; p++) {
-      const h = [...heads].reverse().find((x) => x.page <= p - 1)
-      const st = await stampImage(stamp, h?.title || "План помещений", no(p), total)
-      pdf.setPage(p)
-      const w = 190
-      const hh = w * st.ratio
-      pdf.addImage(st.data, "PNG", 10, 297 - 7 - hh, w, hh)
+    let pdf: import("jspdf").jsPDF
+    try {
+      pdf = await withStamps(worker, scheme, meta)
+    } catch (e) {
+      // Штамп и листы визуализаций не собрались (например, картинка не загрузилась) — отдаём PDF без них
+      console.error("plan pdf stamps", e)
+      const plain = html2pdf()
+        .set({
+          margin: [10, 10, 10, 10],
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+          pagebreak: { mode: ["css", "legacy"], before: ".page-break", avoid: [".render-room"] },
+        } as Record<string, unknown>)
+        .from(root)
+      pdf = (await plain.toPdf().get("pdf")) as import("jspdf").jsPDF
     }
-
-    // Визуализации — крупными листами сразу за обложкой
-    if (viz.length) {
-      await appendVizSheets(pdf, viz, stamp, (i) => 2 + i, total)
-      for (let j = 0; j < viz.length; j++) pdf.movePage(n + 1 + j, 2 + j)
-    }
-
     if (mode === "blob") return pdf.output("blob")
     pdf.save(`План помещений ${meta.objectCode}.pdf`)
   } finally {
