@@ -12,6 +12,7 @@ import {AnalyticsHead} from "@/components/AnalyticsHead";
 import PageNotFound from "@/pages/PageNotFound";
 import appCss from "@/index.css?url";
 import {DEFAULT_OG_IMAGE} from "@/lib/pageHead";
+import {funcUrl, type PublicServiceCategory} from "@/lib/api";
 
 const TITLE = "Ремонт квартир под ключ в Хабаровске — FixKey";
 const DESCRIPTION =
@@ -84,7 +85,22 @@ const METRIKA_SCRIPT = `(function (m, e, t, r, i, k, a) {
         window.__ymReady = true;
     }`;
 
+/** Список направлений услуг — в готовой странице: ссылки на услуги в меню и подвале видны поисковику */
+async function loadServiceCategories() {
+    try {
+        const res = await fetch(`${funcUrl("site")}?resource=public_services`, {signal: AbortSignal.timeout(4000)});
+        if (!res.ok) return {serviceCategories: [] as PublicServiceCategory[]};
+        const data = (await res.json()) as { categories?: PublicServiceCategory[] };
+        return {serviceCategories: data.categories || []};
+    } catch {
+        return {serviceCategories: [] as PublicServiceCategory[]};
+    }
+}
+
 export const Route = createRootRoute({
+    loader: () => loadServiceCategories(),
+    staleTime: Infinity,
+    shouldReload: false,
     head: () => ({
         meta: [
             {charSet: "utf-8"},

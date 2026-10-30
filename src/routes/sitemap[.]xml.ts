@@ -49,18 +49,16 @@ function buildXml(pages: SitemapPage[]) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`
 }
 
-export const Route = createFileRoute("/sitemap.xml")({
-  server: {
-    handlers: {
-      GET: async () => {
-        const { pages, ok } = await loadPages()
-        return new Response(buildXml(pages), {
-          headers: {
-            "Content-Type": "application/xml; charset=utf-8",
-            "Cache-Control": ok ? "public, max-age=3600" : "no-store",
-          },
-        })
-      },
+export async function sitemapResponse() {
+  const { pages, ok } = await loadPages()
+  return new Response(buildXml(pages), {
+    headers: {
+      "Content-Type": "application/xml; charset=utf-8",
+      "Cache-Control": ok ? "public, max-age=3600" : "no-store",
     },
-  },
+  })
+}
+
+export const Route = createFileRoute("/sitemap.xml")({
+  server: { handlers: { GET: sitemapResponse } },
 })

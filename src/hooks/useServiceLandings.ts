@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useRouterState } from "@tanstack/react-router"
 import { siteApi, PublicServiceCategory } from "@/lib/api"
 import { ServiceLandingMeta, resolveLandings } from "@/lib/serviceLanding"
 
@@ -23,7 +24,11 @@ function load(): Promise<PublicServiceCategory[]> {
 }
 
 export function useServiceLandings(initial?: PublicServiceCategory[]) {
-  const seed = initial && initial.length ? initial : null
+  // Направления, загруженные сервером для всей страницы (корневой маршрут)
+  const fromRoot = useRouterState({
+    select: (s) => (s.matches[0]?.loaderData as { serviceCategories?: PublicServiceCategory[] } | undefined)?.serviceCategories,
+  })
+  const seed = initial && initial.length ? initial : fromRoot && fromRoot.length ? fromRoot : null
   const [stats, setStats] = useState<PublicServiceCategory[]>(seed || cache || [])
   const [loading, setLoading] = useState(!seed && !cache)
 
