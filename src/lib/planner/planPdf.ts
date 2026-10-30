@@ -29,7 +29,7 @@ import { groupPower, kwToAmps, phaseBalance } from "@/lib/planner/phases"
 import { chaseTotals, elevationRows, elevationSvg, roomElevations } from "@/lib/planner/elevation"
 import { CABLE_BUY_SHARE, electricMaterials } from "@/lib/planner/materials"
 import { CeilingPlan, ceilingPlan, ceilingRows, ceilingSvg, ceilingTrackRows } from "@/lib/planner/ceiling"
-import { CEILING_FINISHES, FLOOR_FINISHES, FURNITURE_PRESETS, HEATING_PRESETS, WALL_FINISHES, isEngLayer, roomFinish, wallFinishOf, floorTileOf } from "@/lib/planner/types"
+import { CEILING_FINISHES, FLOOR_FINISHES, FURNITURE_PRESETS, HEATING_PRESETS, TILE_LAYOUTS, WALL_FINISHES, isEngLayer, roomFinish, wallFinishOf, floorTileOf } from "@/lib/planner/types"
 import { PHASE_COLORS, SECTION_COLORS, WALL_MATERIALS, WallMaterial, sectionColor, sectionOf } from "@/lib/planner/types"
 import type { DrawingStamp } from "@/lib/planner/types"
 import { hatchPattern, materialSwatchImg, usedMaterials } from "@/lib/planner/wallHatch"
@@ -45,6 +45,7 @@ import { OPENING_HINTS, PDF_OPENING_PALETTE, openingLegendItems, openingSwatchIm
 import {
   doorSwing,
   findWall,
+  openingSpan,
   mountLabel,
   nodeDirection,
   openingBand,
@@ -727,6 +728,120 @@ function finishElevationsSection(scheme: PlanScheme, meta: PlanPdfMeta): string 
   ${blocks.join("")}`
 }
 
+/**
+ * Развёртка полов: каждое помещение крупно сверху с покрытием в реальном масштабе —
+ * фото материала или рисунок доски/плитки, пороги в дверях, размеры и ведомость
+ */
+export function floorPlanSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
+  const rooms = scheme.rooms.filter((r) => r.points.length > 2 && roomFinish(scheme, r.id).floor !== "none")
+  if (!rooms.length) return ""
+  const STD = [10, 20, 25, 40, 50, 75, 100, 150, 200]
+  const blocks = rooms
+    .map((room, i) => {
+      const f = roomFinish(scheme, room.id)
+      const info = FLOOR_FINISHES[f.floor]
+      const c = finishCalc(scheme, room)
+      const xs = room.points.map((p) => p.x)
+      const ys = room.points.map((p) => p.y)
+      const pad = 0.45
+      const minX = Math.min(...xs) - pad
+      const minY = Math.min(...ys) - pad
+      const W = Math.max(...xs) - minX + pad
+      const H = Math.max(...ys) - minY + pad
+      const k = Math.min(700 / W, 420 / H)
+      const T = (p: { x: number; y: number }) => ({ x: (p.x - minX) * k, y: (p.y - minY) * k })
+      const P = (arr: { x: number; y: number }[]) => arr.map((p) => `${T(p).x.toFixed(1)},${T(p).y.toFixed(1)}`).join(" ")
+      const isTile = f.floor === "tile" || f.floor === "porcelain"
+      const tile = isTile ? floorTileOf(f) : undefined
+      const pid = `fl-${room.id}`
+      const o = T({ x: 0, y: 0 })
+      const defs = floorPattern(pid, f.floor, k, tile ? tile.color : f.floorColor, undefined, tile, o, f.floorMaterial)
+      const svg: string[] = []
+      svg.push(`<polygon points="${P(room.points)}" fill="url(#${pid})" stroke="#161616" stroke-width="2.2"/>`)
+      // Швы своего материала: элементы реального размера, ряды со смещением на 1/3 — видно, как ляжет
+      let jointDefs = ""
+      const fm = f.floorMaterial
+      if (fm && fm.mode !== "panel" && fm.w * k > 3 && fm.h * k > 3) {
+        const ew = fm.w * k
+        const eh = fm.h * k
+        const jid = `fj-${room.id}`
+        const rows = [0, 1, 2]
+          .map((r) => {
+            const off = ((r / 3) * ew) % ew
+            const y = r * eh
+            return `<line x1="0" y1="${y.toFixed(2)}" x2="${ew.toFixed(2)}" y2="${y.toFixed(2)}"/><line x1="${off.toFixed(2)}" y1="${y.toFixed(2)}" x2="${off.toFixed(2)}" y2="${(y + eh).toFixed(2)}"/>`
+          })
+          .join("")
+        jointDefs = `<pattern id="${jid}" patternUnits="userSpaceOnUse" width="${ew.toFixed(2)}" height="${(eh * 3).toFixed(2)}" patternTransform="translate(${o.x.toFixed(1)} ${o.y.toFixed(1)})"><g stroke="#000" stroke-opacity="0.45" stroke-width="0.6">${rows}</g></pattern>`
+        svg.push(`<polygon points="${P(room.points)}" fill="url(#${jid})"/>`)
+      }
+      // Мебель — тонким контуром поверх покрытия: видно, что под ней тоже уложено
+      for (const it of scheme.furniture || []) {
+        if (it.roomId !== room.id || it.kind === "rug" || it.kind === "rug_round" || it.kind === "curtain" || it.kind === "tulle") continue
+        svg.push(`<g opacity="0.55">${furnitureSvg(it, T, "#161616", "none", 0.7)}</g>`)
+      }
+      // Пороги в дверных проёмах
+      let doors = 0
+      for (const seg of wallSegments(room)) {
+        for (const op of scheme.openings.filter((x) => x.wallId === seg.id && x.kind !== "window")) {
+          const sp = openingSpan(op, seg)
+          const ux = (seg.b.x - seg.a.x) / (seg.length || 1)
+          const uy = (seg.b.y - seg.a.y) / (seg.length || 1)
+          const a = T({ x: seg.a.x + ux * sp.start, y: seg.a.y + uy * sp.start })
+          const b = T({ x: seg.a.x + ux * sp.end, y: seg.a.y + uy * sp.end })
+          doors++
+          svg.push(`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="#b45309" stroke-width="6" stroke-linecap="butt"/>`)
+          svg.push(`<text x="${((a.x + b.x) / 2).toFixed(1)}" y="${((a.y + b.y) / 2 - 7).toFixed(1)}" text-anchor="middle" font-size="9" fill="#b45309" font-family="Arial" stroke="#fff" stroke-width="2.5" paint-order="stroke">порог ${toMm(sp.end - sp.start)}</text>`)
+        }
+      }
+      // Габаритные размеры
+      const x0 = T({ x: Math.min(...xs), y: 0 }).x
+      const x1 = T({ x: Math.max(...xs), y: 0 }).x
+      const y0 = T({ x: 0, y: Math.min(...ys) }).y
+      const y1 = T({ x: 0, y: Math.max(...ys) }).y
+      const dim = "#555"
+      svg.push(`<line x1="${x0}" y1="${y0 - 16}" x2="${x1}" y2="${y0 - 16}" stroke="${dim}" stroke-width="0.8"/><line x1="${x0}" y1="${y0 - 21}" x2="${x0}" y2="${y0 - 11}" stroke="${dim}"/><line x1="${x1}" y1="${y0 - 21}" x2="${x1}" y2="${y0 - 11}" stroke="${dim}"/>`)
+      svg.push(`<text x="${(x0 + x1) / 2}" y="${y0 - 20}" text-anchor="middle" font-size="10" fill="#161616" font-family="Arial">${toMm(Math.max(...xs) - Math.min(...xs))}</text>`)
+      svg.push(`<line x1="${x0 - 16}" y1="${y0}" x2="${x0 - 16}" y2="${y1}" stroke="${dim}" stroke-width="0.8"/><line x1="${x0 - 21}" y1="${y0}" x2="${x0 - 11}" y2="${y0}" stroke="${dim}"/><line x1="${x0 - 21}" y1="${y1}" x2="${x0 - 11}" y2="${y1}" stroke="${dim}"/>`)
+      svg.push(`<text x="${x0 - 20}" y="${(y0 + y1) / 2}" text-anchor="middle" font-size="10" fill="#161616" font-family="Arial" transform="rotate(-90 ${x0 - 20} ${(y0 + y1) / 2})">${toMm(Math.max(...ys) - Math.min(...ys))}</text>`)
+      const svgW = W * k
+      const svgH = H * k
+      // Масштаб листа: 794 px ≈ 210 мм
+      const real = 1000 / (k * (210 / 794))
+      const scaleN = STD.reduce((a, b) => (Math.abs(b - real) < Math.abs(a - real) ? b : a), STD[0])
+      const material = f.floorMaterial ? f.floorMaterial.name : info.label
+      const size = f.floorMaterial
+        ? `${toMm(f.floorMaterial.w)}×${toMm(f.floorMaterial.h)} мм`
+        : tile
+          ? `${toMm(tile.w)}×${toMm(tile.h)} мм, шов ${toMm(tile.joint)} мм`
+          : ""
+      const rows: [string, string][] = [
+        ["Покрытие", info.label],
+        ...(f.floorMaterial || tile?.note ? ([["Материал", f.floorMaterial ? f.floorMaterial.name : tile?.note || ""]] as [string, string][]) : []),
+        ...(size ? ([["Размер элемента", size]] as [string, string][]) : []),
+        ...(tile ? ([["Раскладка", TILE_LAYOUTS[tile.layout].label], ["Цвет / затирка", `${tile.color.toUpperCase()} / ${tile.grout.toUpperCase()}`]] as [string, string][]) : []),
+        ...(!tile && !f.floorMaterial && f.floorColor ? ([["Цвет", f.floorColor.toUpperCase()]] as [string, string][]) : []),
+        ["Площадь пола", `${fmtNum(c.floorArea, 2)} м²`],
+        ["С запасом на подрезку", `${fmtNum(c.floorArea * (1 + info.waste), 2)} м² (+${Math.round(info.waste * 100)}%)`],
+        ["Периметр / плинтус", `${fmtNum(c.perimeter, 2)} м${f.skirting ? ` / ${fmtNum(c.skirting, 2)} м` : ""}`],
+        ...(doors ? ([["Пороги", `${doors} шт`]] as [string, string][]) : []),
+        ["Масштаб", `≈ 1:${scaleN}`],
+      ]
+      return `
+    <div style="page-break-inside:avoid;break-inside:avoid;margin:0 0 18px">
+      <h3 style="margin:6px 0 6px">${i + 1}. ${escapeXml(room.name)} — ${escapeXml(material)}</h3>
+      <div class="plan-img"><svg xmlns="http://www.w3.org/2000/svg" width="${svgW.toFixed(0)}" height="${svgH.toFixed(0)}" viewBox="0 0 ${svgW.toFixed(0)} ${svgH.toFixed(0)}"><defs>${defs}${jointDefs}</defs>${svg.join("")}</svg></div>
+      <table style="margin:4px 0 0">${rows.map(([a, b]) => `<tr><td class="muted" style="width:34%">${a}</td><td class="strong">${escapeXml(b)}</td></tr>`).join("")}</table>
+    </div>`
+    })
+    .join("")
+  return `
+  <div class="page-break"></div>
+  <h2>Развёртка полов — объект ${escapeXml(meta.objectCode)}</h2>
+  <div class="meta">Вид сверху: покрытие в реальном масштабе рисунка — доска, плитка или фото выбранного материала. Коричневым — пороги в дверных проёмах, тонким контуром — мебель (покрытие под ней тоже укладывается).</div>
+  ${blocks}`
+}
+
 /** Смета отделки и черновых материалов */
 function finishMaterialsSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
   const sections = finishMaterials(scheme)
@@ -1227,6 +1342,7 @@ export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
 
   ${wallsTable(scheme)}
   ${interiorSection(scheme, meta)}
+  ${floorPlanSection(scheme, meta)}
   ${finishElevationsSection(scheme, meta)}
   ${finishMaterialsSection(scheme, meta)}
   ${engineerSection(scheme, "electric", meta)}
