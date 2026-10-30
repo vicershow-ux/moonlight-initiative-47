@@ -4,6 +4,7 @@ import { materialsApi, MaterialItem } from "@/lib/api"
 import { inputCls } from "./constants"
 import { CONSUMPTION_MODES, getMode } from "@/lib/materialConsumption"
 import { MaterialOffers } from "./MaterialOffers"
+import { MaterialVisualBlock } from "./MaterialVisualBlock"
 
 const UNITS = ["шт", "м²", "м", "м.п.", "м³", "кг", "т", "л", "уп", "рул", "меш", "компл"]
 
@@ -247,6 +248,8 @@ export function CatalogEditModal({ material, onClose, onSaved }: CatalogEditModa
             onChanged={onSaved}
           />
         </div>
+
+        <MaterialVisualBlock materialId={material.id} name={form.name} category={form.category} note={form.note} />
 
         <div className="mb-4 mt-6 text-xs uppercase text-white/40">Примечание к материалу</div>
         <input

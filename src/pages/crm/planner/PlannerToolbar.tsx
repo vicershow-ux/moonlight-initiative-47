@@ -64,6 +64,7 @@ interface ToolbarProps {
   setLinkFromId: (id: string | null) => void
   finishRoom: (points: PlanPoint[]) => void
   exportPdf: () => void
+  openAlbum?: () => void
   save: () => void
   exporting: boolean
   saving: boolean
@@ -79,6 +80,7 @@ export function PlannerToolbar({
   setLinkFromId,
   finishRoom,
   exportPdf,
+  openAlbum,
   save,
   exporting,
   saving,
@@ -129,6 +131,12 @@ export function PlannerToolbar({
           />
           Скачать PDF
         </button>
+        {openAlbum && (
+          <button className={ghostBtn} onClick={openAlbum}>
+            <Icon name="Images" size={16} />
+            Визуализации PDF
+          </button>
+        )}
         <button className={goldBtn} onClick={save} disabled={saving}>
           <Icon
             name={saving ? "Loader2" : "Save"}

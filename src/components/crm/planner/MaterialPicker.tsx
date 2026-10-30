@@ -10,7 +10,7 @@ const inputCls =
 const labelCls = "mb-1 block text-xs text-white/50"
 
 /** Сжимаем фото до 2048 px по длинной стороне — быстрее грузится в 3D и в PDF */
-async function shrink(file: File): Promise<{ data: string; type: string; ratio: number }> {
+export async function shrinkImage(file: File): Promise<{ data: string; type: string; ratio: number }> {
   const url = URL.createObjectURL(file)
   try {
     const img = await new Promise<HTMLImageElement>((res, rej) => {
@@ -62,7 +62,7 @@ export function AddMaterialDialog({ open, onOpenChange, defaultCategory = "wallp
     if (!f) return
     setErr("")
     try {
-      const r = await shrink(f)
+      const r = await shrinkImage(f)
       setImg(r)
       // Высота рисунка — по пропорциям фото, ширину оставляем
       setH(Math.round(w * r.ratio * 1000) / 1000)

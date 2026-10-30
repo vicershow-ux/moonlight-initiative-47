@@ -82,10 +82,15 @@ function patternTexture(p: FinishPattern, pxPerM = 512): THREE.CanvasTexture {
  * Фото-материал из библиотеки: картинка грузится с CDN, пока грузится — виден базовый цвет.
  * repeat — плитка рисунка размером w × h м; panel — растягивается на одно панно
  */
-const texLoader = new THREE.TextureLoader()
-texLoader.setCrossOrigin("anonymous")
+/** Загрузки фото-текстур текущей сцены — автоснимок ждёт их, чтобы в PDF не было пустых стен */
+let pendingLoads: Promise<void>[] | null = null
 function photoTexture(ref: MaterialRef, repeatW?: number, repeatH?: number): THREE.Texture {
-  const t = texLoader.load(ref.url)
+  const loader = new THREE.TextureLoader()
+  loader.setCrossOrigin("anonymous")
+  let done: () => void = () => {}
+  const wait = new Promise<void>((r) => (done = r))
+  pendingLoads?.push(wait)
+  const t = loader.load(ref.url, () => done(), undefined, () => done())
   t.colorSpace = THREE.SRGBColorSpace
   t.anisotropy = 8
   if (ref.mode === "repeat") {
@@ -111,6 +116,107 @@ function box(w: number, d: number, h: number, mat: THREE.Material, x = 0, y = 0,
   m.castShadow = true
   m.receiveShadow = true
   return m
+}
+
+/**
+ * Автоснимки комнаты для листа визуализаций: виды изнутри с высоты глаз из углов комнаты,
+ * как в дизайн-проекте. Рендер без окна, после загрузки всех фото-материалов
+ */
+export async function renderRoomViews(scheme: PlanScheme, room: PlanRoom, opts: { width?: number; height?: number; count?: number } = {}): Promise<string[]> {
+  const W = opts.width || 1600
+  const H = opts.height || 1000
+  let renderer: THREE.WebGLRenderer
+  try {
+    renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true })
+  } catch {
+    return []
+  }
+  renderer.setPixelRatio(1)
+  renderer.setSize(W, H)
+  renderer.shadowMap.enabled = true
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap
+  renderer.outputColorSpace = THREE.SRGBColorSpace
+  renderer.toneMapping = THREE.ACESFilmicToneMapping
+  renderer.toneMappingExposure = 1.1
+
+  pendingLoads = []
+  const built = buildRoomScene(scheme, room)
+  const loads = pendingLoads
+  pendingLoads = null
+  await Promise.race([Promise.all(loads), new Promise((r) => setTimeout(r, 12000))])
+
+  const { scene, height, disposables } = built
+  scene.background = new THREE.Color("#f4f1ec")
+  const pts = room.points
+  const cx = pts.reduce((a, p) => a + p.x, 0) / pts.length
+  const cy = pts.reduce((a, p) => a + p.y, 0) / pts.length
+  const camera = new THREE.PerspectiveCamera(68, W / H, 0.05, 100)
+  const eyeY = Math.min(1.45, height - 0.35)
+
+  // Ракурсы: из угла комнаты (отступ 0,35 м к центру) — на противоположный угол, плюс вид на стену с панно
+  const shots: { from: THREE.Vector3; to: THREE.Vector3 }[] = []
+  const inset = (p: { x: number; y: number }, d: number) => {
+    const vx = cx - p.x
+    const vy = cy - p.y
+    const l = Math.hypot(vx, vy) || 1
+    return { x: p.x + (vx / l) * d, y: p.y + (vy / l) * d }
+  }
+  const f = roomFinish(scheme, room.id)
+  const panelWall = Object.keys(f.walls || {}).find((id) => f.walls?.[id]?.material || f.walls?.[id]?.wall !== f.wall)
+  if (panelWall) {
+    const w = roomWalls(room, scheme).find((x) => x.id === panelWall)
+    if (w) {
+      const mx = (w.a.x + w.b.x) / 2 - w.nx * w.inner
+      const my = (w.a.y + w.b.y) / 2 - w.ny * w.inner
+      // Отходим от акцентной стены к противоположной, насколько позволяет комната
+      let back = 0.4
+      for (let d = 0.4; d < 8; d += 0.1) {
+        const px = mx - w.nx * d
+        const py = my - w.ny * d
+        if (!pointInPoly(px, py, pts)) break
+        back = d
+      }
+      const dist = Math.max(back - 0.3, 0.8)
+      shots.push({ from: new THREE.Vector3(mx - w.nx * dist, eyeY, my - w.ny * dist), to: new THREE.Vector3(mx, eyeY * 0.85, my) })
+    }
+  }
+  const corners = pts.length <= 8 ? pts : pts.filter((_, i) => i % Math.ceil(pts.length / 4) === 0)
+  const order = [...corners].sort((a, b) => Math.hypot(b.x - cx, b.y - cy) - Math.hypot(a.x - cx, a.y - cy))
+  for (const c of order) {
+    if (shots.length >= (opts.count || 2)) break
+    const from = inset(c, 0.35)
+    const opp = { x: 2 * cx - from.x, y: 2 * cy - from.y }
+    shots.push({ from: new THREE.Vector3(from.x, eyeY, from.y), to: new THREE.Vector3(opp.x * 0.6 + cx * 0.4, eyeY * 0.75, opp.y * 0.6 + cy * 0.4) })
+  }
+
+  const out: string[] = []
+  for (const s of shots.slice(0, opts.count || 2)) {
+    camera.position.copy(s.from)
+    camera.lookAt(s.to)
+    renderer.render(scene, camera)
+    out.push(renderer.domElement.toDataURL("image/jpeg", 0.9))
+  }
+  scene.traverse((o) => {
+    const m = o as THREE.Mesh
+    if (m.geometry) m.geometry.dispose()
+    const mat = m.material as THREE.Material | THREE.Material[] | undefined
+    if (Array.isArray(mat)) mat.forEach((x) => x.dispose())
+    else mat?.dispose()
+  })
+  disposables.forEach((d) => d.dispose())
+  renderer.dispose()
+  renderer.forceContextLoss()
+  return out
+}
+
+function pointInPoly(x: number, z: number, pts: { x: number; y: number }[]) {
+  let ins = false
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const a = pts[i]
+    const b = pts[j]
+    if (a.y > z !== b.y > z && x < ((b.x - a.x) * (z - a.y)) / (b.y - a.y) + a.x) ins = !ins
+  }
+  return ins
 }
 
 /**
@@ -291,7 +397,24 @@ export function buildRoomScene(scheme: PlanScheme, room: PlanRoom): RoomScene {
   const ceilGeo = track(new THREE.ShapeGeometry(shape))
   ceilGeo.rotateX(Math.PI / 2)
   const ceilColor = f.ceiling !== "none" ? CEILING_FINISHES[f.ceiling].color : "#f3f3f3"
-  const ceil = new THREE.Mesh(ceilGeo, track(std(ceilColor, { side: THREE.DoubleSide, roughness: f.ceiling === "stretch" ? 0.2 : 0.9 })))
+  const cm = f.ceilingMaterial
+  if (cm && cm.mode === "panel") {
+    // Панно на потолке — на весь контур комнаты: UV формы в долях её размера
+    const uv = ceilGeo.attributes.uv
+    const x0 = Math.min(...xs)
+    const y0 = Math.min(...ys)
+    const sw = Math.max(...xs) - x0 || 1
+    const sh = Math.max(...ys) - y0 || 1
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, (uv.getX(i) - x0) / sw, (uv.getY(i) - y0) / sh)
+  }
+  const ceil = new THREE.Mesh(
+    ceilGeo,
+    track(
+      cm
+        ? std("#ffffff", { map: track(photoTexture(cm)), side: THREE.DoubleSide, roughness: cm.gloss ? 0.2 : 0.85 })
+        : std(ceilColor, { side: THREE.DoubleSide, roughness: f.ceiling === "stretch" ? 0.2 : 0.9 }),
+    ),
+  )
   ceil.position.y = height
   ceil.name = "ceiling"
   scene.add(ceil)

@@ -9,7 +9,7 @@ import psycopg2
 CATEGORIES = {'wallpaper', 'fresco', 'tile', 'floor', 'fabric', 'wood', 'stone', 'paint', 'other'}
 MODES = {'repeat', 'panel'}
 MAX_BYTES = 8 * 1024 * 1024
-COLS = ['id', 'name', 'category', 'image_url', 'width', 'height', 'mode', 'gloss', 'unit', 'note']
+COLS = ['id', 'name', 'category', 'image_url', 'width', 'height', 'mode', 'gloss', 'unit', 'note', 'shop_material_id']
 
 
 def cors_headers():
@@ -85,6 +85,7 @@ def validate(body):
         'gloss': bool(body.get('gloss')),
         'unit': 'pcs' if body.get('unit') == 'pcs' else 'm2',
         'note': (body.get('note') or '').strip()[:200] or None,
+        'shop': int(body['shop_material_id']) if str(body.get('shop_material_id') or '').isdigit() else None,
     }, None
 
 
@@ -118,10 +119,14 @@ def handler(event: dict, context) -> dict:
             url, err = upload_image(company, body['image'], body.get('content_type') or 'image/jpeg')
             if err:
                 return response(400, {'error': err})
+            if v['shop']:
+                cur.execute("SELECT 1 FROM materials WHERE id = %s AND company_id = %s", (v['shop'], company))
+                if not cur.fetchone():
+                    v['shop'] = None
             cur.execute(
-                "INSERT INTO material_library (company_id, name, category, image_url, width, height, mode, gloss, unit, note, created_by) "
-                f"VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING {', '.join(COLS)}",
-                (company, v['name'], v['category'], url, v['width'], v['height'], v['mode'], v['gloss'], v['unit'], v['note'], user['user_id']),
+                "INSERT INTO material_library (company_id, name, category, image_url, width, height, mode, gloss, unit, note, shop_material_id, created_by) "
+                f"VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING {', '.join(COLS)}",
+                (company, v['name'], v['category'], url, v['width'], v['height'], v['mode'], v['gloss'], v['unit'], v['note'], v['shop'], user['user_id']),
             )
             item = row_to_item(cur.fetchone())
             conn.commit()
@@ -131,10 +136,17 @@ def handler(event: dict, context) -> dict:
             v, err = validate(body)
             if err:
                 return response(400, {'error': err})
+            image_sql, image_args = '', ()
+            if body.get('image'):
+                url, err = upload_image(company, body['image'], body.get('content_type') or 'image/jpeg')
+                if err:
+                    return response(400, {'error': err})
+                image_sql, image_args = ', image_url = %s', (url,)
             cur.execute(
-                "UPDATE material_library SET name = %s, category = %s, width = %s, height = %s, mode = %s, gloss = %s, unit = %s, note = %s, updated_at = now() "
+                "UPDATE material_library SET name = %s, category = %s, width = %s, height = %s, mode = %s, gloss = %s, unit = %s, note = %s, shop_material_id = COALESCE(%s, shop_material_id)"
+                f"{image_sql}, updated_at = now() "
                 f"WHERE id = %s AND company_id = %s RETURNING {', '.join(COLS)}",
-                (v['name'], v['category'], v['width'], v['height'], v['mode'], v['gloss'], v['unit'], v['note'], body.get('id'), company),
+                (v['name'], v['category'], v['width'], v['height'], v['mode'], v['gloss'], v['unit'], v['note'], v['shop'], *image_args, body.get('id'), company),
             )
             row = cur.fetchone()
             if not row:

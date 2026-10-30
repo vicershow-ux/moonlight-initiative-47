@@ -298,6 +298,11 @@ export function RoomFinishCard({ room, scheme, onUpdate, onHoverWall }: Props) {
             </option>
           ))}
         </select>
+        {f.ceiling !== "none" && (
+          <div className="mt-2">
+            <MaterialPicker value={f.ceilingMaterial} onChange={(m) => set({ ceilingMaterial: m })} prefer={["wood", "tile", "fresco", "paint"]} label="Свой материал потолка с фото" />
+          </div>
+        )}
       </div>
 
       <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-white/70">

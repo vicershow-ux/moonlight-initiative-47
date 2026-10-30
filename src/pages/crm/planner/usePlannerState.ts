@@ -7,7 +7,7 @@ import { downloadPlanPdf } from "@/lib/planner/planPdf"
 import { cableSettings } from "@/lib/planner/cable"
 import { panelSettings } from "@/lib/planner/panelInput"
 import { FORCE_WALL, applyMounts, mountPosition, snapToWall } from "@/lib/planner/walls"
-import {
+import { DrawingStamp,
   LINK_SPECS,
   NODE_PRESETS,
   NodeKind,
@@ -121,6 +121,7 @@ export function usePlannerState(id: string | undefined) {
               heating: raw.heating || [],
               finishes: raw.finishes || {},
               renders: raw.renders || {},
+              stamp: raw.stamp,
             })
           }
           setFileUrl(planData.plan.file_url || null)
@@ -497,6 +498,14 @@ export function usePlannerState(id: string | undefined) {
     touch()
   }
 
+  /** Картинка в хранилище объекта (автоснимок, логотип) — возвращает ссылку */
+  const uploadImage = async (dataUrl: string) => (await objectPlansApi.uploadRender(Number(id), dataUrl)).url
+
+  const setStamp = (stamp: DrawingStamp) => {
+    setScheme((s) => ({ ...s, stamp }))
+    touch()
+  }
+
   const deleteRender = (roomId: string, renderId: string) => {
     setScheme((s) => ({
       ...s,
@@ -829,6 +838,8 @@ export function usePlannerState(id: string | undefined) {
     deleteHeating,
     updateFinish,
     addRender,
+    uploadImage,
+    setStamp,
     deleteRender,
     fileUrl,
     dirty,

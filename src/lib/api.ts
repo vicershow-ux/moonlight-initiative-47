@@ -2981,7 +2981,7 @@ export const materialLibraryApi = {
     })
     return parseResponse(res) as Promise<{ item: FinishMaterial }>
   },
-  async update(item: FinishMaterial) {
+  async update(item: FinishMaterial & { image?: string; content_type?: string }) {
     const res = await fetch(MATERIAL_LIBRARY_URL, {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...authHeaders() },

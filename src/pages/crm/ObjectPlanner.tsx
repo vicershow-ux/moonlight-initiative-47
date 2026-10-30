@@ -9,6 +9,7 @@ import { PlannerWorkspace } from "./planner/PlannerWorkspace"
 import { PlannerInteriorPicker } from "./planner/PlannerInteriorPicker"
 import { LibraryItemDialog } from "@/components/crm/planner/LibraryItemDialog"
 import { MaterialLibraryProvider } from "@/components/crm/planner/MaterialLibraryContext"
+import { VizAlbumDialog } from "@/components/crm/planner/VizAlbumDialog"
 import { isEngLayer } from "@/lib/planner/types"
 
 export default function ObjectPlanner() {
@@ -17,6 +18,7 @@ export default function ObjectPlanner() {
 
   const state = usePlannerState(id)
   const [libDialog, setLibDialog] = useState(false)
+  const [album, setAlbum] = useState(false)
   const {
     object,
     scheme,
@@ -99,6 +101,7 @@ export default function ObjectPlanner() {
         setLinkFromId={setLinkFromId}
         finishRoom={tool === "heating" ? state.addHeating : finishRoom}
         exportPdf={exportPdf}
+        openAlbum={() => setAlbum(true)}
         save={save}
         exporting={exporting}
         saving={saving}
@@ -160,6 +163,17 @@ export default function ObjectPlanner() {
       />
 
       <PlannerWorkspace state={state} />
+      {album && (
+        <VizAlbumDialog
+          open
+          onOpenChange={setAlbum}
+          scheme={scheme}
+          objectCode={object?.object_code || ""}
+          address={object?.address}
+          onStamp={state.setStamp}
+          upload={state.uploadImage}
+        />
+      )}
     </CrmLayout>
     </MaterialLibraryProvider>
   )

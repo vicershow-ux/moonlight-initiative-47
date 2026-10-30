@@ -372,6 +372,19 @@ export interface PlanScheme {
   finishes?: Record<string, RoomFinish>
   /** Снимки 3D-вида комнат для PDF: по id помещения — несколько ракурсов */
   renders?: Record<string, RoomRender[]>
+  /** Штамп листов визуализации: проект, адрес, исполнитель, контакты, логотип */
+  stamp?: DrawingStamp
+}
+
+export interface DrawingStamp {
+  project: string
+  address: string
+  author: string
+  contacts: string
+  scale: string
+  /** Дата на штампе; пусто — сегодня */
+  date?: string
+  logoUrl?: string
 }
 
 export interface RoomRender {
@@ -588,6 +601,8 @@ export interface FinishMaterial {
   gloss: boolean
   unit: "m2" | "pcs"
   note: string | null
+  /** Материал из справочника магазинов — цена и поставщик для сметы */
+  shop_material_id?: number | null
 }
 
 /** Материал в схеме — копия из библиотеки, чтобы план и PDF рисовались без запроса к библиотеке */
@@ -653,6 +668,8 @@ export interface RoomFinish {
   floorMaterial?: MaterialRef
   /** Свой материал всех стен комнаты с фото */
   wallMaterial?: MaterialRef
+  /** Свой материал потолка с фото: реечный, дерево, плитка, фреска на потолке */
+  ceilingMaterial?: MaterialRef
   /** Плитка на стенах (санузел, фартук) */
   wallTile?: TileSpec
   wall: WallFinish

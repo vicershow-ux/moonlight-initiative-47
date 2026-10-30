@@ -1,0 +1,2 @@
+ALTER TABLE t_p98567891_moonlight_initiative.material_library ADD COLUMN shop_material_id INTEGER NULL REFERENCES t_p98567891_moonlight_initiative.materials(id);
+CREATE INDEX material_library_shop_idx ON t_p98567891_moonlight_initiative.material_library(shop_material_id);

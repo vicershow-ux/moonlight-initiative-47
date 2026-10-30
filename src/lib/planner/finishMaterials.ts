@@ -172,6 +172,15 @@ export function finishMaterials(scheme: PlanScheme): MaterialSection[] {
     // Потолок
     if (f.ceiling !== "none") {
       const info = CEILING_FINISHES[f.ceiling]
+      if (f.ceilingMaterial) {
+        add(ceil, {
+          name: `${f.ceilingMaterial.mode === "panel" ? "Панно на потолок" : "Отделка потолка"} — ${f.ceilingMaterial.name}`,
+          spec: f.ceilingMaterial.mode === "panel" ? "по размеру потолка" : "запас 10%",
+          unit: "м²",
+          qty: up(c.ceilingArea * (f.ceilingMaterial.mode === "panel" ? 1 : 1.1), 0.1),
+          note: name,
+        })
+      }
       if (f.ceiling === "stretch") {
         add(ceil, { name: "Натяжной потолок (полотно)", spec: "ПВХ, матовый", unit: "м²", qty: up(c.ceilingArea, 0.1), note: name })
         add(ceil, { name: "Профиль для натяжного потолка", spec: "стеновой, 2,5 м", unit: "шт", qty: up((c.perimeter * 1.05) / 2.5) })
