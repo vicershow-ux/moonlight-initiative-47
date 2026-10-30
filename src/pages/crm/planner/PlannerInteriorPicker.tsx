@@ -15,7 +15,7 @@ interface Props {
   onCreateLibraryItem: () => void
 }
 
-const GROUPS = ["Спальня", "Гостиная", "Кухня", "Санузел", "Прочее"] as const
+const GROUPS = ["Спальня", "Гостиная", "Кухня", "Санузел", "Текстиль", "Прочее"] as const
 
 const btn = (on: boolean) =>
   `flex min-h-[34px] items-center gap-1.5 rounded-lg px-2.5 text-sm transition-colors ${

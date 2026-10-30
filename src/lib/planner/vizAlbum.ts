@@ -20,12 +20,12 @@ const PX = 4
 const PW = 297 * PX
 const PH = 210 * PX
 
-function stampHtml(st: DrawingStamp, title: string, sheetNo: number, total: number): string {
+export function stampHtml(st: DrawingStamp, title: string, sheetNo: number, total: number, k = 1): string {
   const date = st.date || new Date().toLocaleDateString("ru-RU")
   const cell = (label: string, value: string, w: string, small = false) =>
     `<td style="width:${w};border:1px solid #111;padding:4px 6px;text-align:center;vertical-align:middle">
-      <div style="font-size:${small ? 11 : 12}px;color:#111;margin-bottom:4px">${esc(label)}</div>
-      <div style="font-size:${small ? 11 : 13}px;color:#111;line-height:1.25">${value}</div>
+      <div style="font-size:${Math.round((small ? 11 : 12) * k)}px;color:#111;margin-bottom:4px">${esc(label)}</div>
+      <div style="font-size:${Math.round((small ? 11 : 13) * k)}px;color:#111;line-height:1.25">${value}</div>
     </td>`
   return `
   <table style="width:100%;border-collapse:collapse;table-layout:fixed;font-family:'Arial Narrow',Arial,sans-serif;height:${19 * PX}px">
@@ -81,31 +81,61 @@ async function waitImages(root: HTMLElement) {
   )
 }
 
-/** Собирает PDF альбома визуализаций; возвращает Blob или сохраняет файл */
-export async function downloadVizAlbum(sheets: VizSheet[], stamp: DrawingStamp, fileName: string, mode: "save" | "blob" = "save"): Promise<Blob | void> {
-  if (!sheets.length) throw new Error("Нет снимков 3D для альбома")
+type Pdf = import("jspdf").jsPDF
+
+/**
+ * Дорисовывает листы визуализаций (A4 альбомный) в конец готового PDF.
+ * numberOf(i) — номер листа на штампе, total — всего листов в комплекте
+ */
+export async function appendVizSheets(pdf: Pdf, sheets: VizSheet[], stamp: DrawingStamp, numberOf: (i: number) => number, total: number, fresh = false) {
   const holder = document.createElement("div")
   holder.style.position = "fixed"
   holder.style.left = "-20000px"
   holder.style.top = "0"
-  holder.innerHTML = sheets.map((s, i) => sheetHtml(s, stamp, i + 1, sheets.length)).join("")
+  holder.innerHTML = sheets.map((s, i) => sheetHtml(s, stamp, numberOf(i), total)).join("")
   document.body.appendChild(holder)
   try {
     await waitImages(holder)
     const html2canvas = (await import("html2canvas")).default
-    const { jsPDF } = await import("jspdf")
-    const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" })
     const nodes = Array.from(holder.querySelectorAll<HTMLElement>(".viz-sheet"))
     for (let i = 0; i < nodes.length; i++) {
       const canvas = await html2canvas(nodes[i], { scale: 1.5, useCORS: true, backgroundColor: "#ffffff", logging: false })
-      if (i > 0) pdf.addPage("a4", "landscape")
+      if (!(fresh && i === 0)) pdf.addPage("a4", "landscape")
       pdf.addImage(canvas.toDataURL("image/jpeg", 0.9), "JPEG", 0, 0, 297, 210)
     }
-    if (mode === "blob") return pdf.output("blob")
-    pdf.save(fileName)
   } finally {
     document.body.removeChild(holder)
   }
+}
+
+/** Штамп для книжного листа чертежа: рисуется картинкой поверх нижнего поля страницы */
+export async function stampImage(stamp: DrawingStamp, title: string, no: number, total: number): Promise<{ data: string; ratio: number }> {
+  const el = document.createElement("div")
+  el.style.position = "fixed"
+  el.style.left = "-20000px"
+  el.style.top = "0"
+  el.style.width = `${190 * PX}px`
+  el.style.background = "#fff"
+  el.innerHTML = stampHtml(stamp, title, no, total, 0.85)
+  document.body.appendChild(el)
+  try {
+    await waitImages(el)
+    const html2canvas = (await import("html2canvas")).default
+    const c = await html2canvas(el, { scale: 1.5, useCORS: true, backgroundColor: "#ffffff", logging: false })
+    return { data: c.toDataURL("image/png"), ratio: c.height / c.width }
+  } finally {
+    document.body.removeChild(el)
+  }
+}
+
+/** Собирает PDF альбома визуализаций; возвращает Blob или сохраняет файл */
+export async function downloadVizAlbum(sheets: VizSheet[], stamp: DrawingStamp, fileName: string, mode: "save" | "blob" = "save"): Promise<Blob | void> {
+  if (!sheets.length) throw new Error("Нет снимков 3D для альбома")
+  const { jsPDF } = await import("jspdf")
+  const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" })
+  await appendVizSheets(pdf, sheets, stamp, (i) => i + 1, sheets.length, true)
+  if (mode === "blob") return pdf.output("blob")
+  pdf.save(fileName)
 }
 
 /** Листы по умолчанию: на каждую комнату — сохранённые снимки (крупно), иначе — автоснимки */

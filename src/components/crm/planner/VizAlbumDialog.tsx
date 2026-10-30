@@ -18,12 +18,14 @@ interface Props {
   onStamp: (s: DrawingStamp) => void
   /** Загрузка картинки в хранилище — для логотипа и автоснимков */
   upload: (dataUrl: string) => Promise<string>
+  objectId?: number
+  clientEmail?: string
 }
 
 type Shot = { id: string; roomId: string; url: string; on: boolean; auto: boolean }
 
 /** Альбом визуализаций: крупные кадры 3D по комнатам на листах A4 со штампом */
-export function VizAlbumDialog({ open, onOpenChange, scheme, objectCode, address, onStamp, upload }: Props) {
+export function VizAlbumDialog({ open, onOpenChange, scheme, objectCode, address, onStamp, upload, objectId, clientEmail }: Props) {
   const { user } = useAuth()
   const [st, setSt] = useState<DrawingStamp>(() => ({
     project: scheme.stamp?.project || "Дизайн-проект квартиры",
@@ -38,6 +40,9 @@ export function VizAlbumDialog({ open, onOpenChange, scheme, objectCode, address
   const [pair, setPair] = useState(false)
   const [busy, setBusy] = useState("")
   const [err, setErr] = useState("")
+  const [email, setEmail] = useState(clientEmail || "")
+  const [note, setNote] = useState("")
+  const [done, setDone] = useState("")
 
   useEffect(() => {
     if (!open) return
@@ -84,25 +89,46 @@ export function VizAlbumDialog({ open, onOpenChange, scheme, objectCode, address
     }
   }
 
-  const build = async () => {
+  const makeSheets = () => {
     const chosen = shots.filter((s) => s.on)
-    if (!chosen.length) return setErr("Выберите хотя бы один кадр или снимите комнаты")
+    return scheme.rooms.flatMap((r) => {
+      const list = chosen.filter((s) => s.roomId === r.id)
+      const title = (n?: number) => `Визуализация ${r.name}${n ? `, вид ${n}` : ""}`
+      if (pair && list.length > 1) {
+        const out = []
+        for (let i = 0; i < list.length; i += 2) out.push({ room: r, images: list.slice(i, i + 2).map((x) => x.url), title: title(list.length > 2 ? i / 2 + 1 : undefined) })
+        return out
+      }
+      return list.map((x, i) => ({ room: r, images: [x.url], title: title(list.length > 1 ? i + 1 : undefined) }))
+    })
+  }
+
+  const build = async (target: "save" | "files" | "email") => {
+    if (!shots.some((s) => s.on)) return setErr("Выберите хотя бы один кадр или снимите комнаты")
+    if (target === "email" && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) return setErr("Укажите почту заказчика")
     onStamp(st)
     setBusy("Собираю PDF…")
     setErr("")
+    setDone("")
     try {
       const { downloadVizAlbum } = await import("@/lib/planner/vizAlbum")
-      const sheets = scheme.rooms.flatMap((r) => {
-        const list = chosen.filter((s) => s.roomId === r.id)
-        const title = (n?: number) => `Визуализация ${r.name}${n ? `, вид ${n}` : ""}`
-        if (pair && list.length > 1) {
-          const out = []
-          for (let i = 0; i < list.length; i += 2) out.push({ room: r, images: list.slice(i, i + 2).map((x) => x.url), title: title(list.length > 2 ? i / 2 + 1 : undefined) })
-          return out
-        }
-        return list.map((x, i) => ({ room: r, images: [x.url], title: title(list.length > 1 ? i + 1 : undefined) }))
+      const fileName = `Визуализации ${objectCode}.pdf`
+      if (target === "save") {
+        await downloadVizAlbum(makeSheets(), st, fileName)
+        return
+      }
+      if (!objectId) throw new Error("Сохраните объект")
+      const blob = (await downloadVizAlbum(makeSheets(), st, fileName, "blob")) as Blob
+      const pdf = await new Promise<string>((res, rej) => {
+        const r = new FileReader()
+        r.onload = () => res(String(r.result).split(",")[1] || "")
+        r.onerror = rej
+        r.readAsDataURL(blob)
       })
-      await downloadVizAlbum(sheets, st, `Визуализации ${objectCode}.pdf`)
+      setBusy(target === "email" ? "Отправляю заказчику…" : "Сохраняю в файлы объекта…")
+      const { objectPlansApi } = await import("@/lib/api")
+      const r = await objectPlansApi.saveAlbum({ object_id: objectId, pdf_data: pdf, ...(target === "email" ? { email: email.trim(), message: note.trim() } : {}) })
+      setDone(r.sent ? `Отправлено на ${email.trim()}, PDF сохранён в файлах объекта` : "PDF сохранён в файлах объекта")
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Не удалось собрать PDF")
     } finally {
@@ -221,17 +247,39 @@ export function VizAlbumDialog({ open, onOpenChange, scheme, objectCode, address
           </div>
         </div>
 
+        <div className="grid gap-2 rounded-lg border border-white/10 bg-[#161616] p-3 sm:grid-cols-[1fr_1fr]">
+          <div>
+            <label className={labelCls}>Почта заказчика</label>
+            <input className={inputCls} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="client@mail.ru" />
+          </div>
+          <div>
+            <label className={labelCls}>Сообщение (необязательно)</label>
+            <input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Посмотрите варианты, жду обратную связь" />
+          </div>
+        </div>
+
         {err && <div className="text-sm text-red-300">{err}</div>}
+        {done && <div className="text-sm text-green-300">{done}</div>}
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-white/45">A4 альбомный · {shots.filter((s) => s.on).length} кадров · штамп сохранится в плане</span>
-          <button
-            onClick={build}
-            disabled={!!busy}
-            className="ml-auto flex min-h-[44px] items-center gap-2 rounded-lg bg-[#D4AF37] px-5 text-sm text-[#161616] hover:bg-[#B8860B] disabled:opacity-50"
-          >
-            <Icon name={busy ? "Loader2" : "FileDown"} size={16} className={busy ? "animate-spin" : ""} />
-            {busy || "Скачать альбом PDF"}
-          </button>
+          <div className="ml-auto flex flex-wrap gap-2">
+            <button onClick={() => build("save")} disabled={!!busy} className="flex min-h-[44px] items-center gap-2 rounded-lg bg-white/10 px-4 text-sm hover:bg-white/15 disabled:opacity-50">
+              <Icon name="Download" size={16} />
+              Скачать
+            </button>
+            {objectId ? (
+              <button onClick={() => build("files")} disabled={!!busy} className="flex min-h-[44px] items-center gap-2 rounded-lg bg-white/10 px-4 text-sm hover:bg-white/15 disabled:opacity-50">
+                <Icon name="FolderUp" size={16} />
+                В файлы объекта
+              </button>
+            ) : null}
+            {objectId ? (
+              <button onClick={() => build("email")} disabled={!!busy} className="flex min-h-[44px] items-center gap-2 rounded-lg bg-[#D4AF37] px-5 text-sm text-[#161616] hover:bg-[#B8860B] disabled:opacity-50">
+                <Icon name={busy ? "Loader2" : "Send"} size={16} className={busy ? "animate-spin" : ""} />
+                {busy || "Отправить заказчику"}
+              </button>
+            ) : null}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

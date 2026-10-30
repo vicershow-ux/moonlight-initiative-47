@@ -1,13 +1,39 @@
+import base64
 import json
 import os
+import uuid
 
+import boto3
 import psycopg2
+
+MAX_MODEL = 20 * 1024 * 1024
+
+
+def upload_model(company_id, b64):
+    '''Сохраняет 3D-модель GLB в хранилище и возвращает ссылку'''
+    try:
+        data = base64.b64decode(b64.split(',', 1)[-1])
+    except Exception:
+        return None, 'Не удалось прочитать файл модели'
+    if len(data) > MAX_MODEL:
+        return None, 'Модель больше 20 МБ — упростите её или сожмите (например, в Blender с Draco)'
+    if data[:4] != b'glTF':
+        return None, 'Нужен файл .glb (бинарный glTF)'
+    key = f"furniture/{company_id}/{uuid.uuid4().hex}.glb"
+    s3 = boto3.client(
+        's3',
+        endpoint_url='https://bucket.poehali.dev',
+        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
+    )
+    s3.put_object(Bucket='files', Key=key, Body=data, ContentType='model/gltf-binary')
+    return f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}", None
 
 BASE_KINDS = {
     'bed_double', 'bed_single', 'sofa', 'armchair', 'wardrobe', 'dresser', 'nightstand',
     'table', 'desk', 'chair', 'tv_stand', 'shelf', 'kitchen_base', 'kitchen_wall', 'fridge',
     'stove', 'sink_kitchen', 'dishwasher', 'bath', 'shower', 'toilet_f', 'washbasin', 'washer',
-    'boiler_f', 'towel_rail', 'custom',
+    'boiler_f', 'towel_rail', 'curtain', 'tulle', 'rug_round', 'rug', 'custom',
 }
 
 
@@ -54,7 +80,7 @@ def size(v, lo=0.05, hi=10.0):
     return x if lo <= x <= hi else None
 
 
-COLS = ['id', 'name', 'base_kind', 'width', 'depth', 'height', 'at_wall', 'blocks_heating', 'blocks_sockets', 'color', 'material']
+COLS = ['id', 'name', 'base_kind', 'width', 'depth', 'height', 'at_wall', 'blocks_heating', 'blocks_sockets', 'color', 'material', 'model_url']
 
 
 def row_to_item(r):
@@ -75,8 +101,10 @@ def validate(body):
     color = (body.get('color') or '').strip()[:16] or None
     mat = body.get('material')
     mat = json.dumps(mat) if isinstance(mat, dict) and mat.get('url') else None
+    model = (body.get('model_url') or '').strip()
+    model = model if model.startswith('https://cdn.poehali.dev/') and model.endswith('.glb') else None
     return (name, kind, w, d, h, bool(body.get('at_wall', True)), bool(body.get('blocks_heating', True)),
-            bool(body.get('blocks_sockets', False)), color, mat), None
+            bool(body.get('blocks_sockets', False)), color, mat, model), None
 
 
 def handler(event: dict, context) -> dict:
@@ -103,13 +131,20 @@ def handler(event: dict, context) -> dict:
 
         body = json.loads(event.get('body') or '{}')
 
+        # Загрузка модели отдельным запросом: в ответ ссылка, её сохраняют в предмет
+        if method == 'POST' and body.get('action') == 'model':
+            url, err = upload_model(company, body.get('data') or '')
+            if err:
+                return response(400, {'error': err})
+            return response(200, {'url': url})
+
         if method == 'POST':
             vals, err = validate(body)
             if err:
                 return response(400, {'error': err})
             cur.execute(
                 "INSERT INTO furniture_library (company_id, name, base_kind, width, depth, height, at_wall, "
-                "blocks_heating, blocks_sockets, color, material, created_by) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                "blocks_heating, blocks_sockets, color, material, model_url, created_by) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
                 f"RETURNING {', '.join(COLS)}",
                 (company, *vals, user['user_id']),
             )
@@ -124,7 +159,7 @@ def handler(event: dict, context) -> dict:
                 return response(400, {'error': err})
             cur.execute(
                 "UPDATE furniture_library SET name = %s, base_kind = %s, width = %s, depth = %s, height = %s, "
-                "at_wall = %s, blocks_heating = %s, blocks_sockets = %s, color = %s, material = %s, updated_at = now() "
+                "at_wall = %s, blocks_heating = %s, blocks_sockets = %s, color = %s, material = %s, model_url = %s, updated_at = now() "
                 f"WHERE id = %s AND company_id = %s RETURNING {', '.join(COLS)}",
                 (*vals, item_id, company),
             )

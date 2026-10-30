@@ -65,6 +65,19 @@ export function furnitureSvg(f: PlanFurniture, toScreen: ToScreen, stroke: strin
     return `<ellipse cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" rx="${(ru * f.w * k).toFixed(1)}" ry="${(rv * f.d * k).toFixed(1)}" transform="rotate(${f.rot} ${p.x.toFixed(1)} ${p.y.toFixed(1)})" fill="${fill}" stroke="${stroke}" stroke-width="${sw * 0.8}"/>`
   }
 
+  // Ковры и текстиль — тонко и полупрозрачно, чтобы не прятать пол и мебель
+  if (f.kind === "rug_round") return ellipse(0, 0, 0.5, 0.5).replace(`fill="${fill}"`, `fill="${fill}" fill-opacity="0.35" stroke-dasharray="4 3"`)
+  if (f.kind === "rug") return poly(corners, 'fill-opacity="0.35" stroke-dasharray="4 3"')
+  if (f.kind === "curtain" || f.kind === "tulle") {
+    const wave: string[] = []
+    const n = Math.max(6, Math.round(f.w / 0.12))
+    for (let i = 0; i <= n; i++) {
+      const p = L(-0.5 + i / n, i % 2 ? 0.35 : -0.35)
+      wave.push(`${p.x.toFixed(1)},${p.y.toFixed(1)}`)
+    }
+    return `<polyline points="${wave.join(" ")}" fill="none" stroke="${stroke}" stroke-width="${sw * (f.kind === "tulle" ? 0.6 : 1.1)}" ${f.kind === "tulle" ? 'stroke-dasharray="2 2"' : ""}/>`
+  }
+
   const parts: string[] = [poly(corners)]
   switch (f.kind) {
     case "bed_double":

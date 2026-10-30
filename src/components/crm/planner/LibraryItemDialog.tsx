@@ -3,7 +3,7 @@ import Icon from "@/components/ui/icon"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { fromMm, toMm } from "@/lib/planner/geometry"
 import { FURNITURE_PRESETS, FurnitureKind, LibraryItem } from "@/lib/planner/types"
-import type { FurnitureLibraryInput } from "@/lib/api"
+import { furnitureLibraryApi, type FurnitureLibraryInput } from "@/lib/api"
 
 const inputCls =
   "w-full bg-[#161616] border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#D4AF37]/50"
@@ -27,6 +27,7 @@ const empty: FurnitureLibraryInput = {
   blocks_heating: true,
   blocks_sockets: false,
   color: null,
+  model_url: null,
 }
 
 /** Свой предмет в библиотеку компании: название, вид на плане, размеры и свойства */
@@ -34,6 +35,39 @@ export function LibraryItemDialog({ open, onOpenChange, item, onSave }: Props) {
   const [v, setV] = useState<FurnitureLibraryInput>(empty)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const [modelBusy, setModelBusy] = useState(false)
+  const [modelInfo, setModelInfo] = useState("")
+
+  /** GLB: размеры берём из самой модели (подставляем в поля), файл — в хранилище */
+  const onModel = async (file: File | undefined) => {
+    if (!file) return
+    if (!/\.glb$/i.test(file.name)) return setError("Нужен файл .glb")
+    if (file.size > 20 * 1024 * 1024) return setError("Модель больше 20 МБ — упростите её")
+    setModelBusy(true)
+    setError("")
+    try {
+      const buf = await file.arrayBuffer()
+      const { measureGlb } = await import("@/lib/planner/glbModels")
+      const dims = await measureGlb(buf)
+      const b64 = await new Promise<string>((res, rej) => {
+        const r = new FileReader()
+        r.onload = () => res(String(r.result).split(",")[1] || "")
+        r.onerror = rej
+        r.readAsDataURL(file)
+      })
+      const { url } = await furnitureLibraryApi.uploadModel(b64)
+      const patch: Partial<FurnitureLibraryInput> = { model_url: url }
+      // Размеры модели — если они похожи на реальные (в метрах), подставляем
+      if (dims && dims.w > 0.05 && dims.w < 10 && dims.h > 0.01 && dims.h < 5) Object.assign(patch, { width: dims.w, depth: Math.max(dims.d, 0.02), height: dims.h })
+      if (!v.name.trim()) patch.name = file.name.replace(/\.glb$/i, "")
+      set(patch)
+      setModelInfo(dims ? `Модель ${toMm(dims.w)}×${toMm(dims.d)}×${toMm(dims.h)} мм, ${(file.size / 1048576).toFixed(1)} МБ` : "Модель загружена")
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось загрузить модель")
+    } finally {
+      setModelBusy(false)
+    }
+  }
 
   useEffect(() => {
     if (!open) return
@@ -89,6 +123,24 @@ export function LibraryItemDialog({ open, onOpenChange, item, onSave }: Props) {
                 </option>
               ))}
             </select>
+          </div>
+          <div className="rounded-lg border border-white/10 bg-[#161616] p-2.5">
+            <div className="mb-1.5 text-xs text-white/50">Своя 3D-модель (GLB) — в 3D будет стоять именно она</div>
+            <div className="flex items-center gap-2">
+              <label className="flex min-h-[40px] flex-1 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-white/20 px-3 text-sm text-white/70 hover:border-[#D4AF37]/50">
+                <input type="file" accept=".glb,model/gltf-binary" className="hidden" onChange={(e) => onModel(e.target.files?.[0])} />
+                <Icon name={modelBusy ? "Loader2" : v.model_url ? "Box" : "Upload"} size={15} className={modelBusy ? "animate-spin" : v.model_url ? "text-[#D4AF37]" : ""} />
+                {modelBusy ? "Загружаю модель…" : v.model_url ? "Заменить модель" : "Загрузить .glb"}
+              </label>
+              {v.model_url && (
+                <button onClick={() => { set({ model_url: null }); setModelInfo("") }} title="Убрать модель" className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/5 text-white/50 hover:text-red-300">
+                  <Icon name="X" size={15} />
+                </button>
+              )}
+            </div>
+            <div className="mt-1 text-[11px] text-white/35">
+              {modelInfo || (v.model_url ? "Модель подключена" : "Модели берут на сайтах фабрик, Sketchfab, 3dsky (экспорт в GLB из Blender/3ds Max). До 20 МБ.")} Модель подгоняется под размеры ниже.
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-2">
             {mmInput("width", "Ширина")}

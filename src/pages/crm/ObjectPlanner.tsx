@@ -172,6 +172,8 @@ export default function ObjectPlanner() {
           address={object?.address}
           onStamp={state.setStamp}
           upload={state.uploadImage}
+          objectId={object?.id}
+          clientEmail={object?.email}
         />
       )}
     </CrmLayout>

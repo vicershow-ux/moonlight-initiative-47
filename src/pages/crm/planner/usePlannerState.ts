@@ -378,6 +378,7 @@ export function usePlannerState(id: string | undefined) {
             blocksSockets: lib.blocks_sockets,
             color: lib.color || undefined,
             material: lib.material || undefined,
+            modelUrl: lib.model_url || undefined,
           }
         : {}),
     }
@@ -413,6 +414,7 @@ export function usePlannerState(id: string | undefined) {
       blocks_sockets: pr.blocksSockets,
       color: f.color || null,
       material: f.material || null,
+      model_url: f.modelUrl || null,
     })
     setLibrary((l) => [...l, res.item].sort((a, b) => a.name.localeCompare(b.name, "ru")))
     updateFurniture(f.id, { libraryId: res.item.id, label: res.item.name })
@@ -422,6 +424,13 @@ export function usePlannerState(id: string | undefined) {
   const updateLibraryItem = async (item: LibraryItem) => {
     const res = await furnitureLibraryApi.update(item)
     setLibrary((l) => l.map((x) => (x.id === item.id ? res.item : x)))
+    // Новая модель или материал — сразу на всех расставленных экземплярах этого предмета
+    setScheme((s) => ({
+      ...s,
+      furniture: (s.furniture || []).map((f) =>
+        f.libraryId === item.id ? { ...f, modelUrl: res.item.model_url || undefined, material: res.item.material || f.material } : f,
+      ),
+    }))
   }
 
   /** Новый предмет в библиотеку из формы; сразу выбираем его для расстановки */

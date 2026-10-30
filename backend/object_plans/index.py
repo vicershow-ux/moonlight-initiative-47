@@ -3,8 +3,13 @@ import json
 import os
 import uuid
 
+import html as html_lib
+import re
+
 import boto3
 import psycopg2
+
+from mailer import send_document_email
 
 
 def get_conn():
@@ -112,6 +117,78 @@ def upload_render(company_id, object_id, b64data):
     return url, None
 
 
+ATTACH_LIMIT = 7 * 1024 * 1024
+
+
+def album_email(brand, phones, client_name, object_code, url, note, attached):
+    e = html_lib.escape
+    greet = f'Здравствуйте, {client_name}!' if client_name else 'Здравствуйте!'
+    note_html = f'<p style="margin:0 0 14px;white-space:pre-line">{e(note)}</p>' if note else ''
+    how = 'Файл приложен к письму, а также доступен по ссылке:' if attached else 'Альбом большой, поэтому отправляем ссылкой:'
+    html_body = f'''<!doctype html><html><body style="margin:0;padding:24px;background:#f4f1ea;font-family:Arial,sans-serif;color:#161616">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden">
+<tr><td style="background:#5C3A11;padding:18px 24px;color:#fff;font-size:18px;font-weight:bold">{e(brand)}</td></tr>
+<tr><td style="padding:24px;font-size:15px;line-height:1.55">
+<p style="margin:0 0 14px">{e(greet)}</p>
+<p style="margin:0 0 14px">Направляем визуализации интерьера по объекту {e(object_code)}. {how}</p>
+<p style="margin:0 0 18px"><a href="{e(url)}" style="display:inline-block;background:#D4AF37;color:#161616;text-decoration:none;padding:11px 18px;border-radius:8px;font-weight:bold">Открыть альбом визуализаций</a></p>
+{note_html}
+<p style="margin:0 0 14px">Если захотите что-то поменять — просто ответьте на это письмо.</p>
+<p style="margin:20px 0 0;padding-top:16px;border-top:1px solid #eee;font-size:13px;color:#777">С уважением, {e(brand)}{('<br/>' + e(phones)) if phones else ''}</p>
+</td></tr></table></body></html>'''
+    text_body = f"{greet}\n\nНаправляем визуализации интерьера по объекту {object_code}: {url}\n\n{note}\n\nС уважением, {brand}\n{phones}"
+    return html_body, text_body
+
+
+def save_album(cur, user, company_id, body):
+    '''Альбом визуализаций: PDF в файлы объекта (заменяет прошлый альбом) и, если указана почта, письмо заказчику'''
+    obj_id = body.get('object_id')
+    if not obj_id or not has_access(cur, user, obj_id):
+        return 403, {'error': 'Нет доступа к объекту'}
+    to_email = (body.get('email') or '').strip()
+    if to_email and not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', to_email):
+        return 400, {'error': 'Укажите корректный email заказчика'}
+    pdf_b64 = body.get('pdf_data') or ''
+    if not pdf_b64:
+        return 400, {'error': 'Нет файла альбома'}
+    cur.execute("SELECT object_code, client_name FROM objects WHERE id = %s AND company_id = %s", (obj_id, company_id))
+    obj = cur.fetchone()
+    if not obj:
+        return 404, {'error': 'Объект не найден'}
+    file_name = f"Визуализации {obj[0]}.pdf"
+    url, size, err = upload_pdf(company_id, obj_id, file_name, pdf_b64)
+    if err:
+        return 400, {'error': err}
+    cur.execute(
+        "UPDATE object_files SET file_url = %s, file_size = %s, created_at = now() "
+        "WHERE object_id = %s AND company_id = %s AND file_name = %s RETURNING id",
+        (url, size, obj_id, company_id, file_name),
+    )
+    row = cur.fetchone()
+    if not row:
+        cur.execute(
+            "INSERT INTO object_files (company_id, object_id, user_id, file_name, file_url, file_type, file_size) "
+            "VALUES (%s, %s, %s, %s, %s, 'pdf', %s) RETURNING id",
+            (company_id, obj_id, user['user_id'], file_name, url, size),
+        )
+    sent = False
+    if to_email:
+        cur.execute("SELECT name, phone, email, website FROM companies WHERE id = %s", (company_id,))
+        comp = cur.fetchone() or ('', '', '', '')
+        brand = comp[0] or 'FixKey'
+        phones = ' · '.join(x for x in comp[1:] if x)
+        attached = size <= ATTACH_LIMIT
+        html_body, text_body = album_email(brand, phones, obj[1], obj[0], url, (body.get('message') or '').strip()[:2000], attached)
+        ok, err = send_document_email(
+            to_email, f'Визуализации интерьера — объект {obj[0]}', html_body, text_body,
+            pdf_b64 if attached else '', f'Визуализации_{obj[0]}.pdf', brand, comp[2] or '',
+        )
+        if not ok:
+            return 502, {'error': err, 'file_url': url}
+        sent = True
+    return 200, {'success': True, 'file_url': url, 'sent': sent}
+
+
 def sync_rooms(cur, company_id, object_id, rooms):
     """Переносит комнаты из плана в помещения объекта: обновляет существующие по имени, добавляет новые."""
     if not isinstance(rooms, list):
@@ -196,6 +273,14 @@ def handler(event: dict, context) -> dict:
         body = json.loads(event.get('body') or '{}')
 
         # Снимок 3D-вида комнаты — только загрузка картинки, схема сохраняется обычным запросом
+        if method == 'POST' and body.get('action') == 'album':
+            if user.get('role') == 'client':
+                return response(403, {'error': 'Недостаточно прав'})
+            code, payload = save_album(cur, user, company_id, body)
+            if code == 200:
+                conn.commit()
+            return response(code, payload)
+
         if method == 'POST' and body.get('action') == 'render':
             obj_id = body.get('object_id')
             if not obj_id:

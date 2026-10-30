@@ -970,6 +970,16 @@ export const objectPlansApi = {
     }>
   },
 
+  /** Альбом визуализаций: PDF в файлы объекта, при указанной почте — письмо заказчику */
+  async saveAlbum(payload: { object_id: number; pdf_data: string; email?: string; message?: string }) {
+    const res = await fetch(OBJECT_PLANS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ action: "album", ...payload }),
+    })
+    return parseResponse(res) as Promise<{ success: boolean; file_url: string; sent: boolean }>
+  },
+
   /** Снимок 3D-вида комнаты — картинка уходит в хранилище, в ответ ссылка */
   async uploadRender(objectId: number, image: string) {
     const res = await fetch(OBJECT_PLANS_URL, {
@@ -2939,6 +2949,15 @@ export type FurnitureLibraryInput = Omit<LibraryItem, "id">
 
 /** Библиотека своих предметов мебели компании — общая для всех объектов */
 export const furnitureLibraryApi = {
+  /** Загрузка 3D-модели GLB — в ответ ссылка для предмета */
+  async uploadModel(data: string) {
+    const res = await fetch(FURNITURE_LIBRARY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ action: "model", data }),
+    })
+    return parseResponse(res) as Promise<{ url: string }>
+  },
   async list() {
     const res = await fetch(FURNITURE_LIBRARY_URL, { headers: { ...authHeaders() } })
     return parseResponse(res) as Promise<{ items: LibraryItem[] }>

@@ -401,6 +401,7 @@ export type FurnitureKind =
   | "table" | "desk" | "chair" | "tv_stand" | "shelf"
   | "kitchen_base" | "kitchen_wall" | "fridge" | "stove" | "sink_kitchen" | "dishwasher"
   | "bath" | "shower" | "toilet_f" | "washbasin" | "washer" | "boiler_f" | "towel_rail"
+  | "curtain" | "tulle" | "rug_round" | "rug"
   | "custom"
 
 /** Свой предмет из библиотеки компании */
@@ -416,6 +417,8 @@ export interface LibraryItem {
   blocks_sockets: boolean
   color: string | null
   material?: MaterialRef | null
+  /** Готовая 3D-модель GLB: в 3D стоит она, подогнанная под ширину, глубину и высоту */
+  model_url?: string | null
 }
 
 /** Свойства предмета с учётом библиотеки: у своих предметов они хранятся в самом предмете */
@@ -430,7 +433,7 @@ export const furnitureProps = (f: Pick<PlanFurniture, "kind" | "atWall" | "block
 
 export interface FurniturePreset {
   label: string
-  group: "Спальня" | "Гостиная" | "Кухня" | "Санузел" | "Прочее"
+  group: "Спальня" | "Гостиная" | "Кухня" | "Санузел" | "Текстиль" | "Прочее"
   /** Ширина × глубина × высота, м */
   w: number
   d: number
@@ -469,6 +472,10 @@ export const FURNITURE_PRESETS: Record<FurnitureKind, FurniturePreset> = {
   washer: { label: "Стиральная машина", group: "Санузел", w: 0.6, d: 0.6, h: 0.85, wall: true, blocksHeating: true, blocksSockets: false },
   boiler_f: { label: "Водонагреватель", group: "Санузел", w: 0.45, d: 0.45, h: 0.8, wall: true, blocksHeating: false, blocksSockets: false },
   towel_rail: { label: "Полотенцесушитель", group: "Санузел", w: 0.5, d: 0.12, h: 0.8, wall: true, blocksHeating: false, blocksSockets: false },
+  curtain: { label: "Шторы (пара)", group: "Текстиль", w: 2.6, d: 0.12, h: 2.7, wall: true, blocksHeating: false, blocksSockets: false },
+  tulle: { label: "Тюль", group: "Текстиль", w: 2.6, d: 0.06, h: 2.7, wall: true, blocksHeating: false, blocksSockets: false },
+  rug_round: { label: "Ковёр круглый", group: "Текстиль", w: 2.0, d: 2.0, h: 0.015, wall: false, blocksHeating: false, blocksSockets: false },
+  rug: { label: "Ковёр прямоугольный", group: "Текстиль", w: 2.0, d: 1.4, h: 0.015, wall: false, blocksHeating: false, blocksSockets: false },
   custom: { label: "Свой предмет", group: "Прочее", w: 1.0, d: 0.6, h: 0.8, wall: false, blocksHeating: true, blocksSockets: false },
 }
 
@@ -480,6 +487,8 @@ export interface PlanFurniture {
   color?: string
   /** Материал корпуса или обивки с фото: ткань дивана, дерево фасадов */
   material?: MaterialRef
+  /** Своя 3D-модель GLB из библиотеки */
+  modelUrl?: string
   atWall?: boolean
   blocksHeating?: boolean
   blocksSockets?: boolean

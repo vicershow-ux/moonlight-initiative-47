@@ -235,6 +235,60 @@ function furnitureModel(f: PlanFurniture): THREE.Group {
   const white = std(MAT.white, { roughness: 0.4 })
   const ceramic = std(MAT.ceramic, { roughness: 0.15 })
   switch (f.kind) {
+    case "curtain":
+    case "tulle": {
+      // Ткань складками: волна по ширине, сверху карниз. Шторы — две половины по краям, тюль — во всю ширину
+      const tulle = f.kind === "tulle"
+      const mat = f.material
+        ? std("#ffffff", {
+            map: photoTexture(f.material, Math.max(w / f.material.w / (tulle ? 1 : 2), 0.2), Math.max(h / f.material.h, 0.2)),
+            roughness: 0.95,
+            side: THREE.DoubleSide,
+            transparent: tulle,
+            opacity: tulle ? 0.55 : 1,
+          })
+        : std(f.color || (tulle ? "#ffffff" : "#d9cbb8"), { roughness: 0.95, side: THREE.DoubleSide, transparent: tulle, opacity: tulle ? 0.45 : 1 })
+      const drape = (width: number, cxp: number) => {
+        const folds = Math.max(4, Math.round(width / 0.1))
+        const geo = new THREE.PlaneGeometry(width * 1.0, h - 0.04, folds * 4, 1)
+        const pos = geo.attributes.position
+        for (let i = 0; i < pos.count; i++) {
+          const x = pos.getX(i)
+          pos.setZ(i, Math.sin(((x + width / 2) / width) * folds * Math.PI * 2) * Math.min(d / 2, 0.05))
+        }
+        geo.computeVertexNormals()
+        const m = new THREE.Mesh(geo, mat)
+        m.castShadow = !tulle
+        m.receiveShadow = true
+        // Плоскость XY уже вертикальна (y — вверх), складки — по глубине (z)
+        m.position.set(cxp, h / 2 - 0.02, tulle ? -d / 2 + 0.03 : d / 2 - 0.05)
+        return m
+      }
+      const inner = new THREE.Group()
+      if (tulle) inner.add(drape(w, 0))
+      else {
+        const half = w * 0.27
+        inner.add(drape(half, -w / 2 + half / 2))
+        inner.add(drape(half, w / 2 - half / 2))
+      }
+      g.add(inner)
+      g.add(box(w + 0.1, 0.03, 0.03, std("#c9c9c9", { metalness: 0.6, roughness: 0.3 }), 0, 0, h - 0.03))
+      break
+    }
+    case "rug":
+    case "rug_round": {
+      const mat = f.material
+        ? std("#ffffff", { map: photoTexture(f.material, Math.max(w / f.material.w, 0.2), Math.max(d / f.material.h, 0.2)), roughness: 1 })
+        : std(f.color || "#f3efe8", { roughness: 1 })
+      if (f.kind === "rug_round") {
+        const c = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1, 64), mat)
+        c.scale.set(w, Math.max(h, 0.01), d)
+        c.position.set(0, Math.max(h, 0.01) / 2, 0)
+        c.receiveShadow = true
+        g.add(c)
+      } else g.add(box(w, d, Math.max(h, 0.01), mat, 0, 0, 0))
+      break
+    }
     case "bed_double":
     case "bed_single": {
       g.add(box(w, d, 0.3, wood, 0, 0, 0))
@@ -575,6 +629,18 @@ export function buildRoomScene(scheme: PlanScheme, room: PlanRoom): RoomScene {
     g.position.set(it.x, 0, it.y)
     g.rotation.y = -(it.rot * Math.PI) / 180
     scene.add(g)
+    // Своя модель GLB: пока грузится — стоит упрощённая форма, потом подменяем
+    if (it.modelUrl) {
+      const url = it.modelUrl
+      const job = import("./glbModels")
+        .then(({ loadFittedModel }) => loadFittedModel(url, it.w, it.d, it.h))
+        .then((model) => {
+          g.children.slice().forEach((ch) => g.remove(ch))
+          g.add(model)
+        })
+        .catch(() => {})
+      pendingLoads?.push(job)
+    }
   }
 
   // Светильники с плана — точками света и плафонами

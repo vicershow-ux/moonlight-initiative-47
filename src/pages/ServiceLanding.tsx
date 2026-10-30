@@ -3,7 +3,7 @@ import { Navigate, useParams } from "@/lib/router-compat"
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import { useSiteContent } from "@/hooks/useSiteContent"
-import { siteApi, PublicServiceItem } from "@/lib/api"
+import { siteApi, PublicServiceItem, PublicServiceCategory } from "@/lib/api"
 import { resolveLandingBySlug } from "@/lib/serviceLanding"
 import { useServiceLandings } from "@/hooks/useServiceLandings"
 import { usePageSeo } from "@/hooks/usePageSeo"
@@ -16,17 +16,23 @@ import { ServiceLandingHero } from "@/components/service-landing/ServiceLandingH
 import { ServiceLandingPrices } from "@/components/service-landing/ServiceLandingPrices"
 import { ServiceLandingBottom } from "@/components/service-landing/ServiceLandingBottom"
 
-export default function ServiceLanding() {
+interface Props {
+  /** Данные с сервера — страница приходит уже с прайсом */
+  initialCategories?: PublicServiceCategory[]
+  initialItems?: PublicServiceItem[]
+}
+
+export default function ServiceLanding({ initialCategories, initialItems }: Props = {}) {
   const { slug } = useParams<{ slug: string }>()
-  const { landings, categories, loading: catsLoading } = useServiceLandings()
+  const { landings, categories, loading: catsLoading } = useServiceLandings(initialCategories)
   const meta = resolveLandingBySlug(slug, categories)
   // Тексты, заданные владельцем в кабинете, важнее шаблонных
   const customSeo = usePageSeo(slug ? `/uslugi/${slug}` : undefined)
   const { content } = useSiteContent()
   const s = content?.settings
 
-  const [items, setItems] = useState<PublicServiceItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const [items, setItems] = useState<PublicServiceItem[]>(initialItems || [])
+  const [loading, setLoading] = useState(!initialItems?.length)
 
   const faq = useMemo(() => (meta ? getServiceFaq(meta) : []), [meta])
 
@@ -54,8 +60,10 @@ export default function ServiceLanding() {
     maxPrice,
   })
 
+  const seededCategory = initialItems?.length ? meta?.category : undefined
   useEffect(() => {
     if (!meta) return
+    if (seededCategory === meta.category && items.length) return
     let alive = true
     setLoading(true)
     siteApi
@@ -70,7 +78,8 @@ export default function ServiceLanding() {
     return () => {
       alive = false
     }
-  }, [meta])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meta?.category])
 
   const grouped = useMemo(() => {
     const map = new Map<string, PublicServiceItem[]>()

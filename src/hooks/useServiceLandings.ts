@@ -22,9 +22,10 @@ function load(): Promise<PublicServiceCategory[]> {
   return inflight
 }
 
-export function useServiceLandings() {
-  const [stats, setStats] = useState<PublicServiceCategory[]>(cache || [])
-  const [loading, setLoading] = useState(!cache)
+export function useServiceLandings(initial?: PublicServiceCategory[]) {
+  const seed = initial && initial.length ? initial : null
+  const [stats, setStats] = useState<PublicServiceCategory[]>(seed || cache || [])
+  const [loading, setLoading] = useState(!seed && !cache)
 
   useEffect(() => {
     let alive = true

@@ -31,6 +31,7 @@ import { CABLE_BUY_SHARE, electricMaterials } from "@/lib/planner/materials"
 import { CeilingPlan, ceilingPlan, ceilingRows, ceilingSvg, ceilingTrackRows } from "@/lib/planner/ceiling"
 import { CEILING_FINISHES, FLOOR_FINISHES, FURNITURE_PRESETS, HEATING_PRESETS, WALL_FINISHES, isEngLayer, roomFinish, wallFinishOf, floorTileOf } from "@/lib/planner/types"
 import { PHASE_COLORS, SECTION_COLORS, WALL_MATERIALS, WallMaterial, sectionColor, sectionOf } from "@/lib/planner/types"
+import type { DrawingStamp } from "@/lib/planner/types"
 import { hatchPattern, materialSwatchImg, usedMaterials } from "@/lib/planner/wallHatch"
 import { floorPattern, furnitureName, furnitureSvg, heatingLayoutSvg } from "@/lib/planner/interiorSvg"
 import { heatingCalc, heatingSupply, interiorWarnings, thermostatOf, thermostatZones, zoneLayout } from "@/lib/planner/interior"
@@ -464,7 +465,8 @@ function interiorSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
   const heating = scheme.heating || []
   const finished = scheme.rooms.filter((r) => finishSummary(roomFinish(scheme, r.id)))
   const rendered = scheme.rooms.filter((r) => (scheme.renders?.[r.id] || []).length > 0)
-  if (!furniture.length && !heating.length && !finished.length && !rendered.length) return ""
+  if (!furniture.length && !heating.length && !finished.length) return ""
+  void rendered
 
   // Виды комнат в 3D: по комнате — подпись с отделкой и до трёх ракурсов. Каждая комната не рвётся между страницами
   const views = rendered
@@ -564,14 +566,7 @@ function interiorSection(scheme: PlanScheme, meta: PlanPdfMeta): string {
       : ""
   }
   ${warns.length ? `<div class="warn">Проверить: ${warns.map((w) => escapeXml(w.text)).join("; ")}.</div>` : ""}
-  ${
-    views
-      ? `<div class="page-break"></div>
-  <h2>Как будет выглядеть ремонт — объект ${escapeXml(meta.objectCode)}</h2>
-  <div class="meta">Объёмные виды помещений с выбранной отделкой, мебелью и светом. Цвета и фактуры на экране и в печати могут отличаться от образцов материалов.</div>
-  ${views}`
-      : ""
-  }`
+`
 }
 
 /**
@@ -1052,6 +1047,20 @@ export interface PlanPdfMeta {
   objectCode: string
   clientName?: string
   address?: string
+}
+
+/** Штамп листов: из плана, иначе — данные объекта и логотип компании */
+export function planStamp(scheme: PlanScheme, meta: PlanPdfMeta): DrawingStamp {
+  const st = scheme.stamp
+  return {
+    project: st?.project || `Дизайн-проект, объект ${meta.objectCode}`,
+    address: st?.address || meta.address || "",
+    author: st?.author || "",
+    contacts: st?.contacts || "",
+    scale: st?.scale || "—",
+    date: st?.date || "",
+    logoUrl: st?.logoUrl || `${window.location.origin}/logo-print.png`,
+  }
 }
 
 export function buildPlanHtml(scheme: PlanScheme, meta: PlanPdfMeta): string {
@@ -1727,9 +1736,10 @@ export async function downloadPlanPdf(
   )
 
   const html2pdf = (await import("html2pdf.js")).default
+  const MB = 31
   const worker = html2pdf()
     .set({
-      margin: [10, 10, 10, 10],
+      margin: [10, 10, MB, 10],
       filename: `План помещений ${meta.objectCode}.pdf`,
       image: { type: "jpeg", quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
@@ -1739,11 +1749,42 @@ export async function downloadPlanPdf(
     .from(root)
 
   try {
-    if (mode === "blob") {
-      const blob = (await worker.outputPdf("blob")) as Blob
-      return blob
+    // Раскладка с разрывами страниц — по ней узнаём, какой чертёж на каком листе
+    const holder = (await worker.toContainer().get("container")) as HTMLElement
+    const inner = (await worker.get("pageSize")) as { inner: { ratio: number } }
+    const pagePx = holder.getBoundingClientRect().width * inner.inner.ratio
+    const top0 = holder.getBoundingClientRect().top
+    const heads = Array.from(holder.querySelectorAll("h2")).map((h) => ({
+      page: Math.floor((h.getBoundingClientRect().top - top0) / pagePx),
+      title: (h.textContent || "").replace(/\s+—\s+объект.*$/, "").trim(),
+    }))
+    const pdf = (await worker.toPdf().get("pdf")) as import("jspdf").jsPDF
+
+    const { appendVizSheets, defaultSheets, stampImage } = await import("./vizAlbum")
+    const stamp = planStamp(scheme, meta)
+    const viz = defaultSheets(scheme, {})
+    const n = pdf.getNumberOfPages()
+    const total = n + viz.length
+    const no = (p: number) => (p === 1 ? 1 : p + viz.length)
+
+    // Штамп на каждом листе чертежей: название листа — по последнему заголовку на нём или до него
+    for (let p = 1; p <= n; p++) {
+      const h = [...heads].reverse().find((x) => x.page <= p - 1)
+      const st = await stampImage(stamp, h?.title || "План помещений", no(p), total)
+      pdf.setPage(p)
+      const w = 190
+      const hh = w * st.ratio
+      pdf.addImage(st.data, "PNG", 10, 297 - 7 - hh, w, hh)
     }
-    await worker.save()
+
+    // Визуализации — крупными листами сразу за обложкой
+    if (viz.length) {
+      await appendVizSheets(pdf, viz, stamp, (i) => 2 + i, total)
+      for (let j = 0; j < viz.length; j++) pdf.movePage(n + 1 + j, 2 + j)
+    }
+
+    if (mode === "blob") return pdf.output("blob")
+    pdf.save(`План помещений ${meta.objectCode}.pdf`)
   } finally {
     document.body.removeChild(container)
   }

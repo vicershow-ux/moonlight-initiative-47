@@ -147,7 +147,13 @@ export function SelectedFurnitureCard({ item, scheme, onUpdate, onDelete, onSave
           onChange={(m) => onUpdate(item.id, { material: m })}
           prefer={["fabric", "wood", "stone"]}
           only="repeat"
-          label="Обивка или отделка с фото — видна в 3D"
+          label={
+            item.kind === "curtain" || item.kind === "tulle"
+              ? "Ткань штор с фото — видна в 3D"
+              : item.kind === "rug" || item.kind === "rug_round"
+                ? "Рисунок ковра с фото — виден в 3D"
+                : "Обивка или отделка с фото — видна в 3D"
+          }
         />
       </div>
 
