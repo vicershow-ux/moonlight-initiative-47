@@ -63,7 +63,9 @@ export function finishMaterials(scheme: PlanScheme): MaterialSection[] {
     // Пол
     if (f.floor !== "none") {
       const info = FLOOR_FINISHES[f.floor]
-      if (f.floor === "tile" || f.floor === "porcelain") {
+      if (f.floorMaterial) {
+        add(floor, { name: `${info.label} — ${f.floorMaterial.name}`, spec: `запас ${Math.round(info.waste * 100)}% на подрезку`, unit: "м²", qty: up(c.floorArea * (1 + info.waste), 0.1), note: name })
+      } else if (f.floor === "tile" || f.floor === "porcelain") {
         // Плитка — штуками по своему размеру и раскладке, плюс коробки, если указано сколько в коробке
         const t = floorTileOf(f)
         const cnt = tileCount(t, c.floorArea)
@@ -98,7 +100,17 @@ export function finishMaterials(scheme: PlanScheme): MaterialSection[] {
       const where = `${name}${g.accent ? `, акцентная стена ${g.walls.join(", ")}` : g.walls.length < c.walls.length ? `, стены ${g.walls.join(", ")}` : ""}`
       const label = (base: string) => (g.accent ? `${base} (акцент)` : base)
       const color = wf.wallColor ? `, цвет ${wf.wallColor.toUpperCase()}` : ""
-      const own = g.accent && wf.note ? ` — ${wf.note}` : ""
+      const own = wf.material && wf.material.mode === "repeat" ? ` — ${wf.material.name}` : g.accent && wf.note ? ` — ${wf.note}` : ""
+      // Фреска-панно — штучно, с размером; основная отделка стены под ним считается как обычно
+      if (wf.material?.mode === "panel") {
+        add(walls, {
+          name: `Фреска / панно — ${wf.material.name}`,
+          spec: `${Math.round(wf.material.w * 1000)}×${Math.round(wf.material.h * 1000)} мм, ${String(Math.round(wf.material.w * wf.material.h * 100) / 100).replace(".", ",")} м²`,
+          unit: "шт",
+          qty: g.walls.length,
+          note: where,
+        })
+      }
       if (wf.wall === "wallpaper" && g.rolls > 0) {
         add(walls, {
           name: label("Обои") + own,

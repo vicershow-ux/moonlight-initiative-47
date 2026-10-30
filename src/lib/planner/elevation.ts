@@ -222,7 +222,7 @@ export function wallChases(
  * Вид на стену из помещения: левый угол — слева от монтажника, который стоит лицом к стене.
  * Направление «вправо» при взгляде вдоль нормали наружу — (−ny, nx) в координатах плана
  */
-const rightAligned = (w: WallInfo) => w.ux * w.ny - w.uy * w.nx < 0
+export const rightAligned = (w: WallInfo) => w.ux * w.ny - w.uy * w.nx < 0
 
 export function wallElevation(scheme: PlanScheme, wall: WallInfo): WallElevation | null {
   const room = scheme.rooms.find((r) => r.id === wall.roomId)
@@ -501,7 +501,13 @@ export function elevationSvg(e: WallElevation, width = 700, mode: ElevationMode 
     if (kind === "plaster") return svgPatternDef(`fm-${uid}`, paintPattern(color, true), k, origin)
     return finishDefs(`fm-${uid}`, kind, color, k)
   }
-  if (fin.wall !== "none") defs.push(real(fin.wall, mainColor, fin.wall === "tile" ? e.tile : undefined))
+  const mat = fin.material
+  if (mat && mat.mode === "repeat") {
+    // Фото-материал повтором: картинка размером w × h м, от левого угла и от пола
+    defs.push(
+      `<pattern id="fm-${uid}" patternUnits="userSpaceOnUse" width="${(mat.w * k).toFixed(2)}" height="${(mat.h * k).toFixed(2)}" patternTransform="translate(${origin.ox} ${origin.oy})"><image href="${esc(mat.url)}" width="${(mat.w * k).toFixed(2)}" height="${(mat.h * k).toFixed(2)}" preserveAspectRatio="none"/></pattern>`,
+    )
+  } else if (fin.wall !== "none") defs.push(real(fin.wall, mainColor, fin.wall === "tile" ? e.tile : undefined))
   if (e.tileH > 0 && fin.wall !== "tile") defs.push(svgPatternDef(`ft-${uid}`, flipY(tilePattern(e.tile)), k, origin))
   if (defs.length) parts.push(`<defs>${defs.join("")}</defs>`)
   // В режиме электрики отделка — бледной подложкой, чтобы не спорить со штробами
@@ -510,7 +516,27 @@ export function elevationSvg(e: WallElevation, width = 700, mode: ElevationMode 
   // Стена, пол и потолок
   parts.push(
     `<rect x="${sx(0)}" y="${top}" width="${wallW}" height="${wallH}" fill="#fbfbfb" stroke="${INK}" stroke-width="1.6"/>`,
-    ...(fin.wall !== "none" && finishOn ? [`<rect x="${sx(0)}" y="${top}" width="${wallW}" height="${wallH}" fill="url(#fm-${uid})" opacity="${fop}"/>`] : []),
+    ...((fin.wall !== "none" || (mat && mat.mode === "repeat")) && finishOn ? [`<rect x="${sx(0)}" y="${top}" width="${wallW}" height="${wallH}" fill="url(#fm-${uid})" opacity="${fop}"/>`] : []),
+    // Фреска / панно — своим размером и положением, с размерами для монтажа
+    ...(mat && mat.mode === "panel"
+      ? (() => {
+          const pw = Math.min(mat.w, L)
+          const ph = Math.min(mat.h, H)
+          const px = fin.panelX ?? (L - pw) / 2
+          const pz = fin.panelZ ?? 0
+          const x0 = sx(px)
+          const y0 = sz(pz + ph)
+          return [
+            `<image href="${esc(mat.url)}" x="${x0}" y="${y0}" width="${pw * k}" height="${ph * k}" preserveAspectRatio="none" opacity="${fop}"/>`,
+            `<rect x="${x0}" y="${y0}" width="${pw * k}" height="${ph * k}" fill="none" stroke="#B8860B" stroke-width="1" stroke-dasharray="4 2"/>`,
+            ...(mode === "finish"
+              ? [
+                  `<text x="${x0 + (pw * k) / 2}" y="${y0 - 5}" text-anchor="middle" font-size="8.5" font-weight="bold" fill="#B8860B" ${FONT} stroke="#fff" stroke-width="2.5" paint-order="stroke">${esc(mat.name)} ${toMm(pw)}×${toMm(ph)}, от угла ${toMm(px)}${pz > 0.005 ? `, от пола ${toMm(pz)}` : ""}</text>`,
+                ]
+              : []),
+          ]
+        })()
+      : []),
     ...(e.tileH > 0 && fin.wall !== "tile"
       ? [
           `<rect x="${sx(0)}" y="${sz(e.tileH)}" width="${wallW}" height="${e.tileH * k}" fill="url(#ft-${uid})" opacity="${fop}"/>`,
@@ -575,7 +601,7 @@ export function elevationSvg(e: WallElevation, width = 700, mode: ElevationMode 
     const y1 = sz(it.z0)
     const strong = mode === "finish"
     parts.push(
-      `<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" fill="${strong ? "rgba(255,255,255,0.72)" : "rgba(255,255,255,0.35)"}" stroke="${strong ? "#3f3f46" : "#9ca3af"}" stroke-width="${strong ? 1.1 : 0.7}" stroke-dasharray="${strong ? "" : "4 2"}"/>`,
+      `<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" fill="${strong ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.3)"}" stroke="${strong ? "#3f3f46" : "#9ca3af"}" stroke-width="${strong ? 1.1 : 0.7}" stroke-dasharray="${strong ? "" : "4 2"}"/>`,
     )
     if (strong) {
       const name = it.f.label || FURNITURE_PRESETS[it.f.kind].label
@@ -728,6 +754,6 @@ export function finishLegend(e: WallElevation, net: number, main: number): { mat
   return {
     material: parts.join("; ") || "отделка не задана",
     color: f.wall !== "none" ? f.wallColor || WALL_FINISHES[f.wall].color : "",
-    note: f.own && f.note ? f.note : "",
+    note: [f.material ? `${f.material.mode === "panel" ? "панно" : "материал"}: ${f.material.name}` : "", f.own && f.note ? f.note : ""].filter(Boolean).join(" · "),
   }
 }

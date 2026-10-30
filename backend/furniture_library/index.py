@@ -54,7 +54,7 @@ def size(v, lo=0.05, hi=10.0):
     return x if lo <= x <= hi else None
 
 
-COLS = ['id', 'name', 'base_kind', 'width', 'depth', 'height', 'at_wall', 'blocks_heating', 'blocks_sockets', 'color']
+COLS = ['id', 'name', 'base_kind', 'width', 'depth', 'height', 'at_wall', 'blocks_heating', 'blocks_sockets', 'color', 'material']
 
 
 def row_to_item(r):
@@ -73,8 +73,10 @@ def validate(body):
         return None, 'Размеры: ширина и глубина от 50 мм до 10 м, высота до 5 м'
     kind = body.get('base_kind') if body.get('base_kind') in BASE_KINDS else 'custom'
     color = (body.get('color') or '').strip()[:16] or None
+    mat = body.get('material')
+    mat = json.dumps(mat) if isinstance(mat, dict) and mat.get('url') else None
     return (name, kind, w, d, h, bool(body.get('at_wall', True)), bool(body.get('blocks_heating', True)),
-            bool(body.get('blocks_sockets', False)), color), None
+            bool(body.get('blocks_sockets', False)), color, mat), None
 
 
 def handler(event: dict, context) -> dict:
@@ -107,7 +109,7 @@ def handler(event: dict, context) -> dict:
                 return response(400, {'error': err})
             cur.execute(
                 "INSERT INTO furniture_library (company_id, name, base_kind, width, depth, height, at_wall, "
-                "blocks_heating, blocks_sockets, color, created_by) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                "blocks_heating, blocks_sockets, color, material, created_by) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
                 f"RETURNING {', '.join(COLS)}",
                 (company, *vals, user['user_id']),
             )
@@ -122,7 +124,7 @@ def handler(event: dict, context) -> dict:
                 return response(400, {'error': err})
             cur.execute(
                 "UPDATE furniture_library SET name = %s, base_kind = %s, width = %s, depth = %s, height = %s, "
-                "at_wall = %s, blocks_heating = %s, blocks_sockets = %s, color = %s, updated_at = now() "
+                "at_wall = %s, blocks_heating = %s, blocks_sockets = %s, color = %s, material = %s, updated_at = now() "
                 f"WHERE id = %s AND company_id = %s RETURNING {', '.join(COLS)}",
                 (*vals, item_id, company),
             )

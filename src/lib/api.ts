@@ -1,4 +1,4 @@
-import type { LibraryItem } from "@/lib/planner/types"
+import type { LibraryItem, FinishMaterial } from "@/lib/planner/types"
 import type { PromoDesign } from "@/lib/promoTypes"
 import funcUrls from "../../backend/func2url.json"
 import { EstimateStatus } from "@/lib/estimateStatus"
@@ -44,6 +44,7 @@ const MATERIALS_URL = funcUrl("materials")
 const OBJECT_FILES_URL = funcUrl("object_files")
 const RENTALS_URL = funcUrl("rentals")
 const FURNITURE_LIBRARY_URL = funcUrl("furniture_library")
+const MATERIAL_LIBRARY_URL = funcUrl("material_library")
 
 const TOKEN_KEY = "fixkey_token"
 
@@ -2960,6 +2961,36 @@ export const furnitureLibraryApi = {
   },
   async remove(id: number) {
     const res = await fetch(`${FURNITURE_LIBRARY_URL}?id=${id}`, { method: "DELETE", headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ success: boolean }>
+  },
+}
+
+export type MaterialInput = Omit<FinishMaterial, "id" | "image_url">
+
+/** Библиотека своих материалов компании: фото с размером рисунка */
+export const materialLibraryApi = {
+  async list() {
+    const res = await fetch(MATERIAL_LIBRARY_URL, { headers: { ...authHeaders() } })
+    return parseResponse(res) as Promise<{ items: FinishMaterial[] }>
+  },
+  async create(item: MaterialInput & { image: string; content_type: string }) {
+    const res = await fetch(MATERIAL_LIBRARY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(item),
+    })
+    return parseResponse(res) as Promise<{ item: FinishMaterial }>
+  },
+  async update(item: FinishMaterial) {
+    const res = await fetch(MATERIAL_LIBRARY_URL, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(item),
+    })
+    return parseResponse(res) as Promise<{ item: FinishMaterial }>
+  },
+  async remove(id: number) {
+    const res = await fetch(`${MATERIAL_LIBRARY_URL}?id=${id}`, { method: "DELETE", headers: { ...authHeaders() } })
     return parseResponse(res) as Promise<{ success: boolean }>
   },
 }

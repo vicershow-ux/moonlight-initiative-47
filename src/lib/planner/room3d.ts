@@ -10,7 +10,9 @@ import {
   wallFinishOf,
   floorTileOf,
   wallTileOf,
+  MaterialRef,
 } from "./types"
+import { rightAligned } from "./elevation"
 import { FinishPattern, floorFinishPattern, paintPattern, shade, tilePattern, wallpaperPattern } from "./finishTextures"
 import { roomWalls, openingSpan } from "./walls"
 
@@ -76,6 +78,24 @@ function patternTexture(p: FinishPattern, pxPerM = 512): THREE.CanvasTexture {
   return t
 }
 
+/**
+ * Фото-материал из библиотеки: картинка грузится с CDN, пока грузится — виден базовый цвет.
+ * repeat — плитка рисунка размером w × h м; panel — растягивается на одно панно
+ */
+const texLoader = new THREE.TextureLoader()
+texLoader.setCrossOrigin("anonymous")
+function photoTexture(ref: MaterialRef, repeatW?: number, repeatH?: number): THREE.Texture {
+  const t = texLoader.load(ref.url)
+  t.colorSpace = THREE.SRGBColorSpace
+  t.anisotropy = 8
+  if (ref.mode === "repeat") {
+    t.wrapS = THREE.RepeatWrapping
+    t.wrapT = THREE.RepeatWrapping
+    t.repeat.set(repeatW ?? 1 / ref.w, repeatH ?? 1 / ref.h)
+  }
+  return t
+}
+
 /** Стеновые панели — вертикальные ламели */
 function plankPattern3d(color: string): FinishPattern {
   return tilePattern({ w: 0.2, h: 2.8, joint: 0.004, layout: "grid", color, grout: shade(color, -35) })
@@ -101,7 +121,10 @@ function furnitureModel(f: PlanFurniture): THREE.Group {
   const g = new THREE.Group()
   const { w, d, h } = f
   const col = f.color || FURN_COLOR[f.kind] || MAT.woodLight
-  const m = std(col)
+  // Свой материал (ткань, дерево фасадов) — фото повтором по размеру предмета
+  const m = f.material
+    ? std("#ffffff", { map: photoTexture(f.material, Math.max(w / f.material.w, 0.2), Math.max(h / f.material.h, 0.2)), roughness: f.material.gloss ? 0.25 : 0.85 })
+    : std(col)
   const wood = std(MAT.wood)
   const white = std(MAT.white, { roughness: 0.4 })
   const ceramic = std(MAT.ceramic, { roughness: 0.15 })
@@ -250,7 +273,7 @@ export function buildRoomScene(scheme: PlanScheme, room: PlanRoom): RoomScene {
   const isTileFloor = f.floor === "tile" || f.floor === "porcelain"
   const fTile = isTileFloor ? floorTileOf(f) : null
   const fPat = floorFinishPattern(f.floor, fTile ? fTile.color : floorColor, fTile || undefined)
-  const tex = fPat ? track(patternTexture(fPat)) : null
+  const tex = f.floorMaterial && f.floor !== "none" ? track(photoTexture(f.floorMaterial)) : fPat ? track(patternTexture(fPat)) : null
   const floorMat = track(
     new THREE.MeshStandardMaterial({
       color: tex ? "#ffffff" : floorColor,
@@ -283,6 +306,12 @@ export function buildRoomScene(scheme: PlanScheme, room: PlanRoom): RoomScene {
   const wallMatFor = (wallId: string) => {
     const wf = wallFinishOf(f, wallId)
     const color = wf.wall !== "none" ? wf.wallColor || WALL_FINISHES[wf.wall].color : "#e9e6df"
+    // Свой материал повтором (обои, мрамор) покрывает всю стену; панно рисуется отдельно поверх
+    if (wf.material && wf.material.mode === "repeat") {
+      const key = `photo|${wf.material.url}|${wf.material.w}|${wf.material.h}`
+      if (!wallMats.has(key)) wallMats.set(key, track(std("#ffffff", { map: track(photoTexture(wf.material)), roughness: wf.material.gloss ? 0.2 : 0.85 })))
+      return wallMats.get(key) as THREE.Material
+    }
     if (wf.wall === "tile") {
       const t = wallTileOf(f, wf.own ? wf : undefined)
       return matFromPattern(`tile|${JSON.stringify(t)}`, tilePattern(t), t.gloss ? 0.12 : 0.35)
@@ -328,6 +357,31 @@ export function buildRoomScene(scheme: PlanScheme, room: PlanRoom): RoomScene {
     mesh.userData.normal = new THREE.Vector3(w.nx, 0, w.ny)
     scene.add(mesh)
     walls.push(mesh)
+
+    // Фреска / панно: картинка своего размера, по умолчанию — по центру стены от пола
+    const wfp = wallFinishOf(f, w.id)
+    if (wfp.material && wfp.material.mode === "panel") {
+      const pw = Math.min(wfp.material.w, len)
+      const ph = Math.min(wfp.material.h, height)
+      const px = wfp.panelX ?? (len - pw) / 2
+      const pz = wfp.panelZ ?? 0
+      const pm = new THREE.Mesh(
+        track(new THREE.PlaneGeometry(pw, ph)),
+        track(std("#ffffff", { map: track(photoTexture(wfp.material)), roughness: wfp.material.gloss ? 0.2 : 0.8, side: THREE.DoubleSide })),
+      )
+      // Положение — в координатах развёртки (от левого угла при взгляде из комнаты), ставим в мировых
+      const ec = px + pw / 2
+      const sAlong = rightAligned(w) ? ec : len - ec
+      const k = w.inner + 0.006
+      const cxw = w.a.x + w.ux * sAlong - w.nx * k
+      const czw = w.a.y + w.uy * sAlong - w.ny * k
+      pm.position.set(cxw, pz + ph / 2, czw)
+      // Лицом в комнату: +Z плоскости — к центру комнаты, верх — вверх, картинка не зеркалится
+      pm.lookAt(cxw - w.nx, pz + ph / 2, czw - w.ny)
+      pm.userData.normal = mesh.userData.normal
+      scene.add(pm)
+      walls.push(pm)
+    }
 
     if (tileH > 0) {
       const ts = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(len, 0), new THREE.Vector2(len, tileH), new THREE.Vector2(0, tileH)])

@@ -1,0 +1,1 @@
+ALTER TABLE t_p98567891_moonlight_initiative.furniture_library ADD COLUMN material JSONB NULL;

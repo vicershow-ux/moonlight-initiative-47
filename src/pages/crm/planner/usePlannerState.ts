@@ -376,6 +376,7 @@ export function usePlannerState(id: string | undefined) {
             blocksHeating: lib.blocks_heating,
             blocksSockets: lib.blocks_sockets,
             color: lib.color || undefined,
+            material: lib.material || undefined,
           }
         : {}),
     }
@@ -410,6 +411,7 @@ export function usePlannerState(id: string | undefined) {
       blocks_heating: pr.blocksHeating,
       blocks_sockets: pr.blocksSockets,
       color: f.color || null,
+      material: f.material || null,
     })
     setLibrary((l) => [...l, res.item].sort((a, b) => a.name.localeCompare(b.name, "ru")))
     updateFurniture(f.id, { libraryId: res.item.id, label: res.item.name })

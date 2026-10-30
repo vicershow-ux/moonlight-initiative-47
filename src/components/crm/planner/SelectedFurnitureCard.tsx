@@ -2,6 +2,7 @@ import Icon from "@/components/ui/icon"
 import { DeleteButton } from "@/components/ui/delete-button"
 import { fromMm, toMm } from "@/lib/planner/geometry"
 import { useState } from "react"
+import { MaterialPicker } from "./MaterialPicker"
 import { FURNITURE_PRESETS, LibraryItem, PlanFurniture, PlanScheme, furnitureProps } from "@/lib/planner/types"
 import { furnitureWallDims, setFurnitureGap, snapFurnitureToWall } from "@/lib/planner/interior"
 
@@ -32,14 +33,15 @@ export function SelectedFurnitureCard({ item, scheme, onUpdate, onDelete, onSave
     (Math.abs(libItem.width - item.w) > 0.0005 ||
       Math.abs(libItem.depth - item.d) > 0.0005 ||
       Math.abs(libItem.height - item.h) > 0.0005 ||
-      (item.label && item.label !== libItem.name))
+      (item.label && item.label !== libItem.name) ||
+      (item.material?.id ?? null) !== (libItem.material?.id ?? null))
   const toLibrary = async () => {
     if (!onSaveToLibrary) return
     setLibBusy(true)
     setLibNote("")
     try {
       if (libItem && onUpdateLibraryItem) {
-        await onUpdateLibraryItem({ ...libItem, name: item.label || libItem.name, width: item.w, depth: item.d, height: item.h })
+        await onUpdateLibraryItem({ ...libItem, name: item.label || libItem.name, width: item.w, depth: item.d, height: item.h, material: item.material || null })
         setLibNote("Библиотека обновлена")
       } else {
         const it = await onSaveToLibrary(item)
@@ -137,6 +139,16 @@ export function SelectedFurnitureCard({ item, scheme, onUpdate, onDelete, onSave
           })}
         </div>
         <div className="mt-1 text-[11px] text-white/35">Сзади — сторона, которой предмет стоит к стене. Введите число — предмет сдвинется</div>
+      </div>
+
+      <div className="mb-3">
+        <MaterialPicker
+          value={item.material}
+          onChange={(m) => onUpdate(item.id, { material: m })}
+          prefer={["fabric", "wood", "stone"]}
+          only="repeat"
+          label="Обивка или отделка с фото — видна в 3D"
+        />
       </div>
 
       {onSaveToLibrary && (

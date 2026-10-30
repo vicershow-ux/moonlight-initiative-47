@@ -8,6 +8,7 @@ import { PlannerEngineerPicker, PlannerSettingsBar } from "./planner/PlannerPane
 import { PlannerWorkspace } from "./planner/PlannerWorkspace"
 import { PlannerInteriorPicker } from "./planner/PlannerInteriorPicker"
 import { LibraryItemDialog } from "@/components/crm/planner/LibraryItemDialog"
+import { MaterialLibraryProvider } from "@/components/crm/planner/MaterialLibraryContext"
 import { isEngLayer } from "@/lib/planner/types"
 
 export default function ObjectPlanner() {
@@ -60,6 +61,7 @@ export default function ObjectPlanner() {
   }
 
   return (
+    <MaterialLibraryProvider>
     <CrmLayout
       title="Планировщик"
       subtitle={object ? `Объект ${object.object_code} · ${object.client_name}` : ""}
@@ -159,5 +161,6 @@ export default function ObjectPlanner() {
 
       <PlannerWorkspace state={state} />
     </CrmLayout>
+    </MaterialLibraryProvider>
   )
 }

@@ -17,6 +17,7 @@ import {
   wallTileOf,
 } from "@/lib/planner/types"
 import { TileSpecEditor } from "./TileSpecEditor"
+import { MaterialPicker } from "./MaterialPicker"
 import { finishCalc } from "@/lib/planner/finishes"
 
 const inputCls =
@@ -82,7 +83,12 @@ export function RoomFinishCard({ room, scheme, onUpdate, onHoverWall }: Props) {
             />
           )}
         </div>
-        {isTileFloor && (
+        {f.floor !== "none" && (
+          <div className="mt-2">
+            <MaterialPicker value={f.floorMaterial} onChange={(m) => set({ floorMaterial: m })} prefer={["floor", "tile", "stone", "wood"]} only="repeat" label="Своё покрытие с фото (вместо рисунка)" />
+          </div>
+        )}
+        {isTileFloor && !f.floorMaterial && (
           <div className="mt-2">
             <TileSpecEditor tile={floorTileOf(f)} area={c.floorArea} onChange={(patch) => set({ floorTile: { ...floorTileOf(f), ...patch } })} />
           </div>
@@ -109,6 +115,11 @@ export function RoomFinishCard({ room, scheme, onUpdate, onHoverWall }: Props) {
             />
           )}
         </div>
+        {f.wall !== "none" && (
+          <div className="mt-2">
+            <MaterialPicker value={f.wallMaterial} onChange={(m) => set({ wallMaterial: m })} prefer={["wallpaper", "paint", "stone", "tile"]} only="repeat" label="Свои обои или покрытие с фото — для всех стен" />
+          </div>
+        )}
       </div>
 
       {f.wall === "wallpaper" && (
@@ -198,6 +209,38 @@ export function RoomFinishCard({ room, scheme, onUpdate, onHoverWall }: Props) {
                     </div>
                     {own && (
                       <>
+                        <MaterialPicker
+                          value={w.finish.material}
+                          onChange={(m) => setWall(w.id, { material: m })}
+                          prefer={["fresco", "wallpaper", "stone", "tile"]}
+                          label="Свой материал: обои, мрамор или фреска-панно"
+                        />
+                        {w.finish.material?.mode === "panel" && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="mb-1 block text-[11px] text-white/40">Панно от левого угла, мм</label>
+                              <input
+                                className={inputCls}
+                                type="number"
+                                step="10"
+                                placeholder={`по центру: ${toMm(Math.max((w.length - Math.min(w.finish.material.w, w.length)) / 2, 0))}`}
+                                value={w.finish.panelX != null ? toMm(w.finish.panelX) : ""}
+                                onChange={(e) => setWall(w.id, { panelX: e.target.value === "" ? undefined : Math.max(fromMm(Number(e.target.value)), 0) })}
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-[11px] text-white/40">Низ панно от пола, мм</label>
+                              <input
+                                className={inputCls}
+                                type="number"
+                                step="10"
+                                min="0"
+                                value={toMm(w.finish.panelZ || 0)}
+                                onChange={(e) => setWall(w.id, { panelZ: Math.max(fromMm(Number(e.target.value)), 0) })}
+                              />
+                            </div>
+                          </div>
+                        )}
                         <input
                           className={inputCls}
                           placeholder="Артикул или название для сметы, например «Обои Marburg 31038»"

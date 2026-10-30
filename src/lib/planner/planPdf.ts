@@ -166,7 +166,7 @@ export function schemeToSvg(
       if (f.floor === "none") continue
       const id = `pf-${room.id}`
       const isTile = f.floor === "tile" || f.floor === "porcelain"
-      interiorDefs.push(floorPattern(id, f.floor, scale, isTile ? floorTileOf(f).color : f.floorColor, undefined, isTile ? floorTileOf(f) : undefined, { x: sx(0), y: sy(0) }))
+      interiorDefs.push(floorPattern(id, f.floor, scale, isTile ? floorTileOf(f).color : f.floorColor, undefined, isTile ? floorTileOf(f) : undefined, { x: sx(0), y: sy(0) }, f.floorMaterial))
       parts.push(`<polygon points="${room.points.map((p) => `${sx(p.x)},${sy(p.y)}`).join(" ")}" fill="url(#${id})" fill-opacity="0.9"/>`)
     }
     // Отделка стен полосой по внутренней грани, акцентные — толще и с номером стены

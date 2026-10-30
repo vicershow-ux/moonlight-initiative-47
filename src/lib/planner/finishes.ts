@@ -113,12 +113,13 @@ export function finishCalc(scheme: PlanScheme, room: PlanRoom): FinishCalc {
       wf.wall === "wallpaper"
         ? `wp|${wf.rollWidth || 1.06}|${wf.rollLength || 10.05}|${wf.rapport || 0}|${wf.own ? wf.note || w.id : ""}`
         : `${wf.wall}|${(wf.wallColor || "").toLowerCase()}|${wf.own ? wf.note || "" : ""}`
-    const g = groupsMap.get(key) || { key, finish: wf, walls: [], main: 0, stripsPerRoll: 0, rolls: 0, paint: 0, accent: wf.own }
+    const keyM = wf.material ? `${key}|m${wf.material.id}` : key
+    const g = groupsMap.get(keyM) || { key: keyM, finish: wf, walls: [], main: 0, stripsPerRoll: 0, rolls: 0, paint: 0, accent: wf.own }
     g.walls.push(w.index + 1)
     g.main += w.main
-    runs.set(key, (runs.get(key) || 0) + w.stripRun)
+    runs.set(keyM, (runs.get(keyM) || 0) + w.stripRun)
     g.accent = g.accent || wf.own
-    groupsMap.set(key, g)
+    groupsMap.set(keyM, g)
   }
   const groups = [...groupsMap.values()].map((g) => {
     const run = runs.get(g.key) || 0

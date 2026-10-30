@@ -402,6 +402,7 @@ export interface LibraryItem {
   blocks_heating: boolean
   blocks_sockets: boolean
   color: string | null
+  material?: MaterialRef | null
 }
 
 /** Свойства предмета с учётом библиотеки: у своих предметов они хранятся в самом предмете */
@@ -464,6 +465,8 @@ export interface PlanFurniture {
   /** Предмет из библиотеки компании: свои свойства вместо типовых */
   libraryId?: number
   color?: string
+  /** Материал корпуса или обивки с фото: ткань дивана, дерево фасадов */
+  material?: MaterialRef
   atWall?: boolean
   blocksHeating?: boolean
   blocksSockets?: boolean
@@ -557,6 +560,49 @@ export const CEILING_FINISHES: Record<CeilingFinish, FinishInfo> = {
   rack: { label: "Реечный", color: "#cbd5e1", waste: 0.1 },
 }
 
+/** Свой материал из библиотеки компании: фото с реальным размером рисунка */
+export type MaterialCategory = "wallpaper" | "fresco" | "tile" | "floor" | "fabric" | "wood" | "stone" | "paint" | "other"
+
+export const MATERIAL_CATEGORIES: Record<MaterialCategory, { label: string; mode: "repeat" | "panel"; w: number; h: number }> = {
+  fresco: { label: "Фреска / панно", mode: "panel", w: 1.8, h: 1.5 },
+  wallpaper: { label: "Обои", mode: "repeat", w: 0.53, h: 0.64 },
+  tile: { label: "Плитка", mode: "repeat", w: 0.6, h: 0.6 },
+  floor: { label: "Пол (ламинат, паркет)", mode: "repeat", w: 1.2, h: 0.8 },
+  fabric: { label: "Ткань / обивка", mode: "repeat", w: 0.3, h: 0.3 },
+  wood: { label: "Дерево / фасады", mode: "repeat", w: 1, h: 1 },
+  stone: { label: "Камень / мрамор", mode: "repeat", w: 1.2, h: 0.6 },
+  paint: { label: "Краска / штукатурка", mode: "repeat", w: 1, h: 1 },
+  other: { label: "Другое", mode: "repeat", w: 1, h: 1 },
+}
+
+export interface FinishMaterial {
+  id: number
+  name: string
+  category: MaterialCategory
+  image_url: string
+  /** Размер рисунка (повтора или всего панно), м */
+  width: number
+  height: number
+  /** repeat — повторяется по поверхности, panel — одно панно (фреска) */
+  mode: "repeat" | "panel"
+  gloss: boolean
+  unit: "m2" | "pcs"
+  note: string | null
+}
+
+/** Материал в схеме — копия из библиотеки, чтобы план и PDF рисовались без запроса к библиотеке */
+export interface MaterialRef {
+  id: number
+  name: string
+  url: string
+  w: number
+  h: number
+  mode: "repeat" | "panel"
+  gloss?: boolean
+}
+
+export const materialRef = (m: FinishMaterial): MaterialRef => ({ id: m.id, name: m.name, url: m.image_url, w: m.width, h: m.height, mode: m.mode, gloss: m.gloss })
+
 /** Раскладка плитки, как в каталогах: прямая, вразбежку, по диагонали, ёлочкой, шахматкой */
 export type TileLayout = "grid" | "offset" | "third" | "diagonal" | "herringbone" | "checker"
 
@@ -603,6 +649,10 @@ export interface RoomFinish {
   floorColor?: string
   /** Плитка на полу — размер, шов, раскладка (для плитки и керамогранита) */
   floorTile?: TileSpec
+  /** Свой материал пола с фото */
+  floorMaterial?: MaterialRef
+  /** Свой материал всех стен комнаты с фото */
+  wallMaterial?: MaterialRef
   /** Плитка на стенах (санузел, фартук) */
   wallTile?: TileSpec
   wall: WallFinish
@@ -634,6 +684,11 @@ export interface WallOverride {
   wallColor?: string
   /** Своя плитка на акцентной стене */
   tile?: TileSpec
+  /** Свой материал с фото: обои, фреска-панно, мрамор */
+  material?: MaterialRef
+  /** Для панно: левый край от левого угла и низ от пола, м; пусто — по центру стены, от пола 0 */
+  panelX?: number
+  panelZ?: number
   /** Для обоев на акцентной стене — свои рулоны и раппорт */
   rollWidth?: number
   rollLength?: number
@@ -646,7 +701,7 @@ export interface WallOverride {
 export function wallFinishOf(f: RoomFinish, wallId: string): WallOverride & { own: boolean } {
   const o = f.walls?.[wallId]
   if (o) return { ...o, own: true }
-  return { wall: f.wall, wallColor: f.wallColor, rollWidth: f.rollWidth, rollLength: f.rollLength, rapport: f.rapport, tile: f.wallTile, own: false }
+  return { wall: f.wall, wallColor: f.wallColor, rollWidth: f.rollWidth, rollLength: f.rollLength, rapport: f.rapport, tile: f.wallTile, material: f.wallMaterial, own: false }
 }
 
 export const DEFAULT_FINISH: RoomFinish = {

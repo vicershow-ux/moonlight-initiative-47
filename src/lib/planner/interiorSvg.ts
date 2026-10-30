@@ -2,6 +2,7 @@ import {
   FLOOR_FINISHES,
   FURNITURE_PRESETS,
   FloorFinish,
+  MaterialRef,
   TileSpec,
   PlanFurniture,
 } from "./types"
@@ -24,8 +25,14 @@ export function floorPattern(
   _line?: string,
   tile?: TileSpec,
   origin?: Pt,
+  photo?: MaterialRef,
 ): string {
   if (finish === "none") return ""
+  if (photo) {
+    const w = (photo.w * scale).toFixed(2)
+    const h = (photo.h * scale).toFixed(2)
+    return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${w}" height="${h}" patternTransform="translate(${origin?.x || 0} ${origin?.y || 0})"><image href="${photo.url.replace(/&/g, "&amp;").replace(/"/g, "&quot;")}" width="${w}" height="${h}" preserveAspectRatio="none"/></pattern>`
+  }
   const isTile = finish === "tile" || finish === "porcelain"
   const p = floorFinishPattern(finish, color || FLOOR_FINISHES[finish].color, isTile ? tile : undefined)
   if (!p) return ""

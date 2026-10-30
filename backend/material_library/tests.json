@@ -1,0 +1,5 @@
+{"tests": [
+  {"name": "OPTIONS", "method": "OPTIONS", "path": "/", "expectedStatus": 200},
+  {"name": "GET без входа", "method": "GET", "path": "/", "expectedStatus": 401},
+  {"name": "POST без входа", "method": "POST", "path": "/", "body": {"name": "Фреска", "width": 1.8, "height": 1.5}, "expectedStatus": 401}
+]}
