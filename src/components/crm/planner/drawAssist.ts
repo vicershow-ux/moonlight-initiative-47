@@ -27,8 +27,10 @@ export interface DrawAssist {
 const DEG = 180 / Math.PI
 /** Отклонение меньше этого значения — стена выпрямляется сама */
 const LOCK_DEG = 3
-/** Насколько близко к уровню другой стены курсор прилипает к нему, пикселей */
-const ALIGN_PX = 9
+/** На каком расстоянии показываем пунктир уровня другого угла, пикселей */
+const ALIGN_PX = 14
+/** А прилипаем к уровню только совсем рядом — остальное лишь подсказка */
+const STICK_PX = 3
 
 const norm = (a: number) => {
   let v = a
@@ -66,6 +68,7 @@ export function assistPoint(
   const guides: AssistGuide[] = []
   if (!free) {
     const tol = ALIGN_PX / scale
+    const stick = STICK_PX / scale
     const same = (a: PlanPoint, b: PlanPoint) => Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.y - b.y) < 1e-6
     const pool = refs.filter((r) => !prev || !same(r, prev))
 
@@ -75,8 +78,8 @@ export function assistPoint(
         const d = Math.abs(r.x - p.x)
         if (d < tol && (!best || d < Math.abs(best.x - p.x))) best = r
       }
-      if (best) p.x = best.x
-      if (best) guides.push({ from: best, to: p })
+      if (best && Math.abs(best.x - p.x) < stick) p.x = best.x
+      if (best) guides.push({ from: best, to: { x: best.x, y: p.y } })
     }
     if (lockedAxis !== "h") {
       let best: PlanPoint | null = null
@@ -84,10 +87,11 @@ export function assistPoint(
         const d = Math.abs(r.y - p.y)
         if (d < tol && (!best || d < Math.abs(best.y - p.y))) best = r
       }
-      if (best) p.y = best.y
-      if (best) guides.push({ from: best, to: p })
+      if (best && Math.abs(best.y - p.y) < stick) p.y = best.y
+      if (best) guides.push({ from: best, to: { x: p.x, y: best.y } })
     }
-    for (const g of guides) g.to = p
+    // Вертикальный пунктир — по итоговой высоте точки
+    for (const g of guides) if (g.to.x === g.from.x) g.to = { x: g.from.x, y: p.y }
   }
 
   let angle: AssistAngle | null = null

@@ -18,6 +18,8 @@ interface Args {
   nodes: PlanNode[]
   fixtures: PlanFixture[]
   scale: number
+  /** Контуры, найденные на подложке, — к их углам тоже можно прилипнуть */
+  detected?: { points: PlanPoint[] }[]
   /** Закончили рисовать трек: все его точки по порядку */
   onFinishTrack?: (pts: PlanPoint[]) => void
 }
@@ -26,7 +28,7 @@ interface Args {
  * Привязки при рисовании и расстановке: шаг сетки, прилипание к осям
  * потолочных точек и треков, конец рисуемого трека, уровни углов помещений
  */
-export function usePlanCanvasAssist({ scheme, tool, layer, draft, nodes, fixtures, scale, onFinishTrack }: Args) {
+export function usePlanCanvasAssist({ scheme, tool, layer, draft, nodes, fixtures, scale, detected, onFinishTrack }: Args) {
   /** Рисуемый трек: начало и уже поставленные повороты */
   const [trackPts, setTrackPts] = useState<PlanPoint[]>([])
   const trackStart = trackPts.length ? trackPts[trackPts.length - 1] : null
@@ -91,50 +93,75 @@ export function usePlanCanvasAssist({ scheme, tool, layer, draft, nodes, fixture
     return { ...pa, point: q }
   }
 
-  /** Все углы на плане и в текущем контуре — к их уровню прилипает новая точка */
+  /** Все углы на плане, в найденных контурах подложки и в текущем контуре — к их уровню прилипает новая точка */
   const assistRefs = (exclude?: { roomId: string; index: number }) => [
     ...scheme.rooms.flatMap((r) => r.points.filter((_, i) => !(exclude && r.id === exclude.roomId && i === exclude.index))),
+    ...(detected || []).flatMap((c) => c.points),
     ...draft,
   ]
 
+  /**
+   * Точка стены при черчении. Сначала прямизна: если стена почти горизонтальна
+   * или вертикальна — она остаётся строго ровной, и угол/стена соседа лишь
+   * подсказывают, где остановиться на этой прямой, а не тянут курсор вбок
+   */
   const drawAssist = (world: PlanPoint, free: boolean) => {
     const prev = draft.length ? draft[draft.length - 1] : null
     const before = draft.length > 1 ? draft[draft.length - 2] : null
-    // Рядом с углом соседнего помещения — точно в угол, рядом со стеной — на её линию
-    if (!free) {
-      let bestP: PlanPoint | null = null
-      let bestD = 12 / scale
-      for (const r of scheme.rooms)
-        for (const p of r.points) {
-          const d = Math.hypot(p.x - world.x, p.y - world.y)
-          if (d < bestD) {
-            bestD = d
-            bestP = p
-          }
-        }
-      if (bestP) return { point: { ...bestP }, guides: [], angle: assistPoint(bestP, prev, before, [], scale, true).angle }
-      let edgeP: PlanPoint | null = null
-      let edgeD = 7 / scale
-      for (const r of scheme.rooms)
-        for (let i = 0; i < r.points.length; i++) {
-          const a = r.points[i]
-          const b = r.points[(i + 1) % r.points.length]
-          const l2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2
-          if (l2 < 1e-9) continue
-          const t = Math.min(Math.max(((world.x - a.x) * (b.x - a.x) + (world.y - a.y) * (b.y - a.y)) / l2, 0), 1)
-          const q = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
-          const d = Math.hypot(q.x - world.x, q.y - world.y)
-          if (d < edgeD) {
-            edgeD = d
-            edgeP = q
-          }
-        }
-      if (edgeP) {
-        const ap = assistPoint(snapPoint(edgeP), prev, before, assistRefs(), scale, false)
-        return { ...ap, point: { x: Math.abs(ap.point.x - edgeP.x) < 0.02 ? ap.point.x : edgeP.x, y: Math.abs(ap.point.y - edgeP.y) < 0.02 ? ap.point.y : edgeP.y } }
+    const base = assistPoint(snapPoint(world), prev, before, assistRefs(), scale, free)
+    if (free) return base
+    const axisLock = base.angle && Math.abs(base.angle.dev) < 0.05 && prev ? (Math.abs(base.point.y - prev.y) < 1e-6 ? "h" : "v") : null
+
+    const corners = [...scheme.rooms.flatMap((r) => r.points), ...(detected || []).flatMap((c) => c.points)]
+    let bestP: PlanPoint | null = null
+    let bestD = 12 / scale
+    for (const p of corners) {
+      const d = Math.hypot(p.x - world.x, p.y - world.y)
+      if (d < bestD) {
+        bestD = d
+        bestP = p
       }
     }
-    return assistPoint(snapPoint(world), prev, before, assistRefs(), scale, free)
+    if (bestP) {
+      // Ровная стена не сворачивает к углу: берём только его уровень вдоль прямой
+      const pt = axisLock === "h" ? { x: bestP.x, y: prev!.y } : axisLock === "v" ? { x: prev!.x, y: bestP.y } : { ...bestP }
+      const guides = axisLock && (pt.x !== bestP.x || pt.y !== bestP.y) ? [{ from: bestP, to: pt }] : []
+      return { point: pt, guides, angle: assistPoint(pt, prev, before, [], scale, true).angle }
+    }
+
+    let edgeP: PlanPoint | null = null
+    let edgeD = 7 / scale
+    for (const r of scheme.rooms)
+      for (let i = 0; i < r.points.length; i++) {
+        const a = r.points[i]
+        const b = r.points[(i + 1) % r.points.length]
+        const l2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2
+        if (l2 < 1e-9) continue
+        let q: PlanPoint | null = null
+        if (axisLock && prev) {
+          // Пересечение нашей ровной стены с линией соседней стены
+          const dx = b.x - a.x
+          const dy = b.y - a.y
+          if (axisLock === "h" && Math.abs(dy) > 1e-6) {
+            const t = (prev.y - a.y) / dy
+            if (t >= 0 && t <= 1) q = { x: a.x + dx * t, y: prev.y }
+          } else if (axisLock === "v" && Math.abs(dx) > 1e-6) {
+            const t = (prev.x - a.x) / dx
+            if (t >= 0 && t <= 1) q = { x: prev.x, y: a.y + dy * t }
+          }
+          if (!q) continue
+        } else {
+          const t = Math.min(Math.max(((world.x - a.x) * (b.x - a.x) + (world.y - a.y) * (b.y - a.y)) / l2, 0), 1)
+          q = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
+        }
+        const d = Math.hypot(q.x - base.point.x, q.y - base.point.y)
+        if (d < edgeD) {
+          edgeD = d
+          edgeP = q
+        }
+      }
+    if (edgeP) return { ...base, point: { x: Math.round(edgeP.x * 1000) / 1000, y: Math.round(edgeP.y * 1000) / 1000 }, angle: assistPoint(edgeP, prev, before, [], scale, true).angle }
+    return base
   }
 
   return { trackStart, trackPts, setTrackPts, finishTrack, snapPoint, ceilingRefs, placeFor, trackEnd, assistRefs, drawAssist }

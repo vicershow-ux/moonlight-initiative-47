@@ -73,10 +73,22 @@ export function PlanAssistLayer({ assist, toScreen }: { assist: DrawAssist; toSc
           </g>
         )
       })}
-      {guides.length > 0 && (() => {
-        const p = toScreen(guides[0].to)
-        return <rect x={p.x - 5} y={p.y - 5} width={10} height={10} fill="none" stroke={GUIDE} strokeWidth={1.5} transform={`rotate(45, ${p.x}, ${p.y})`} />
-      })()}
+      {guides.map((g, i) => {
+        // Ромб — где уровень угла; если курсор не на нём, подписываем, на сколько мм мимо
+        const p = toScreen(g.to)
+        const off = Math.round(Math.hypot(assist.point.x - g.to.x, assist.point.y - g.to.y) * 1000)
+        const on = off < 1
+        return (
+          <g key={`m${i}`}>
+            <rect x={p.x - 5} y={p.y - 5} width={10} height={10} fill={on ? GUIDE : "none"} stroke={GUIDE} strokeWidth={1.5} transform={`rotate(45, ${p.x}, ${p.y})`} />
+            {!on && (
+              <text x={p.x + 9} y={p.y - 8} fontSize="10" fill={GUIDE} stroke="#161616" strokeWidth={3} paintOrder="stroke">
+                {off} мм до уровня
+              </text>
+            )}
+          </g>
+        )
+      })}
       {arc}
     </g>
   )

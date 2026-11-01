@@ -41,6 +41,7 @@ export function PlanCanvas(props: PlanCanvasProps) {
     nodes,
     fixtures,
     scale: view.scale,
+    detected: props.detected,
     onFinishTrack: (pts) => props.onAddFixture?.("track", pts[0], pts[pts.length - 1], pts.slice(1, -1)),
   })
 
