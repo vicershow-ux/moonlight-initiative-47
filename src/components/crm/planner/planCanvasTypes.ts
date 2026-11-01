@@ -74,6 +74,8 @@ export interface PlanCanvasProps {
   onDropDetectedOpening?: (index: number, k: number) => void
   /** Перегородка нарисована: разрезать помещение по линии */
   onSplit?: (cut: PlanPoint[]) => boolean
+  selectedFreeWallId?: string | null
+  onSelectFreeWall?: (id: string | null) => void
 }
 
 /** Что сейчас тащат мышью на холсте */

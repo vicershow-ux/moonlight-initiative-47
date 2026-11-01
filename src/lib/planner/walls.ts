@@ -53,6 +53,9 @@ export interface WallInfo {
   inner: number
   /** Контур полосы стены для отрисовки: внутренняя грань a→b, наружная b→a */
   band: PlanPoint[]
+  /** Кусок стены: рисуется только участок от s0 до s1 по её длине (остальное нарисовано у соседа) */
+  s0?: number
+  s1?: number
 }
 
 const lineHit = (p: PlanPoint, u: PlanPoint, q: PlanPoint, v: PlanPoint): PlanPoint | null => {
@@ -132,31 +135,92 @@ export function roomWalls(room: PlanRoom, scheme: PlanScheme): WallInfo[] {
   })
 }
 
-/** Все стены плана. Общие стены рисуем один раз — у первого помещения */
+const drawCache = new WeakMap<PlanScheme, { all: WallInfo[]; draw: WallInfo[] }>()
+
+/**
+ * Все стены плана. Общую стену рисуем один раз. Если стена общая с соседом только
+ * на части длины, оставшийся участок рисуем отдельным куском — иначе он пропадает
+ */
 export function schemeWalls(scheme: PlanScheme): { all: WallInfo[]; draw: WallInfo[] } {
+  const hit = drawCache.get(scheme)
+  if (hit) return hit
   const all = scheme.rooms.flatMap((r) => roomWalls(r, scheme))
   const seen: WallInfo[] = []
   const draw: WallInfo[] = []
   for (const w of all) {
-    if (w.shared) {
-      const twin = seen.find(
-        (s) =>
-          s.shared &&
-          Math.abs(s.ux * w.uy - s.uy * w.ux) < 1e-3 &&
-          Math.abs((w.a.x - s.a.x) * s.uy - (w.a.y - s.a.y) * s.ux) < 0.02,
-      )
-      if (twin) {
-        // Перекрытие по длине — значит это та же перегородка
-        const proj = (p: PlanPoint) => (p.x - twin.a.x) * twin.ux + (p.y - twin.a.y) * twin.uy
-        const lo = Math.min(proj(w.a), proj(w.b))
-        const hi = Math.max(proj(w.a), proj(w.b))
-        if (hi > 0.01 && lo < twin.length - 0.01) continue
-      }
-      seen.push(w)
+    if (!w.shared) {
+      draw.push(w)
+      continue
     }
-    draw.push(w)
+    // Участки этой стены, уже нарисованные у соседей на той же линии
+    const covered: [number, number][] = []
+    for (const s of seen) {
+      if (Math.abs(s.ux * w.uy - s.uy * w.ux) > 1e-3) continue
+      if (Math.abs((s.a.x - w.a.x) * w.uy - (s.a.y - w.a.y) * w.ux) > 0.02) continue
+      const proj = (p: PlanPoint) => (p.x - w.a.x) * w.ux + (p.y - w.a.y) * w.uy
+      const lo = Math.max(Math.min(proj(s.a), proj(s.b)), 0)
+      const hi = Math.min(Math.max(proj(s.a), proj(s.b)), w.length)
+      if (hi - lo > 0.01) covered.push([lo, hi])
+    }
+    seen.push(w)
+    // Идём вдоль стены: где за ней сосед — общая (по оси), где нет — своя (наружу целиком)
+    const step = 0.05
+    const n = Math.max(2, Math.ceil(w.length / step))
+    const probe = Math.min(0.12, w.thickness)
+    type Kind = "shared" | "own" | "skip"
+    const kinds: Kind[] = []
+    for (let k = 0; k < n; k++) {
+      const t = ((k + 0.5) / n) * w.length
+      if (covered.some(([lo, hi]) => t > lo && t < hi)) {
+        kinds.push("skip")
+        continue
+      }
+      const m = { x: w.a.x + w.ux * t + w.nx * probe, y: w.a.y + w.uy * t + w.ny * probe }
+      kinds.push(scheme.rooms.some((r) => r.id !== w.roomId && pointInPolygon(m, r.points)) ? "shared" : "own")
+    }
+    if (kinds.every((k) => k === "shared")) {
+      draw.push(w)
+      continue
+    }
+    let start = 0
+    for (let k = 1; k <= n; k++) {
+      if (k < n && kinds[k] === kinds[start]) continue
+      const kind = kinds[start]
+      const s0 = (start / n) * w.length
+      const s1 = (k / n) * w.length
+      if (kind !== "skip" && s1 - s0 > 0.02) draw.push(wallPiece(w, s0, s1, kind === "shared"))
+      start = k
+    }
   }
-  return { all, draw }
+  const res = { all, draw }
+  drawCache.set(scheme, res)
+  return res
+}
+
+/** Участок стены s0..s1: общий — по оси контура, свой — наружу на всю толщину */
+function wallPiece(w: WallInfo, s0: number, s1: number, behind: boolean): WallInfo {
+  const at = (s: number, k: number) => ({ x: w.a.x + w.ux * s + w.nx * k, y: w.a.y + w.uy * s + w.ny * k })
+  const inner = behind ? w.thickness / 2 : 0
+  const out = w.thickness - inner
+  const band = [at(s0, -inner), at(s1, -inner), at(s1, out), at(s0, out)]
+  // У концов стены сохраняем сопряжение углов, если сторона та же, что у целой стены
+  const same = behind === w.shared
+  if (s0 < 0.01 && same) {
+    band[0] = w.band[0]
+    band[3] = w.band[3]
+  } else if (s0 < 0.01) {
+    // Свой участок у угла: продлеваем наружную грань до угла соседней стены
+    band[3] = at(-out, out)
+    band[0] = at(0, -inner)
+  }
+  if (s1 > w.length - 0.01 && same) {
+    band[1] = w.band[1]
+    band[2] = w.band[2]
+  } else if (s1 > w.length - 0.01) {
+    band[2] = at(w.length + out, out)
+    band[1] = at(w.length, -inner)
+  }
+  return { ...w, shared: behind, inner, band, s0, s1 }
 }
 
 /**
@@ -170,7 +234,7 @@ export function hitWall(scheme: PlanScheme, p: PlanPoint, tolerance = 0): WallIn
     const ry = p.y - w.a.y
     const s = rx * w.ux + ry * w.uy
     const across = rx * w.nx + ry * w.ny + w.inner
-    if (s < -tolerance || s > w.length + tolerance) continue
+    if (s < (w.s0 ?? 0) - tolerance || s > (w.s1 ?? w.length) + tolerance) continue
     const off = across < 0 ? -across : across > w.thickness ? across - w.thickness : 0
     if (off > tolerance) continue
     const inOpening = sharedOpenings(scheme).some((o) => {
@@ -333,11 +397,16 @@ export const maxWallThickness = (scheme: PlanScheme) =>
  * и по его краям видны откосы на всю толщину стены
  */
 export function wallPieces(w: WallInfo, openings: PlanOpening[]): PlanPoint[][] {
+  const [ia, ib, ob, oa] = w.band
+  const lo = w.s0 ?? -Infinity
+  const hi = w.s1 ?? Infinity
+  // Для куска стены берём только проёмы в его пределах
   const own = openings
     .filter((o) => o.wallId === w.id)
     .map((o) => openingSpan(o, w))
+    .map((sp) => ({ start: Math.max(sp.start, lo), end: Math.min(sp.end, hi) }))
+    .filter((sp) => sp.end - sp.start > 1e-3)
     .sort((a, b) => a.start - b.start)
-  const [ia, ib, ob, oa] = w.band
   // Сдвиг углов полосы вдоль стены относительно контура
   const proj = (p: PlanPoint) => (p.x - w.a.x) * w.ux + (p.y - w.a.y) * w.uy
   const sIa = proj(ia)
@@ -400,3 +469,31 @@ export function doorSwing(w: WallInfo, o: PlanOpening): { hinge: PlanPoint; leaf
 }
 
 export { wallSegments }
+
+/** Полоса отдельной стены: ось по отрезку, толщина поровну в обе стороны */
+export function freeWallBand(w: { a: PlanPoint; b: PlanPoint; thickness: number }): PlanPoint[] {
+  const len = Math.hypot(w.b.x - w.a.x, w.b.y - w.a.y) || 1
+  const nx = -(w.b.y - w.a.y) / len
+  const ny = (w.b.x - w.a.x) / len
+  const h = w.thickness / 2
+  return [
+    { x: w.a.x + nx * h, y: w.a.y + ny * h },
+    { x: w.b.x + nx * h, y: w.b.y + ny * h },
+    { x: w.b.x - nx * h, y: w.b.y - ny * h },
+    { x: w.a.x - nx * h, y: w.a.y - ny * h },
+  ]
+}
+
+/** Отдельная стена под курсором */
+export function hitFreeWall(scheme: PlanScheme, p: PlanPoint, tolerance = 0): string | null {
+  for (const w of scheme.freeWalls || []) {
+    const len = Math.hypot(w.b.x - w.a.x, w.b.y - w.a.y)
+    if (len < 1e-6) continue
+    const ux = (w.b.x - w.a.x) / len
+    const uy = (w.b.y - w.a.y) / len
+    const s = (p.x - w.a.x) * ux + (p.y - w.a.y) * uy
+    const d = Math.abs(-(p.x - w.a.x) * uy + (p.y - w.a.y) * ux)
+    if (s >= -tolerance && s <= len + tolerance && d <= w.thickness / 2 + tolerance) return w.id
+  }
+  return null
+}

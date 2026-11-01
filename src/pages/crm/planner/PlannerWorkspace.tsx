@@ -75,6 +75,7 @@ export function PlannerWorkspace({ state }: Props) {
   const selectWall = (wid: string | null) => {
     setSelectedWallId(wid)
     if (wid) {
+      state.setSelectedFreeWallId(null)
       setSelectedRoomId(null)
       setSelectedOpeningId(null)
     }
@@ -90,7 +91,10 @@ export function PlannerWorkspace({ state }: Props) {
       const t = e.target as HTMLElement | null
       if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return
       if (draft.length) return
-      if (activeWallId) {
+      if (state.selectedFreeWallId) {
+        e.preventDefault()
+        state.deleteFreeWall(state.selectedFreeWallId)
+      } else if (activeWallId) {
         e.preventDefault()
         if (!state.deleteWall(activeWallId)) setSelectedWallId(null)
       } else if (selectedOpeningId) {
@@ -194,6 +198,15 @@ export function PlannerWorkspace({ state }: Props) {
           detected={state.detected}
           onAcceptDetected={(i) => state.detected[i] && state.acceptDetected([state.detected[i]])}
           onSplit={state.splitByLine}
+          selectedFreeWallId={state.selectedFreeWallId}
+          onSelectFreeWall={(fid) => {
+            state.setSelectedFreeWallId(fid)
+            if (fid) {
+              setSelectedRoomId(null)
+              setSelectedOpeningId(null)
+              setSelectedWallId(null)
+            }
+          }}
           onDetectedType={state.setDetectedType}
           activeDetected={state.activeDetected}
           onActiveDetected={state.setActiveDetected}
@@ -223,6 +236,10 @@ export function PlannerWorkspace({ state }: Props) {
           selectedWallId={activeWallId}
           onSelectWall={selectWall}
           onDeleteWall={state.deleteWall}
+          selectedFreeWall={(scheme.freeWalls || []).find((w) => w.id === state.selectedFreeWallId) || null}
+          onUpdateFreeWall={state.updateFreeWall}
+          onDeleteFreeWall={state.deleteFreeWall}
+          onSelectFreeWall={state.setSelectedFreeWallId}
         />
       ) : layer === "interior" ? (
         <InteriorSidebar

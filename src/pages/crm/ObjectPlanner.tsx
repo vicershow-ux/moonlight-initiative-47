@@ -101,6 +101,7 @@ export default function ObjectPlanner() {
         setDraft={setDraft}
         setLinkFromId={setLinkFromId}
         finishRoom={tool === "heating" ? state.addHeating : finishRoom}
+        finishLine={state.splitByLine}
         exportPdf={exportPdf}
         openAlbum={() => setAlbum(true)}
         save={save}

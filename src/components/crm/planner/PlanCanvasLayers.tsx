@@ -147,6 +147,7 @@ export function PlanCanvasLayers({
         selectedOpeningId={selectedOpeningId}
         toScreen={toScreen}
         selectedWallId={selectedWallId}
+        selectedFreeWallId={props.selectedFreeWallId ?? null}
       />
 
       {layer === "plan" && (

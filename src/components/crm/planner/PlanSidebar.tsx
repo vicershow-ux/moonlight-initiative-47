@@ -4,11 +4,13 @@ import { fmtNum, fromMm, roomMetrics, sharedOpenings, toMm } from "@/lib/planner
 import { RoomWallsEditor } from "./RoomWallsEditor"
 import { PlanAreaField } from "./PlanAreaField"
 import { SelectedWallCard } from "./SelectedWallCard"
+import { FreeWallCard } from "./FreeWallCard"
 import { WallElevationsDialog } from "./WallElevationsDialog"
 import { squareUp } from "./drawAssist"
 import { useState } from "react"
 import {
   OPENING_PRESETS,
+  PlanFreeWall,
   PlanOpening,
   PlanRoom,
   PlanScheme,
@@ -35,6 +37,10 @@ interface Props {
   selectedWallId?: string | null
   onSelectWall?: (wallId: string | null) => void
   onDeleteWall?: (wallId: string) => string | null
+  selectedFreeWall?: PlanFreeWall | null
+  onUpdateFreeWall?: (id: string, patch: Partial<PlanFreeWall>) => void
+  onDeleteFreeWall?: (id: string) => void
+  onSelectFreeWall?: (id: string | null) => void
 }
 
 export function PlanSidebar({
@@ -52,6 +58,10 @@ export function PlanSidebar({
   selectedWallId = null,
   onSelectWall,
   onDeleteWall,
+  selectedFreeWall = null,
+  onUpdateFreeWall,
+  onDeleteFreeWall,
+  onSelectFreeWall,
 }: Props) {
   const metrics = selectedRoom ? roomMetrics(selectedRoom, sharedOpenings(scheme)) : null
   const [elev, setElev] = useState<{ roomId: string; wallId: string | null } | null>(null)
@@ -93,6 +103,15 @@ export function PlanSidebar({
           scheme={scheme}
           roomId={elev.roomId}
           wallId={elev.wallId}
+        />
+      )}
+
+      {selectedFreeWall && onUpdateFreeWall && onDeleteFreeWall && (
+        <FreeWallCard
+          wall={selectedFreeWall}
+          onUpdate={onUpdateFreeWall}
+          onDelete={onDeleteFreeWall}
+          onClose={() => onSelectFreeWall?.(null)}
         />
       )}
 
@@ -373,7 +392,7 @@ export function PlanSidebar({
         <ul className="space-y-1">
           <li>Есть фото или скан плана — загрузите его в «Подложку», задайте масштаб по одному размеру и обводите комнаты поверх</li>
           <li>Инструмент «Стены»: щёлкайте по углам комнаты</li>
-          <li>«Перегородка»: щёлкните по стене, при необходимости — изломы внутри, и по противоположной стене. Помещение разделится на два — так отделяют кухню от зала или санузел</li>
+          <li>«Перегородка»: от стены до противоположной стены — помещение разделится на два. Нарисовать просто отрезок или продолжить стену: щёлкните начало и конец, затем ещё раз в последнюю точку или Enter. Длину можно набрать цифрами, например 1200 + Enter</li>
           <li>Лишняя стена — щёлкните по ней и нажмите Delete: перегородка между комнатами исчезнет и они объединятся, выступ контура выпрямится</li>
           <li>Чтобы замкнуть — щёлкните по первой точке или нажмите Enter</li>
           <li>Точная длина: наведите курсор в нужную сторону, наберите цифры (например 3000) и нажмите Enter. Backspace — стереть цифру или убрать последний угол</li>

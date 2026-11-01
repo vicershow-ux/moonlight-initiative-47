@@ -9,16 +9,19 @@ interface Args {
   cursor: PlanPoint | null
   onDraftChange: (points: PlanPoint[]) => void
   onFinishRoom: (points: PlanPoint[]) => void
+  /** Перегородка: Enter без набранной длины — закончить стену */
+  onFinishLine?: (points: PlanPoint[]) => void
 }
 
 /** Ввод длины стены с клавиатуры во время черчения: 3000 + Enter — стена ровно 3 м */
-export function useTypedLength({ tool, draft, cursor, onDraftChange, onFinishRoom }: Args) {
+export function useTypedLength({ tool, draft, cursor, onDraftChange, onFinishRoom, onFinishLine }: Args) {
+  const drawing = tool === "draw" || tool === "split"
   /** Длина стены, набранная с клавиатуры, мм */
   const [typed, setTyped] = useState("")
 
   useEffect(() => {
-    if (tool !== "draw" || draft.length === 0) setTyped("")
-  }, [tool, draft.length])
+    if (!drawing || draft.length === 0) setTyped("")
+  }, [drawing, draft.length])
 
   /** Точка на набранном расстоянии от последнего угла в сторону курсора */
   const typedPoint = (): PlanPoint | null => {
@@ -34,7 +37,7 @@ export function useTypedLength({ tool, draft, cursor, onDraftChange, onFinishRoo
   }
 
   const placePoint = (p: PlanPoint) => {
-    if (draft.length >= 3 && dist(p, draft[0]) < 0.005) {
+    if (tool === "draw" && draft.length >= 3 && dist(p, draft[0]) < 0.005) {
       onFinishRoom(draft)
       return
     }
@@ -44,7 +47,7 @@ export function useTypedLength({ tool, draft, cursor, onDraftChange, onFinishRoo
   // Набор длины стены цифрами: 3000 + Enter — стена ровно 3 м в сторону курсора
   const keyRef = useRef<(e: KeyboardEvent) => void>(() => undefined)
   keyRef.current = (e: KeyboardEvent) => {
-    if (tool !== "draw" || draft.length === 0) return
+    if (!drawing || draft.length === 0) return
     const target = e.target as HTMLElement | null
     if (target && (/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.isContentEditable)) return
     if (/^[0-9]$/.test(e.key) || ((e.key === "," || e.key === ".") && !/[.,]/.test(typed))) {
@@ -60,7 +63,8 @@ export function useTypedLength({ tool, draft, cursor, onDraftChange, onFinishRoo
       if (p) {
         placePoint(p)
         setTyped("")
-      } else if (!typed && draft.length >= 3) onFinishRoom(draft)
+      } else if (!typed && tool === "split" && draft.length >= 2) onFinishLine?.(draft)
+      else if (!typed && tool === "draw" && draft.length >= 3) onFinishRoom(draft)
     } else if (e.key === "Escape") {
       if (typed) setTyped("")
       else onDraftChange([])

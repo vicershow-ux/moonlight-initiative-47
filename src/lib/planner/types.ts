@@ -354,9 +354,20 @@ export const FIXTURE_PRESETS: Record<FixtureKind, { label: string; code: string;
   floating: { label: "Парящий потолок", code: "ПП", height: 2.7, icon: "Square" },
 }
 
+/** Отдельная стена-отрезок: перегородка, которая не делит помещение (ниша, короб, неполная стена) */
+export interface PlanFreeWall {
+  id: string
+  a: PlanPoint
+  b: PlanPoint
+  thickness: number
+  material: WallMaterial
+}
+
 export interface PlanScheme {
   version: 1
   rooms: PlanRoom[]
+  /** Отдельные стены-отрезки */
+  freeWalls?: PlanFreeWall[]
   openings: PlanOpening[]
   defaultHeight: number
   nodes?: PlanNode[]

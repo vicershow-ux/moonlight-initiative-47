@@ -12,7 +12,7 @@ import { PlanFixture, PlanLink, PlanNode, PlanPoint } from "@/lib/planner/types"
 import { hitFixture, shiftTrack } from "@/lib/planner/fixtures"
 import { hitFurniture, hitHeating, snapFurnitureToWall } from "@/lib/planner/interior"
 import { furnitureProps } from "@/lib/planner/types"
-import { hitWall } from "@/lib/planner/walls"
+import { hitFreeWall, hitWall } from "@/lib/planner/walls"
 import { pointOnRoomEdge } from "@/lib/planner/editRooms"
 import { PlaceAssist, placeAssist } from "@/lib/planner/placeAssist"
 import { SNAP_STEP, eventPoint } from "./usePlanView"
@@ -276,6 +276,13 @@ export function usePlanCanvasPointer({
         return
       }
 
+      if (layer === "plan" && props.onSelectFreeWall) {
+        const fw = hitFreeWall(scheme, world, 6 / view.scale)
+        if (fw) {
+          props.onSelectFreeWall(fw)
+          return
+        }
+      }
       // Стена: щелчок по её полосе на плане. Тонкие перегородки ловим с запасом 6 пикселей
       if (layer === "plan" && onSelectWall) {
         const wall = hitWall(scheme, world, 6 / view.scale)
@@ -289,18 +296,28 @@ export function usePlanCanvasPointer({
       onSelectRoom(room ? room.id : null)
       if (!room) onSelectOpening(null)
       onSelectWall?.(null)
+      props.onSelectFreeWall?.(null)
       return
     }
 
-    // Перегородка: от стены до стены, изломы — щелчками внутри помещения
+    // Перегородка/стена: от стены до стены — делит помещение; иначе — отдельная стена.
+    // Повторный щелчок в последнюю точку (или Enter) заканчивает стену
     if (tool === "split") {
-      const p = drawAssist(world, e.altKey).point
+      const tp = typedPoint()
+      const p = tp || drawAssist(world, e.altKey).point
+      if (tp) setTyped("")
       const onEdge = !!pointOnRoomEdge(scheme, p, 0.02)
       if (!draft.length) {
-        if (onEdge) onDraftChange([p])
+        onDraftChange([p])
         return
       }
-      if (onEdge && draft.length >= 1 && Math.hypot(p.x - draft[0].x, p.y - draft[0].y) > 0.05) {
+      const last = draft[draft.length - 1]
+      if (dist(p, last) * view.scale < 8) {
+        if (draft.length >= 2 && props.onSplit?.(draft)) onDraftChange([])
+        return
+      }
+      const startOnEdge = !!pointOnRoomEdge(scheme, draft[0], 0.02)
+      if (onEdge && startOnEdge) {
         if (props.onSplit?.([...draft, p])) onDraftChange([])
         return
       }

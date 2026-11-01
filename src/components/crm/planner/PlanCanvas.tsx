@@ -50,7 +50,14 @@ export function PlanCanvas(props: PlanCanvasProps) {
     return map
   }, [scheme.nodes])
 
-  const { typed, setTyped, typedPoint, placePoint } = useTypedLength({ tool, draft, cursor, onDraftChange, onFinishRoom })
+  const { typed, setTyped, typedPoint, placePoint } = useTypedLength({
+    tool,
+    draft,
+    cursor,
+    onDraftChange,
+    onFinishRoom,
+    onFinishLine: (pts) => props.onSplit?.(pts) && onDraftChange([]),
+  })
 
   const { bends, setBends, nextBend } = useLinkRoute({
     tool,
@@ -135,7 +142,7 @@ export function PlanCanvas(props: PlanCanvasProps) {
         />
       )}
 
-      {tool === "draw" && draft.length > 0 && cursor && <TypedLengthHint cursor={cursor} typed={typed} toScreen={toScreen} />}
+      {(tool === "draw" || tool === "split") && draft.length > 0 && cursor && <TypedLengthHint cursor={cursor} typed={typed} toScreen={toScreen} />}
 
       {layer === "plan" ? <WallLegend scheme={scheme} /> : isEngLayer(layer) ? <NodeLegend scheme={scheme} layer={layer} /> : null}
 

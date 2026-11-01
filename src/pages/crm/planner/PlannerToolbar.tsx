@@ -64,6 +64,8 @@ interface ToolbarProps {
   setDraft: (p: PlanPoint[]) => void
   setLinkFromId: (id: string | null) => void
   finishRoom: (points: PlanPoint[]) => void
+  /** Перегородка: закончить отрезок отдельной стеной */
+  finishLine?: (points: PlanPoint[]) => boolean
   exportPdf: () => void
   openAlbum?: () => void
   save: () => void
@@ -80,6 +82,7 @@ export function PlannerToolbar({
   setDraft,
   setLinkFromId,
   finishRoom,
+  finishLine,
   exportPdf,
   openAlbum,
   save,
@@ -116,6 +119,12 @@ export function PlannerToolbar({
               <Icon name="Undo2" size={16} />
               Отменить точку
             </button>
+            {draft.length >= 2 && tool === "split" && finishLine && (
+              <button className={goldBtn} onClick={() => finishLine(draft) && setDraft([])}>
+                <Icon name="Check" size={16} />
+                Готово — поставить стену
+              </button>
+            )}
             {draft.length >= 3 && tool !== "split" && (
               <button className={goldBtn} onClick={() => finishRoom(draft)}>
                 <Icon name="Check" size={16} />

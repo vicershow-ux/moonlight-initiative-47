@@ -9,7 +9,7 @@ import {
 } from "@/lib/planner/geometry"
 import { PlanLayer, PlanOpening, PlanScheme, WALL_MATERIALS, WallMaterial } from "@/lib/planner/types"
 import { hatchPattern } from "@/lib/planner/wallHatch"
-import { doorSwing, findWall, openingBand, schemeWalls, wallPieces } from "@/lib/planner/walls"
+import { doorSwing, findWall, freeWallBand, openingBand, schemeWalls, wallPieces } from "@/lib/planner/walls"
 import { ToScreen } from "./usePlanView"
 
 interface Props {
@@ -21,6 +21,7 @@ interface Props {
   toScreen: ToScreen
   /** Выбранная стена — подсвечивается */
   selectedWallId?: string | null
+  selectedFreeWallId?: string | null
 }
 
 /** Помещения с размерами стен и подписью площади, а также окна, двери и проёмы */
@@ -32,6 +33,7 @@ export function PlanRoomsLayer({
   selectedOpeningId,
   toScreen,
   selectedWallId = null,
+  selectedFreeWallId = null,
 }: Props) {
   const walls = schemeWalls(scheme)
   const poly = (pts: { x: number; y: number }[]) =>
@@ -234,6 +236,19 @@ export function PlanRoomsLayer({
               strokeLinejoin="miter"
             />
           ))
+        })}
+        {(scheme.freeWalls || []).map((w) => {
+          const sel = w.id === selectedFreeWallId
+          return (
+            <polygon
+              key={w.id}
+              points={poly(freeWallBand(w))}
+              fill={`url(#wall-${w.material})`}
+              fillOpacity={0.9}
+              stroke={sel ? "#D4AF37" : "rgba(255,255,255,0.8)"}
+              strokeWidth={sel ? 2.5 : 1}
+            />
+          )
         })}
         {scheme.openings.map(renderOpening)}
       </g>

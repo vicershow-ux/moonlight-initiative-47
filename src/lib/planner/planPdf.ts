@@ -47,6 +47,7 @@ import { OPENING_HINTS, PDF_OPENING_PALETTE, openingLegendItems, openingSwatchIm
 import {
   doorSwing,
   findWall,
+  freeWallBand,
   openingSpan,
   mountLabel,
   nodeDirection,
@@ -237,6 +238,12 @@ export function schemeToSvg(
         `<polygon points="${pts(pc)}" fill="${isEng ? "#ececec" : `url(#hatch-${w.material})`}" stroke="${wallColor}" stroke-width="${isEng ? 0.8 : 1.3}" stroke-linejoin="miter"/>`,
       )
     }
+  }
+  for (const fw of scheme.freeWalls || []) {
+    hatchIds.add(fw.material)
+    parts.push(
+      `<polygon points="${pts(freeWallBand(fw))}" fill="${isEng ? "#ececec" : `url(#hatch-${fw.material})`}" stroke="${wallColor}" stroke-width="${isEng ? 0.8 : 1.3}"/>`,
+    )
   }
   const hatchDefs = [...hatchIds].map((m) => hatchPattern(m, `hatch-${m}`, PDF_HATCH_OPACITY, PDF_HATCH_INK)).join("")
   parts.unshift(`<defs>${hatchDefs}${interiorDefs.join("")}</defs>`)

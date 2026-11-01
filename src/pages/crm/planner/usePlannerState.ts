@@ -10,7 +10,7 @@ import { downloadPlanPdf } from "@/lib/planner/planPdf"
 import { cableSettings } from "@/lib/planner/cable"
 import { panelSettings } from "@/lib/planner/panelInput"
 import { FORCE_WALL, applyMounts, mountPosition, snapToWall } from "@/lib/planner/walls"
-import { DrawingStamp, PlanUnderlay,
+import { DrawingStamp, PlanUnderlay, PlanFreeWall,
   LINK_SPECS,
   NODE_PRESETS,
   NodeKind,
@@ -223,7 +223,37 @@ export function usePlannerState(id: string | undefined) {
     touch()
   }
 
-  /** Разрезать помещение перегородкой; true — получилось */
+  /** Отдельные стены по ломаной: каждый отрезок — своя стена 120 мм */
+  const [selectedFreeWallId, setSelectedFreeWallId] = useState<string | null>(null)
+  const addFreeWalls = (line: PlanPoint[]) => {
+    const segs: PlanFreeWall[] = []
+    for (let i = 0; i + 1 < line.length; i++) {
+      const a = line[i]
+      const b = line[i + 1]
+      if (Math.hypot(b.x - a.x, b.y - a.y) < 0.05) continue
+      segs.push({ id: uid(), a, b, thickness: 0.12, material: "brick" })
+    }
+    if (!segs.length) return false
+    setScheme((s) => ({ ...s, freeWalls: [...(s.freeWalls || []), ...segs] }))
+    setSelectedFreeWallId(segs[segs.length - 1].id)
+    touch()
+    setMessage(segs.length > 1 ? `Добавлено стен: ${segs.length}` : "Стена добавлена — толщину и материал поменяйте справа")
+    return true
+  }
+  const updateFreeWall = (id: string, patch: Partial<PlanFreeWall>) => {
+    setScheme((s) => ({ ...s, freeWalls: (s.freeWalls || []).map((w) => (w.id === id ? { ...w, ...patch } : w)) }))
+    touch()
+  }
+  const deleteFreeWall = (id: string) => {
+    setScheme((s) => ({ ...s, freeWalls: (s.freeWalls || []).filter((w) => w.id !== id) }))
+    setSelectedFreeWallId(null)
+    touch()
+  }
+
+  /**
+   * Перегородка: если линия идёт от стены до стены одного помещения — делит его на два;
+   * иначе ставится отдельной стеной (ниша, короб, продолжение стены)
+   */
   const splitByLine = (cut: PlanPoint[]): boolean => {
     const s0 = cut[0]
     const s1 = cut[1]
@@ -239,9 +269,7 @@ export function usePlannerState(id: string | undefined) {
       setMessage(`«${r.name}» разделено перегородкой 120 мм — переименуйте новое помещение и поправьте толщину стены при необходимости`)
       return true
     }
-    setError("Перегородка должна идти от стены до стены одного помещения")
-    setTimeout(() => setError(""), 3500)
-    return false
+    return addFreeWalls(cut)
   }
 
   /** Удалить стену: общая — помещения сливаются в одно, своя — соседние стены продлеваются */
@@ -1006,6 +1034,11 @@ export function usePlannerState(id: string | undefined) {
   }
 
   return {
+    selectedFreeWallId,
+    setSelectedFreeWallId,
+    addFreeWalls,
+    updateFreeWall,
+    deleteFreeWall,
     activeDetected,
     setActiveDetected,
     discardDetected,
