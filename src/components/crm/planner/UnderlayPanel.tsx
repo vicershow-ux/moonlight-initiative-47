@@ -190,7 +190,7 @@ export function UnderlayPanel({
         <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-[#D4AF37]/30 bg-[#D4AF37]/5 p-2.5 text-xs">
           <Icon name="ScanSearch" size={14} className="text-[#D4AF37]" />
           <span className="text-white/70">
-            Найдено контуров: {detectedCount}. Щёлкните по пунктирному контуру — он станет помещением, или примите все сразу. Размеры потом поправьте в списке стен.
+            Найдено контуров: {detectedCount}. Нажмите на номер в контуре — откроется карточка: проверьте тип помещения, уберите лишние окна и двери, затем «Добавить». Не помещение — «Не нужен».
           </span>
           <button className="ml-auto rounded-lg bg-[#D4AF37] px-3 py-1.5 font-medium text-[#161616]" onClick={onAcceptAll}>
             Добавить все

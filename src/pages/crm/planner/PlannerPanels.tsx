@@ -221,6 +221,7 @@ interface SettingsProps {
   setSyncRooms: (v: boolean) => void
   fileUrl: string | null
   dirty: boolean
+  onFitAll?: () => void
 }
 
 /** Высота стен, перенос метража в помещения, ссылка на PDF и метка изменений */
@@ -231,7 +232,9 @@ export function PlannerSettingsBar({
   setSyncRooms,
   fileUrl,
   dirty,
+  onFitAll,
 }: SettingsProps) {
+  const withArea = scheme.rooms.filter((r) => r.planArea).length
   return (
     <div className="mb-4 flex flex-wrap items-center gap-4 rounded-xl border border-white/10 bg-[#1f1f1f] p-3">
       <div className="flex items-center gap-2 text-sm">
@@ -254,6 +257,20 @@ export function PlannerSettingsBar({
         />
         Переносить метраж в помещения объекта
       </label>
+      {onFitAll && scheme.rooms.length > 0 && (
+        <button
+          onClick={onFitAll}
+          disabled={!withArea}
+          title={withArea ? "Каждое помещение пропорционально под свою площадь из БТИ" : "Введите «Площадь по плану» в карточках помещений"}
+          className="flex items-center gap-1.5 rounded-lg bg-[#D4AF37]/15 px-3 py-2 text-sm text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/25 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <Icon name="Scaling" size={15} />
+          Подогнать все комнаты под площади плана
+          <span className="text-xs text-[#D4AF37]/70">
+            {withArea}/{scheme.rooms.length}
+          </span>
+        </button>
+      )}
       {fileUrl && (
         <a
           href={fileUrl}

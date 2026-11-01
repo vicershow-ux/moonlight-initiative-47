@@ -67,6 +67,9 @@ export interface PlanCanvasProps {
   /** Найденные по подложке контуры — щелчок добавляет помещение */
   detected?: NamedContour[]
   onAcceptDetected?: (index: number) => void
+  activeDetected?: number | null
+  onActiveDetected?: (index: number | null) => void
+  onDiscardDetected?: (index: number) => void
   onDetectedType?: (index: number, type: string) => void
   onDropDetectedOpening?: (index: number, k: number) => void
   /** Перегородка нарисована: разрезать помещение по линии */

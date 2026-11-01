@@ -125,10 +125,13 @@ export function PlanCanvas(props: PlanCanvasProps) {
       {layer === "plan" && props.detected && props.detected.length > 0 && (
         <DetectedOverlay
           detected={props.detected}
+          active={props.activeDetected ?? null}
           toScreen={toScreen}
+          onActive={(i) => props.onActiveDetected?.(i)}
           onType={(i, t) => props.onDetectedType?.(i, t)}
           onAccept={(i) => props.onAcceptDetected?.(i)}
           onDropOpening={(i, k) => props.onDropDetectedOpening?.(i, k)}
+          onDiscard={(i) => props.onDiscardDetected?.(i)}
         />
       )}
 

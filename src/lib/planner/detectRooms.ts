@@ -176,8 +176,151 @@ export async function loadGray(u: PlanUnderlay): Promise<{ gray: Float32Array; W
   return { gray, W, H }
 }
 
+const TARGET_PX_PER_M = 29
+
+/** Масштабирование полутоновой картинки до ширины W (усреднение при уменьшении, билинейно при увеличении) */
+export function resample(src: Float32Array, W0: number, H0: number, W: number): { gray: Float32Array; W: number; H: number } {
+  if (Math.abs(W - W0) <= 2) return { gray: src, W: W0, H: H0 }
+  const k = W0 / W
+  const H = Math.max(1, Math.round(H0 / k))
+  const out = new Float32Array(W * H)
+  if (k > 1) {
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        const x0 = Math.floor(x * k)
+        const x1 = Math.min(Math.max(Math.floor((x + 1) * k), x0 + 1), W0)
+        const y0 = Math.floor(y * k)
+        const y1 = Math.min(Math.max(Math.floor((y + 1) * k), y0 + 1), H0)
+        let s = 0
+        for (let yy = y0; yy < y1; yy++) for (let xx = x0; xx < x1; xx++) s += src[yy * W0 + xx]
+        out[y * W + x] = s / ((x1 - x0) * (y1 - y0))
+      }
+  } else {
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        const fx = Math.min(x * k, W0 - 1.001)
+        const fy = Math.min(y * k, H0 - 1.001)
+        const ix = Math.floor(fx)
+        const iy = Math.floor(fy)
+        const tx = fx - ix
+        const ty = fy - iy
+        out[y * W + x] =
+          src[iy * W0 + ix] * (1 - tx) * (1 - ty) +
+          src[iy * W0 + ix + 1] * tx * (1 - ty) +
+          src[(iy + 1) * W0 + ix] * (1 - tx) * ty +
+          src[(iy + 1) * W0 + ix + 1] * tx * ty
+      }
+  }
+  return { gray: out, W, H }
+}
+
 /** Распознавание по полутоновой картинке W×H, растянутой на подложку u */
-export function detectFromGray(gray: Float32Array, W: number, H: number, u: PlanUnderlay, existing: PlanPoint[][] = [], bridgeM = 0.5): DetectedRoom[] {
+export function detectFromGray(gray0: Float32Array, W0: number, H0: number, u: PlanUnderlay, existing: PlanPoint[][] = []): DetectedRoom[] {
+  // Один набор порогов срабатывает не на всех фото: прогоняем несколько масштабов и ширин
+  // закрываемых дверей и оставляем контуры, которые находятся устойчиво и не налезают друг на друга
+  const runs: DetectedRoom[][] = []
+  for (const ppm of [24, 29, 36])
+    for (const br of [0.45, 0.6]) {
+      const { gray, W, H } = resample(gray0, W0, H0, Math.round(u.w * ppm))
+      if (W < 50) continue
+      runs.push(detectPass(gray, W, H, u, existing, br))
+    }
+  return mergeRuns(runs)
+}
+
+/** Доля площади a, накрытая b — по сетке 5 см */
+function coverage(a: PlanPoint[], b: PlanPoint[]): number {
+  const bx = (p: PlanPoint[]) => [Math.min(...p.map((q) => q.x)), Math.min(...p.map((q) => q.y)), Math.max(...p.map((q) => q.x)), Math.max(...p.map((q) => q.y))]
+  const A = bx(a)
+  const B = bx(b)
+  if (A[2] < B[0] || B[2] < A[0] || A[3] < B[1] || B[3] < A[1]) return 0
+  const step = Math.max(0.05, Math.sqrt((A[2] - A[0]) * (A[3] - A[1])) / 40)
+  let inA = 0
+  let both = 0
+  for (let y = A[1] + step / 2; y < A[3]; y += step)
+    for (let x = A[0] + step / 2; x < A[2]; x += step) {
+      const p = { x, y }
+      if (!inPoly(p, a)) continue
+      inA++
+      if (inPoly(p, b)) both++
+    }
+  return inA ? both / inA : 0
+}
+
+function inPoly(p: PlanPoint, poly: PlanPoint[]) {
+  let inside = false
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i]
+    const b = poly[j]
+    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) inside = !inside
+  }
+  return inside
+}
+
+function mergeRuns(runs: DetectedRoom[][]): DetectedRoom[] {
+  const all = runs.flatMap((r, ri) => r.map((c) => ({ ...c, ri })))
+  const scored = all.map((c) => {
+    let support = 0
+    for (let ri = 0; ri < runs.length; ri++) {
+      if (ri === c.ri) {
+        support++
+        continue
+      }
+      if (runs[ri].some((o) => Math.abs(o.area - c.area) < Math.max(0.3, c.area * 0.12) && coverage(c.points, o.points) > 0.85 && coverage(o.points, c.points) > 0.85)) support++
+    }
+    // Устойчивые и простые (прямоугольные) контуры — в приоритете
+    return { c, score: support * 10 - Math.max(0, c.points.length - 4) * 1.5 }
+  })
+  scored.sort((a, b) => b.score - a.score || b.c.area - a.c.area)
+  const out: DetectedRoom[] = []
+  const minSupport = runs.length >= 4 ? 2 : 1
+  for (const { c, score } of scored) {
+    if (score < minSupport * 10 - 12) continue
+    if (out.some((o) => coverage(c.points, o.points) > 0.15 || coverage(o.points, c.points) > 0.15)) continue
+    out.push({ points: c.points, area: c.area })
+  }
+  // Ванна, унитаз, плита рисуются линиями и режут мелкое помещение на куски. Если в каком-то
+  // проходе нашёлся целый прямоугольник, накрывающий несколько мелких кусков, берём его
+  const rects = all.filter((c) => c.points.length === 4 && c.area < 12).sort((a, b) => b.area - a.area)
+  for (const big of rects) {
+    const parts = out.filter((o) => o.area < 2.2 && coverage(o.points, big.points) > 0.85)
+    if (parts.length < 2) continue
+    const sum = parts.reduce((s, p) => s + p.area, 0)
+    if (sum < big.area * 0.55) continue
+    // Не задеваем соседние помещения
+    if (out.some((o) => !parts.includes(o) && coverage(o.points, big.points) > 0.15)) continue
+    for (const p of parts) out.splice(out.indexOf(p), 1)
+    out.push({ points: big.points, area: big.area })
+  }
+  // Куски, разделённые только тонкой линией сантехники (зазора нет), — одно помещение
+  const box = (p: PlanPoint[]) => ({ x0: Math.min(...p.map((q) => q.x)), y0: Math.min(...p.map((q) => q.y)), x1: Math.max(...p.map((q) => q.x)), y1: Math.max(...p.map((q) => q.y)) })
+  for (let changed = true; changed; ) {
+    changed = false
+    for (let i = 0; i < out.length && !changed; i++)
+      for (let j = i + 1; j < out.length && !changed; j++) {
+        const a = out[i]
+        const b = out[j]
+        if (a.area > 3 || b.area > 3 || a.points.length !== 4 || b.points.length !== 4) continue
+        const A = box(a.points)
+        const B = box(b.points)
+        const gx = Math.max(A.x0, B.x0) - Math.min(A.x1, B.x1)
+        const gy = Math.max(A.y0, B.y0) - Math.min(A.y1, B.y1)
+        const side = gx > gy ? { gap: gx, ov: Math.min(A.y1, B.y1) - Math.max(A.y0, B.y0), len: Math.min(A.y1 - A.y0, B.y1 - B.y0) } : { gap: gy, ov: Math.min(A.x1, B.x1) - Math.max(A.x0, B.x0), len: Math.min(A.x1 - A.x0, B.x1 - B.x0) }
+        if (side.gap > 0.05 || side.ov < side.len * 0.85) continue
+        const U = { x0: Math.min(A.x0, B.x0), y0: Math.min(A.y0, B.y0), x1: Math.max(A.x1, B.x1), y1: Math.max(A.y1, B.y1) }
+        const ua = (U.x1 - U.x0) * (U.y1 - U.y0)
+        if (ua > 4.5 || ua > (a.area + b.area) * 1.25) continue
+        const pts = [{ x: U.x0, y: U.y0 }, { x: U.x1, y: U.y0 }, { x: U.x1, y: U.y1 }, { x: U.x0, y: U.y1 }]
+        out.splice(j, 1)
+        out[i] = { points: pts, area: Math.round(ua * 10) / 10 }
+        changed = true
+      }
+  }
+  return out.sort((a, b) => b.area - a.area)
+}
+
+export function detectPass(gray: Float32Array, W: number, H: number, u: PlanUnderlay, existing: PlanPoint[][], bridgeM: number): DetectedRoom[] {
+  {
   const pxPerM = W / u.w
 
   // Тёмное относительно окрестности ~1 м — так не мешают тени и неровный свет на фото
@@ -327,6 +470,7 @@ export function detectFromGray(gray: Float32Array, W: number, H: number, u: Plan
   alignRooms(out.map((r) => r.points), 0.12)
   for (const r of out) r.points = dropCollinear(r.points.map((p) => ({ x: Math.round(p.x * 100) / 100, y: Math.round(p.y * 100) / 100 })), 0.01)
   return out.filter((r) => r.points.length >= 3).sort((a, b) => b.area - a.area)
+  }
 }
 
 /**

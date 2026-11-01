@@ -179,6 +179,7 @@ export default function ObjectPlanner() {
         setSyncRooms={setSyncRooms}
         fileUrl={fileUrl}
         dirty={dirty}
+        onFitAll={state.fitAllToPlan}
       />
 
       <PlannerWorkspace state={state} />

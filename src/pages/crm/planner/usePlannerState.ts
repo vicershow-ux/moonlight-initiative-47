@@ -1,7 +1,7 @@
 import { squareUp } from "@/components/crm/planner/drawAssist"
 import { glueRoom } from "@/lib/planner/glueRooms"
 import { guessRoomNames, nameForType, type NamedContour } from "@/lib/planner/roomNames"
-import { mergeRooms, removeRoomWall, roomBehindWall, splitRoom } from "@/lib/planner/editRooms"
+import { mergeRooms, removeRoomWall, roomBehindWall, scaleRoomToArea, splitRoom, stickiestCorner } from "@/lib/planner/editRooms"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { PlanTool } from "@/components/crm/planner/PlanCanvas"
 import { objectsApi, objectPlansApi, ObjectItem } from "@/lib/api"
@@ -556,7 +556,12 @@ export function usePlannerState(id: string | undefined) {
   const uploadImage = async (dataUrl: string) => (await objectPlansApi.uploadRender(Number(id), dataUrl)).url
 
   /** Найденные по подложке контуры: пока не приняты — показаны пунктиром */
-  const [detected, setDetected] = useState<NamedContour[]>([])
+  const [detected, setDetectedRaw] = useState<NamedContour[]>([])
+  const [activeDetected, setActiveDetected] = useState<number | null>(null)
+  const setDetected = (v: NamedContour[] | ((p: NamedContour[]) => NamedContour[])) => {
+    setDetectedRaw(v)
+    setActiveDetected(null)
+  }
   const [detecting, setDetecting] = useState(false)
   const detectFromUnderlay = async () => {
     const u = scheme.underlay
@@ -589,7 +594,7 @@ export function usePlannerState(id: string | undefined) {
         const { readRoomLabels } = await import("@/lib/planner/readLabels")
         const labels = await readRoomLabels(gray, W, H, (p) => ({ x: ((p.x - u.x) / u.w) * W, y: ((p.y - u.y) / u.h) * H }), contours)
         const read = labels.filter((l) => l.planArea).length
-        setDetected((prev) =>
+        setDetectedRaw((prev) =>
           prev.map((d) => {
             const i = contours.indexOf(d.points)
             const l = i >= 0 ? labels[i] : undefined
@@ -639,7 +644,7 @@ export function usePlannerState(id: string | undefined) {
   }
   /** Сменить тип найденного контура до добавления */
   const setDetectedType = (index: number, type: string) => {
-    setDetected((prev) =>
+    setDetectedRaw((prev) =>
       prev.map((d, i) => {
         if (i !== index) return d
         const taken = [...scheme.rooms.map((r) => r.name), ...prev.filter((_, k) => k !== i).map((x) => x.name)]
@@ -649,7 +654,31 @@ export function usePlannerState(id: string | undefined) {
   }
   /** Убрать найденное окно/проём, пока контур не добавлен */
   const dropDetectedOpening = (index: number, k: number) =>
-    setDetected((prev) => prev.map((d, i) => (i === index ? { ...d, openings: (d.openings || []).filter((_, j) => j !== k) } : d)))
+    setDetectedRaw((prev) => prev.map((d, i) => (i === index ? { ...d, openings: (d.openings || []).filter((_, j) => j !== k) } : d)))
+  /** Контур — не помещение: убрать из найденных */
+  const discardDetected = (index: number) => setDetected((prev) => prev.filter((_, i) => i !== index))
+
+  /** Все помещения с площадью из БТИ — пропорционально под неё */
+  const fitAllToPlan = () => {
+    const list = scheme.rooms.filter((r) => r.planArea && r.planArea > 0)
+    if (!list.length) {
+      setError("Ни у одного помещения не указана площадь по плану — введите её в карточке помещения")
+      setTimeout(() => setError(""), 4000)
+      return
+    }
+    setScheme((s) => {
+      let cur = s
+      for (const r0 of list) {
+        const r = cur.rooms.find((x) => x.id === r0.id)
+        if (!r || !r.planArea) continue
+        const pts = scaleRoomToArea(r, r.planArea, stickiestCorner(cur, r))
+        if (pts) cur = { ...cur, rooms: cur.rooms.map((x) => (x.id === r.id ? { ...x, points: pts, fixedWalls: [] } : x)) }
+      }
+      return applyMounts(cur)
+    })
+    touch()
+    setMessage(`Подогнано помещений: ${list.length}. Без площади по плану: ${scheme.rooms.length - list.length}`)
+  }
 
   /** Подложка: фото плана, две точки для масштаба */
   const [calibPts, setCalibPts] = useState<PlanPoint[]>([])
@@ -977,6 +1006,10 @@ export function usePlannerState(id: string | undefined) {
   }
 
   return {
+    activeDetected,
+    setActiveDetected,
+    discardDetected,
+    fitAllToPlan,
     setDetectedType,
     dropDetectedOpening,
     splitByLine,

@@ -104,16 +104,15 @@ export function PlanCanvasLayers({
 
       {layer === "plan" && (props.detected || []).map((d, i) => {
         const sp = d.points.map(toScreen)
-        const cx = sp.reduce((s, p) => s + p.x, 0) / sp.length
-        const cy = sp.reduce((s, p) => s + p.y, 0) / sp.length
+        const on = props.activeDetected === i
         return (
-          <g key={`det-${i}`} style={{ cursor: "copy" }}>
+          <g key={`det-${i}`} style={{ cursor: "pointer" }}>
             <polygon
               points={sp.map((s) => `${s.x},${s.y}`).join(" ")}
-              fill="rgba(212,175,55,0.12)"
+              fill={on ? "rgba(212,175,55,0.28)" : "rgba(212,175,55,0.08)"}
               stroke="#D4AF37"
-              strokeWidth={2}
-              strokeDasharray="7 5"
+              strokeWidth={on ? 3 : 1.5}
+              strokeDasharray={on ? undefined : "7 5"}
             />
             {(d.openings || []).map((o, k) => {
               const a = d.points[o.edge]
@@ -131,7 +130,7 @@ export function PlanCanvasLayers({
                   stroke={o.kind === "window" ? "#38bdf8" : "#f97316"}
                   strokeWidth={6}
                   strokeLinecap="round"
-                  opacity={0.85}
+                  opacity={on ? 0.95 : 0.5}
                   pointerEvents="none"
                 />
               )

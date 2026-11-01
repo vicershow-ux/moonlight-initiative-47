@@ -195,6 +195,9 @@ export function PlannerWorkspace({ state }: Props) {
           onAcceptDetected={(i) => state.detected[i] && state.acceptDetected([state.detected[i]])}
           onSplit={state.splitByLine}
           onDetectedType={state.setDetectedType}
+          activeDetected={state.activeDetected}
+          onActiveDetected={state.setActiveDetected}
+          onDiscardDetected={state.discardDetected}
           onDropDetectedOpening={state.dropDetectedOpening}
         />
       </div>
