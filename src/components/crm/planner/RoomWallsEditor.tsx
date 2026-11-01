@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { fromMm, setWallLength, toMm, wallSegments } from "@/lib/planner/geometry"
+import Icon from "@/components/ui/icon"
+import { fromMm, setWallLengthKeep, toMm, wallSegments } from "@/lib/planner/geometry"
 import { PlanRoom, PlanScheme, WALL_MATERIALS, WallMaterial, WallProps } from "@/lib/planner/types"
 import { roomWalls, wallProps } from "@/lib/planner/walls"
 
@@ -24,10 +25,14 @@ interface Props {
 export function RoomWallsEditor({ room, scheme, onUpdateRoom, onUpdateWall, onHoverWall }: Props) {
   const [all, setAll] = useState<WallProps>(() => wallProps(scheme, `${room.id}:0`))
   const info = new Map(roomWalls(room, scheme).map((w) => [w.id, w]))
+  const fixed = (room.fixedWalls || []).filter((x) => x < room.points.length)
 
   return (
     <div>
       <div className="mb-1.5 text-xs text-white/50">Стены, мм</div>
+      <div className="mb-2 text-[11px] leading-snug text-white/35">
+        Введите известные размеры — они закрепятся <Icon name="Lock" size={10} className="inline" />, остальные стены посчитаются сами.
+      </div>
 
       <div className="mb-2 rounded-lg border border-white/10 bg-[#161616] p-2">
         <div className="mb-1.5 text-[11px] text-white/40">Все стены помещения</div>
@@ -98,18 +103,33 @@ export function RoomWallsEditor({ room, scheme, onUpdateRoom, onUpdateWall, onHo
                 {i + 1}
                 {shared ? "*" : ""}
               </span>
-              <input
-                className={cell}
-                type="number"
-                min="10"
-                step="10"
-                value={toMm(seg.length)}
-                onChange={(e) => {
-                  const mm = Number(e.target.value)
-                  if (!mm || mm <= 0) return
-                  onUpdateRoom(room.id, { points: setWallLength(room.points, i, fromMm(mm)) })
-                }}
-              />
+              <div className="relative">
+                <input
+                  className={`${cell} pr-6 ${fixed.includes(i) ? "border-[#D4AF37]/50 text-[#D4AF37]" : ""}`}
+                  type="number"
+                  min="10"
+                  step="10"
+                  value={toMm(seg.length)}
+                  title={fixed.includes(i) ? "Размер задан вручную — не меняется при вводе других" : "Размер посчитан — подстраивается под введённые"}
+                  onChange={(e) => {
+                    const mm = Number(e.target.value)
+                    if (!mm || mm <= 0) return
+                    onUpdateRoom(room.id, {
+                      points: setWallLengthKeep(room.points, i, fromMm(mm), fixed),
+                      fixedWalls: fixed.includes(i) ? fixed : [...fixed, i],
+                    })
+                  }}
+                />
+                {fixed.includes(i) && (
+                  <button
+                    className="absolute right-1 top-1/2 -translate-y-1/2 text-[#D4AF37]/70 hover:text-white"
+                    title="Снять фиксацию — размер будет подстраиваться"
+                    onClick={() => onUpdateRoom(room.id, { fixedWalls: fixed.filter((x) => x !== i) })}
+                  >
+                    <Icon name="Lock" size={11} />
+                  </button>
+                )}
+              </div>
               <input
                 className={`${cell} px-1.5`}
                 type="number"

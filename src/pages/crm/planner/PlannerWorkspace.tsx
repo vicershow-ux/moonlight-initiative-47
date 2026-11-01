@@ -166,6 +166,8 @@ export function PlannerWorkspace({ state }: Props) {
           onUpdateHeating={state.updateHeating}
           selectedWallId={hoverWallId ?? (layer === "plan" ? activeWallId : null)}
           onSelectWall={selectWall}
+          calibPts={state.calibPts}
+          onCalibrateClick={state.calibrateClick}
         />
       </div>
 

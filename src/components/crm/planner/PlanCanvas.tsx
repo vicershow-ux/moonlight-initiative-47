@@ -18,7 +18,7 @@ export type { PlanTool } from "./planCanvasTypes"
 export function PlanCanvas(props: PlanCanvasProps) {
   const { scheme, tool, layer, linkFromId, draft, onDraftChange, onFinishRoom, onCancelLink } = props
   const { wrapRef, size, view, setView, toScreen, toWorld, gridLines, gridStep, zoomBy, fitView } =
-    usePlanView(scheme.rooms)
+    usePlanView(scheme.rooms, scheme.underlay)
 
   const [cursor, setCursor] = useState<PlanPoint | null>(null)
 
@@ -90,7 +90,7 @@ export function PlanCanvas(props: PlanCanvasProps) {
         className="touch-none rounded-xl bg-[#141414]"
         style={{
           cursor:
-            tool === "draw" || tool === "node" || tool === "link" || tool === "track" || tool === "floating" || tool === "furniture" || tool === "heating"
+            tool === "draw" || tool === "node" || tool === "link" || tool === "track" || tool === "floating" || tool === "furniture" || tool === "heating" || tool === "calibrate"
               ? "crosshair"
               : drag
                 ? "grabbing"

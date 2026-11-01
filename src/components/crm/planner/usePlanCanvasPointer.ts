@@ -131,6 +131,11 @@ export function usePlanCanvasPointer({
       return
     }
 
+    if (tool === "calibrate") {
+      props.onCalibrateClick?.(world)
+      return
+    }
+
     if (tool === "furniture") {
       onAddFurniture?.(snapPoint(world))
       return

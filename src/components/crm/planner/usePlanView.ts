@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { PlanPoint, PlanRoom } from "@/lib/planner/types"
+import { PlanPoint, PlanRoom, PlanUnderlay } from "@/lib/planner/types"
 
 /** Привязка курсора — 10 мм. Точные размеры вводятся числом в панели справа */
 export const SNAP_STEP = 0.01
@@ -24,7 +24,7 @@ export const eventPoint = (e: React.MouseEvent | React.TouchEvent) => {
  * Область просмотра плана: размер холста, масштаб, сдвиг, сетка,
  * пересчёт координат между планом и экраном.
  */
-export function usePlanView(rooms: PlanRoom[]) {
+export function usePlanView(rooms: PlanRoom[], underlay?: PlanUnderlay) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ w: 800, h: 560 })
   const [view, setView] = useState({ scale: 40, tx: 60, ty: 60 })
@@ -88,6 +88,7 @@ export function usePlanView(rooms: PlanRoom[]) {
 
   const fitView = useCallback(() => {
     const pts = rooms.flatMap((r) => r.points)
+    if (underlay && !underlay.hidden) pts.push({ x: underlay.x, y: underlay.y }, { x: underlay.x + underlay.w, y: underlay.y + underlay.h })
     if (pts.length === 0 || size.w < 10) {
       setView({ scale: 40, tx: 60, ty: 60 })
       return
@@ -107,12 +108,12 @@ export function usePlanView(rooms: PlanRoom[]) {
       tx: (size.w - w * clamped) / 2 - minX * clamped,
       ty: (size.h - h * clamped) / 2 - minY * clamped,
     })
-  }, [rooms, size])
+  }, [rooms, size, underlay])
 
   useEffect(() => {
-    if (rooms.length > 0) fitView()
+    if (rooms.length > 0 || underlay) fitView()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rooms.length])
+  }, [rooms.length, underlay?.url, underlay?.calibrated])
 
   return { wrapRef, size, view, setView, toScreen, toWorld, gridLines, gridStep, zoomBy, fitView }
 }

@@ -11,6 +11,7 @@ import { LibraryItemDialog } from "@/components/crm/planner/LibraryItemDialog"
 import { MaterialLibraryProvider } from "@/components/crm/planner/MaterialLibraryContext"
 import { VizAlbumDialog } from "@/components/crm/planner/VizAlbumDialog"
 import { isEngLayer } from "@/lib/planner/types"
+import { UnderlayPanel } from "@/components/crm/planner/UnderlayPanel"
 
 export default function ObjectPlanner() {
   const { id } = useParams<{ id: string }>()
@@ -106,6 +107,19 @@ export default function ObjectPlanner() {
         exporting={exporting}
         saving={saving}
       />
+
+      {layer === "plan" && (
+        <UnderlayPanel
+          underlay={scheme.underlay}
+          calibrating={tool === "calibrate"}
+          calibPts={state.calibPts}
+          onChange={state.setUnderlay}
+          uploadImage={state.uploadImage}
+          onStartCalibrate={state.startCalibrate}
+          onApplyCalibrate={state.applyCalibrate}
+          onCancelCalibrate={state.cancelCalibrate}
+        />
+      )}
 
       {layer === "interior" && (
         <PlannerInteriorPicker

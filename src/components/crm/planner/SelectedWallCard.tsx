@@ -1,5 +1,5 @@
 import Icon from "@/components/ui/icon"
-import { fmtNum, fromMm, setWallLength, toMm } from "@/lib/planner/geometry"
+import { fmtNum, fromMm, setWallLengthKeep, toMm } from "@/lib/planner/geometry"
 import {
   OPENING_PRESETS,
   PlanRoom,
@@ -141,7 +141,11 @@ export function SelectedWallCard({
           onChange={(e) => {
             const mm = Number(e.target.value)
             if (!mm || mm <= 0) return
-            onUpdateRoom(room.id, { points: setWallLength(room.points, w.index, fromMm(mm)) })
+            const fx = room.fixedWalls || []
+            onUpdateRoom(room.id, {
+              points: setWallLengthKeep(room.points, w.index, fromMm(mm), fx),
+              fixedWalls: fx.includes(w.index) ? fx : [...fx, w.index],
+            })
           }}
         />
       </div>

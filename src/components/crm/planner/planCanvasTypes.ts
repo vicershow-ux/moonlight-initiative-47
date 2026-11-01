@@ -12,7 +12,7 @@ import {
   LibraryItem,
 } from "@/lib/planner/types"
 
-export type PlanTool = "select" | "draw" | "window" | "door" | "arch" | "node" | "link" | "track" | "floating" | "furniture" | "heating"
+export type PlanTool = "select" | "draw" | "window" | "door" | "arch" | "node" | "link" | "track" | "floating" | "furniture" | "heating" | "calibrate"
 
 export interface PlanCanvasProps {
   scheme: PlanScheme
@@ -60,6 +60,9 @@ export interface PlanCanvasProps {
   onSelectHeating?: (id: string | null) => void
   onAddHeating?: (points: PlanPoint[]) => void
   onUpdateHeating?: (id: string, patch: Partial<PlanHeating>) => void
+  /** Масштаб подложки: две точки известного размера */
+  calibPts?: PlanPoint[]
+  onCalibrateClick?: (p: PlanPoint) => void
 }
 
 /** Что сейчас тащат мышью на холсте */

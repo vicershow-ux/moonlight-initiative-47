@@ -33,6 +33,8 @@ export interface PlanRoom {
   points: PlanPoint[]
   height: number
   notes: string
+  /** Номера стен, длину которых ввели вручную — при вводе других размеров они не меняются */
+  fixedWalls?: number[]
 }
 
 export type PlanLayer = "plan" | "interior" | "electric" | "plumbing"
@@ -374,6 +376,21 @@ export interface PlanScheme {
   renders?: Record<string, RoomRender[]>
   /** Штамп листов визуализации: проект, адрес, исполнитель, контакты, логотип */
   stamp?: DrawingStamp
+  /** Подложка: фото или скан плана, по которому обводят помещения */
+  underlay?: PlanUnderlay
+}
+
+/** Картинка-подложка на плане: левый верхний угол и размер в метрах */
+export interface PlanUnderlay {
+  url: string
+  x: number
+  y: number
+  w: number
+  h: number
+  opacity: number
+  hidden?: boolean
+  /** Масштаб задан по известному размеру */
+  calibrated?: boolean
 }
 
 export interface DrawingStamp {

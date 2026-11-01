@@ -539,6 +539,42 @@ export function setWallLength(points: PlanPoint[], index: number, length: number
   return next
 }
 
+/**
+ * Длина стены с учётом уже введённых размеров: стена становится нужной длины,
+ * а разницу забирает ближайшая параллельная стена, длину которой не задавали вручную.
+ * Стены между ними сдвигаются целиком и свою длину не меняют
+ */
+export function setWallLengthKeep(points: PlanPoint[], index: number, length: number, fixed: number[]): PlanPoint[] {
+  const n = points.length
+  if (n < 3 || length <= 0) return setWallLength(points, index, length)
+  const a = points[index]
+  const b = points[(index + 1) % n]
+  const cur = dist(a, b)
+  if (cur < 1e-9) return points
+  const ux = (b.x - a.x) / cur
+  const uy = (b.y - a.y) / cur
+  const delta = length - cur
+  const lock = new Set([...fixed, index])
+  const parallel = (j: number) => {
+    const p = points[j]
+    const q = points[(j + 1) % n]
+    const l = dist(p, q)
+    return l > 1e-9 && Math.abs((ux * (q.x - p.x) + uy * (q.y - p.y)) / l) > 0.995
+  }
+  // Вперёд по контуру: двигаем углы от конца стены до свободной параллельной стены
+  for (let step = 1; step < n; step++) {
+    const j = (index + step) % n
+    if (!parallel(j) || lock.has(j)) continue
+    const next = points.map((p) => ({ ...p }))
+    for (let k = 1; k <= step; k++) {
+      const v = (index + k) % n
+      next[v] = { x: points[v].x + ux * delta, y: points[v].y + uy * delta }
+    }
+    return next
+  }
+  return setWallLength(points, index, length)
+}
+
 export const fmtNum = (n: number, digits = 2) =>
   new Intl.NumberFormat("ru-RU", {
     minimumFractionDigits: 0,

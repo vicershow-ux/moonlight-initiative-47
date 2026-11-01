@@ -85,6 +85,23 @@ export function PlanCanvasLayers({
         />
       ))}
 
+      {layer === "plan" && scheme.underlay && !scheme.underlay.hidden && (() => {
+        const u = scheme.underlay
+        const a = toScreen({ x: u.x, y: u.y })
+        return (
+          <image
+            href={u.url}
+            x={a.x}
+            y={a.y}
+            width={u.w * scale}
+            height={u.h * scale}
+            opacity={u.opacity}
+            preserveAspectRatio="none"
+            style={{ pointerEvents: "none" }}
+          />
+        )
+      })()}
+
       <PlanRoomsLayer
         scheme={scheme}
         layer={layer}
@@ -155,6 +172,24 @@ export function PlanCanvasLayers({
       )}
 
       {place && isEngLayer(layer) && <PlaceAssistLayer assist={place} toScreen={toScreen} />}
+
+      {tool === "calibrate" && (() => {
+        const pts = props.calibPts || []
+        const all = pts.length === 1 && cursor ? [pts[0], cursor] : pts
+        const s = all.map(toScreen)
+        return (
+          <g style={{ pointerEvents: "none" }}>
+            {s.length === 2 && <line x1={s[0].x} y1={s[0].y} x2={s[1].x} y2={s[1].y} stroke="#f43f5e" strokeWidth={2} strokeDasharray={pts.length === 2 ? undefined : "6 4"} />}
+            {s.map((p, i) => (
+              <g key={i}>
+                <circle cx={p.x} cy={p.y} r={6} fill="none" stroke="#f43f5e" strokeWidth={2} />
+                <line x1={p.x - 10} y1={p.y} x2={p.x + 10} y2={p.y} stroke="#f43f5e" strokeWidth={1} />
+                <line x1={p.x} y1={p.y - 10} x2={p.x} y2={p.y + 10} stroke="#f43f5e" strokeWidth={1} />
+              </g>
+            ))}
+          </g>
+        )
+      })()}
 
       <PlanDraftLayer draft={draft} tool={tool} cursor={typedPoint() || cursor} assist={assist} scale={scale} toScreen={toScreen} />
     </>

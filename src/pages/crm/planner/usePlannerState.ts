@@ -7,7 +7,7 @@ import { downloadPlanPdf } from "@/lib/planner/planPdf"
 import { cableSettings } from "@/lib/planner/cable"
 import { panelSettings } from "@/lib/planner/panelInput"
 import { FORCE_WALL, applyMounts, mountPosition, snapToWall } from "@/lib/planner/walls"
-import { DrawingStamp,
+import { DrawingStamp, PlanUnderlay,
   LINK_SPECS,
   NODE_PRESETS,
   NodeKind,
@@ -122,6 +122,7 @@ export function usePlannerState(id: string | undefined) {
               finishes: raw.finishes || {},
               renders: raw.renders || {},
               stamp: raw.stamp,
+              underlay: raw.underlay,
             })
           }
           setFileUrl(planData.plan.file_url || null)
@@ -510,6 +511,35 @@ export function usePlannerState(id: string | undefined) {
   /** Картинка в хранилище объекта (автоснимок, логотип) — возвращает ссылку */
   const uploadImage = async (dataUrl: string) => (await objectPlansApi.uploadRender(Number(id), dataUrl)).url
 
+  /** Подложка: фото плана, две точки для масштаба */
+  const [calibPts, setCalibPts] = useState<PlanPoint[]>([])
+  const setUnderlay = (u: PlanUnderlay | undefined) => {
+    setScheme((s) => ({ ...s, underlay: u }))
+    touch()
+  }
+  const startCalibrate = () => {
+    setCalibPts([])
+    setDraft([])
+    setTool("calibrate")
+  }
+  const calibrateClick = (p: PlanPoint) => setCalibPts((c) => (c.length >= 2 ? [p] : [...c, p]))
+  const cancelCalibrate = () => {
+    setCalibPts([])
+    setTool("select")
+  }
+  /** Растягиваем подложку так, чтобы между двумя точками было realM метров; первая точка остаётся на месте */
+  const applyCalibrate = (realM: number) => {
+    const u = scheme.underlay
+    if (!u || calibPts.length < 2 || realM <= 0) return
+    const [p1, p2] = calibPts
+    const d = Math.hypot(p2.x - p1.x, p2.y - p1.y)
+    if (d < 1e-6) return
+    const k = realM / d
+    setUnderlay({ ...u, x: p1.x + (u.x - p1.x) * k, y: p1.y + (u.y - p1.y) * k, w: u.w * k, h: u.h * k, calibrated: true })
+    setCalibPts([])
+    setTool("draw")
+  }
+
   const setStamp = (stamp: DrawingStamp) => {
     setScheme((s) => ({ ...s, stamp }))
     touch()
@@ -807,6 +837,12 @@ export function usePlannerState(id: string | undefined) {
   }
 
   return {
+    calibPts,
+    setUnderlay,
+    startCalibrate,
+    calibrateClick,
+    cancelCalibrate,
+    applyCalibrate,
     object,
     scheme,
     loading,
