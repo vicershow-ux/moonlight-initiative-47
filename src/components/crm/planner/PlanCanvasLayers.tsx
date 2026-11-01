@@ -102,17 +102,25 @@ export function PlanCanvasLayers({
         )
       })()}
 
-      {layer === "plan" && (props.detected || []).map((pts, i) => (
-        <polygon
-          key={`det-${i}`}
-          points={pts.map((p) => { const s = toScreen(p); return `${s.x},${s.y}` }).join(" ")}
-          fill="rgba(212,175,55,0.12)"
-          stroke="#D4AF37"
-          strokeWidth={2}
-          strokeDasharray="7 5"
-          style={{ cursor: "copy" }}
-        />
-      ))}
+      {layer === "plan" && (props.detected || []).map((d, i) => {
+        const sp = d.points.map(toScreen)
+        const cx = sp.reduce((s, p) => s + p.x, 0) / sp.length
+        const cy = sp.reduce((s, p) => s + p.y, 0) / sp.length
+        return (
+          <g key={`det-${i}`} style={{ cursor: "copy" }}>
+            <polygon
+              points={sp.map((s) => `${s.x},${s.y}`).join(" ")}
+              fill="rgba(212,175,55,0.12)"
+              stroke="#D4AF37"
+              strokeWidth={2}
+              strokeDasharray="7 5"
+            />
+            <text x={cx} y={cy} textAnchor="middle" fontSize={12} fontWeight={600} fill="#D4AF37" stroke="#161616" strokeWidth={3} paintOrder="stroke" pointerEvents="none">
+              {d.name}
+            </text>
+          </g>
+        )
+      })}
 
       <PlanRoomsLayer
         scheme={scheme}

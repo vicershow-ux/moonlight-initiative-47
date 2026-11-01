@@ -64,8 +64,8 @@ export interface PlanCanvasProps {
   calibPts?: PlanPoint[]
   onCalibrateClick?: (p: PlanPoint) => void
   /** Найденные по подложке контуры — щелчок добавляет помещение */
-  detected?: PlanPoint[][]
-  onAcceptDetected?: (pts: PlanPoint[]) => void
+  detected?: { points: PlanPoint[]; name: string }[]
+  onAcceptDetected?: (index: number) => void
   /** Перегородка нарисована: разрезать помещение по линии */
   onSplit?: (cut: PlanPoint[]) => boolean
 }

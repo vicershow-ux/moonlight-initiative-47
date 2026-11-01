@@ -301,11 +301,13 @@ export function detectFromGray(gray: Float32Array, W: number, H: number, u: Plan
       for (let x = minX; x <= maxX; x++) if (label[y * W + x] === cur) local[(y - by0) * bw + (x - bx0)] = 1
     const grown = dilate(local, bw, bh, 1)
     let outline = traceOutline(grown, bw, bh).map((p) => ({ x: p.x + bx0, y: p.y + by0 }))
-    outline = simplify(outline, Math.max(1.5, pxPerM * 0.18))
-    let pts = outline.map(toWorld)
-    pts = squareUp(pts, 12)
-    pts = dropCollinear(pts, 0.03).map((p) => ({ x: Math.round(p.x * 100) / 100, y: Math.round(p.y * 100) / 100 }))
+    // Контур из пикселей — только прямые углы; мелкие ступеньки от шума и надписей убираем
+    let pts = orthoSimplify(dropCollinear(outline, 1e-9).map(toWorld), 0.45)
     if (pts.length < 3) continue
+    // Узкая щель между стенами (толщина стены, вентканал) — не помещение
+    const xs = pts.map((p) => p.x)
+    const ys = pts.map((p) => p.y)
+    if (Math.min(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) < 0.55) continue
     let a2 = 0
     for (let i = 0; i < pts.length; i++) {
       const p = pts[i]
@@ -316,5 +318,81 @@ export function detectFromGray(gray: Float32Array, W: number, H: number, u: Plan
     if (realArea < 0.8) continue
     out.push({ points: pts, area: Math.round(realArea * 10) / 10 })
   }
-  return out.sort((a, b) => b.area - a.area)
+  alignRooms(out.map((r) => r.points), 0.12)
+  for (const r of out) r.points = dropCollinear(r.points.map((p) => ({ x: Math.round(p.x * 100) / 100, y: Math.round(p.y * 100) / 100 })), 0.01)
+  return out.filter((r) => r.points.length >= 3).sort((a, b) => b.area - a.area)
+}
+
+/**
+ * Упрощение контура с прямыми углами: самая короткая стена короче minLen убирается.
+ * Ступенька — меньшая соседняя стена переезжает на линию большей; узкий зубец — втягивается.
+ * Так одна стена не дробится на куски
+ */
+export function orthoSimplify(src: PlanPoint[], minLen: number): PlanPoint[] {
+  let pts = src.map((p) => ({ ...p }))
+  const len = (a: PlanPoint, b: PlanPoint) => Math.hypot(b.x - a.x, b.y - a.y)
+  for (let guard = 0; guard < 2000 && pts.length > 4; guard++) {
+    const n = pts.length
+    let i = -1
+    let best = minLen
+    for (let k = 0; k < n; k++) {
+      const l = len(pts[k], pts[(k + 1) % n])
+      if (l < best) {
+        best = l
+        i = k
+      }
+    }
+    if (i < 0) break
+    const a = pts[i]
+    const b = pts[(i + 1) % n]
+    const pa = pts[(i - 1 + n) % n]
+    const nb = pts[(i + 2) % n]
+    const u1 = { x: a.x - pa.x, y: a.y - pa.y }
+    const u2 = { x: nb.x - b.x, y: nb.y - b.y }
+    const l1 = len(pa, a)
+    const l2 = len(b, nb)
+    const next = pts.map((p) => ({ ...p }))
+    if (u1.x * u2.x + u1.y * u2.y > 0) {
+      // Ступенька: стена i исчезает, короткий сосед ложится на линию длинного
+      if (l2 <= l1) next[(i + 2) % n] = { x: nb.x + a.x - b.x, y: nb.y + a.y - b.y }
+      else next[(i - 1 + n) % n] = { x: pa.x + b.x - a.x, y: pa.y + b.y - a.y }
+      // Лишняя вершина ступеньки становится дублем соседней и отфильтруется
+      if (l2 <= l1) next[(i + 1) % n] = { ...a }
+      else next[i] = { ...b }
+    } else {
+      // Зубец: стену i сдвигаем назад на длину короткого соседа
+      const d = Math.min(l1, l2)
+      const ux = -u1.x / (l1 || 1)
+      const uy = -u1.y / (l1 || 1)
+      next[i] = { x: a.x + ux * d, y: a.y + uy * d }
+      next[(i + 1) % n] = { x: b.x + ux * d, y: b.y + uy * d }
+    }
+    const cleaned = dropCollinear(next.filter((p, k) => len(p, next[(k + 1) % next.length]) > 1e-6), 1e-6)
+    if (cleaned.length < 4 || cleaned.length >= n) {
+      // Упрощать дальше нечего — не зацикливаемся
+      if (cleaned.length >= n) minLen = best - 1e-9
+      if (cleaned.length < 4) break
+    }
+    pts = cleaned
+  }
+  return pts
+}
+
+/** Близкие линии соседних комнат сводим к одной координате — стены разных комнат ложатся ровно */
+function alignRooms(rooms: PlanPoint[][], tol: number) {
+  for (const axis of ["x", "y"] as const) {
+    const vals: { v: number; r: number; i: number }[] = []
+    rooms.forEach((pts, r) => pts.forEach((p, i) => vals.push({ v: p[axis], r, i })))
+    vals.sort((a, b) => a.v - b.v)
+    let start = 0
+    for (let k = 1; k <= vals.length; k++) {
+      if (k < vals.length && vals[k].v - vals[k - 1].v < tol / 3 && vals[k].v - vals[start].v < tol) continue
+      const group = vals.slice(start, k)
+      if (group.length > 1) {
+        const m = group.reduce((s, g) => s + g.v, 0) / group.length
+        for (const g of group) rooms[g.r][g.i] = { ...rooms[g.r][g.i], [axis]: m }
+      }
+      start = k
+    }
+  }
 }

@@ -185,8 +185,8 @@ export function usePlanCanvasPointer({
     }
 
     if (tool === "select" && layer === "plan" && props.detected?.length) {
-      const cand = props.detected.find((pts) => pointInPolygon(world, pts) && !scheme.rooms.some((r) => pointInPolygon(world, r.points)))
-      if (cand) {
+      const cand = props.detected.findIndex((d) => pointInPolygon(world, d.points) && !scheme.rooms.some((r) => pointInPolygon(world, r.points)))
+      if (cand >= 0) {
         props.onAcceptDetected?.(cand)
         return
       }

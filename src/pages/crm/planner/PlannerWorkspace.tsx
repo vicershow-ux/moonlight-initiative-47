@@ -192,7 +192,7 @@ export function PlannerWorkspace({ state }: Props) {
           calibPts={state.calibPts}
           onCalibrateClick={state.calibrateClick}
           detected={state.detected}
-          onAcceptDetected={(pts) => state.acceptDetected([pts])}
+          onAcceptDetected={(i) => state.detected[i] && state.acceptDetected([state.detected[i]])}
           onSplit={state.splitByLine}
         />
       </div>
