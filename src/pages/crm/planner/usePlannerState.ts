@@ -1,4 +1,5 @@
 import { squareUp } from "@/components/crm/planner/drawAssist"
+import { glueRoom } from "@/lib/planner/glueRooms"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { PlanTool } from "@/components/crm/planner/PlanCanvas"
 import { objectsApi, objectPlansApi, ObjectItem } from "@/lib/api"
@@ -159,7 +160,13 @@ export function usePlannerState(id: string | undefined) {
         height: scheme.defaultHeight,
         notes: "",
       }
-      setScheme((s) => ({ ...s, rooms: [...s.rooms, room] }))
+      let glued = 0
+      setScheme((s) => {
+        const g = glueRoom(s, room)
+        glued = g.glued
+        return applyMounts({ ...g.scheme, rooms: [...g.scheme.rooms, g.room] })
+      })
+      setTimeout(() => glued > 0 && setMessage(glued === 1 ? "Помещение прилипло к соседнему — стена между ними общая" : `Помещение прилипло к соседним — общих стен: ${glued}`), 0)
       setDraft([])
       setSelectedRoomId(room.id)
       setSelectedOpeningId(null)

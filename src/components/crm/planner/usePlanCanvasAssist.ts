@@ -100,6 +100,40 @@ export function usePlanCanvasAssist({ scheme, tool, layer, draft, nodes, fixture
   const drawAssist = (world: PlanPoint, free: boolean) => {
     const prev = draft.length ? draft[draft.length - 1] : null
     const before = draft.length > 1 ? draft[draft.length - 2] : null
+    // Рядом с углом соседнего помещения — точно в угол, рядом со стеной — на её линию
+    if (!free) {
+      let bestP: PlanPoint | null = null
+      let bestD = 12 / scale
+      for (const r of scheme.rooms)
+        for (const p of r.points) {
+          const d = Math.hypot(p.x - world.x, p.y - world.y)
+          if (d < bestD) {
+            bestD = d
+            bestP = p
+          }
+        }
+      if (bestP) return { point: { ...bestP }, guides: [], angle: assistPoint(bestP, prev, before, [], scale, true).angle }
+      let edgeP: PlanPoint | null = null
+      let edgeD = 7 / scale
+      for (const r of scheme.rooms)
+        for (let i = 0; i < r.points.length; i++) {
+          const a = r.points[i]
+          const b = r.points[(i + 1) % r.points.length]
+          const l2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2
+          if (l2 < 1e-9) continue
+          const t = Math.min(Math.max(((world.x - a.x) * (b.x - a.x) + (world.y - a.y) * (b.y - a.y)) / l2, 0), 1)
+          const q = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
+          const d = Math.hypot(q.x - world.x, q.y - world.y)
+          if (d < edgeD) {
+            edgeD = d
+            edgeP = q
+          }
+        }
+      if (edgeP) {
+        const ap = assistPoint(snapPoint(edgeP), prev, before, assistRefs(), scale, false)
+        return { ...ap, point: { x: Math.abs(ap.point.x - edgeP.x) < 0.02 ? ap.point.x : edgeP.x, y: Math.abs(ap.point.y - edgeP.y) < 0.02 ? ap.point.y : edgeP.y } }
+      }
+    }
     return assistPoint(snapPoint(world), prev, before, assistRefs(), scale, free)
   }
 
