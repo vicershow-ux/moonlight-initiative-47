@@ -13,6 +13,7 @@ import { hitFixture, shiftTrack } from "@/lib/planner/fixtures"
 import { hitFurniture, hitHeating, snapFurnitureToWall } from "@/lib/planner/interior"
 import { furnitureProps } from "@/lib/planner/types"
 import { hitFreeWall, hitWall } from "@/lib/planner/walls"
+import { snapFreeEnd } from "@/lib/planner/freeWallSnap"
 import { pointOnRoomEdge } from "@/lib/planner/editRooms"
 import { PlaceAssist, placeAssist } from "@/lib/planner/placeAssist"
 import { SNAP_STEP, eventPoint } from "./usePlanView"
@@ -257,6 +258,18 @@ export function usePlanCanvasPointer({
         onSelectLink(null)
       }
 
+      // Концы выбранной отдельной стены — тянутся мышью и прилипают к углам и стенам
+      if (layer === "plan" && props.selectedFreeWallId) {
+        const fw = (scheme.freeWalls || []).find((w) => w.id === props.selectedFreeWallId)
+        if (fw) {
+          const end = dist(fw.a, world) * view.scale < 10 ? "a" : dist(fw.b, world) * view.scale < 10 ? "b" : null
+          if (end) {
+            setDrag({ type: "freeEnd", id: fw.id, end })
+            return
+          }
+        }
+      }
+
       for (const room of scheme.rooms) {
         const idx = room.points.findIndex((p) => dist(p, world) * view.scale < 10)
         if (idx >= 0) {
@@ -425,6 +438,16 @@ export function usePlanCanvasPointer({
       // У стены — прилипает тыльной стороной и разворачивается; Alt — свободно
       const sn = !e.altKey && furnitureProps(item).wall ? snapFurnitureToWall(scheme, { ...item, ...raw }, 0.25) : null
       onUpdateFurniture?.(drag.id, sn ? sn : raw)
+      return
+    }
+    if (drag.type === "freeEnd") {
+      const fw = (scheme.freeWalls || []).find((w) => w.id === drag.id)
+      if (!fw) return
+      const other = drag.end === "a" ? fw.b : fw.a
+      const sn = snapFreeEnd(scheme, world, other, view.scale, fw.id, e.altKey)
+      if (Math.hypot(sn.point.x - other.x, sn.point.y - other.y) < 0.05) return
+      setCursor(sn.point)
+      props.onMoveFreeWall?.(fw.id, { [drag.end]: sn.point })
       return
     }
     if (drag.type === "bend") {

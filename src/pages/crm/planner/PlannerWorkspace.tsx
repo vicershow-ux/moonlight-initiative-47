@@ -199,6 +199,7 @@ export function PlannerWorkspace({ state }: Props) {
           onAcceptDetected={(i) => state.detected[i] && state.acceptDetected([state.detected[i]])}
           onSplit={state.splitByLine}
           selectedFreeWallId={state.selectedFreeWallId}
+          onMoveFreeWall={state.updateFreeWall}
           onSelectFreeWall={(fid) => {
             state.setSelectedFreeWallId(fid)
             if (fid) {

@@ -1,6 +1,7 @@
 import { PlanFixture, PlanLink, PlanNode, PlanPoint, isEngLayer } from "@/lib/planner/types"
 import { PlanInteriorLayer } from "./PlanInteriorLayer"
 import { schemeWalls } from "@/lib/planner/walls"
+import { endSnapKind } from "@/lib/planner/freeWallSnap"
 import { PlaceAssist } from "@/lib/planner/placeAssist"
 import { FloatingDraft, TrackDraft } from "./FixtureDrafts"
 import { FurnitureGhost } from "./FurnitureGhost"
@@ -149,6 +150,22 @@ export function PlanCanvasLayers({
         selectedWallId={selectedWallId}
         selectedFreeWallId={props.selectedFreeWallId ?? null}
       />
+
+      {layer === "plan" && props.selectedFreeWallId && (() => {
+        const fw = (scheme.freeWalls || []).find((w) => w.id === props.selectedFreeWallId)
+        if (!fw) return null
+        return [fw.a, fw.b].map((p, i) => {
+          const s = toScreen(p)
+          const kind = endSnapKind(scheme, p, fw.id)
+          const stuck = kind !== null
+          return (
+            <g key={`fwh-${i}`} style={{ cursor: "grab" }}>
+              <circle cx={s.x} cy={s.y} r={8} fill={stuck ? "#22c55e" : "#161616"} stroke="#D4AF37" strokeWidth={2.5} />
+              {stuck && <circle cx={s.x} cy={s.y} r={13} fill="none" stroke="#22c55e" strokeWidth={1.5} opacity={0.6} />}
+            </g>
+          )
+        })
+      })()}
 
       {layer === "plan" && (
         <PlanDimensionsLayer

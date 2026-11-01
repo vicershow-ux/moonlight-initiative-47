@@ -76,6 +76,7 @@ export interface PlanCanvasProps {
   onSplit?: (cut: PlanPoint[]) => boolean
   selectedFreeWallId?: string | null
   onSelectFreeWall?: (id: string | null) => void
+  onMoveFreeWall?: (id: string, patch: { a?: PlanPoint; b?: PlanPoint }) => void
 }
 
 /** Что сейчас тащат мышью на холсте */
@@ -88,4 +89,5 @@ export type PlanDrag =
   | { type: "furniture"; id: string; grab: PlanPoint; x: number; y: number }
   | { type: "heating"; id: string; grab: PlanPoint; points: PlanPoint[] }
   | { type: "heatingVertex"; id: string; index: number }
+  | { type: "freeEnd"; id: string; end: "a" | "b" }
   | null

@@ -85,7 +85,7 @@ export function FreeWallCard({ wall, onUpdate, onDelete, onClose }: Props) {
           </div>
         </div>
         <div className="text-[11px] text-white/40">
-          Стена не делит помещение — подходит для ниши, короба или продолжения стены. Удалить — клавиша Delete.
+          Концы тяните мышью: у угла или стены комнаты конец прилипает к ней (зелёная метка), Alt — без прилипания. Стена не делит помещение. Удалить — клавиша Delete.
         </div>
       </div>
     </div>
