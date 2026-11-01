@@ -90,7 +90,7 @@ export function PlanCanvas(props: PlanCanvasProps) {
         className="touch-none rounded-xl bg-[#141414]"
         style={{
           cursor:
-            tool === "draw" || tool === "node" || tool === "link" || tool === "track" || tool === "floating" || tool === "furniture" || tool === "heating" || tool === "calibrate"
+            tool === "draw" || tool === "node" || tool === "link" || tool === "track" || tool === "floating" || tool === "furniture" || tool === "heating" || tool === "calibrate" || tool === "split"
               ? "crosshair"
               : drag
                 ? "grabbing"

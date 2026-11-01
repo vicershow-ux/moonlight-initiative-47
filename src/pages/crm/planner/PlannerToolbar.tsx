@@ -14,6 +14,7 @@ const TOOLS: { key: PlanTool; label: string; icon: string }[] = [
   { key: "window", label: "Окно", icon: "RectangleHorizontal" },
   { key: "door", label: "Дверь", icon: "DoorOpen" },
   { key: "arch", label: "Проём", icon: "Frame" },
+  { key: "split", label: "Перегородка", icon: "SquareSplitHorizontal" },
 ]
 
 const ENGINEER_TOOLS: { key: PlanTool; label: string; icon: string }[] = [
@@ -93,7 +94,7 @@ export function PlannerToolbar({
             key={t.key}
             onClick={() => {
               setTool(t.key)
-              if (t.key !== "draw") setDraft([])
+              if (t.key !== "draw" || tool === "split") setDraft([])
               if (t.key !== "link") setLinkFromId(null)
             }}
             className={`flex min-h-[42px] items-center gap-2 rounded-lg px-3 text-sm transition-colors ${
@@ -115,7 +116,7 @@ export function PlannerToolbar({
               <Icon name="Undo2" size={16} />
               Отменить точку
             </button>
-            {draft.length >= 3 && (
+            {draft.length >= 3 && tool !== "split" && (
               <button className={goldBtn} onClick={() => finishRoom(draft)}>
                 <Icon name="Check" size={16} />
                 Замкнуть

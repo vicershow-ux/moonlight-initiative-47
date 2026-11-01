@@ -151,7 +151,7 @@ export function simplify(pts: PlanPoint[], eps: number): PlanPoint[] {
  */
 export async function detectRooms(u: PlanUnderlay, existing: PlanPoint[][] = []): Promise<DetectedRoom[]> {
   const img = await loadImage(u.url)
-  const k = Math.min(1, 1100 / Math.max(img.width, img.height))
+  const k = Math.min(1, 2400 / Math.max(img.width, img.height))
   const W = Math.round(img.width * k)
   const H = Math.round(img.height * k)
   const c = document.createElement("canvas")
@@ -171,11 +171,15 @@ export async function detectRooms(u: PlanUnderlay, existing: PlanPoint[][] = [])
 }
 
 /** Распознавание по полутоновой картинке W×H, растянутой на подложку u */
-export function detectFromGray(gray: Float32Array, W: number, H: number, u: PlanUnderlay, existing: PlanPoint[][] = []): DetectedRoom[] {
+export function detectFromGray(gray: Float32Array, W: number, H: number, u: PlanUnderlay, existing: PlanPoint[][] = [], bridgeM = 0.5): DetectedRoom[] {
   const pxPerM = W / u.w
 
   // Тёмное относительно окрестности ~1 м — так не мешают тени и неровный свет на фото
   const mean = integral(gray, W, H)
+  // Порог под контраст фото: бледная ксерокопия и чёткий скан
+  const sorted = Float32Array.from(gray).sort()
+  const span = sorted[Math.floor(sorted.length * 0.97)] - sorted[Math.floor(sorted.length * 0.02)]
+  const thr = Math.min(28, Math.max(8, span * 0.16))
   const R = Math.max(8, Math.round(pxPerM * 0.5))
   const dark = new Uint8Array(W * H)
   for (let y = 0; y < H; y++)
@@ -185,7 +189,7 @@ export function detectFromGray(gray: Float32Array, W: number, H: number, u: Plan
       const y0 = Math.max(y - R, 0)
       const y1 = Math.min(y + R, H - 1)
       const m = mean(x0, y0, x1, y1) / ((x1 - x0 + 1) * (y1 - y0 + 1))
-      dark[y * W + x] = gray[y * W + x] < m - 28 ? 1 : 0
+      dark[y * W + x] = gray[y * W + x] < m - thr ? 1 : 0
     }
 
   // Стены — только длинные прямые линии: надписи, цифры и значки короче и в стены не попадают
@@ -219,7 +223,7 @@ export function detectFromGray(gray: Float32Array, W: number, H: number, u: Plan
   runs(H, W, (x, y) => y * W + x)
 
   // Дверь до ~1 м закрываем, продлевая стены вдоль их направления, — комнаты при этом не сужаются
-  const r = Math.max(2, Math.round(pxPerM * 0.5))
+  const r = Math.max(2, Math.round(pxPerM * bridgeM))
   const wall = new Uint8Array(lines)
   const bridge = (len: number, cnt: number, at: (i: number, j: number) => number, thick: (i: number, j: number) => boolean) => {
     for (let i = 0; i < cnt; i++) {

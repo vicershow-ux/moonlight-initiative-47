@@ -86,8 +86,8 @@ export function PlanAssistLayer({ assist, toScreen }: { assist: DrawAssist; toSc
 export function PlanDraftLayer({ draft, tool, cursor, assist, toScreen }: DraftProps) {
   const draftScreen = draft.map(toScreen)
   // Контур помещения и контур зоны тёплого пола рисуются одинаково
-  const drawing = tool === "draw" || tool === "heating"
-  const color = tool === "heating" ? "#f97316" : "#D4AF37"
+  const drawing = tool === "draw" || tool === "heating" || tool === "split"
+  const color = tool === "heating" ? "#f97316" : tool === "split" ? "#38bdf8" : "#D4AF37"
   if (draftScreen.length === 0) return assist ? <PlanAssistLayer assist={assist} toScreen={toScreen} /> : null
 
   return (

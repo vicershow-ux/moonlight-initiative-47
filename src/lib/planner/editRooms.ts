@@ -1,6 +1,7 @@
 import type { PlanPoint, PlanRoom, PlanScheme, WallProps } from "./types"
 import { pointInPolygon, wallSegments } from "./geometry"
 import { dropCollinear, traceOutline } from "./detectRooms"
+import { glueRoom } from "./glueRooms"
 
 type Seg = { id: string; a: PlanPoint; b: PlanPoint; length: number }
 
@@ -72,7 +73,17 @@ function remap(scheme: PlanScheme, oldRooms: PlanRoom[], newRooms: PlanRoom[]): 
 }
 
 /** Объединение двух помещений в одно: перегородка между ними исчезает */
-export function mergeRooms(scheme: PlanScheme, keepId: string, otherId: string): PlanScheme | null {
+export function mergeRooms(scheme0: PlanScheme, keepId: string, otherId: string): PlanScheme | null {
+  // Между комнатами зазор толщиной стены — сначала сводим их на общую линию
+  let scheme = scheme0
+  {
+    const b0 = scheme0.rooms.find((r) => r.id === otherId)
+    const a0 = scheme0.rooms.find((r) => r.id === keepId)
+    if (a0 && b0) {
+      const g = glueRoom({ ...scheme0, rooms: [a0] }, b0)
+      if (g.glued) scheme = { ...scheme0, rooms: scheme0.rooms.map((r) => (r.id === keepId ? g.scheme.rooms[0] : r.id === otherId ? g.room : r)) }
+    }
+  }
   const A = scheme.rooms.find((r) => r.id === keepId)
   const B = scheme.rooms.find((r) => r.id === otherId)
   if (!A || !B) return null
@@ -183,12 +194,131 @@ export function roomBehindWall(scheme: PlanScheme, wallId: string): PlanRoom | n
   const uy = (seg.b.y - seg.a.y) / seg.length
   for (const t of [0.5, 0.3, 0.7]) {
     const m = { x: seg.a.x + (seg.b.x - seg.a.x) * t, y: seg.a.y + (seg.b.y - seg.a.y) * t }
-    for (const k of [1, -1]) {
-      const p = { x: m.x - uy * 0.05 * k, y: m.y + ux * 0.05 * k }
-      if (pointInPolygon(p, room.points)) continue
-      const other = scheme.rooms.find((r) => r.id !== room.id && pointInPolygon(p, r.points))
-      if (other) return other
-    }
+    // Соседа ищем и через толщину стены: распознанные комнаты стоят с зазором до 45 см
+    for (const off of [0.05, 0.15, 0.3, 0.45])
+      for (const k of [1, -1]) {
+        const p = { x: m.x - uy * off * k, y: m.y + ux * off * k }
+        const inSelf = { x: m.x - uy * 0.05 * k, y: m.y + ux * 0.05 * k }
+        if (pointInPolygon(inSelf, room.points)) continue
+        const other = scheme.rooms.find((r) => r.id !== room.id && pointInPolygon(p, r.points))
+        if (other) return other
+      }
   }
   return null
+}
+/** Ближайшая точка на стене любого помещения: помещение, стена, точка */
+export function pointOnRoomEdge(scheme: PlanScheme, p: PlanPoint, tol: number): { roomId: string; edge: number; point: PlanPoint } | null {
+  let best: { roomId: string; edge: number; point: PlanPoint; d: number } | null = null
+  for (const r of scheme.rooms) {
+    const n = r.points.length
+    for (let i = 0; i < n; i++) {
+      const a = r.points[i]
+      const b = r.points[(i + 1) % n]
+      const l2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2
+      if (l2 < 1e-9) continue
+      const t = Math.min(Math.max(((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / l2, 0), 1)
+      const q = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
+      const d = Math.hypot(q.x - p.x, q.y - p.y)
+      if (d < tol && (!best || d < best.d)) best = { roomId: r.id, edge: i, point: q, d }
+    }
+  }
+  return best ? { roomId: best.roomId, edge: best.edge, point: best.point } : null
+}
+
+/**
+ * Разрезать помещение перегородкой: линия от стены до стены (с изломами внутри).
+ * Получаются два помещения с общей стеной-перегородкой
+ */
+export function splitRoom(
+  scheme: PlanScheme,
+  roomId: string,
+  cut: PlanPoint[],
+  newId: string,
+  partition: WallProps = { material: "brick", thickness: 0.12 },
+): PlanScheme | null {
+  const room = scheme.rooms.find((r) => r.id === roomId)
+  if (!room || cut.length < 2) return null
+  const tol = 0.02
+  const s = pointOnRoomEdge({ ...scheme, rooms: [room] }, cut[0], tol)
+  const e = pointOnRoomEdge({ ...scheme, rooms: [room] }, cut[cut.length - 1], tol)
+  if (!s || !e) return null
+  const inner = cut.slice(1, -1)
+  if (inner.some((p) => !pointInPolygon(p, room.points))) return null
+  const P = room.points
+  const n = P.length
+  let i = s.edge
+  let j = e.edge
+  let sp = s.point
+  let ep = e.point
+  let mid = inner
+  // Обе точки на одной стене — разрез отсекает кусок только с изломами, порядок по ходу стены
+  if (i === j) {
+    if (!inner.length) return null
+    const a = P[i]
+    const da = Math.hypot(sp.x - a.x, sp.y - a.y)
+    const db = Math.hypot(ep.x - a.x, ep.y - a.y)
+    if (Math.abs(da - db) < 0.05) return null
+    if (da > db) {
+      ;[sp, ep] = [ep, sp]
+      mid = [...inner].reverse()
+    }
+    const cutPoly = [sp, ...mid, ep]
+    const rest: PlanPoint[] = [ep]
+    for (let k = 1; k <= n; k++) rest.push(P[(i + k) % n])
+    rest.push(sp, ...[...mid].reverse())
+    return finishSplit(scheme, room, rest, cutPoly, newId, partition)
+  }
+  const A: PlanPoint[] = [sp]
+  for (let k = (i + 1) % n; ; k = (k + 1) % n) {
+    A.push(P[k])
+    if (k === j) break
+  }
+  A.push(ep, ...[...mid].reverse())
+  const B: PlanPoint[] = [ep]
+  for (let k = (j + 1) % n; ; k = (k + 1) % n) {
+    B.push(P[k])
+    if (k === i) break
+  }
+  B.push(sp, ...mid)
+  return finishSplit(scheme, room, A, B, newId, partition)
+}
+
+function finishSplit(scheme: PlanScheme, room: PlanRoom, A: PlanPoint[], B: PlanPoint[], newId: string, partition: WallProps): PlanScheme | null {
+  const clean = (pts: PlanPoint[]) => dropCollinear(pts.filter((p, k) => Math.hypot(p.x - pts[(k + 1) % pts.length].x, p.y - pts[(k + 1) % pts.length].y) > 0.005), 0.004)
+  const a = clean(A)
+  const b = clean(B)
+  if (a.length < 3 || b.length < 3) return null
+  const area = (pts: PlanPoint[]) => Math.abs(pts.reduce((s, p, k) => s + p.x * pts[(k + 1) % pts.length].y - pts[(k + 1) % pts.length].x * p.y, 0)) / 2
+  if (area(a) < 0.2 || area(b) < 0.2) return null
+  // Большая часть остаётся прежним помещением (с отделкой и названием), меньшая — новое
+  const [big, small] = area(a) >= area(b) ? [a, b] : [b, a]
+  const keep: PlanRoom = { ...room, points: big, fixedWalls: [] }
+  const add: PlanRoom = { ...room, id: newId, name: `${room.name} (часть)`, points: small, fixedWalls: [] }
+  const next = remap(scheme, [room], [keep, add])
+  const rooms = [...next.rooms]
+  if (!rooms.some((r) => r.id === newId)) rooms.push(add)
+  // Стены, которых не было в старом контуре, — перегородка
+  const oldSegs = wallSegments(room)
+  const onOld = (p: PlanPoint, q: PlanPoint) =>
+    oldSegs.some((sg) => {
+      const m = { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 }
+      const r = along(sg, m)
+      return r.d < 0.01 && r.s > -0.01 && r.s < sg.length + 0.01
+    })
+  const walls = { ...(next.walls || {}) }
+  for (const r of [keep, add])
+    r.points.forEach((p, k) => {
+      const q = r.points[(k + 1) % r.points.length]
+      if (!onOld(p, q)) walls[`${r.id}:${k}`] = partition
+    })
+  const finishes = { ...(next.finishes || {}) }
+  if (finishes[room.id]) finishes[newId] = finishes[room.id]
+  return {
+    ...next,
+    rooms,
+    walls,
+    finishes,
+    nodes: (next.nodes || []).map((nd) => (nd.roomId === room.id && pointInPolygon(nd, small) ? { ...nd, roomId: newId } : nd)),
+    furniture: (next.furniture || []).map((f) => (f.roomId === room.id && pointInPolygon(f, small) ? { ...f, roomId: newId } : f)),
+  }
 }

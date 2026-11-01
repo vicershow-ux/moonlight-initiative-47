@@ -12,7 +12,7 @@ import {
   LibraryItem,
 } from "@/lib/planner/types"
 
-export type PlanTool = "select" | "draw" | "window" | "door" | "arch" | "node" | "link" | "track" | "floating" | "furniture" | "heating" | "calibrate"
+export type PlanTool = "select" | "draw" | "window" | "door" | "arch" | "node" | "link" | "track" | "floating" | "furniture" | "heating" | "calibrate" | "split"
 
 export interface PlanCanvasProps {
   scheme: PlanScheme
@@ -66,6 +66,8 @@ export interface PlanCanvasProps {
   /** Найденные по подложке контуры — щелчок добавляет помещение */
   detected?: PlanPoint[][]
   onAcceptDetected?: (pts: PlanPoint[]) => void
+  /** Перегородка нарисована: разрезать помещение по линии */
+  onSplit?: (cut: PlanPoint[]) => boolean
 }
 
 /** Что сейчас тащат мышью на холсте */

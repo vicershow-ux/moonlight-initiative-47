@@ -193,6 +193,7 @@ export function PlannerWorkspace({ state }: Props) {
           onCalibrateClick={state.calibrateClick}
           detected={state.detected}
           onAcceptDetected={(pts) => state.acceptDetected([pts])}
+          onSplit={state.splitByLine}
         />
       </div>
 

@@ -1,6 +1,6 @@
 import { squareUp } from "@/components/crm/planner/drawAssist"
 import { glueRoom } from "@/lib/planner/glueRooms"
-import { mergeRooms, removeRoomWall, roomBehindWall } from "@/lib/planner/editRooms"
+import { mergeRooms, removeRoomWall, roomBehindWall, splitRoom } from "@/lib/planner/editRooms"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { PlanTool } from "@/components/crm/planner/PlanCanvas"
 import { objectsApi, objectPlansApi, ObjectItem } from "@/lib/api"
@@ -222,12 +222,33 @@ export function usePlannerState(id: string | undefined) {
     touch()
   }
 
+  /** Разрезать помещение перегородкой; true — получилось */
+  const splitByLine = (cut: PlanPoint[]): boolean => {
+    const s0 = cut[0]
+    const s1 = cut[1]
+    const probe = { x: (s0.x + s1.x) / 2, y: (s0.y + s1.y) / 2 }
+    const candidates = scheme.rooms.filter((r) => pointInPolygon(probe, r.points) || cut.slice(1, -1).some((p) => pointInPolygon(p, r.points)))
+    for (const r of candidates) {
+      const newId = uid()
+      const next = splitRoom(scheme, r.id, cut, newId)
+      if (!next) continue
+      setScheme(applyMounts(next))
+      setSelectedRoomId(newId)
+      touch()
+      setMessage(`«${r.name}» разделено перегородкой 120 мм — переименуйте новое помещение и поправьте толщину стены при необходимости`)
+      return true
+    }
+    setError("Перегородка должна идти от стены до стены одного помещения")
+    setTimeout(() => setError(""), 3500)
+    return false
+  }
+
   /** Удалить стену: общая — помещения сливаются в одно, своя — соседние стены продлеваются */
   const deleteWall = (wallId: string): string | null => {
     const other = roomBehindWall(scheme, wallId)
     const roomId = wallId.split(":")[0]
     const next = other ? mergeRooms(scheme, roomId, other.id) : removeRoomWall(scheme, wallId)
-    if (!next) return other ? "Не удалось объединить помещения" : "Эту стену нельзя убрать — без неё контур не замкнётся. Удалите помещение целиком"
+    if (!next) return other ? "Не удалось объединить помещения" : "Это наружная стена прямоугольного помещения — её можно только сдвинуть: потяните углы мышью или введите длину. Или удалите помещение целиком"
     setScheme(applyMounts(next))
     setSelectedRoomId(roomId)
     setSelectedOpeningId(null)
@@ -895,6 +916,7 @@ export function usePlannerState(id: string | undefined) {
   }
 
   return {
+    splitByLine,
     deleteWall,
     detected,
     setDetected,

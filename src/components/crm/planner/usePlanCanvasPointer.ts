@@ -13,6 +13,7 @@ import { hitFixture, shiftTrack } from "@/lib/planner/fixtures"
 import { hitFurniture, hitHeating, snapFurnitureToWall } from "@/lib/planner/interior"
 import { furnitureProps } from "@/lib/planner/types"
 import { hitWall } from "@/lib/planner/walls"
+import { pointOnRoomEdge } from "@/lib/planner/editRooms"
 import { PlaceAssist, placeAssist } from "@/lib/planner/placeAssist"
 import { SNAP_STEP, eventPoint } from "./usePlanView"
 import { DrawAssist, assistPoint } from "./drawAssist"
@@ -290,6 +291,22 @@ export function usePlanCanvasPointer({
       return
     }
 
+    // Перегородка: от стены до стены, изломы — щелчками внутри помещения
+    if (tool === "split") {
+      const p = drawAssist(world, e.altKey).point
+      const onEdge = !!pointOnRoomEdge(scheme, p, 0.02)
+      if (!draft.length) {
+        if (onEdge) onDraftChange([p])
+        return
+      }
+      if (onEdge && draft.length >= 1 && Math.hypot(p.x - draft[0].x, p.y - draft[0].y) > 0.05) {
+        if (props.onSplit?.([...draft, p])) onDraftChange([])
+        return
+      }
+      onDraftChange([...draft, p])
+      return
+    }
+
     if (tool === "draw") {
       const tp = typedPoint()
       if (tp) {
@@ -329,7 +346,7 @@ export function usePlanCanvasPointer({
   const handleMove = (e: React.MouseEvent) => {
     const { sx, sy } = eventPoint(e)
     const world = toWorld(sx, sy)
-    if ((tool === "draw" || tool === "heating") && !drag) {
+    if ((tool === "draw" || tool === "heating" || tool === "split") && !drag) {
       const a = drawAssist(world, e.altKey)
       setAssist(a)
       setCursor(a.point)
