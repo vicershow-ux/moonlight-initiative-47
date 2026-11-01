@@ -522,7 +522,16 @@ export function setWallLength(points: PlanPoint[], index: number, length: number
   if (n > 3 && ic !== ia) {
     const c = points[ic]
     const len2 = dist(b, c)
-    if (len2 > 1e-9) {
+    // Четырёхугольник, где противоположная стена другой длины (трапеция): двигаем только угол,
+    // чтобы противоположная стена осталась как есть и стены можно было выровнять по размеру
+    let keepOpposite = false
+    if (n === 4) {
+      const d = points[(index + 3) % n]
+      const opp = dist(c, d)
+      const parallel = opp > 1e-9 && Math.abs((ux * (c.x - d.x) + uy * (c.y - d.y)) / opp) > 0.98
+      keepOpposite = parallel && Math.abs(opp - cur) > 0.002
+    }
+    if (len2 > 1e-9 && !keepOpposite) {
       const dot = (ux * (c.x - b.x) + uy * (c.y - b.y)) / len2
       if (Math.abs(dot) < 0.02) next[ic] = { x: c.x + dx, y: c.y + dy }
     }
