@@ -163,12 +163,19 @@ export function usePlannerState(id: string | undefined) {
         notes: "",
       }
       let glued = 0
+      let welded = 0
       setScheme((s) => {
         const g = glueRoom(s, room)
         glued = g.glued
+        welded = g.welded
         return applyMounts({ ...g.scheme, rooms: [...g.scheme.rooms, g.room] })
       })
-      setTimeout(() => glued > 0 && setMessage(glued === 1 ? "Помещение прилипло к соседнему — стена между ними общая" : `Помещение прилипло к соседним — общих стен: ${glued}`), 0)
+      setTimeout(() => {
+        const parts: string[] = []
+        if (glued > 0) parts.push(glued === 1 ? "стена с соседним помещением общая" : `общих стен: ${glued}`)
+        if (welded > 0) parts.push(`углов состыковано с соседями: ${welded}`)
+        if (parts.length) setMessage(`Помещение прилипло к соседним — ${parts.join(", ")}`)
+      }, 0)
       setDraft([])
       setSelectedRoomId(room.id)
       setSelectedOpeningId(null)

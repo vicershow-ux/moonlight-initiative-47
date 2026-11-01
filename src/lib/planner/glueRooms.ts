@@ -15,7 +15,7 @@ const centroid = (pts: PlanPoint[]) => ({
  * параллельно стене соседней на расстоянии толщины перегородки — это одна общая стена.
  * Контуры обеих комнат сводятся на её ось, толщина берётся из зазора на подложке
  */
-export function glueRoom(scheme: PlanScheme, room: PlanRoom): { scheme: PlanScheme; room: PlanRoom; glued: number } {
+export function glueRoom(scheme: PlanScheme, room: PlanRoom): { scheme: PlanScheme; room: PlanRoom; glued: number; welded: number } {
   const pts = room.points.map((p) => ({ ...p }))
   const n = pts.length
   const others = scheme.rooms.map((r) => ({ ...r, points: r.points.map((p) => ({ ...p })) }))
@@ -87,6 +87,84 @@ export function glueRoom(scheme: PlanScheme, room: PlanRoom): { scheme: PlanSche
     }
   }
 
+  const welded = weldCorners(pts, others)
   const next = { ...room, points: pts }
-  return { scheme: { ...scheme, rooms: others, walls }, room: next, glued }
+  return { scheme: { ...scheme, rooms: others, walls }, room: next, glued, welded }
+}
+
+/** Угол ближе этого к углу соседа — сводим в одну точку, м */
+const WELD_CORNER = 0.15
+/** Угол ближе этого к стене соседа — ставим ровно на стену, м */
+const WELD_EDGE = 0.08
+
+/**
+ * Сварка углов: угол новой комнаты рядом с углом соседа встаёт точно в него,
+ * рядом со стеной соседа — на её линию. Соседние углы двигаются вместе,
+ * чтобы ровные стены остались ровными. Меняет pts на месте, возвращает число сваренных углов
+ */
+function weldCorners(pts: PlanPoint[], others: { points: PlanPoint[] }[]): number {
+  const n = pts.length
+  if (n < 3 || !others.length) return 0
+  const fixed = new Set<number>()
+  let count = 0
+  const corners = others.flatMap((r) => r.points)
+  const edges = others.flatMap((r) => r.points.map((p, j) => ({ a: p, b: r.points[(j + 1) % r.points.length] })))
+  const flat = (i: number, j: number, key: "x" | "y") => Math.abs(pts[i][key] - pts[j][key]) < 1e-4
+
+  const moveTo = (i: number, target: PlanPoint) => {
+    const dx = target.x - pts[i].x
+    const dy = target.y - pts[i].y
+    if (Math.hypot(dx, dy) < 1e-5) {
+      fixed.add(i)
+      return
+    }
+    const prev = (i - 1 + n) % n
+    const next = (i + 1) % n
+    // Ровная стена остаётся ровной: соседний угол сдвигаем по той же оси
+    for (const j of [prev, next]) {
+      if (fixed.has(j)) continue
+      const horiz = flat(i, j, "y")
+      const vert = flat(i, j, "x")
+      if (horiz && Math.abs(dy) > 1e-5) pts[j] = { ...pts[j], y: pts[j].y + dy }
+      if (vert && Math.abs(dx) > 1e-5) pts[j] = { ...pts[j], x: pts[j].x + dx }
+    }
+    pts[i] = { ...target }
+    fixed.add(i)
+    count++
+  }
+
+  // Сначала углы к углам — ближайшие пары первыми
+  const pairs: { i: number; c: PlanPoint; d: number }[] = []
+  for (let i = 0; i < n; i++)
+    for (const c of corners) {
+      const d = Math.hypot(c.x - pts[i].x, c.y - pts[i].y)
+      if (d < WELD_CORNER) pairs.push({ i, c, d })
+    }
+  pairs.sort((a, b) => a.d - b.d)
+  const usedCorner = new Set<PlanPoint>()
+  for (const pr of pairs) {
+    if (fixed.has(pr.i) || usedCorner.has(pr.c)) continue
+    // Повторная проверка: точка могла сдвинуться вместе с соседом
+    if (Math.hypot(pr.c.x - pts[pr.i].x, pr.c.y - pts[pr.i].y) > WELD_CORNER) continue
+    usedCorner.add(pr.c)
+    moveTo(pr.i, pr.c)
+  }
+
+  // Затем оставшиеся углы — на стены соседей (Т-образные примыкания)
+  for (let i = 0; i < n; i++) {
+    if (fixed.has(i)) continue
+    const p = pts[i]
+    let best: { q: PlanPoint; d: number } | null = null
+    for (const e of edges) {
+      const l2 = (e.b.x - e.a.x) ** 2 + (e.b.y - e.a.y) ** 2
+      if (l2 < 1e-6) continue
+      const t = ((p.x - e.a.x) * (e.b.x - e.a.x) + (p.y - e.a.y) * (e.b.y - e.a.y)) / l2
+      if (t <= 0.001 || t >= 0.999) continue
+      const q = { x: e.a.x + (e.b.x - e.a.x) * t, y: e.a.y + (e.b.y - e.a.y) * t }
+      const d = Math.hypot(q.x - p.x, q.y - p.y)
+      if (d > 1e-5 && d < WELD_EDGE && (!best || d < best.d)) best = { q, d }
+    }
+    if (best) moveTo(i, { x: Math.round(best.q.x * 10000) / 10000, y: Math.round(best.q.y * 10000) / 10000 })
+  }
+  return count
 }
