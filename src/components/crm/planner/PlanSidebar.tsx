@@ -1,6 +1,6 @@
 import Icon from "@/components/ui/icon"
 import { DeleteButton } from "@/components/ui/delete-button"
-import { fmtNum, fromMm, roomMetrics, toMm } from "@/lib/planner/geometry"
+import { fmtNum, fromMm, roomMetrics, sharedOpenings, toMm } from "@/lib/planner/geometry"
 import { RoomWallsEditor } from "./RoomWallsEditor"
 import { SelectedWallCard } from "./SelectedWallCard"
 import { WallElevationsDialog } from "./WallElevationsDialog"
@@ -50,7 +50,7 @@ export function PlanSidebar({
   selectedWallId = null,
   onSelectWall,
 }: Props) {
-  const metrics = selectedRoom ? roomMetrics(selectedRoom, scheme.openings) : null
+  const metrics = selectedRoom ? roomMetrics(selectedRoom, sharedOpenings(scheme)) : null
   const [elev, setElev] = useState<{ roomId: string; wallId: string | null } | null>(null)
 
   return (
@@ -325,7 +325,7 @@ export function PlanSidebar({
         ) : (
           <div className="space-y-1.5">
             {scheme.rooms.map((room) => {
-              const m = roomMetrics(room, scheme.openings)
+              const m = roomMetrics(room, sharedOpenings(scheme))
               const active = selectedRoom?.id === room.id
               return (
                 <button

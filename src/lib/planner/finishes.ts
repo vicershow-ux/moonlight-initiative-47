@@ -9,7 +9,7 @@ import {
   roomFinish,
   wallFinishOf,
 } from "./types"
-import { openingArea, polygonArea, polygonPerimeter, wallSegments } from "./geometry"
+import { openingArea, polygonArea, polygonPerimeter, sharedOpenings, wallSegments } from "./geometry"
 
 export interface FinishCalc {
   room: PlanRoom
@@ -76,7 +76,7 @@ export function finishCalc(scheme: PlanScheme, room: PlanRoom): FinishCalc {
   const f = roomFinish(scheme, room.id)
   const segs = wallSegments(room)
   const ids = new Set(segs.map((s) => s.id))
-  const ops = scheme.openings.filter((o) => ids.has(o.wallId))
+  const ops = sharedOpenings(scheme).filter((o) => ids.has(o.wallId))
   const floorArea = Math.abs(polygonArea(room.points))
   const perimeter = room.points.length > 2 ? polygonPerimeter(room.points) : 0
   const height = room.height || scheme.defaultHeight

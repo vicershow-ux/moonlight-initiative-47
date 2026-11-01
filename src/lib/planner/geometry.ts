@@ -52,6 +52,56 @@ export function openingArea(o: PlanOpening): number {
   return Math.max(o.width, 0) * Math.max(o.height, 0)
 }
 
+const sharedCache = new WeakMap<PlanScheme, PlanOpening[]>()
+
+/**
+ * Проёмы с учётом общих стен: дверь на перегородке между комнатами принадлежит обеим.
+ * Для стены соседа на той же линии добавляется копия проёма с пересчитанным отступом.
+ * id копии — «исходный@стена», исходный проём в плане один
+ */
+export function sharedOpenings(scheme: PlanScheme): PlanOpening[] {
+  const hit = sharedCache.get(scheme)
+  if (hit) return hit
+  const segs = scheme.rooms.flatMap((r) => wallSegments(r).map((s) => ({ ...s, roomId: r.id })))
+  const byId = new Map(segs.map((s) => [s.id, s]))
+  const out: PlanOpening[] = [...scheme.openings]
+  for (const o of scheme.openings) {
+    const w = byId.get(o.wallId)
+    if (!w || w.length < 1e-6) continue
+    const ux = (w.b.x - w.a.x) / w.length
+    const uy = (w.b.y - w.a.y) / w.length
+    const start = Math.min(Math.max(o.offset, 0), Math.max(w.length - o.width, 0))
+    const p0 = { x: w.a.x + ux * start, y: w.a.y + uy * start }
+    const p1 = { x: w.a.x + ux * (start + o.width), y: w.a.y + uy * (start + o.width) }
+    for (const t of segs) {
+      if (t.roomId === w.roomId || t.length < 1e-6) continue
+      const tx = (t.b.x - t.a.x) / t.length
+      const ty = (t.b.y - t.a.y) / t.length
+      if (Math.abs(ux * ty - uy * tx) > 1e-3) continue
+      if (Math.abs((p0.x - t.a.x) * ty - (p0.y - t.a.y) * tx) > 0.03) continue
+      const s0 = (p0.x - t.a.x) * tx + (p0.y - t.a.y) * ty
+      const s1 = (p1.x - t.a.x) * tx + (p1.y - t.a.y) * ty
+      const mid = (s0 + s1) / 2
+      if (mid < 0 || mid > t.length) continue
+      // Направление соседней стены обратное — петли зеркалятся, открывание смотрит в другую сторону
+      const flip = ux * tx + uy * ty < 0
+      out.push({
+        ...o,
+        id: `${o.id}@${t.id}`,
+        wallId: t.id,
+        offset: Math.max(Math.min(s0, s1), 0),
+        hinge: o.hinge ? (flip ? (o.hinge === "start" ? "end" : "start") : o.hinge) : o.hinge,
+        swing: o.swing ? (o.swing === "in" ? "out" : "in") : o.swing,
+      })
+    }
+  }
+  sharedCache.set(scheme, out)
+  return out
+}
+
+/** Исходный id проёма (у копии на общей стене — до «@») */
+export const baseOpeningId = (id: string) => id.split("@")[0]
+
 export function roomMetrics(room: PlanRoom, openings: PlanOpening[]): RoomMetrics {
   const segments = wallSegments(room)
   const wallIds = new Set(segments.map((s) => s.id))
@@ -83,7 +133,8 @@ export function schemeMetrics(scheme: PlanScheme): {
   rooms: RoomMetrics[]
   totals: PlanTotals
 } {
-  const rooms = scheme.rooms.map((r) => roomMetrics(r, scheme.openings))
+  const ops = sharedOpenings(scheme)
+  const rooms = scheme.rooms.map((r) => roomMetrics(r, ops))
 
   const totals = rooms.reduce<PlanTotals>(
     (acc, m) => ({
@@ -93,8 +144,8 @@ export function schemeMetrics(scheme: PlanScheme): {
       wallNet: acc.wallNet + m.wallAreaNet,
       perimeter: acc.perimeter + m.perimeter,
       openingsArea: acc.openingsArea + m.openingsArea,
-      windows: acc.windows + m.windows,
-      doors: acc.doors + m.doors,
+      windows: acc.windows,
+      doors: acc.doors,
       rooms: acc.rooms + 1,
     }),
     {
@@ -110,6 +161,9 @@ export function schemeMetrics(scheme: PlanScheme): {
     },
   )
 
+  // Проём на общей стене считается в площади стен обеих комнат, но в штуках — один раз
+  totals.windows = scheme.openings.filter((o) => o.kind === "window").length
+  totals.doors = scheme.openings.filter((o) => o.kind !== "window").length
   totals.floor = round2(totals.floor)
   totals.ceiling = round2(totals.ceiling)
   totals.wall = round2(totals.wall)

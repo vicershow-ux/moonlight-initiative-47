@@ -5,6 +5,7 @@ import {
   polygonArea,
   polygonCentroid,
   wallSegments,
+  sharedOpenings,
 } from "@/lib/planner/geometry"
 import { PlanLayer, PlanOpening, PlanScheme, WALL_MATERIALS, WallMaterial } from "@/lib/planner/types"
 import { hatchPattern } from "@/lib/planner/wallHatch"
@@ -222,7 +223,7 @@ export function PlanRoomsLayer({
         {/* Стены в толщину, цвет — по материалу */}
         {walls.draw.map((w) => {
           const sel = w.id === selectedWallId
-          return wallPieces(w, scheme.openings).map((pc, i) => (
+          return wallPieces(w, sharedOpenings(scheme)).map((pc, i) => (
             <polygon
               key={`${w.id}-${i}`}
               points={poly(pc)}

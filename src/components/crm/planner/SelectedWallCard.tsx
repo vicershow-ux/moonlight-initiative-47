@@ -1,5 +1,5 @@
 import Icon from "@/components/ui/icon"
-import { fmtNum, fromMm, setWallLengthKeep, toMm } from "@/lib/planner/geometry"
+import { fmtNum, fromMm, setWallLengthKeep, sharedOpenings, toMm } from "@/lib/planner/geometry"
 import {
   OPENING_PRESETS,
   PlanRoom,
@@ -60,7 +60,7 @@ export function SelectedWallCard({
     for (const t of twins) onUpdateWall(t.id, patch)
   }
 
-  const openings = scheme.openings.filter((o) => o.wallId === w.id)
+  const openings = sharedOpenings(scheme).filter((o) => o.wallId === w.id)
   const thicknesses = WALL_MATERIALS[w.material].thicknesses
 
   return (

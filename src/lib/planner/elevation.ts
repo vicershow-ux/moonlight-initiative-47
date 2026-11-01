@@ -18,7 +18,7 @@ import {
 import { FinishPattern, paintPattern, svgPatternDef, tilePattern, wallpaperPattern } from "./finishTextures"
 import { furnitureCorners } from "./interior"
 import { WallInfo, mountPosition, openingSpan, roomWalls } from "./walls"
-import { toMm } from "./geometry"
+import { sharedOpenings, toMm } from "./geometry"
 
 /** Что показываем на развёртке: всё, что крепится на стену на слое электрики */
 const ELEVATION_KINDS = new Set<NodeKind>([
@@ -232,7 +232,7 @@ export function wallElevation(scheme: PlanScheme, wall: WallInfo): WallElevation
   const rf = roomFinish(scheme, room.id)
   const walls = roomWalls(room, scheme)
 
-  const openings: ElevOpening[] = scheme.openings
+  const openings: ElevOpening[] = sharedOpenings(scheme)
     .filter((o) => o.wallId === wall.id)
     .map((o) => {
       const sp = openingSpan(o, wall)

@@ -1,4 +1,4 @@
-import { dist, pointInPolygon, roomDimensions, wallSegments } from "./geometry"
+import { dist, pointInPolygon, roomDimensions, sharedOpenings, wallSegments } from "./geometry"
 import {
   DEFAULT_WALL,
   NodeKind,
@@ -173,7 +173,7 @@ export function hitWall(scheme: PlanScheme, p: PlanPoint, tolerance = 0): WallIn
     if (s < -tolerance || s > w.length + tolerance) continue
     const off = across < 0 ? -across : across > w.thickness ? across - w.thickness : 0
     if (off > tolerance) continue
-    const inOpening = scheme.openings.some((o) => {
+    const inOpening = sharedOpenings(scheme).some((o) => {
       if (o.wallId !== w.id) return false
       const sp = openingSpan(o, w)
       return s > sp.start && s < sp.end

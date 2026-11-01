@@ -15,6 +15,7 @@ import {
 import { rightAligned } from "./elevation"
 import { FinishPattern, floorFinishPattern, paintPattern, shade, tilePattern, wallpaperPattern } from "./finishTextures"
 import { roomWalls, openingSpan } from "./walls"
+import { sharedOpenings } from "./geometry"
 import { floorLayout } from "./floorLayout"
 
 /** Палитра мебели: дерево, ткань, белая техника и сантехника */
@@ -527,7 +528,7 @@ export function buildRoomScene(scheme: PlanScheme, room: PlanRoom): RoomScene {
     const len = w.length
     const T = 0.06
     const wallShape = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(len, 0), new THREE.Vector2(len, height), new THREE.Vector2(0, height)])
-    const ops = scheme.openings.filter((o) => o.wallId === w.id)
+    const ops = sharedOpenings(scheme).filter((o) => o.wallId === w.id)
     for (const o of ops) {
       const sp = openingSpan(o, w)
       const bottom = o.kind === "window" ? o.sill || 0 : 0

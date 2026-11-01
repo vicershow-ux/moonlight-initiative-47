@@ -13,6 +13,7 @@ import {
   schemeBounds,
   schemeMetrics,
   wallSegments,
+  sharedOpenings,
 } from "@/lib/planner/geometry"
 import {
   NODE_PRESETS,
@@ -231,7 +232,7 @@ export function schemeToSvg(
   const pts = (arr: { x: number; y: number }[]) => arr.map((p) => `${sx(p.x)},${sy(p.y)}`).join(" ")
   for (const w of wallsAll.draw) {
     hatchIds.add(w.material)
-    for (const pc of wallPieces(w, scheme.openings)) {
+    for (const pc of wallPieces(w, sharedOpenings(scheme))) {
       parts.push(
         `<polygon points="${pts(pc)}" fill="${isEng ? "#ececec" : `url(#hatch-${w.material})`}" stroke="${wallColor}" stroke-width="${isEng ? 0.8 : 1.3}" stroke-linejoin="miter"/>`,
       )
@@ -817,7 +818,7 @@ export function floorPlanSection(scheme: PlanScheme, meta: PlanPdfMeta): string 
       // Пороги в дверных проёмах
       let doors = 0
       for (const seg of wallSegments(room)) {
-        for (const op of scheme.openings.filter((x) => x.wallId === seg.id && x.kind !== "window")) {
+        for (const op of sharedOpenings(scheme).filter((x) => x.wallId === seg.id && x.kind !== "window")) {
           const sp = openingSpan(op, seg)
           const ux = (seg.b.x - seg.a.x) / (seg.length || 1)
           const uy = (seg.b.y - seg.a.y) / (seg.length || 1)
