@@ -1,5 +1,6 @@
 import { squareUp } from "@/components/crm/planner/drawAssist"
 import { glueRoom } from "@/lib/planner/glueRooms"
+import { assembleRooms } from "@/lib/planner/assembleRooms"
 import { guessRoomNames, nameForType, type NamedContour } from "@/lib/planner/roomNames"
 import { mergeRooms, removeRoomWall, roomBehindWall, scaleRoomToArea, splitRoom, stickiestCorner } from "@/lib/planner/editRooms"
 import { useCallback, useEffect, useMemo, useState } from "react"
@@ -652,26 +653,27 @@ export function usePlannerState(id: string | undefined) {
   const acceptDetected = (list: NamedContour[]) => {
     if (!list.length) return
     setScheme((s) => {
-      let cur = s
-      list.forEach((d) => {
-        const room: PlanRoom = {
-          id: uid(),
-          name: d.name,
-          room_type: d.room_type,
-          points: d.points,
-          height: s.defaultHeight,
-          notes: "",
-          planNo: d.planNo,
-          planArea: d.planArea,
-        }
-        const g = glueRoom(cur, room)
-        // Найденные окна и проёмы ставим на стены нового помещения — номер стены при склейке не меняется
-        const ops: PlanOpening[] = (d.openings || []).map((o) => {
+      // Все выбранные контуры собираем вместе: грани через зазор перегородки сводятся
+      // на общую ось, стена между комнатами получается одной, а не двумя отрезками
+      const rooms: PlanRoom[] = list.map((d) => ({
+        id: uid(),
+        name: d.name,
+        room_type: d.room_type,
+        points: d.points,
+        height: s.defaultHeight,
+        notes: "",
+        planNo: d.planNo,
+        planArea: d.planArea,
+      }))
+      const asm = assembleRooms(s, rooms)
+      // Найденные окна и проёмы ставим на стены новых помещений — номера стен при сборке не меняются
+      const ops: PlanOpening[] = list.flatMap((d, k) =>
+        (d.openings || []).map((o) => {
           const p = OPENING_PRESETS[o.kind]
-          return { id: uid(), kind: o.kind, wallId: `${room.id}:${o.edge}`, offset: o.offset, width: o.width, height: p.height, sill: p.sill }
-        })
-        cur = { ...g.scheme, rooms: [...g.scheme.rooms, g.room], openings: [...g.scheme.openings, ...ops] }
-      })
+          return { id: uid(), kind: o.kind, wallId: `${rooms[k].id}:${o.edge}`, offset: o.offset, width: o.width, height: p.height, sill: p.sill }
+        }),
+      )
+      const cur = { ...asm.scheme, rooms: [...asm.scheme.rooms, ...asm.rooms], openings: [...asm.scheme.openings, ...ops] }
       return applyMounts(cur)
     })
     setDetected((d) => d.filter((x) => !list.includes(x)))
