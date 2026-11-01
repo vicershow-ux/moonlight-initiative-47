@@ -150,6 +150,12 @@ export function simplify(pts: PlanPoint[], eps: number): PlanPoint[] {
  * Контур возвращается по внутренней грани стен, в метрах плана
  */
 export async function detectRooms(u: PlanUnderlay, existing: PlanPoint[][] = []): Promise<DetectedRoom[]> {
+  const g = await loadGray(u)
+  return detectFromGray(g.gray, g.W, g.H, u, existing)
+}
+
+/** Фото подложки в оттенках серого (до 2400 px по длинной стороне) */
+export async function loadGray(u: PlanUnderlay): Promise<{ gray: Float32Array; W: number; H: number }> {
   const img = await loadImage(u.url)
   const k = Math.min(1, 2400 / Math.max(img.width, img.height))
   const W = Math.round(img.width * k)
@@ -167,7 +173,7 @@ export async function detectRooms(u: PlanUnderlay, existing: PlanPoint[][] = [])
   }
   const gray = new Float32Array(W * H)
   for (let i = 0; i < W * H; i++) gray[i] = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2]
-  return detectFromGray(gray, W, H, u, existing)
+  return { gray, W, H }
 }
 
 /** Распознавание по полутоновой картинке W×H, растянутой на подложку u */

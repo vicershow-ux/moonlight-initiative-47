@@ -12,6 +12,7 @@ import { PlanCanvasProps } from "./planCanvasTypes"
 import { usePlanCanvasAssist } from "./usePlanCanvasAssist"
 import { usePlanCanvasPointer } from "./usePlanCanvasPointer"
 import { PlanCanvasLayers } from "./PlanCanvasLayers"
+import { DetectedOverlay } from "./DetectedOverlay"
 
 export type { PlanTool } from "./planCanvasTypes"
 
@@ -120,6 +121,16 @@ export function PlanCanvas(props: PlanCanvasProps) {
           typedPoint={typedPoint}
         />
       </svg>
+
+      {layer === "plan" && props.detected && props.detected.length > 0 && (
+        <DetectedOverlay
+          detected={props.detected}
+          toScreen={toScreen}
+          onType={(i, t) => props.onDetectedType?.(i, t)}
+          onAccept={(i) => props.onAcceptDetected?.(i)}
+          onDropOpening={(i, k) => props.onDropDetectedOpening?.(i, k)}
+        />
+      )}
 
       {tool === "draw" && draft.length > 0 && cursor && <TypedLengthHint cursor={cursor} typed={typed} toScreen={toScreen} />}
 

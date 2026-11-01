@@ -2,6 +2,7 @@ import Icon from "@/components/ui/icon"
 import { DeleteButton } from "@/components/ui/delete-button"
 import { fmtNum, fromMm, roomMetrics, sharedOpenings, toMm } from "@/lib/planner/geometry"
 import { RoomWallsEditor } from "./RoomWallsEditor"
+import { PlanAreaField } from "./PlanAreaField"
 import { SelectedWallCard } from "./SelectedWallCard"
 import { WallElevationsDialog } from "./WallElevationsDialog"
 import { squareUp } from "./drawAssist"
@@ -293,6 +294,8 @@ export function PlanSidebar({
                 />
               </div>
             </div>
+
+            <PlanAreaField room={selectedRoom} scheme={scheme} area={metrics.area} onUpdateRoom={onUpdateRoom} />
 
             {/* Длина, толщина и материал каждой стены. Соседняя стена под прямым углом
                 сдвигается вместе с концом, поэтому углы комнаты не ломаются */}

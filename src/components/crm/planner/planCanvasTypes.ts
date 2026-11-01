@@ -1,3 +1,4 @@
+import type { NamedContour } from "@/lib/planner/roomNames"
 import {
   NodeKind,
   PlanLayer,
@@ -64,8 +65,10 @@ export interface PlanCanvasProps {
   calibPts?: PlanPoint[]
   onCalibrateClick?: (p: PlanPoint) => void
   /** Найденные по подложке контуры — щелчок добавляет помещение */
-  detected?: { points: PlanPoint[]; name: string }[]
+  detected?: NamedContour[]
   onAcceptDetected?: (index: number) => void
+  onDetectedType?: (index: number, type: string) => void
+  onDropDetectedOpening?: (index: number, k: number) => void
   /** Перегородка нарисована: разрезать помещение по линии */
   onSplit?: (cut: PlanPoint[]) => boolean
 }

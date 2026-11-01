@@ -322,3 +322,33 @@ function finishSplit(scheme: PlanScheme, room: PlanRoom, A: PlanPoint[], B: Plan
     furniture: (next.furniture || []).map((f) => (f.roomId === room.id && pointInPolygon(f, small) ? { ...f, roomId: newId } : f)),
   }
 }
+
+/**
+ * Подогнать контур под площадь: все размеры умножаются на √(нужная/текущая).
+ * Неподвижным остаётся угол, ближайший к соседям, — комната не уезжает от общих стен
+ */
+export function scaleRoomToArea(room: PlanRoom, target: number, anchor?: PlanPoint): PlanPoint[] | null {
+  const pts = room.points
+  if (pts.length < 3 || !(target > 0)) return null
+  const cur = Math.abs(pts.reduce((s, p, k) => s + p.x * pts[(k + 1) % pts.length].y - pts[(k + 1) % pts.length].x * p.y, 0)) / 2
+  if (cur < 1e-6) return null
+  const k = Math.sqrt(target / cur)
+  const o = anchor || pts[0]
+  return pts.map((p) => ({ x: Math.round((o.x + (p.x - o.x) * k) * 1000) / 1000, y: Math.round((o.y + (p.y - o.y) * k) * 1000) / 1000 }))
+}
+
+/** Угол помещения, у которого больше всего общих стен с соседями — его держим на месте */
+export function stickiestCorner(scheme: PlanScheme, room: PlanRoom): PlanPoint {
+  let best = room.points[0]
+  let bestScore = -1
+  const n = room.points.length
+  room.points.forEach((p, i) => {
+    let score = 0
+    for (const w of [i, (i - 1 + n) % n]) if (roomBehindWall(scheme, `${room.id}:${w}`)) score++
+    if (score > bestScore) {
+      bestScore = score
+      best = p
+    }
+  })
+  return best
+}

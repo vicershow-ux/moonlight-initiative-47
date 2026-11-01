@@ -1,6 +1,6 @@
 import { squareUp } from "@/components/crm/planner/drawAssist"
 import { glueRoom } from "@/lib/planner/glueRooms"
-import { guessRoomNames, type NamedContour } from "@/lib/planner/roomNames"
+import { guessRoomNames, nameForType, type NamedContour } from "@/lib/planner/roomNames"
 import { mergeRooms, removeRoomWall, roomBehindWall, splitRoom } from "@/lib/planner/editRooms"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { PlanTool } from "@/components/crm/planner/PlanCanvas"
@@ -564,11 +564,44 @@ export function usePlannerState(id: string | undefined) {
     setDetecting(true)
     setError("")
     try {
-      const { detectRooms } = await import("@/lib/planner/detectRooms")
-      const found = await detectRooms(u, scheme.rooms.map((r) => r.points))
-      setDetected(guessRoomNames(found.map((f) => f.points), scheme.rooms.map((r) => r.name)))
+      const { loadGray, detectFromGray } = await import("@/lib/planner/detectRooms")
+      const { detectOpenings } = await import("@/lib/planner/detectOpenings")
+      const { gray, W, H } = await loadGray(u)
+      const found = detectFromGray(gray, W, H, u, scheme.rooms.map((r) => r.points))
+      const contours = found.map((f) => f.points)
+      const ops = detectOpenings(gray, W, H, u, contours)
+      const named = guessRoomNames(contours, scheme.rooms.map((r) => r.name)).map((c, i) => ({
+        ...c,
+        openings: ops.filter((o) => o.room === i).map(({ kind, edge, offset, width }) => ({ kind, edge, offset, width })),
+      }))
+      setDetected(named)
       setTool("select")
-      setMessage(found.length ? `Найдено помещений: ${found.length}. Щёлкните по контуру, чтобы добавить, или «Добавить все»` : "Помещения не найдены — обведите вручную инструментом «Стены»")
+      const nOps = ops.length
+      setMessage(
+        found.length
+          ? `Найдено помещений: ${found.length}${nOps ? `, окон и проёмов: ${nOps}` : ""}. Читаю номера и площади с плана…`
+          : "Помещения не найдены — обведите вручную инструментом «Стены»",
+      )
+      setDetecting(false)
+      if (!found.length) return
+      // Номера и площади читаем после показа контуров — это дольше
+      try {
+        const { readRoomLabels } = await import("@/lib/planner/readLabels")
+        const labels = await readRoomLabels(gray, W, H, (p) => ({ x: ((p.x - u.x) / u.w) * W, y: ((p.y - u.y) / u.h) * H }), contours)
+        const read = labels.filter((l) => l.planArea).length
+        setDetected((prev) =>
+          prev.map((d) => {
+            const i = contours.indexOf(d.points)
+            const l = i >= 0 ? labels[i] : undefined
+            return l ? { ...d, planNo: l.planNo, planArea: l.planArea } : d
+          }),
+        )
+        setMessage(
+          `Найдено помещений: ${found.length}${nOps ? `, окон и проёмов: ${nOps}` : ""}. С плана прочитано площадей: ${read}. Выберите тип у контура и щёлкните по нему, чтобы добавить`,
+        )
+      } catch {
+        setMessage(`Найдено помещений: ${found.length}. Подписи с плана прочитать не удалось — площадь можно ввести в карточке помещения`)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не удалось распознать план")
     } finally {
@@ -581,15 +614,42 @@ export function usePlannerState(id: string | undefined) {
     setScheme((s) => {
       let cur = s
       list.forEach((d) => {
-        const room: PlanRoom = { id: uid(), name: d.name, room_type: d.room_type, points: d.points, height: s.defaultHeight, notes: "" }
+        const room: PlanRoom = {
+          id: uid(),
+          name: d.name,
+          room_type: d.room_type,
+          points: d.points,
+          height: s.defaultHeight,
+          notes: "",
+          planNo: d.planNo,
+          planArea: d.planArea,
+        }
         const g = glueRoom(cur, room)
-        cur = { ...g.scheme, rooms: [...g.scheme.rooms, g.room] }
+        // Найденные окна и проёмы ставим на стены нового помещения — номер стены при склейке не меняется
+        const ops: PlanOpening[] = (d.openings || []).map((o) => {
+          const p = OPENING_PRESETS[o.kind]
+          return { id: uid(), kind: o.kind, wallId: `${room.id}:${o.edge}`, offset: o.offset, width: o.width, height: p.height, sill: p.sill }
+        })
+        cur = { ...g.scheme, rooms: [...g.scheme.rooms, g.room], openings: [...g.scheme.openings, ...ops] }
       })
       return applyMounts(cur)
     })
     setDetected((d) => d.filter((x) => !list.includes(x)))
     touch()
   }
+  /** Сменить тип найденного контура до добавления */
+  const setDetectedType = (index: number, type: string) => {
+    setDetected((prev) =>
+      prev.map((d, i) => {
+        if (i !== index) return d
+        const taken = [...scheme.rooms.map((r) => r.name), ...prev.filter((_, k) => k !== i).map((x) => x.name)]
+        return { ...d, room_type: type, name: nameForType(type, taken) }
+      }),
+    )
+  }
+  /** Убрать найденное окно/проём, пока контур не добавлен */
+  const dropDetectedOpening = (index: number, k: number) =>
+    setDetected((prev) => prev.map((d, i) => (i === index ? { ...d, openings: (d.openings || []).filter((_, j) => j !== k) } : d)))
 
   /** Подложка: фото плана, две точки для масштаба */
   const [calibPts, setCalibPts] = useState<PlanPoint[]>([])
@@ -917,6 +977,8 @@ export function usePlannerState(id: string | undefined) {
   }
 
   return {
+    setDetectedType,
+    dropDetectedOpening,
     splitByLine,
     deleteWall,
     detected,

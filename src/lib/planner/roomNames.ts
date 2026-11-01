@@ -4,6 +4,18 @@ export interface NamedContour {
   points: PlanPoint[]
   name: string
   room_type: string
+  /** Номер и площадь, прочитанные с плана */
+  planNo?: string
+  planArea?: number
+  /** Найденные на стенах контура окна и проёмы: номер стены, отступ и ширина, м */
+  openings?: { kind: "window" | "door" | "arch"; edge: number; offset: number; width: number }[]
+}
+
+/** Название для выбранного типа: с номером, если такой тип уже есть */
+export function nameForType(type: string, taken: string[]): string {
+  const base = type || "Помещение"
+  const n = taken.filter((t) => t.replace(/\s\d+$/, "") === base).length + 1
+  return n > 1 ? `${base} ${n}` : base
 }
 
 const area = (pts: PlanPoint[]) =>

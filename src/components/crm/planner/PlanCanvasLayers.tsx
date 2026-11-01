@@ -115,9 +115,27 @@ export function PlanCanvasLayers({
               strokeWidth={2}
               strokeDasharray="7 5"
             />
-            <text x={cx} y={cy} textAnchor="middle" fontSize={12} fontWeight={600} fill="#D4AF37" stroke="#161616" strokeWidth={3} paintOrder="stroke" pointerEvents="none">
-              {d.name}
-            </text>
+            {(d.openings || []).map((o, k) => {
+              const a = d.points[o.edge]
+              const b = d.points[(o.edge + 1) % d.points.length]
+              const L = Math.hypot(b.x - a.x, b.y - a.y) || 1
+              const p0 = toScreen({ x: a.x + ((b.x - a.x) / L) * o.offset, y: a.y + ((b.y - a.y) / L) * o.offset })
+              const p1 = toScreen({ x: a.x + ((b.x - a.x) / L) * (o.offset + o.width), y: a.y + ((b.y - a.y) / L) * (o.offset + o.width) })
+              return (
+                <line
+                  key={k}
+                  x1={p0.x}
+                  y1={p0.y}
+                  x2={p1.x}
+                  y2={p1.y}
+                  stroke={o.kind === "window" ? "#38bdf8" : "#f97316"}
+                  strokeWidth={6}
+                  strokeLinecap="round"
+                  opacity={0.85}
+                  pointerEvents="none"
+                />
+              )
+            })}
           </g>
         )
       })}

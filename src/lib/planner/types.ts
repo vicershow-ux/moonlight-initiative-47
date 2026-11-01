@@ -35,6 +35,10 @@ export interface PlanRoom {
   notes: string
   /** Номера стен, длину которых ввели вручную — при вводе других размеров они не меняются */
   fixedWalls?: number[]
+  /** Номер помещения на плане БТИ */
+  planNo?: string
+  /** Площадь по плану БТИ, м² — для сверки с нарисованным контуром */
+  planArea?: number
 }
 
 export type PlanLayer = "plan" | "interior" | "electric" | "plumbing"
