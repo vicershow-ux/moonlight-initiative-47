@@ -341,6 +341,10 @@ export function detectPass(gray: Float32Array, W: number, H: number, u: PlanUnde
       dark[y * W + x] = gray[y * W + x] < m - thr ? 1 : 0
     }
 
+  // Надписи, размеры и цифры — отдельные мелкие пятна, не связанные со стенами: убираем их целиком,
+  // иначе вертикальная подпись размера («3.10») или дробь площади режут комнату пополам
+  dropSmallBlobs(dark, W, H, Math.round(pxPerM * 1.0))
+
   // Стены — только длинные прямые линии: надписи, цифры и значки короче и в стены не попадают
   const minRun = Math.max(6, Math.round(pxPerM * 0.6))
   const gapPx = 2
@@ -470,6 +474,46 @@ export function detectPass(gray: Float32Array, W: number, H: number, u: PlanUnde
   alignRooms(out.map((r) => r.points), 0.12)
   for (const r of out) r.points = dropCollinear(r.points.map((p) => ({ x: Math.round(p.x * 100) / 100, y: Math.round(p.y * 100) / 100 })), 0.01)
   return out.filter((r) => r.points.length >= 3).sort((a, b) => b.area - a.area)
+  }
+}
+
+/** Удаляет связные тёмные пятна, которые по обеим осям меньше maxPx */
+export function dropSmallBlobs(mask: Uint8Array, W: number, H: number, maxPx: number) {
+  const seen = new Uint8Array(W * H)
+  const stack: number[] = []
+  const blob: number[] = []
+  for (let s = 0; s < W * H; s++) {
+    if (!mask[s] || seen[s]) continue
+    stack.length = 0
+    blob.length = 0
+    stack.push(s)
+    seen[s] = 1
+    let minX = W
+    let minY = H
+    let maxX = 0
+    let maxY = 0
+    while (stack.length) {
+      const i = stack.pop()!
+      blob.push(i)
+      const x = i % W
+      const y = (i / W) | 0
+      if (x < minX) minX = x
+      if (x > maxX) maxX = x
+      if (y < minY) minY = y
+      if (y > maxY) maxY = y
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx
+          const ny = y + dy
+          if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue
+          const j = ny * W + nx
+          if (mask[j] && !seen[j]) {
+            seen[j] = 1
+            stack.push(j)
+          }
+        }
+    }
+    if (maxX - minX < maxPx && maxY - minY < maxPx) for (const i of blob) mask[i] = 0
   }
 }
 
