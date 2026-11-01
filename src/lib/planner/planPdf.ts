@@ -33,6 +33,7 @@ import { CEILING_FINISHES, FLOOR_FINISHES, FURNITURE_PRESETS, HEATING_PRESETS, T
 import { PHASE_COLORS, SECTION_COLORS, WALL_MATERIALS, WallMaterial, sectionColor, sectionOf } from "@/lib/planner/types"
 import type { DrawingStamp } from "@/lib/planner/types"
 import { hatchPattern, materialSwatchImg, usedMaterials } from "@/lib/planner/wallHatch"
+import { floorLayout, FLOOR_DIRS, inwardNormal } from "./floorLayout"
 import { floorPattern, furnitureName, furnitureSvg, heatingLayoutSvg } from "@/lib/planner/interiorSvg"
 import { heatingCalc, heatingSupply, interiorWarnings, thermostatOf, thermostatZones, zoneLayout } from "@/lib/planner/interior"
 import { finishCalc, finishSummary } from "@/lib/planner/finishes"
@@ -168,7 +169,8 @@ export function schemeToSvg(
       if (f.floor === "none") continue
       const id = `pf-${room.id}`
       const isTile = f.floor === "tile" || f.floor === "porcelain"
-      interiorDefs.push(floorPattern(id, f.floor, scale, isTile ? floorTileOf(f).color : f.floorColor, undefined, isTile ? floorTileOf(f) : undefined, { x: sx(0), y: sy(0) }, f.floorMaterial))
+      const lay = floorLayout(room, f)
+      interiorDefs.push(floorPattern(id, f.floor, scale, isTile ? floorTileOf(f).color : f.floorColor, undefined, isTile ? floorTileOf(f) : undefined, { x: sx(lay.origin.x), y: sy(lay.origin.y) }, f.floorMaterial, lay.angleDeg))
       parts.push(`<polygon points="${room.points.map((p) => `${sx(p.x)},${sy(p.y)}`).join(" ")}" fill="url(#${id})" fill-opacity="0.9"/>`)
     }
     // Отделка стен полосой по внутренней грани, акцентные — толще и с номером стены
@@ -754,8 +756,9 @@ export function floorPlanSection(scheme: PlanScheme, meta: PlanPdfMeta): string 
       const isTile = f.floor === "tile" || f.floor === "porcelain"
       const tile = isTile ? floorTileOf(f) : undefined
       const pid = `fl-${room.id}`
-      const o = T({ x: 0, y: 0 })
-      const defs = floorPattern(pid, f.floor, k, tile ? tile.color : f.floorColor, undefined, tile, o, f.floorMaterial)
+      const lay = floorLayout(room, f)
+      const o = T(lay.origin)
+      const defs = floorPattern(pid, f.floor, k, tile ? tile.color : f.floorColor, undefined, tile, o, f.floorMaterial, lay.angleDeg)
       const svg: string[] = []
       svg.push(`<polygon points="${P(room.points)}" fill="url(#${pid})" stroke="#161616" stroke-width="2.2"/>`)
       // Швы своего материала: элементы реального размера, ряды со смещением на 1/3 — видно, как ляжет
@@ -772,13 +775,44 @@ export function floorPlanSection(scheme: PlanScheme, meta: PlanPdfMeta): string 
             return `<line x1="0" y1="${y.toFixed(2)}" x2="${ew.toFixed(2)}" y2="${y.toFixed(2)}"/><line x1="${off.toFixed(2)}" y1="${y.toFixed(2)}" x2="${off.toFixed(2)}" y2="${(y + eh).toFixed(2)}"/>`
           })
           .join("")
-        jointDefs = `<pattern id="${jid}" patternUnits="userSpaceOnUse" width="${ew.toFixed(2)}" height="${(eh * 3).toFixed(2)}" patternTransform="translate(${o.x.toFixed(1)} ${o.y.toFixed(1)})"><g stroke="#000" stroke-opacity="0.45" stroke-width="0.6">${rows}</g></pattern>`
+        jointDefs = `<pattern id="${jid}" patternUnits="userSpaceOnUse" width="${ew.toFixed(2)}" height="${(eh * 3).toFixed(2)}" patternTransform="translate(${o.x.toFixed(1)} ${o.y.toFixed(1)}) rotate(${lay.angleDeg.toFixed(3)})"><g stroke="#000" stroke-opacity="0.45" stroke-width="0.6">${rows}</g></pattern>`
         svg.push(`<polygon points="${P(room.points)}" fill="url(#${jid})"/>`)
       }
       // Мебель — тонким контуром поверх покрытия: видно, что под ней тоже уложено
       for (const it of scheme.furniture || []) {
         if (it.roomId !== room.id || it.kind === "rug" || it.kind === "rug_round" || it.kind === "curtain" || it.kind === "tulle") continue
         svg.push(`<g opacity="0.55">${furnitureSvg(it, T, "#161616", "none", 0.7)}</g>`)
+      }
+      // Стена начала укладки — зелёной полосой, направление досок — стрелкой в центре
+      const wallsInfo = roomWalls(room, scheme)
+      const startNo = lay.start ? (wallsInfo.find((w) => w.id === lay.start!.id)?.index ?? 0) + 1 : 0
+      if (lay.start) {
+        const { nx, ny } = inwardNormal(room, lay.start.a, lay.start.b)
+        const a = T(lay.start.a)
+        const b = T(lay.start.b)
+        svg.push(`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="#16a34a" stroke-width="5"/>`)
+        const m = T({ x: (lay.start.a.x + lay.start.b.x) / 2 + nx * (22 / k), y: (lay.start.a.y + lay.start.b.y) / 2 + ny * (22 / k) })
+        let wa = (Math.atan2(lay.start.b.y - lay.start.a.y, lay.start.b.x - lay.start.a.x) * 180) / Math.PI
+        if (wa > 90) wa -= 180
+        if (wa <= -90) wa += 180
+        svg.push(`<text x="${m.x.toFixed(1)}" y="${(m.y + 3).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="bold" fill="#15803d" font-family="Arial" stroke="#fff" stroke-width="3" paint-order="stroke" transform="rotate(${wa.toFixed(2)} ${m.x.toFixed(1)} ${m.y.toFixed(1)})">начало укладки · ст.${startNo}</text>`)
+      }
+      {
+        const cx = room.points.reduce((s2, p) => s2 + p.x, 0) / room.points.length
+        const cy = room.points.reduce((s2, p) => s2 + p.y, 0) / room.points.length
+        const half = Math.min(W, H) * 0.22
+        const dx = Math.cos(lay.angle) * half
+        const dy = Math.sin(lay.angle) * half
+        const p1 = T({ x: cx - dx, y: cy - dy })
+        const p2 = T({ x: cx + dx, y: cy + dy })
+        const ah = 9
+        const ux = Math.cos(lay.angle)
+        const uy = Math.sin(lay.angle)
+        const head = (p: { x: number; y: number }, s2: number) =>
+          `<polygon points="${p.x},${p.y} ${p.x - s2 * ux * ah - uy * ah * 0.55},${p.y - s2 * uy * ah + ux * ah * 0.55} ${p.x - s2 * ux * ah + uy * ah * 0.55},${p.y - s2 * uy * ah - ux * ah * 0.55}" fill="#1d4ed8"/>`
+        svg.push(`<g><line x1="${p1.x.toFixed(1)}" y1="${p1.y.toFixed(1)}" x2="${p2.x.toFixed(1)}" y2="${p2.y.toFixed(1)}" stroke="#fff" stroke-width="5"/><line x1="${p1.x.toFixed(1)}" y1="${p1.y.toFixed(1)}" x2="${p2.x.toFixed(1)}" y2="${p2.y.toFixed(1)}" stroke="#1d4ed8" stroke-width="2"/>${head(p2, 1)}${head(p1, -1)}</g>`)
+        const c = T({ x: cx, y: cy })
+        svg.push(`<text x="${c.x.toFixed(1)}" y="${(c.y - 8).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="bold" fill="#1d4ed8" font-family="Arial" stroke="#fff" stroke-width="3" paint-order="stroke" transform="rotate(${lay.angleDeg.toFixed(2)} ${c.x.toFixed(1)} ${c.y.toFixed(1)})">укладка</text>`)
       }
       // Пороги в дверных проёмах
       let doors = 0
@@ -821,6 +855,8 @@ export function floorPlanSection(scheme: PlanScheme, meta: PlanPdfMeta): string 
         ...(size ? ([["Размер элемента", size]] as [string, string][]) : []),
         ...(tile ? ([["Раскладка", TILE_LAYOUTS[tile.layout].label], ["Цвет / затирка", `${tile.color.toUpperCase()} / ${tile.grout.toUpperCase()}`]] as [string, string][]) : []),
         ...(!tile && !f.floorMaterial && f.floorColor ? ([["Цвет", f.floorColor.toUpperCase()]] as [string, string][]) : []),
+        ["Направление укладки", FLOOR_DIRS[lay.dir].toLowerCase().replace(/^./, (x) => x.toUpperCase())],
+        ...(startNo ? ([["Начало укладки", `от стены ${startNo}${lay.auto ? " (длинная стена вдоль досок)" : ""}`]] as [string, string][]) : []),
         ["Площадь пола", `${fmtNum(c.floorArea, 2)} м²`],
         ["С запасом на подрезку", `${fmtNum(c.floorArea * (1 + info.waste), 2)} м² (+${Math.round(info.waste * 100)}%)`],
         ["Периметр / плинтус", `${fmtNum(c.perimeter, 2)} м${f.skirting ? ` / ${fmtNum(c.skirting, 2)} м` : ""}`],
@@ -838,7 +874,7 @@ export function floorPlanSection(scheme: PlanScheme, meta: PlanPdfMeta): string 
   return `
   <div class="page-break"></div>
   <h2>Развёртка полов — объект ${escapeXml(meta.objectCode)}</h2>
-  <div class="meta">Вид сверху: покрытие в реальном масштабе рисунка — доска, плитка или фото выбранного материала. Коричневым — пороги в дверных проёмах, тонким контуром — мебель (покрытие под ней тоже укладывается).</div>
+  <div class="meta">Вид сверху: покрытие в реальном масштабе рисунка — доска, плитка или фото выбранного материала. Синяя стрелка — направление досок, зелёная полоса — стена, от которой кладут первый ряд. Коричневым — пороги в дверных проёмах, тонким контуром — мебель (покрытие под ней тоже укладывается).</div>
   ${blocks}`
 }
 

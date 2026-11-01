@@ -15,6 +15,7 @@ import {
 import { rightAligned } from "./elevation"
 import { FinishPattern, floorFinishPattern, paintPattern, shade, tilePattern, wallpaperPattern } from "./finishTextures"
 import { roomWalls, openingSpan } from "./walls"
+import { floorLayout } from "./floorLayout"
 
 /** Палитра мебели: дерево, ткань, белая техника и сантехника */
 const MAT = {
@@ -428,6 +429,20 @@ export function buildRoomScene(scheme: PlanScheme, room: PlanRoom): RoomScene {
   // Пол: форма комнаты; на плане y — это z в сцене
   const shape = new THREE.Shape(room.points.map((p) => new THREE.Vector2(p.x, p.y)))
   const floorGeo = track(new THREE.ShapeGeometry(shape))
+  // Рисунок пола — по направлению укладки, сетка рядов от угла стартовой стены
+  {
+    const lay = floorLayout(room, f)
+    const pos = floorGeo.getAttribute("position")
+    const uv = floorGeo.getAttribute("uv")
+    const ca = Math.cos(lay.angle)
+    const sa = Math.sin(lay.angle)
+    for (let i = 0; i < pos.count; i++) {
+      const dx = pos.getX(i) - lay.origin.x
+      const dy = pos.getY(i) - lay.origin.y
+      uv.setXY(i, dx * ca + dy * sa, -dx * sa + dy * ca)
+    }
+    uv.needsUpdate = true
+  }
   floorGeo.rotateX(Math.PI / 2)
   const floorColor = f.floor !== "none" ? f.floorColor || FLOOR_FINISHES[f.floor].color : "#8d8d8d"
   const isTileFloor = f.floor === "tile" || f.floor === "porcelain"

@@ -1,4 +1,5 @@
 import { useMemo } from "react"
+import { floorLayout } from "@/lib/planner/floorLayout"
 import { HEATING_PRESETS, PlanLayer, PlanScheme, WALL_FINISHES, floorTileOf, roomFinish, wallFinishOf, wallTileOf } from "@/lib/planner/types"
 import { fmtNum } from "@/lib/planner/geometry"
 import { heatingCalc, interiorWarnings, thermostatOf, zoneLayout } from "@/lib/planner/interior"
@@ -49,7 +50,8 @@ export function PlanInteriorLayer({ scheme, layer, scale, toScreen, selectedFurn
       if (f.floor !== "none") {
         const id = `floor-${room.id}`
         const isTile = f.floor === "tile" || f.floor === "porcelain"
-        defs.push(floorPattern(id, f.floor, scale, isTile ? floorTileOf(f).color : f.floorColor, undefined, isTile ? floorTileOf(f) : undefined, toScreen({ x: 0, y: 0 }), f.floorMaterial))
+        const lay = floorLayout(room, f)
+        defs.push(floorPattern(id, f.floor, scale, isTile ? floorTileOf(f).color : f.floorColor, undefined, isTile ? floorTileOf(f) : undefined, toScreen(lay.origin), f.floorMaterial, lay.angleDeg))
         floors.push(<polygon key={id} points={poly(room.points)} fill={`url(#${id})`} opacity={0.95} />)
       }
       // Отделка стен — цветная полоса по внутренней грани; у акцентной стены — свой цвет и толще.

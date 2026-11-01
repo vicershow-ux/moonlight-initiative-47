@@ -18,6 +18,7 @@ import {
 } from "@/lib/planner/types"
 import { TileSpecEditor } from "./TileSpecEditor"
 import { MaterialPicker } from "./MaterialPicker"
+import { FloorLayoutPicker } from "./FloorLayoutPicker"
 import { finishCalc } from "@/lib/planner/finishes"
 
 const inputCls =
@@ -87,6 +88,9 @@ export function RoomFinishCard({ room, scheme, onUpdate, onHoverWall }: Props) {
           <div className="mt-2">
             <MaterialPicker value={f.floorMaterial} onChange={(m) => set({ floorMaterial: m })} prefer={["floor", "tile", "stone", "wood"]} only="repeat" label="Своё покрытие с фото (вместо рисунка)" />
           </div>
+        )}
+        {f.floor !== "none" && f.floor !== "linoleum" && f.floor !== "carpet" && (
+          <FloorLayoutPicker room={room} scheme={scheme} finish={f} onChange={(patch) => onUpdate(room.id, patch)} onHoverWall={onHoverWall} />
         )}
         {isTileFloor && !f.floorMaterial && (
           <div className="mt-2">

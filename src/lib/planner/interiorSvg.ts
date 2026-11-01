@@ -26,17 +26,19 @@ export function floorPattern(
   tile?: TileSpec,
   origin?: Pt,
   photo?: MaterialRef,
+  angleDeg = 0,
 ): string {
   if (finish === "none") return ""
+  const rot = Math.abs(angleDeg) > 0.01 ? ` rotate(${angleDeg.toFixed(3)})` : ""
   if (photo) {
     const w = (photo.w * scale).toFixed(2)
     const h = (photo.h * scale).toFixed(2)
-    return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${w}" height="${h}" patternTransform="translate(${origin?.x || 0} ${origin?.y || 0})"><image href="${photo.url.replace(/&/g, "&amp;").replace(/"/g, "&quot;")}" width="${w}" height="${h}" preserveAspectRatio="none"/></pattern>`
+    return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${w}" height="${h}" patternTransform="translate(${origin?.x || 0} ${origin?.y || 0})${rot}"><image href="${photo.url.replace(/&/g, "&amp;").replace(/"/g, "&quot;")}" width="${w}" height="${h}" preserveAspectRatio="none"/></pattern>`
   }
   const isTile = finish === "tile" || finish === "porcelain"
   const p = floorFinishPattern(finish, color || FLOOR_FINISHES[finish].color, isTile ? tile : undefined)
   if (!p) return ""
-  return svgPatternDef(id, p, scale, { ox: origin?.x, oy: origin?.y })
+  return svgPatternDef(id, p, scale, { ox: origin?.x, oy: origin?.y, rotate: rot ? angleDeg : undefined })
 }
 
 /**

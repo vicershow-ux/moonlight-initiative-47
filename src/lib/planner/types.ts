@@ -675,6 +675,10 @@ export interface RoomFinish {
   floorTile?: TileSpec
   /** Свой материал пола с фото */
   floorMaterial?: MaterialRef
+  /** Укладка досок: вдоль длинной стены или поперёк */
+  floorDir?: "along" | "across"
+  /** Стена, от которой начинается укладка (id стены); пусто — автоматически */
+  floorStartWall?: string
   /** Свой материал всех стен комнаты с фото */
   wallMaterial?: MaterialRef
   /** Свой материал потолка с фото: реечный, дерево, плитка, фреска на потолке */
