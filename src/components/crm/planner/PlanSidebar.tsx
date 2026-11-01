@@ -33,6 +33,7 @@ interface Props {
   onHoverWall?: (wallId: string | null) => void
   selectedWallId?: string | null
   onSelectWall?: (wallId: string | null) => void
+  onDeleteWall?: (wallId: string) => string | null
 }
 
 export function PlanSidebar({
@@ -49,6 +50,7 @@ export function PlanSidebar({
   onHoverWall,
   selectedWallId = null,
   onSelectWall,
+  onDeleteWall,
 }: Props) {
   const metrics = selectedRoom ? roomMetrics(selectedRoom, sharedOpenings(scheme)) : null
   const [elev, setElev] = useState<{ roomId: string; wallId: string | null } | null>(null)
@@ -102,6 +104,15 @@ export function PlanSidebar({
           onSelectRoom={onSelectRoom}
           onClose={() => onSelectWall?.(null)}
           onShowElevation={() => setElev({ roomId: selectedWallId.split(":")[0], wallId: selectedWallId })}
+          onDeleteWall={onDeleteWall ? (wid) => {
+            const err = onDeleteWall(wid)
+            if (!err) onSelectWall?.(null)
+            return err
+          } : undefined}
+          onDeleteRoom={(rid) => {
+            onDeleteRoom(rid)
+            onSelectWall?.(null)
+          }}
         />
       )}
 
@@ -359,6 +370,7 @@ export function PlanSidebar({
         <ul className="space-y-1">
           <li>Есть фото или скан плана — загрузите его в «Подложку», задайте масштаб по одному размеру и обводите комнаты поверх</li>
           <li>Инструмент «Стены»: щёлкайте по углам комнаты</li>
+          <li>Лишняя стена — щёлкните по ней и нажмите Delete: перегородка между комнатами исчезнет и они объединятся, выступ контура выпрямится</li>
           <li>Чтобы замкнуть — щёлкните по первой точке или нажмите Enter</li>
           <li>Точная длина: наведите курсор в нужную сторону, наберите цифры (например 3000) и нажмите Enter. Backspace — стереть цифру или убрать последний угол</li>
           <li>Возле стены видно отклонение в градусах, почти ровная стена выпрямляется сама</li>

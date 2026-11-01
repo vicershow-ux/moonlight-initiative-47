@@ -1,4 +1,6 @@
+import { useState } from "react"
 import Icon from "@/components/ui/icon"
+import { roomBehindWall } from "@/lib/planner/editRooms"
 import { fmtNum, fromMm, setWallLengthKeep, sharedOpenings, toMm } from "@/lib/planner/geometry"
 import {
   OPENING_PRESETS,
@@ -24,6 +26,9 @@ interface Props {
   onSelectRoom: (id: string) => void
   onClose: () => void
   onShowElevation?: () => void
+  /** Удалить стену; вернёт текст ошибки, если нельзя */
+  onDeleteWall?: (wallId: string) => string | null
+  onDeleteRoom?: (roomId: string) => void
 }
 
 /** Карточка стены, выбранной щелчком на плане: толщина, материал, длина и проёмы */
@@ -35,7 +40,10 @@ export function SelectedWallCard({
   onSelectRoom,
   onClose,
   onShowElevation,
+  onDeleteWall,
+  onDeleteRoom,
 }: Props) {
+  const [delErr, setDelErr] = useState("")
   const w = findWall(scheme, wallId)
   const room = scheme.rooms.find((r) => r.id === wallId.split(":")[0])
   if (!w || !room) return null
@@ -199,6 +207,33 @@ export function SelectedWallCard({
           </button>
         </div>
       </div>
+      {(onDeleteWall || onDeleteRoom) && (() => {
+        const other = roomBehindWall(scheme, w.id)
+        return (
+          <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
+            {onDeleteWall && (
+              <button
+                onClick={() => setDelErr(onDeleteWall(w.id) || "")}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-300 transition-colors hover:bg-red-500/20"
+                title="Клавиша Delete"
+              >
+                <Icon name={other ? "Combine" : "Eraser"} size={14} />
+                {other ? `Убрать стену — объединить с «${other.name}»` : "Убрать стену"}
+              </button>
+            )}
+            {onDeleteRoom && (
+              <button
+                onClick={() => onDeleteRoom(room.id)}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm text-white/60 transition-colors hover:bg-red-500/10 hover:text-red-300"
+              >
+                <Icon name="Trash2" size={14} />
+                Удалить помещение «{room.name}»
+              </button>
+            )}
+            {delErr && <div className="text-xs text-amber-300">{delErr}</div>}
+          </div>
+        )
+      })()}
     </div>
   )
 }

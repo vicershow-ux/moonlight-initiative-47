@@ -38,7 +38,7 @@ function integral(src: Float32Array | Uint8Array, W: number, H: number) {
 }
 
 /** Квадратное расширение маски на r пикселей */
-function dilate(mask: Uint8Array, W: number, H: number, r: number) {
+export function dilate(mask: Uint8Array, W: number, H: number, r: number) {
   const sum = integral(mask, W, H)
   const out = new Uint8Array(W * H)
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) out[y * W + x] = sum(x - r, y - r, x + r, y + r) > 0 ? 1 : 0
@@ -46,7 +46,7 @@ function dilate(mask: Uint8Array, W: number, H: number, r: number) {
 }
 
 /** Внешний контур области по граням пикселей; вершины только в поворотах */
-function traceOutline(mask: Uint8Array, W: number, H: number): PlanPoint[] {
+export function traceOutline(mask: Uint8Array, W: number, H: number): PlanPoint[] {
   const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < W && y < H && mask[y * W + x] === 1
   const next = new Map<number, number[]>()
   const key = (x: number, y: number) => y * (W + 2) + x
@@ -94,7 +94,7 @@ function traceOutline(mask: Uint8Array, W: number, H: number): PlanPoint[] {
   return dropCollinear(bestLoop, 1e-9)
 }
 
-function dropCollinear(pts: PlanPoint[], eps: number): PlanPoint[] {
+export function dropCollinear(pts: PlanPoint[], eps: number): PlanPoint[] {
   let cur = pts
   for (let pass = 0; pass < 3; pass++) {
     const out = cur.filter((p, i) => {
@@ -111,7 +111,7 @@ function dropCollinear(pts: PlanPoint[], eps: number): PlanPoint[] {
 }
 
 /** Упрощение замкнутого контура (Дуглас — Пекер) */
-function simplify(pts: PlanPoint[], eps: number): PlanPoint[] {
+export function simplify(pts: PlanPoint[], eps: number): PlanPoint[] {
   if (pts.length < 5) return pts
   const rdp = (arr: PlanPoint[]): PlanPoint[] => {
     if (arr.length < 3) return arr

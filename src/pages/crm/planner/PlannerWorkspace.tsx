@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Icon from "@/components/ui/icon"
 import { PlanCanvas } from "@/components/crm/planner/PlanCanvas"
 import { PlanSidebar } from "@/components/crm/planner/PlanSidebar"
@@ -81,6 +81,29 @@ export function PlannerWorkspace({ state }: Props) {
   }
   const wallExists = selectedWallId && scheme.rooms.some((r) => r.id === selectedWallId.split(":")[0])
   const activeWallId = wallExists ? selectedWallId : null
+
+  // Delete / Backspace: выбранная стена — убрать, выбранное помещение — удалить
+  useEffect(() => {
+    if (layer !== "plan") return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Delete" && e.key !== "Backspace") return
+      const t = e.target as HTMLElement | null
+      if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return
+      if (draft.length) return
+      if (activeWallId) {
+        e.preventDefault()
+        if (!state.deleteWall(activeWallId)) setSelectedWallId(null)
+      } else if (selectedOpeningId) {
+        e.preventDefault()
+        deleteOpening(selectedOpeningId)
+      } else if (selectedRoomId && e.key === "Delete") {
+        e.preventDefault()
+        if (window.confirm("Удалить помещение целиком?")) deleteRoom(selectedRoomId)
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  })
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] [&>*]:min-w-0">
@@ -193,6 +216,7 @@ export function PlannerWorkspace({ state }: Props) {
           onHoverWall={setHoverWallId}
           selectedWallId={activeWallId}
           onSelectWall={selectWall}
+          onDeleteWall={state.deleteWall}
         />
       ) : layer === "interior" ? (
         <InteriorSidebar

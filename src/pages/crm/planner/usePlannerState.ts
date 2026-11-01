@@ -1,5 +1,6 @@
 import { squareUp } from "@/components/crm/planner/drawAssist"
 import { glueRoom } from "@/lib/planner/glueRooms"
+import { mergeRooms, removeRoomWall, roomBehindWall } from "@/lib/planner/editRooms"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { PlanTool } from "@/components/crm/planner/PlanCanvas"
 import { objectsApi, objectPlansApi, ObjectItem } from "@/lib/api"
@@ -219,6 +220,20 @@ export function usePlannerState(id: string | undefined) {
     })
     setSelectedRoomId(null)
     touch()
+  }
+
+  /** Удалить стену: общая — помещения сливаются в одно, своя — соседние стены продлеваются */
+  const deleteWall = (wallId: string): string | null => {
+    const other = roomBehindWall(scheme, wallId)
+    const roomId = wallId.split(":")[0]
+    const next = other ? mergeRooms(scheme, roomId, other.id) : removeRoomWall(scheme, wallId)
+    if (!next) return other ? "Не удалось объединить помещения" : "Эту стену нельзя убрать — без неё контур не замкнётся. Удалите помещение целиком"
+    setScheme(applyMounts(next))
+    setSelectedRoomId(roomId)
+    setSelectedOpeningId(null)
+    touch()
+    setMessage(other ? `Стена убрана — «${other.name}» объединено с «${scheme.rooms.find((r) => r.id === roomId)?.name || ""}»` : "Стена убрана")
+    return null
   }
 
   const updateOpening = (openingId: string, patch: Partial<PlanOpening>) => {
@@ -880,6 +895,7 @@ export function usePlannerState(id: string | undefined) {
   }
 
   return {
+    deleteWall,
     detected,
     setDetected,
     detecting,
