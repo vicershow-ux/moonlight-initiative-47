@@ -56,6 +56,9 @@ export interface WallInfo {
   /** Кусок стены: рисуется только участок от s0 до s1 по её длине (остальное нарисовано у соседа) */
   s0?: number
   s1?: number
+  /** Есть ли сосед за стеной у её начала и у конца — по ним сопрягаются углы */
+  sharedA?: boolean
+  sharedB?: boolean
 }
 
 const lineHit = (p: PlanPoint, u: PlanPoint, q: PlanPoint, v: PlanPoint): PlanPoint | null => {
@@ -91,7 +94,22 @@ export function roomWalls(room: PlanRoom, scheme: PlanScheme): WallInfo[] {
     const props = wallProps(scheme, d.id)
     const inner = shared ? props.thickness / 2 : 0
     const outer = shared ? props.thickness / 2 : props.thickness
-    return { d, index, ux, uy, shared, props, inner, outer }
+    // Сосед может примыкать только к части стены — смотрим отдельно у каждого конца
+    const near = Math.min(0.1, len * 0.25)
+    const endShared = (t: number) => {
+      const probe = { x: d.a.x + ux * t + d.nx * out, y: d.a.y + uy * t + d.ny * out }
+      return others.some((r) => pointInPolygon(probe, r.points))
+    }
+    const sharedA = endShared(near)
+    const sharedB = endShared(len - near)
+    const t = props.thickness
+    return {
+      d, index, ux, uy, shared, props, inner, outer, sharedA, sharedB,
+      innerA: sharedA ? t / 2 : 0,
+      outerA: sharedA ? t / 2 : t,
+      innerB: sharedB ? t / 2 : 0,
+      outerB: sharedB ? t / 2 : t,
+    }
   })
 
   const n = base.length
@@ -105,15 +123,16 @@ export function roomWalls(room: PlanRoom, scheme: PlanScheme): WallInfo[] {
       if (!hit || dist(hit, fallback) > Math.max(Math.abs(k), Math.abs(ko), 0.05) * 4) return fallback
       return hit
     }
-    const ia = { x: w.d.a.x - w.d.nx * w.inner, y: w.d.a.y - w.d.ny * w.inner }
-    const ib = { x: w.d.b.x - w.d.nx * w.inner, y: w.d.b.y - w.d.ny * w.inner }
-    const oa = { x: w.d.a.x + w.d.nx * w.outer, y: w.d.a.y + w.d.ny * w.outer }
-    const ob = { x: w.d.b.x + w.d.nx * w.outer, y: w.d.b.y + w.d.ny * w.outer }
+    const ia = { x: w.d.a.x - w.d.nx * w.innerA, y: w.d.a.y - w.d.ny * w.innerA }
+    const ib = { x: w.d.b.x - w.d.nx * w.innerB, y: w.d.b.y - w.d.ny * w.innerB }
+    const oa = { x: w.d.a.x + w.d.nx * w.outerA, y: w.d.a.y + w.d.ny * w.outerA }
+    const ob = { x: w.d.b.x + w.d.nx * w.outerB, y: w.d.b.y + w.d.ny * w.outerB }
+    // Углы сопрягаем по тем граням, что реально сходятся у этого угла
     const band = [
-      corner(w, prev, -w.inner, -prev.inner, ia),
-      corner(w, next, -w.inner, -next.inner, ib),
-      corner(w, next, w.outer, next.outer, ob),
-      corner(w, prev, w.outer, prev.outer, oa),
+      corner(w, prev, -w.innerA, -prev.innerB, ia),
+      corner(w, next, -w.innerB, -next.innerA, ib),
+      corner(w, next, w.outerB, next.outerA, ob),
+      corner(w, prev, w.outerA, prev.outerB, oa),
     ]
     return {
       id: w.d.id,
@@ -131,6 +150,8 @@ export function roomWalls(room: PlanRoom, scheme: PlanScheme): WallInfo[] {
       shared: w.shared,
       inner: w.inner,
       band,
+      sharedA: w.sharedA,
+      sharedB: w.sharedB,
     }
   })
 }
@@ -148,7 +169,8 @@ export function schemeWalls(scheme: PlanScheme): { all: WallInfo[]; draw: WallIn
   const seen: WallInfo[] = []
   const draw: WallInfo[] = []
   for (const w of all) {
-    if (!w.shared) {
+    const uniform = w.sharedA === w.shared && w.sharedB === w.shared
+    if (!w.shared && uniform) {
       draw.push(w)
       continue
     }
@@ -178,7 +200,7 @@ export function schemeWalls(scheme: PlanScheme): { all: WallInfo[]; draw: WallIn
       const m = { x: w.a.x + w.ux * t + w.nx * probe, y: w.a.y + w.uy * t + w.ny * probe }
       kinds.push(scheme.rooms.some((r) => r.id !== w.roomId && pointInPolygon(m, r.points)) ? "shared" : "own")
     }
-    if (kinds.every((k) => k === "shared")) {
+    if (uniform && kinds.every((k) => k === (w.shared ? "shared" : "own"))) {
       draw.push(w)
       continue
     }
@@ -188,7 +210,8 @@ export function schemeWalls(scheme: PlanScheme): { all: WallInfo[]; draw: WallIn
       const kind = kinds[start]
       const s0 = (start / n) * w.length
       const s1 = (k / n) * w.length
-      if (kind !== "skip" && s1 - s0 > 0.02) draw.push(wallPiece(w, s0, s1, kind === "shared"))
+      // Обрезки короче 10 см — неточность обводки, не рисуем, чтобы не было «зубцов»
+      if (kind !== "skip" && s1 - s0 > 0.1) draw.push(wallPiece(w, s0, s1, kind === "shared"))
       start = k
     }
   }
@@ -203,22 +226,14 @@ function wallPiece(w: WallInfo, s0: number, s1: number, behind: boolean): WallIn
   const inner = behind ? w.thickness / 2 : 0
   const out = w.thickness - inner
   const band = [at(s0, -inner), at(s1, -inner), at(s1, out), at(s0, out)]
-  // У концов стены сохраняем сопряжение углов, если сторона та же, что у целой стены
-  const same = behind === w.shared
-  if (s0 < 0.01 && same) {
+  // У концов стены берём готовое сопряжение углов, если сторона совпадает с той, что учтена в углу
+  if (s0 < 0.12 && behind === !!w.sharedA) {
     band[0] = w.band[0]
     band[3] = w.band[3]
-  } else if (s0 < 0.01) {
-    // Свой участок у угла: продлеваем наружную грань до угла соседней стены
-    band[3] = at(-out, out)
-    band[0] = at(0, -inner)
   }
-  if (s1 > w.length - 0.01 && same) {
+  if (s1 > w.length - 0.12 && behind === !!w.sharedB) {
     band[1] = w.band[1]
     band[2] = w.band[2]
-  } else if (s1 > w.length - 0.01) {
-    band[2] = at(w.length + out, out)
-    band[1] = at(w.length, -inner)
   }
   return { ...w, shared: behind, inner, band, s0, s1 }
 }
