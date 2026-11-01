@@ -168,6 +168,8 @@ export function PlannerWorkspace({ state }: Props) {
           onSelectWall={selectWall}
           calibPts={state.calibPts}
           onCalibrateClick={state.calibrateClick}
+          detected={state.detected}
+          onAcceptDetected={(pts) => state.acceptDetected([pts])}
         />
       </div>
 

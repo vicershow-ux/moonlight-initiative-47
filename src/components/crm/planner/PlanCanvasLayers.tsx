@@ -102,6 +102,18 @@ export function PlanCanvasLayers({
         )
       })()}
 
+      {layer === "plan" && (props.detected || []).map((pts, i) => (
+        <polygon
+          key={`det-${i}`}
+          points={pts.map((p) => { const s = toScreen(p); return `${s.x},${s.y}` }).join(" ")}
+          fill="rgba(212,175,55,0.12)"
+          stroke="#D4AF37"
+          strokeWidth={2}
+          strokeDasharray="7 5"
+          style={{ cursor: "copy" }}
+        />
+      ))}
+
       <PlanRoomsLayer
         scheme={scheme}
         layer={layer}

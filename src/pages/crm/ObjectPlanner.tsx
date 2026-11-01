@@ -118,6 +118,11 @@ export default function ObjectPlanner() {
           onStartCalibrate={state.startCalibrate}
           onApplyCalibrate={state.applyCalibrate}
           onCancelCalibrate={state.cancelCalibrate}
+          detecting={state.detecting}
+          detectedCount={state.detected.length}
+          onDetect={state.detectFromUnderlay}
+          onAcceptAll={() => state.acceptDetected(state.detected)}
+          onClearDetected={() => state.setDetected([])}
         />
       )}
 

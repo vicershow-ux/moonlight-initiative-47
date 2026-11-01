@@ -63,6 +63,9 @@ export interface PlanCanvasProps {
   /** Масштаб подложки: две точки известного размера */
   calibPts?: PlanPoint[]
   onCalibrateClick?: (p: PlanPoint) => void
+  /** Найденные по подложке контуры — щелчок добавляет помещение */
+  detected?: PlanPoint[][]
+  onAcceptDetected?: (pts: PlanPoint[]) => void
 }
 
 /** Что сейчас тащат мышью на холсте */

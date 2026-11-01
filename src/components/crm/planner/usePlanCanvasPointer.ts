@@ -183,6 +183,14 @@ export function usePlanCanvasPointer({
       return
     }
 
+    if (tool === "select" && layer === "plan" && props.detected?.length) {
+      const cand = props.detected.find((pts) => pointInPolygon(world, pts) && !scheme.rooms.some((r) => pointInPolygon(world, r.points)))
+      if (cand) {
+        props.onAcceptDetected?.(cand)
+        return
+      }
+    }
+
     if (tool === "select") {
       // На инженерных слоях сначала ищем точку — её можно двигать
       if (layer !== "plan") {

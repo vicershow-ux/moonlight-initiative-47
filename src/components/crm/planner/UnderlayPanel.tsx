@@ -12,6 +12,11 @@ interface Props {
   onStartCalibrate: () => void
   onApplyCalibrate: (meters: number) => void
   onCancelCalibrate: () => void
+  detecting: boolean
+  detectedCount: number
+  onDetect: () => void
+  onAcceptAll: () => void
+  onClearDetected: () => void
 }
 
 const btn = "flex min-h-[34px] items-center gap-1.5 rounded-lg bg-white/5 px-3 text-xs text-white/70 hover:bg-white/10 disabled:opacity-40"
@@ -39,7 +44,21 @@ async function shrink(file: File): Promise<{ dataUrl: string; w: number; h: numb
 }
 
 /** Подложка плана: загрузка фото/скана, прозрачность и масштаб по известному размеру */
-export function UnderlayPanel({ underlay, calibrating, calibPts, onChange, uploadImage, onStartCalibrate, onApplyCalibrate, onCancelCalibrate }: Props) {
+export function UnderlayPanel({
+  underlay,
+  calibrating,
+  calibPts,
+  onChange,
+  uploadImage,
+  onStartCalibrate,
+  onApplyCalibrate,
+  onCancelCalibrate,
+  detecting,
+  detectedCount,
+  onDetect,
+  onAcceptAll,
+  onClearDetected,
+}: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState("")
@@ -89,6 +108,15 @@ export function UnderlayPanel({ underlay, calibrating, calibPts, onChange, uploa
             <button className={btn} onClick={onStartCalibrate} disabled={calibrating}>
               <Icon name="Ruler" size={14} />
               {underlay.calibrated ? "Перезадать масштаб" : "Задать масштаб"}
+            </button>
+            <button
+              className="flex min-h-[34px] items-center gap-1.5 rounded-lg bg-[#D4AF37] px-3 text-xs font-medium text-[#161616] hover:bg-[#B8860B] disabled:opacity-40"
+              onClick={onDetect}
+              disabled={detecting || calibrating || !underlay.calibrated}
+              title={underlay.calibrated ? "Найти комнаты на фото и предложить контуры" : "Сначала задайте масштаб"}
+            >
+              <Icon name={detecting ? "Loader2" : "ScanSearch"} size={14} className={detecting ? "animate-spin" : ""} />
+              Найти комнаты
             </button>
             <label className="flex items-center gap-2 text-xs text-white/50">
               Прозрачность
@@ -158,7 +186,21 @@ export function UnderlayPanel({ underlay, calibrating, calibPts, onChange, uploa
           </button>
         </div>
       )}
-      {underlay?.calibrated && !calibrating && (
+      {detectedCount > 0 && !calibrating && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-[#D4AF37]/30 bg-[#D4AF37]/5 p-2.5 text-xs">
+          <Icon name="ScanSearch" size={14} className="text-[#D4AF37]" />
+          <span className="text-white/70">
+            Найдено контуров: {detectedCount}. Щёлкните по пунктирному контуру — он станет помещением, или примите все сразу. Размеры потом поправьте в списке стен.
+          </span>
+          <button className="ml-auto rounded-lg bg-[#D4AF37] px-3 py-1.5 font-medium text-[#161616]" onClick={onAcceptAll}>
+            Добавить все
+          </button>
+          <button className="text-white/50 hover:text-white" onClick={onClearDetected}>
+            Убрать
+          </button>
+        </div>
+      )}
+      {underlay?.calibrated && !calibrating && !detectedCount && (
         <div className="mt-2 text-[11px] text-white/40">
           Подложка {toMm(underlay.w)}×{toMm(underlay.h)} мм. Обводите комнаты инструментом «Стены» по углам; нужные длины потом введите в списке стен помещения — остальные подстроятся сами.
         </div>

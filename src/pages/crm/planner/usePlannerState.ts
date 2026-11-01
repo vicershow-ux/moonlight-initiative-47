@@ -518,6 +518,42 @@ export function usePlannerState(id: string | undefined) {
   /** Картинка в хранилище объекта (автоснимок, логотип) — возвращает ссылку */
   const uploadImage = async (dataUrl: string) => (await objectPlansApi.uploadRender(Number(id), dataUrl)).url
 
+  /** Найденные по подложке контуры: пока не приняты — показаны пунктиром */
+  const [detected, setDetected] = useState<PlanPoint[][]>([])
+  const [detecting, setDetecting] = useState(false)
+  const detectFromUnderlay = async () => {
+    const u = scheme.underlay
+    if (!u) return
+    setDetecting(true)
+    setError("")
+    try {
+      const { detectRooms } = await import("@/lib/planner/detectRooms")
+      const found = await detectRooms(u, scheme.rooms.map((r) => r.points))
+      setDetected(found.map((f) => f.points))
+      setTool("select")
+      setMessage(found.length ? `Найдено помещений: ${found.length}. Щёлкните по контуру, чтобы добавить, или «Добавить все»` : "Помещения не найдены — обведите вручную инструментом «Стены»")
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось распознать план")
+    } finally {
+      setDetecting(false)
+    }
+  }
+  /** Принять найденные контуры: каждый становится помещением и прилипает к соседям */
+  const acceptDetected = (list: PlanPoint[][]) => {
+    if (!list.length) return
+    setScheme((s) => {
+      let cur = s
+      list.forEach((pts) => {
+        const room: PlanRoom = { id: uid(), name: `Помещение ${cur.rooms.length + 1}`, room_type: "", points: pts, height: s.defaultHeight, notes: "" }
+        const g = glueRoom(cur, room)
+        cur = { ...g.scheme, rooms: [...g.scheme.rooms, g.room] }
+      })
+      return applyMounts(cur)
+    })
+    setDetected((d) => d.filter((x) => !list.includes(x)))
+    touch()
+  }
+
   /** Подложка: фото плана, две точки для масштаба */
   const [calibPts, setCalibPts] = useState<PlanPoint[]>([])
   const setUnderlay = (u: PlanUnderlay | undefined) => {
@@ -844,6 +880,11 @@ export function usePlannerState(id: string | undefined) {
   }
 
   return {
+    detected,
+    setDetected,
+    detecting,
+    detectFromUnderlay,
+    acceptDetected,
     calibPts,
     setUnderlay,
     startCalibrate,
