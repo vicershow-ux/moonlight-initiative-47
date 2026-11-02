@@ -234,7 +234,129 @@ export function detectFromGray(gray0: Float32Array, W0: number, H0: number, u: P
       if (W < 50) continue
       runs.push(detectPass(gray, W, H, u, existing, br))
     }
-  return mergeRuns(runs)
+  return snapSmallRooms(mergeRuns(runs), gray0, W0, H0, u)
+}
+
+/**
+ * Мелкие прямоугольные помещения (санузел, кладовая) часто находятся по контуру унитаза
+ * или ванны, а не по стенам. Каждую сторону такого прямоугольника доводим до ближайшей
+ * линии, идущей почти по всей длине стороны, — это стена; контур прибора короче и пропускается
+ */
+function snapSmallRooms(rooms: DetectedRoom[], gray: Float32Array, W: number, H: number, u: PlanUnderlay): DetectedRoom[] {
+  const ppm = W / u.w
+  const mean = integral(gray, W, H)
+  const sorted = Float32Array.from(gray).sort()
+  const span = sorted[Math.floor(sorted.length * 0.97)] - sorted[Math.floor(sorted.length * 0.02)]
+  const thr = Math.min(28, Math.max(8, span * 0.16))
+  const R = Math.max(8, Math.round(ppm * 0.5))
+  const darkAt = (x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= W || y >= H) return false
+    const x0 = Math.max(x - R, 0)
+    const x1 = Math.min(x + R, W - 1)
+    const y0 = Math.max(y - R, 0)
+    const y1 = Math.min(y + R, H - 1)
+    return gray[y * W + x] < mean(x0, y0, x1, y1) / ((x1 - x0 + 1) * (y1 - y0 + 1)) - thr
+  }
+  const toPx = (p: PlanPoint) => ({ x: ((p.x - u.x) / u.w) * W, y: ((p.y - u.y) / u.h) * H })
+  const toWorldX = (x: number) => u.x + (x / W) * u.w
+  const toWorldY = (y: number) => u.y + (y / H) * u.h
+  const inward = Math.max(2, Math.round(ppm * 0.15))
+  const outward = Math.max(3, Math.round(ppm * 0.3))
+  const snapped = rooms.map((r) => {
+    if (r.points.length !== 4 || r.area > 3.5) return r
+    const px = r.points.map(toPx)
+    let x0 = Math.min(...px.map((p) => p.x))
+    let x1 = Math.max(...px.map((p) => p.x))
+    let y0 = Math.min(...px.map((p) => p.y))
+    let y1 = Math.max(...px.map((p) => p.y))
+    // Доля стороны, вдоль которой линия pos тёмная
+    const cover = (vertical: boolean, pos: number, a: number, b: number) => {
+      const m = (b - a) * 0.08
+      let hit = 0
+      let all = 0
+      for (let t = Math.round(a + m); t <= Math.round(b - m); t++) {
+        all++
+        if (vertical ? darkAt(pos, t) : darkAt(t, pos)) hit++
+      }
+      return all ? hit / all : 0
+    }
+    const cur = { x0, x1, y0, y1 }
+    const sides: { key: "x0" | "x1" | "y0" | "y1"; dir: 1 | -1 }[] = [
+      { key: "y0", dir: -1 },
+      { key: "y1", dir: 1 },
+      { key: "x0", dir: -1 },
+      { key: "x1", dir: 1 },
+    ]
+    for (const sd of sides) {
+      const vertical = sd.key === "x0" || sd.key === "x1"
+      const edge = Math.round(cur[sd.key])
+      const [a, b] = vertical ? [y0, y1] : [x0, x1]
+      // Идём изнутри помещения наружу: первая линия во всю длину стороны — грань стены.
+      // Контур унитаза или ванны короче стороны и пропускается
+      for (let t = -inward; t <= outward; t++) {
+        const pos = edge + sd.dir * t
+        if (cover(vertical, pos, a, b) < 0.75) continue
+        cur[sd.key] = sd.dir > 0 ? pos : pos + 1
+        break
+      }
+    }
+    if (cur.x1 - cur.x0 >= ppm * 0.5 && cur.y1 - cur.y0 >= ppm * 0.5) ({ x0, x1, y0, y1 } = cur)
+    const X0 = Math.round(toWorldX(x0) * 100) / 100
+    const X1 = Math.round(toWorldX(x1) * 100) / 100
+    const Y0 = Math.round(toWorldY(y0) * 100) / 100
+    const Y1 = Math.round(toWorldY(y1) * 100) / 100
+    return {
+      points: [{ x: X0, y: Y0 }, { x: X1, y: Y0 }, { x: X1, y: Y1 }, { x: X0, y: Y1 }],
+      area: Math.round((X1 - X0) * (Y1 - Y0) * 10) / 10,
+    }
+  })
+  return alignToColumn(snapped)
+}
+
+/**
+ * Ванна или унитаз вдоль стены дают линию во всю длину помещения — сторона встаёт по прибору.
+ * Если соседи по ряду (кладовая, кухня над и под санузлом) упираются в стену чуть дальше,
+ * мелкое помещение дотягиваем до той же линии
+ */
+function alignToColumn(rooms: DetectedRoom[]): DetectedRoom[] {
+  let cur = rooms
+  for (let k = 0; k < 3; k++) cur = alignOnce(cur)
+  return cur
+}
+
+function alignOnce(rooms: DetectedRoom[]): DetectedRoom[] {
+  const MAX = 0.3
+  const box = (p: PlanPoint[]) => ({ x0: Math.min(...p.map((q) => q.x)), y0: Math.min(...p.map((q) => q.y)), x1: Math.max(...p.map((q) => q.x)), y1: Math.max(...p.map((q) => q.y)) })
+  const boxes = rooms.map((r) => box(r.points))
+  return rooms.map((r, i) => {
+    if (r.points.length !== 4 || r.area > 3.5) return r
+    const b = { ...boxes[i] }
+    const others = boxes.filter((_, j) => j !== i)
+    const ovX = (o: typeof b) => Math.min(o.x1, b.x1) - Math.max(o.x0, b.x0) > (b.x1 - b.x0) * 0.5
+    const ovY = (o: typeof b) => Math.min(o.y1, b.y1) - Math.max(o.y0, b.y0) > (b.y1 - b.y0) * 0.5
+    // Соседи сверху/снизу задают левую и правую стену, соседи слева/справа — верхнюю и нижнюю
+    const col = others.filter((o) => ovX(o) && (o.y1 <= b.y0 + 0.05 || o.y0 >= b.y1 - 0.05))
+    const row = others.filter((o) => ovY(o) && (o.x1 <= b.x0 + 0.05 || o.x0 >= b.x1 - 0.05))
+    const pick = (vals: number[], cur: number, out: 1 | -1) => {
+      const c = vals.filter((v) => (v - cur) * out > 0.02 && Math.abs(v - cur) <= MAX)
+      if (c.length < 1) return cur
+      return out > 0 ? Math.max(...c) : Math.min(...c)
+    }
+    const nb = {
+      x0: pick(col.map((o) => o.x0), b.x0, -1),
+      x1: pick(col.map((o) => o.x1), b.x1, 1),
+      y0: pick(row.map((o) => o.y0), b.y0, -1),
+      y1: pick(row.map((o) => o.y1), b.y1, 1),
+    }
+    // Не залезаем на соседей
+    const hit = others.some((o) => Math.min(o.x1, nb.x1) - Math.max(o.x0, nb.x0) > 0.05 && Math.min(o.y1, nb.y1) - Math.max(o.y0, nb.y0) > 0.05)
+    if (hit) return r
+    if (nb.x0 === b.x0 && nb.x1 === b.x1 && nb.y0 === b.y0 && nb.y1 === b.y1) return r
+    return {
+      points: [{ x: nb.x0, y: nb.y0 }, { x: nb.x1, y: nb.y0 }, { x: nb.x1, y: nb.y1 }, { x: nb.x0, y: nb.y1 }],
+      area: Math.round((nb.x1 - nb.x0) * (nb.y1 - nb.y0) * 10) / 10,
+    }
+  })
 }
 
 /** Доля площади a, накрытая b — по сетке 5 см */

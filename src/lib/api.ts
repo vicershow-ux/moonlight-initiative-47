@@ -242,6 +242,12 @@ export const objectsApi = {
     return parseResponse(res) as Promise<ObjectItem>
   },
 
+  /** Реквизиты организации по ИНН (DaData) */
+  async partyByInn(inn: string): Promise<ClientRequisites & { status?: string }> {
+    const res = await fetch(`${OBJECTS_URL}?action=party_by_inn&inn=${encodeURIComponent(inn)}`, { headers: { ...authHeaders() } })
+    return parseResponse(res)
+  },
+
   async update(id: number, payload: Partial<ObjectItem>) {
     const res = await fetch(`${OBJECTS_URL}?id=${id}`, {
       method: "PUT",

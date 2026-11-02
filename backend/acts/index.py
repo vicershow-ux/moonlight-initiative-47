@@ -246,7 +246,42 @@ def dark_block(text):
     )
 
 
-def parties_block(c, opts, executor_display, executor_short, client_name, customer_contacts):
+def customer_requisites_rows(r):
+    '''Реквизиты заказчика-юрлица из карточки объекта — строки таблицы карточки «Заказчик»'''
+    def row(label, value, mono=False, hl=False):
+        v = esc(value)
+        if not v:
+            return ''
+        bg = 'background:#F3EBDC;' if hl else ''
+        font = 'font-family:Courier New,monospace;font-size:12.5px !important;letter-spacing:.2px;white-space:nowrap;' if mono else ''
+        return (f'<tr><td style="{bg}padding:4px 12px;width:36%;color:#6b5a3e;font-size:11px;vertical-align:top">{label}</td>'
+                f'<td style="{bg}padding:4px 12px;font-size:12.5px;font-weight:600;{font}word-break:break-word">{v}</td></tr>')
+
+    def group4(v):
+        d = re.sub(r'\s+', '', v or '')
+        return re.sub(r'(\d{4})(?=\d)', r'\1 ', d)
+
+    main = ''.join([
+        row('ОГРН', r.get('ogrn')),
+        row('ИНН', r.get('inn')),
+        row('КПП', r.get('kpp')),
+        row('Юр. адрес', r.get('legal_address')),
+        row('Почтовый адрес', r.get('postal_address')),
+    ])
+    bank = ''.join([
+        row('Расчётный счёт', group4(r.get('account')), mono=True, hl=True),
+        row('Банк', r.get('bank_name')),
+        row('БИК', r.get('bik'), mono=True),
+        row('Корр. счёт', group4(r.get('corr_account')), mono=True),
+    ])
+    if bank:
+        main += ('<tr><td colspan="2" style="padding:8px 12px 3px;font-size:10.5px;font-weight:700;'
+                 'letter-spacing:.4px;color:#6B4508;text-transform:uppercase;border-top:1px solid #D9C9A8">'
+                 'Банковские реквизиты</td></tr>' + bank)
+    return main
+
+
+def parties_block(c, opts, executor_display, executor_short, client_name, customer_contacts, customer_signer=None):
     '''Реквизиты сторон и поля для подписей; подпись и печать компании накладываются по галочкам'''
     entity = (c.get('entity_type') or '').lower()
     is_legal = 'юрид' in entity or entity.startswith('ооо') or 'общество' in entity
@@ -323,7 +358,7 @@ def parties_block(c, opts, executor_display, executor_short, client_name, custom
 <td style="width:50%;vertical-align:top;padding:36px 0 0 24px">
   <p style="{label}">ОТ ИМЕНИ ЗАКАЗЧИКА</p>
   {box.format('')}
-  <p style="margin:0">{client_name}</p>
+  <p style="margin:0">{customer_signer or client_name}</p>
   <p style="font-size:11px;color:#555;margin:2px 0 0">(подпись)</p>
 </td>
 </tr></table>'''
@@ -465,6 +500,28 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
         client_name = esc(contract_opts.get('customer_org_name') if contract_opts.get('customer_type') == 'legal' and contract_opts.get('customer_org_name')
                           else contract_opts.get('customer_name') or company_row.get('name') or contact)
 
+    # Заказчик-юрлицо из карточки объекта: название, подписант и реквизиты
+    req = (object_row.get('requisites') or {}) if (object_row.get('legal') and not hire) else {}
+    customer_signer = client_name
+    customer_intro = client_name
+    if req:
+        org = esc(contract_opts.get('customer_org_name') or req.get('org_name')) or client_name
+        client_name = org
+        pos = esc(contract_opts.get('customer_director_position') or req.get('director_position'))
+        who = esc(contract_opts.get('customer_director_name') or req.get('director_name'))
+        basis = esc(contract_opts.get('customer_basis') or req.get('basis')) or 'Устава'
+        reg = ', '.join(x for x in [
+            f"ОГРН {esc(req.get('ogrn'))}" if req.get('ogrn') else '',
+            f"ИНН {esc(req.get('inn'))}" if req.get('inn') else '',
+            f"КПП {esc(req.get('kpp'))}" if req.get('kpp') else '',
+        ] if x)
+        customer_intro = org + (f' ({reg})' if reg else '')
+        if who:
+            customer_intro += f", от имени которого действует {(pos or 'генеральный директор').lower()} {who} на основании {basis}"
+            customer_signer = f"{pos or 'Директор'} {who}".strip()
+        else:
+            customer_signer = org
+
     contract_number = esc(contract_row.get('contract_number')) if contract_row else ''
     contract_date = contract_row.get('contract_date') if contract_row else ''
 
@@ -477,7 +534,7 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
     else:
         named_executor = 'именуемая' if opts.get('executor_gender') == 'f' else 'именуемый'
     named_customer = 'именуемая' if opts.get('customer_gender') == 'f' else 'именуемый'
-    if hire and contract_opts.get('customer_type') == 'legal':
+    if (hire and contract_opts.get('customer_type') == 'legal') or req:
         named_customer = 'именуемое'
 
     period_from = opts.get('period_from') or ''
@@ -567,7 +624,7 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
     if company_email:
         executor_contacts += f'<p style="margin:2px 0">Email: {company_email}</p>'
 
-    customer_contacts = ''
+    customer_contacts = customer_requisites_rows(req) if req else ''
     if address:
         customer_contacts += f'<tr><td style="padding:4px 12px;width:36%;color:#6b5a3e;font-size:11px;vertical-align:top">Адрес объекта</td><td style="padding:4px 12px;font-size:12.5px;font-weight:600;word-break:break-word">{address}</td></tr>'
     if client_phone:
@@ -583,7 +640,7 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
 <td style="text-align:right">{fmt_date_long(act_date)}</td>
 </tr></table>
 
-<p>{executor_display}, {named_executor} в дальнейшем «Исполнитель», с одной стороны, и {client_name}, {named_customer} в дальнейшем «Заказчик», с другой стороны, совместно именуемые «Стороны», составили настоящий Акт о сдаче и приёмке результата работ.</p>
+<p>{executor_display}, {named_executor} в дальнейшем «Исполнитель», с одной стороны, и {customer_intro}, {named_customer} в дальнейшем «Заказчик», с другой стороны, совместно именуемые «Стороны», составили настоящий Акт о сдаче и приёмке результата работ.</p>
 
 <p>Основание: {basis_line}</p>
 
@@ -616,7 +673,7 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
 
 <hr style="border:none;border-top:1.5px solid #7A4E10;margin:26px 0 14px" />
 
-{parties_block_hire(company_row, opts, contract_opts, address) if hire else parties_block(company_row, opts, executor_display, executor_short, client_name, customer_contacts)}
+{parties_block_hire(company_row, opts, contract_opts, address) if hire else parties_block(company_row, opts, executor_display, executor_short, client_name, customer_contacts, customer_signer)}
 </div>"""
 
 
@@ -661,14 +718,15 @@ def load_attachment_files(options):
 
 def load_context(cur, company_id, object_id, contract_id):
     cur.execute(
-        "SELECT client_name, address, client_phone, email, object_type FROM objects "
+        "SELECT client_name, address, client_phone, email, object_type, legal_status, client_requisites FROM objects "
         "WHERE id = %s AND company_id = %s",
         (object_id, company_id)
     )
-    o = cur.fetchone() or ('', '', '', '', '')
+    o = cur.fetchone() or ('', '', '', '', '', '', {})
     object_row = {
         'client_name': o[0], 'address': o[1], 'client_phone': o[2] or '',
         'email': o[3] or '', 'object_type': o[4] or 'вторичка',
+        'legal': (o[5] or '') == 'юридическое лицо', 'requisites': o[6] or {},
     }
 
     cur.execute(

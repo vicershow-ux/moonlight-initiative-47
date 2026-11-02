@@ -1,6 +1,9 @@
 import json
 import os
 from datetime import datetime
+import re
+import urllib.error
+import urllib.request
 import psycopg2
 
 
@@ -33,6 +36,50 @@ def clean_requisites(value) -> dict:
     if not isinstance(value, dict):
         return {}
     return {k: str(value.get(k) or '').strip()[:500] for k in REQUISITE_KEYS if str(value.get(k) or '').strip()}
+
+
+def party_by_inn(inn: str):
+    '''Реквизиты организации по ИНН из DaData: название, КПП, ОГРН, адрес, руководитель'''
+    inn = re.sub(r'\D', '', inn or '')
+    if len(inn) not in (10, 12):
+        return response(400, {'error': 'ИНН — 10 цифр для организации или 12 для ИП'})
+    key = os.environ.get('DADATA_API_KEY')
+    if not key:
+        return response(503, {'error': 'Автозаполнение не подключено — добавьте ключ DaData в секреты проекта'})
+    req = urllib.request.Request(
+        'https://suggestions.dadata.ru/suggestions/api/4_1/rs/findById/party',
+        data=json.dumps({'query': inn, 'count': 1}).encode(),
+        headers={'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': f'Token {key}'},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=4) as r:
+            data = json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        return response(502, {'error': 'Ключ DaData не подошёл' if e.code in (401, 403) else 'Сервис реквизитов недоступен'})
+    except (urllib.error.URLError, TimeoutError):
+        return response(502, {'error': 'Сервис реквизитов не ответил, попробуйте ещё раз'})
+    items = data.get('suggestions') or []
+    if not items:
+        return response(404, {'error': 'Организация с таким ИНН не найдена'})
+    d = items[0].get('data') or {}
+    mgmt = d.get('management') or {}
+    name = d.get('name') or {}
+    addr = d.get('address') or {}
+    is_ip = d.get('type') == 'INDIVIDUAL'
+    fio = d.get('fio') or {}
+    ip_name = ' '.join(x for x in [fio.get('surname'), fio.get('name'), fio.get('patronymic')] if x)
+    post = (mgmt.get('post') or '').strip()
+    return response(200, {
+        'org_name': name.get('short_with_opf') or name.get('full_with_opf') or items[0].get('value') or '',
+        'inn': d.get('inn') or inn,
+        'kpp': '' if is_ip else (d.get('kpp') or ''),
+        'ogrn': d.get('ogrn') or '',
+        'legal_address': addr.get('unrestricted_value') or addr.get('value') or '',
+        'director_position': 'Индивидуальный предприниматель' if is_ip else (post[:1].upper() + post[1:].lower() if post else ''),
+        'director_name': ip_name if is_ip else (mgmt.get('name') or ''),
+        'basis': 'Свидетельства о регистрации' if is_ip else 'Устава',
+        'status': (d.get('state') or {}).get('status') or '',
+    })
 
 
 def get_conn():
@@ -140,6 +187,11 @@ def handler(event: dict, context) -> dict:
         object_id = params.get('id')
 
         select_cols = ', '.join(ALL_KEYS)
+
+        if method == 'GET' and params.get('action') == 'party_by_inn':
+            if is_client:
+                return response(403, {'error': 'Недостаточно прав'})
+            return party_by_inn(params.get('inn') or '')
 
         if method == 'GET':
             if object_id:

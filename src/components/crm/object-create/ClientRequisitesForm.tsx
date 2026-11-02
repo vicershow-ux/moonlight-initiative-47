@@ -1,4 +1,6 @@
-import { ClientRequisites } from "@/lib/api"
+import { useState } from "react"
+import Icon from "@/components/ui/icon"
+import { ClientRequisites, objectsApi } from "@/lib/api"
 
 interface Props {
   value: ClientRequisites
@@ -34,6 +36,29 @@ const BANK: { key: Key; label: string; max?: number; span?: boolean }[] = [
 /** Реквизиты заказчика-юрлица: подставляются в договор и счёт объекта */
 export function ClientRequisitesForm({ value, onChange }: Props) {
   const set = (k: Key, v: string, max?: number) => onChange({ ...value, [k]: max ? digits(v, max) : v })
+  const [loading, setLoading] = useState(false)
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null)
+  const inn = value.inn || ""
+  const fill = async () => {
+    setLoading(true)
+    setNote(null)
+    try {
+      const { status, ...found } = await objectsApi.partyByInn(inn)
+      // Банковские реквизиты в реестре нет — их оставляем как были
+      const next: ClientRequisites = { ...value }
+      for (const [k, v] of Object.entries(found) as [Key, string][]) if (v) next[k] = v
+      onChange(next)
+      setNote(
+        status && status !== "ACTIVE"
+          ? { ok: false, text: "Заполнено, но организация в реестре не действующая — проверьте" }
+          : { ok: true, text: "Заполнено по ЕГРЮЛ — банк и счёт введите вручную" },
+      )
+    } catch (e) {
+      setNote({ ok: false, text: e instanceof Error ? e.message : "Не удалось получить реквизиты" })
+    } finally {
+      setLoading(false)
+    }
+  }
   const field = (f: { key: Key; label: string; placeholder?: string; span?: boolean; max?: number; required?: boolean }) => (
     <div key={f.key} className={`flex flex-col gap-1.5 ${f.span ? "sm:col-span-2" : ""}`}>
       <label className="text-xs text-white/50">
@@ -54,7 +79,32 @@ export function ClientRequisitesForm({ value, onChange }: Props) {
         <p className="font-medium">Реквизиты юрлица</p>
         <p className="mt-0.5 text-xs text-white/40">Подставятся в договор и счёт — в шапку, раздел реквизитов и подписи</p>
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{FIELDS.map(field)}</div>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs text-white/50">
+          ИНН <span className="text-red-400">*</span>
+        </label>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <input
+            value={inn}
+            inputMode="numeric"
+            onChange={(e) => set("inn", e.target.value, 12)}
+            onKeyDown={(e) => e.key === "Enter" && (inn.length === 10 || inn.length === 12) && (e.preventDefault(), fill())}
+            placeholder="10 цифр для ООО, 12 — для ИП"
+            className={input}
+          />
+          <button
+            type="button"
+            onClick={fill}
+            disabled={loading || (inn.length !== 10 && inn.length !== 12)}
+            className="flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-lg bg-[#D4AF37] px-4 text-sm text-[#161616] transition-colors hover:bg-[#B8860B] disabled:opacity-40"
+          >
+            <Icon name={loading ? "Loader2" : "Sparkles"} size={15} className={loading ? "animate-spin" : ""} />
+            Заполнить по ИНН
+          </button>
+        </div>
+        {note && <p className={`text-xs ${note.ok ? "text-emerald-400" : "text-amber-400"}`}>{note.text}</p>}
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{FIELDS.filter((f) => f.key !== "inn").map(field)}</div>
       <p className="text-xs uppercase tracking-wide text-white/40">Банковские реквизиты</p>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{BANK.map(field)}</div>
     </div>
