@@ -115,7 +115,7 @@ export function ContractPartiesSection({
       {" "}
       <InlineInput value={options.customer_director_name} onChange={(v) => updateOption("customer_director_name", v)} placeholder="ФИО" minWidth={90} />
       {" "}на основании{" "}
-      <InlineInput value={options.customer_basis} onChange={(v) => updateOption("customer_basis", v)} placeholder="Устава" minWidth={70} />
+      <InlineInput value={options.customer_basis} onChange={(v) => updateOption("customer_basis", v)} placeholder="не указано" minWidth={80} />
       , с одной стороны, и
     </p>
   )}
@@ -196,7 +196,7 @@ export function ContractPartiesSection({
       {" "}
       <InlineInput value={options.contractor_director_name} onChange={(v) => updateOption("contractor_director_name", v)} placeholder="ФИО" minWidth={90} />
       {" "}на основании{" "}
-      <InlineInput value={options.contractor_basis} onChange={(v) => updateOption("contractor_basis", v)} placeholder="Устава" minWidth={70} />
+      <InlineInput value={options.contractor_basis} onChange={(v) => updateOption("contractor_basis", v)} placeholder="не указано" minWidth={80} />
       , с другой стороны,
     </p>
   )}

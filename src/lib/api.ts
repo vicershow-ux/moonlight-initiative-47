@@ -174,6 +174,15 @@ export const twoFactorApi = {
   },
 }
 
+export interface DadataSettings {
+  enabled: boolean
+  has_key: boolean
+  key_masked: string
+  from_env: boolean
+  requests_count: number
+  last_used_at: string | null
+}
+
 export interface ClientRequisites {
   org_name?: string
   inn?: string
@@ -240,6 +249,27 @@ export const objectsApi = {
       body: JSON.stringify(payload),
     })
     return parseResponse(res) as Promise<ObjectItem>
+  },
+
+  async dadataSettings(): Promise<DadataSettings> {
+    const res = await fetch(`${OBJECTS_URL}?action=dadata_settings`, { headers: { ...authHeaders() } })
+    return parseResponse(res)
+  },
+  async saveDadata(payload: { api_key?: string; enabled?: boolean }): Promise<DadataSettings> {
+    const res = await fetch(`${OBJECTS_URL}?action=dadata_settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return parseResponse(res)
+  },
+  async testDadata(api_key?: string): Promise<{ ok: boolean; error: string }> {
+    const res = await fetch(`${OBJECTS_URL}?action=dadata_settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ test: true, api_key }),
+    })
+    return parseResponse(res)
   },
 
   /** Реквизиты организации по ИНН (DaData) */

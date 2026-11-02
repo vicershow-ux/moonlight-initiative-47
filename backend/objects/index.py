@@ -38,14 +38,34 @@ def clean_requisites(value) -> dict:
     return {k: str(value.get(k) or '').strip()[:500] for k in REQUISITE_KEYS if str(value.get(k) or '').strip()}
 
 
-def party_by_inn(inn: str):
+def dadata_key(cur, company_id):
+    '''Ключ DaData компании; если свой не задан — общий ключ проекта'''
+    cur.execute("SELECT api_key, enabled FROM company_dadata_settings WHERE company_id = %s", (company_id,))
+    row = cur.fetchone()
+    own = (row[0] if row else '') or ''
+    enabled = row[1] if row else True
+    return (own or os.environ.get('DADATA_API_KEY') or ''), enabled
+
+
+def dadata_view(cur, company_id):
+    cur.execute("SELECT api_key, enabled, requests_count, last_used_at FROM company_dadata_settings WHERE company_id = %s", (company_id,))
+    row = cur.fetchone() or ('', True, 0, None)
+    own = row[0] or ''
+    env = bool(os.environ.get('DADATA_API_KEY'))
+    masked = (own[:4] + '•' * 8 + own[-4:]) if len(own) > 8 else ('•' * len(own))
+    return {
+        'enabled': row[1], 'has_key': bool(own), 'key_masked': masked,
+        'from_env': not own and env, 'requests_count': row[2], 'last_used_at': row[3],
+    }
+
+
+def party_by_inn(inn: str, key: str = ''):
     '''Реквизиты организации по ИНН из DaData: название, КПП, ОГРН, адрес, руководитель'''
     inn = re.sub(r'\D', '', inn or '')
     if len(inn) not in (10, 12):
         return response(400, {'error': 'ИНН — 10 цифр для организации или 12 для ИП'})
-    key = os.environ.get('DADATA_API_KEY')
     if not key:
-        return response(503, {'error': 'Автозаполнение не подключено — добавьте ключ DaData в секреты проекта'})
+        return response(503, {'error': 'Автозаполнение не подключено — укажите ключ в «Интеграции → DaData»'})
     req = urllib.request.Request(
         'https://suggestions.dadata.ru/suggestions/api/4_1/rs/findById/party',
         data=json.dumps({'query': inn, 'count': 1}).encode(),
@@ -77,7 +97,6 @@ def party_by_inn(inn: str):
         'legal_address': addr.get('unrestricted_value') or addr.get('value') or '',
         'director_position': 'Индивидуальный предприниматель' if is_ip else (post[:1].upper() + post[1:].lower() if post else ''),
         'director_name': ip_name if is_ip else (mgmt.get('name') or ''),
-        'basis': 'Свидетельства о регистрации' if is_ip else 'Устава',
         'status': (d.get('state') or {}).get('status') or '',
     })
 
@@ -188,10 +207,40 @@ def handler(event: dict, context) -> dict:
 
         select_cols = ', '.join(ALL_KEYS)
 
-        if method == 'GET' and params.get('action') == 'party_by_inn':
+        if params.get('action') == 'party_by_inn' and method == 'GET':
             if is_client:
                 return response(403, {'error': 'Недостаточно прав'})
-            return party_by_inn(params.get('inn') or '')
+            key, enabled = dadata_key(cur, company_id)
+            if not enabled:
+                return response(503, {'error': 'Автозаполнение по ИНН выключено в «Интеграции → DaData»'})
+            res = party_by_inn(params.get('inn') or '', key)
+            if res['statusCode'] in (200, 404):
+                cur.execute(
+                    "UPDATE company_dadata_settings SET requests_count = requests_count + 1, last_used_at = NOW() WHERE company_id = %s",
+                    (company_id,)
+                )
+                conn.commit()
+            return res
+
+        if params.get('action') == 'dadata_settings':
+            if user['role'] not in ('owner', 'admin'):
+                return response(403, {'error': 'Настройки интеграций доступны руководителю'})
+            if method == 'PUT':
+                body = json.loads(event.get('body') or '{}')
+                if body.get('test'):
+                    key, _ = dadata_key(cur, company_id)
+                    k = (body.get('api_key') or '').strip() or key
+                    res = party_by_inn('7707083893', k)
+                    return response(200, {'ok': res['statusCode'] == 200, 'error': json.loads(res['body']).get('error', '') if res['statusCode'] != 200 else ''})
+                cur.execute("INSERT INTO company_dadata_settings (company_id) VALUES (%s) ON CONFLICT DO NOTHING", (company_id,))
+                if 'api_key' in body and body['api_key'] is not None:
+                    cur.execute("UPDATE company_dadata_settings SET api_key = %s, updated_at = NOW() WHERE company_id = %s",
+                                (str(body['api_key']).strip()[:200], company_id))
+                if 'enabled' in body:
+                    cur.execute("UPDATE company_dadata_settings SET enabled = %s, updated_at = NOW() WHERE company_id = %s",
+                                (bool(body['enabled']), company_id))
+                conn.commit()
+            return response(200, dadata_view(cur, company_id))
 
         if method == 'GET':
             if object_id:

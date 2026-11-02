@@ -2,9 +2,10 @@ import { useEffect, useState } from "react"
 import { Link, useParams } from "@/lib/router-compat"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
-import { bankApi, BankSettings, paySettingsApi, PaySettings } from "@/lib/api"
+import { bankApi, BankSettings, DadataSettings as DadataState, objectsApi, paySettingsApi, PaySettings } from "@/lib/api"
 import { YookassaSettings } from "@/components/crm/integrations/YookassaSettings"
 import { TbankSettings } from "@/components/crm/integrations/TbankSettings"
+import { DadataSettings } from "@/components/crm/integrations/DadataSettings"
 
 type Status = "on" | "off" | "soon"
 
@@ -47,6 +48,15 @@ const INTEGRATIONS: IntegrationDef[] = [
     available: true,
   },
   {
+    slug: "dadata",
+    name: "DaData",
+    category: "Реквизиты",
+    description: "Автозаполнение реквизитов заказчика-юрлица по ИНН: название, КПП, ОГРН, адрес и руководитель.",
+    icon: "Building2",
+    color: "#E11D48",
+    available: true,
+  },
+  {
     slug: "moysklad",
     name: "МойСклад",
     category: "Учёт",
@@ -67,16 +77,19 @@ export default function Integrations() {
   const { slug } = useParams()
   const [yk, setYk] = useState<PaySettings | null>(null)
   const [bank, setBank] = useState<BankSettings | null>(null)
+  const [dadata, setDadata] = useState<DadataState | null>(null)
 
   useEffect(() => {
     if (slug) return
     paySettingsApi.get().then(setYk).catch(() => null)
     bankApi.get().then(setBank).catch(() => null)
+    objectsApi.dadataSettings().then(setDadata).catch(() => null)
   }, [slug])
 
   const statusOf = (it: IntegrationDef): Status => {
     if (!it.available) return "soon"
     if (it.slug === "yookassa") return yk?.enabled && yk.shop_id && yk.has_secret ? "on" : "off"
+    if (it.slug === "dadata") return dadata?.enabled && (dadata.has_key || dadata.from_env) ? "on" : "off"
     if (it.slug === "tbank") return bank?.enabled && bank.has_token && bank.account_number ? "on" : "off"
     return "off"
   }
@@ -92,6 +105,7 @@ export default function Integrations() {
         </Link>
         {current.slug === "yookassa" && <YookassaSettings onChange={setYk} />}
         {current.slug === "tbank" && <TbankSettings onChange={setBank} />}
+        {current.slug === "dadata" && <DadataSettings onChange={setDadata} />}
       </CrmLayout>
     )
   }

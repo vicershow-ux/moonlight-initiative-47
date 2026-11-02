@@ -19,7 +19,7 @@ const FIELDS: { key: Key; label: string; placeholder?: string; span?: boolean; m
   { key: "inn", label: "ИНН", placeholder: "10 цифр", max: 12, required: true },
   { key: "kpp", label: "КПП", placeholder: "9 цифр", max: 9 },
   { key: "ogrn", label: "ОГРН", placeholder: "13 цифр", max: 15 },
-  { key: "basis", label: "Действует на основании", placeholder: "Устава" },
+  { key: "basis", label: "Действует на основании", placeholder: "Устава — если пусто, в договор не попадёт" },
   { key: "director_position", label: "Должность подписанта", placeholder: "Генеральный директор" },
   { key: "director_name", label: "ФИО подписанта", placeholder: "Иванов Иван Иванович" },
   { key: "legal_address", label: "Юридический адрес", span: true },
@@ -102,7 +102,19 @@ export function ClientRequisitesForm({ value, onChange }: Props) {
             Заполнить по ИНН
           </button>
         </div>
-        {note && <p className={`text-xs ${note.ok ? "text-emerald-400" : "text-amber-400"}`}>{note.text}</p>}
+        {note && (
+          <p className={`text-xs ${note.ok ? "text-emerald-400" : "text-amber-400"}`}>
+            {note.text}
+            {!note.ok && /Интеграции/.test(note.text) && (
+              <>
+                {" "}
+                <a href="/cabinet/integrations/dadata" className="text-[#D4AF37] underline">
+                  Открыть настройки
+                </a>
+              </>
+            )}
+          </p>
+        )}
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{FIELDS.filter((f) => f.key !== "inn").map(field)}</div>
       <p className="text-xs uppercase tracking-wide text-white/40">Банковские реквизиты</p>

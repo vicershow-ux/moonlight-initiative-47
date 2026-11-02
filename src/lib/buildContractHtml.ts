@@ -38,6 +38,12 @@ const STAGED_DETAIL = `
 <p>1.4.4. Этап 4 — Финишные работы: укладка напольных покрытий, затирка швов плитки, поклейка обоев / покраска, монтаж натяжных потолков, установка дверей, чистовой сантехники, розеток, выключателей, светильников, плинтусов и декоративных элементов.</p>
 `.trim()
 
+/** «на основании …» — только если основание указано в карточке; без него фразу не пишем */
+const basisPart = (v?: string) => {
+  const b = (v || "").trim().replace(/^на основании\s+/i, "")
+  return b ? ` на основании ${esc(b)}` : ""
+}
+
 function customerIntro(ctx: ContractContext): string {
   const { options: o, object } = ctx
   const customerName = o.customer_name || (isHire(o) ? "" : object.client_name) || ""
@@ -53,7 +59,7 @@ function customerIntro(ctx: ContractContext): string {
   const req = isHire(o) ? {} : object.client_requisites || {}
   const inn = ourInn || req.inn || ""
   const reg = [o.customer_ogrn ? `ОГРН ${esc(o.customer_ogrn)}` : "", inn ? `ИНН ${esc(inn)}` : "", !isHire(o) && req.kpp ? `КПП ${esc(req.kpp)}` : ""].filter(Boolean).join(", ")
-  return `${esc(org)}${reg ? ` (${reg})` : ""}, именуемое в дальнейшем «Заказчик», от имени которого действует ${esc(o.customer_director_position) || "генеральный директор"} ${esc(o.customer_director_name) || esc(customerName)} на основании ${esc(o.customer_basis) || "Устава"}, с одной стороны, и`
+  return `${esc(org)}${reg ? ` (${reg})` : ""}, именуемое в дальнейшем «Заказчик», от имени которого действует ${esc(o.customer_director_position) || "генеральный директор"} ${esc(o.customer_director_name) || esc(customerName)}${basisPart(o.customer_basis)}, с одной стороны, и`
 }
 
 /** Мы — Заказчик: нанимаем исполнителя на отдельный вид работ */
@@ -88,7 +94,7 @@ function contractorIntro(ctx: ContractContext): string {
   }
   const org = o.contractor_org_name || name
   const reg = [ogrn ? `ОГРН ${esc(ogrn)}` : "", inn ? `ИНН ${esc(inn)}` : ""].filter(Boolean).join(", ")
-  return `${esc(org)}${reg ? ` (${reg})` : ""}, именуемое в дальнейшем «Подрядчик», от имени которого действует ${esc(o.contractor_director_position) || comp?.director_position || "Директор"} ${esc(o.contractor_director_name) || esc(comp?.director_name || "") || esc(person)} на основании ${esc(o.contractor_basis) || "Устава"}, с другой стороны,`
+  return `${esc(org)}${reg ? ` (${reg})` : ""}, именуемое в дальнейшем «Подрядчик», от имени которого действует ${esc(o.contractor_director_position) || comp?.director_position || "Директор"} ${esc(o.contractor_director_name) || esc(comp?.director_name || "") || esc(person)}${basisPart(o.contractor_basis)}, с другой стороны,`
 }
 
 function partyIntro(ctx: ContractContext): string {

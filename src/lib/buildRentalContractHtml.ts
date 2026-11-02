@@ -92,8 +92,8 @@ function partyIntro(cp: RentalCounterparty | null): string {
     const org = cp.org_name || cp.display_name
     const post = cp.director_position || "генеральный директор"
     const dir = cp.director_name || ""
-    const basis = cp.acts_basis || "Устава"
-    return `${esc(org)}, именуемое в дальнейшем «Арендатор», от имени которого действует ${esc(post)} ${esc(dir)} на основании ${esc(basis)}`
+    const basis = (cp.acts_basis || "").trim()
+    return `${esc(org)}, именуемое в дальнейшем «Арендатор», от имени которого действует ${esc(post)} ${esc(dir)}${basis ? ` на основании ${esc(basis)}` : ""}`
   }
 
   if (cp.party_kind === "entrepreneur") {

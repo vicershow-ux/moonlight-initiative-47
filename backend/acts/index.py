@@ -509,7 +509,7 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
         client_name = org
         pos = esc(contract_opts.get('customer_director_position') or req.get('director_position'))
         who = esc(contract_opts.get('customer_director_name') or req.get('director_name'))
-        basis = esc(contract_opts.get('customer_basis') or req.get('basis')) or 'Устава'
+        basis = esc(contract_opts.get('customer_basis') or req.get('basis'))
         reg = ', '.join(x for x in [
             f"ОГРН {esc(req.get('ogrn'))}" if req.get('ogrn') else '',
             f"ИНН {esc(req.get('inn'))}" if req.get('inn') else '',
@@ -517,7 +517,7 @@ def build_act_html(object_row, company_row, contract_row, opts, items, act_numbe
         ] if x)
         customer_intro = org + (f' ({reg})' if reg else '')
         if who:
-            customer_intro += f", от имени которого действует {(pos or 'генеральный директор').lower()} {who} на основании {basis}"
+            customer_intro += f", от имени которого действует {(pos or 'генеральный директор').lower()} {who}" + (f" на основании {basis}" if basis else '')
             customer_signer = f"{pos or 'Директор'} {who}".strip()
         else:
             customer_signer = org
