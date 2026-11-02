@@ -55,11 +55,12 @@ function customerIntro(ctx: ContractContext): string {
     const suffix = o.customer_gender === "f" ? "ная" : "ный"
     return `Индивидуальный предприниматель ${esc(customerName)}, зарегистрирован${suffix} в реестре индивидуальных предпринимателей под № ${esc(o.customer_ogrnip) || "____________"}${ourInn ? `, ИНН ${esc(ourInn)}` : ""} (далее — «Заказчик»), с одной стороны, и`
   }
-  const org = o.customer_org_name || customerName
   const req = isHire(o) ? {} : object.client_requisites || {}
+  const org = o.customer_org_name || req.org_name || customerName
   const inn = ourInn || req.inn || ""
-  const reg = [o.customer_ogrn ? `ОГРН ${esc(o.customer_ogrn)}` : "", inn ? `ИНН ${esc(inn)}` : "", !isHire(o) && req.kpp ? `КПП ${esc(req.kpp)}` : ""].filter(Boolean).join(", ")
-  return `${esc(org)}${reg ? ` (${reg})` : ""}, именуемое в дальнейшем «Заказчик», от имени которого действует ${esc(o.customer_director_position) || "генеральный директор"} ${esc(o.customer_director_name) || esc(customerName)}${basisPart(o.customer_basis)}, с одной стороны, и`
+  const ogrn = o.customer_ogrn || req.ogrn || ""
+  const reg = [ogrn ? `ОГРН ${esc(ogrn)}` : "", inn ? `ИНН ${esc(inn)}` : "", !isHire(o) && req.kpp ? `КПП ${esc(req.kpp)}` : ""].filter(Boolean).join(", ")
+  return `${esc(org)}${reg ? ` (${reg})` : ""}, именуемое в дальнейшем «Заказчик», от имени которого действует ${esc(o.customer_director_position || req.director_position) || "генеральный директор"} ${esc(o.customer_director_name || req.director_name) || esc(customerName)}${basisPart(o.customer_basis || req.basis)}, с одной стороны, и`
 }
 
 /** Мы — Заказчик: нанимаем исполнителя на отдельный вид работ */
@@ -231,7 +232,8 @@ function contractorCard(ctx: ContractContext, companyName: string): string {
 function customerTitle(ctx: ContractContext): string {
   const { options: o, object } = ctx
   const fallback = isHire(o) ? ctx.company?.contact_full_name || ctx.company?.name || "" : object.client_name || ""
-  if (o.customer_type === "legal" && o.customer_org_name) return o.customer_org_name
+  if (o.customer_type === "legal" && (o.customer_org_name || (!isHire(o) && object.client_requisites?.org_name)))
+    return o.customer_org_name || object.client_requisites?.org_name || ""
   if (o.customer_type === "entrepreneur") return `ИП ${o.customer_name || fallback}`
   return o.customer_name || fallback
 }
@@ -263,7 +265,7 @@ function customerCard(ctx: ContractContext, address: string): string {
         corr: r.corr_account,
       }) +
       row("Почтовый адрес", r.postal_address) +
-      (o.customer_director_name ? row(o.customer_director_position || "Директор", o.customer_director_name) : "") +
+      (o.customer_director_name || r.director_name ? row(o.customer_director_position || r.director_position || "Директор", o.customer_director_name || r.director_name) : "") +
       row("Адрес объекта", address)
     return card("Заказчик", customerTitle(ctx), rows)
   }
@@ -288,8 +290,9 @@ function requisitesAndSigns(ctx: ContractContext, companyName: string, address: 
   const contractorSigner = o.contractor_type === "legal"
     ? `${o.contractor_director_position || (hire ? "" : c?.director_position) || "Директор"} ${o.contractor_director_name || (hire ? "" : c?.director_name || c?.contact_full_name) || ""}`.trim()
     : o.contractor_name || (hire ? "" : c?.contact_full_name || companyName)
-  const customerSigner = o.customer_type === "legal" && (o.customer_director_name || hire)
-    ? `${o.customer_director_position || "Директор"} ${o.customer_director_name || c?.director_name || c?.contact_full_name || ""}`.trim()
+  const req = hire ? {} : object.client_requisites || {}
+  const customerSigner = o.customer_type === "legal" && (o.customer_director_name || req.director_name || hire)
+    ? `${o.customer_director_position || req.director_position || "Директор"} ${o.customer_director_name || req.director_name || c?.director_name || c?.contact_full_name || ""}`.trim()
     : o.customer_name || (hire ? c?.contact_full_name || companyName : object.client_name) || ""
   const sig = o.apply_signature && c?.signature_url
     ? `<img src="${esc(c.signature_url)}" crossorigin="anonymous" alt="" style="position:absolute;left:10px;bottom:4px;height:62px;max-width:200px;object-fit:contain"/>`

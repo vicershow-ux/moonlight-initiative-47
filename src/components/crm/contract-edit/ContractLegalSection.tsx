@@ -29,6 +29,20 @@ export function ContractLegalSection({
   setStatus,
   error,
 }: ContractLegalSectionProps) {
+  // Заказчик-юрлицо: реквизиты из карточки объекта — так же подробно, как у Подрядчика
+  const customerLegal = options.customer_type === "legal"
+  const req = (customerLegal && object?.client_requisites) || {}
+  const customerTitle =
+    customerLegal
+      ? options.customer_org_name || req.org_name || options.customer_name || object?.client_name || "—"
+      : options.customer_type === "entrepreneur"
+        ? `ИП ${options.customer_name || object?.client_name || ""}`
+        : options.customer_name || object?.client_name || "—"
+  const customerSigner =
+    customerLegal && (options.customer_director_name || req.director_name)
+      ? `${options.customer_director_position || req.director_position || "Директор"} ${options.customer_director_name || req.director_name}`
+      : customerTitle
+
   return (
     <>
   {/* 6. Гарантия на работы */}
@@ -195,14 +209,29 @@ export function ContractLegalSection({
     </div>
     <div className="flex flex-col">
       <p className="text-xs uppercase tracking-wide text-white/50 mb-2">Заказчик</p>
-      <p className="font-semibold text-white">{options.customer_name || object?.client_name || "—"}</p>
+      <p className="font-semibold text-white">{customerTitle}</p>
+      {customerLegal && (options.customer_ogrn || req.ogrn) && <p className="text-sm text-white/70">ОГРН: {options.customer_ogrn || req.ogrn}</p>}
+      {options.customer_type === "entrepreneur" && options.customer_ogrnip && <p className="text-sm text-white/70">ОГРНИП: {options.customer_ogrnip}</p>}
+      {customerLegal && req.inn && <p className="text-sm text-white/70">ИНН: {req.inn}</p>}
+      {customerLegal && req.kpp && <p className="text-sm text-white/70">КПП: {req.kpp}</p>}
+      {customerLegal && req.legal_address && <p className="text-sm text-white/70">Юр. адрес: {req.legal_address}</p>}
+      {customerLegal && req.postal_address && <p className="text-sm text-white/70">Почтовый адрес: {req.postal_address}</p>}
       {object?.client_phone && <p className="text-sm text-white/70">Тел.: {object.client_phone}</p>}
       {object?.email && <p className="text-sm text-white/70">Email: {object.email}</p>}
-      {options.object_address && <p className="text-sm text-white/70">Адрес: {options.object_address}</p>}
+      {customerLegal && req.bank_name && <p className="text-sm text-white/70">Банк: {req.bank_name}</p>}
+      {customerLegal && req.bik && <p className="text-sm text-white/70">БИК: {req.bik}</p>}
+      {customerLegal && req.account && <p className="text-sm text-white/70">Р/с: {req.account}</p>}
+      {customerLegal && req.corr_account && <p className="text-sm text-white/70">К/с: {req.corr_account}</p>}
+      {options.object_address && <p className="text-sm text-white/70">Адрес объекта: {options.object_address}</p>}
+      {customerLegal && !Object.values(req).some(Boolean) && (
+        <p className="mt-2 text-xs text-amber-400">
+          Реквизиты юрлица не заполнены — добавьте их в карточке объекта («Редактировать объект»)
+        </p>
+      )}
       <div className="mt-auto pt-10">
         <p className="text-xs uppercase tracking-wide text-white/50 mb-2">От имени Заказчика</p>
         <div className="h-24 border-b border-white/30" />
-        <p className="mt-1 font-semibold text-white text-sm">{options.customer_name || object?.client_name || "—"}</p>
+        <p className="mt-1 font-semibold text-white text-sm">{customerSigner}</p>
         <p className="text-xs text-white/40">(подпись)</p>
         {options.apply_stamp && company?.stamp_url && <div className="h-16" />}
       </div>
