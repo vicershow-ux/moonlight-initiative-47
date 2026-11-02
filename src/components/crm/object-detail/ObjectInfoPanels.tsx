@@ -59,6 +59,36 @@ export function ObjectInfoPanels({ object, rooms, roomsLoading, isClient }: Obje
             <p className="font-medium text-[#D4AF37]">{object.email || "—"}</p>
           </div>
         </div>
+        {object.legal_status === "юридическое лицо" && (() => {
+          const r = object.client_requisites || {}
+          const rows: [string, string | undefined][] = [
+            ["Организация", r.org_name],
+            ["ИНН / КПП", [r.inn, r.kpp].filter(Boolean).join(" / ")],
+            ["ОГРН", r.ogrn],
+            ["Подписант", [r.director_position, r.director_name].filter(Boolean).join(" ")],
+            ["Юр. адрес", r.legal_address],
+            ["Банк", [r.bank_name, r.bik && `БИК ${r.bik}`].filter(Boolean).join(", ")],
+            ["Р/с", r.account],
+          ]
+          const filled = rows.filter(([, v]) => v)
+          return (
+            <div className="mt-4 border-t border-white/10 pt-4">
+              <p className="mb-3 text-xs uppercase tracking-wide text-white/40">Реквизиты юрлица</p>
+              {filled.length ? (
+                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                  {filled.map(([k, v]) => (
+                    <div key={k}>
+                      <p className="mb-1 text-xs text-white/40">{k}</p>
+                      <p className="font-medium break-words">{v}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-amber-400/80">Не заполнены — добавьте их в «Редактировать объект», чтобы они попали в договор</p>
+              )}
+            </div>
+          )
+        })()}
       </div>
 
       <div className="bg-[#1f1f1f] border border-white/10 rounded-xl p-3 sm:p-5">

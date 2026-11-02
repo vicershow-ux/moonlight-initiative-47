@@ -10,10 +10,29 @@ FIELDS = [
     'has_elevator', 'residence_during_works', 'material_unloading',
     'completion_type', 'warranty_waiver',
     'rough_material', 'finish_material', 'kitchen_furniture',
-    'measurer_comment', 'design_project',
+    'measurer_comment', 'design_project', 'client_requisites',
 ]
 
 ALL_KEYS = ['id', 'object_code'] + FIELDS + ['lead_request', 'lead_works', 'created_at', 'updated_at', 'is_closed', 'closed_at']
+
+
+REQUISITE_KEYS = [
+    'org_name', 'inn', 'kpp', 'ogrn', 'legal_address', 'postal_address',
+    'director_position', 'director_name', 'basis',
+    'bank_name', 'bik', 'account', 'corr_account',
+]
+
+
+def clean_requisites(value) -> dict:
+    """Реквизиты заказчика-юрлица: только известные поля, строки без пробелов по краям"""
+    if isinstance(value, str):
+        try:
+            value = json.loads(value or '{}')
+        except ValueError:
+            value = {}
+    if not isinstance(value, dict):
+        return {}
+    return {k: str(value.get(k) or '').strip()[:500] for k in REQUISITE_KEYS if str(value.get(k) or '').strip()}
 
 
 def get_conn():
@@ -189,6 +208,7 @@ def handler(event: dict, context) -> dict:
                 'kitchen_furniture': (body.get('kitchen_furniture') or '').strip(),
                 'measurer_comment': (body.get('measurer_comment') or '').strip(),
                 'design_project': design_project,
+                'client_requisites': json.dumps(clean_requisites(body.get('client_requisites')), ensure_ascii=False),
             }
 
             year = datetime.utcnow().strftime('%y')
@@ -214,7 +234,8 @@ def handler(event: dict, context) -> dict:
 
             return response(200, {
                 'id': new_id, 'object_code': object_code, 'created_at': created_at,
-                'updated_at': updated_at, **values_map
+                'updated_at': updated_at, **values_map,
+                'client_requisites': json.loads(values_map['client_requisites']),
             })
 
         if method == 'PUT':
@@ -239,6 +260,8 @@ def handler(event: dict, context) -> dict:
                     value = body[key]
                     if key == 'design_project' and isinstance(value, list):
                         value = json.dumps(value, ensure_ascii=False)
+                    if key == 'client_requisites':
+                        value = json.dumps(clean_requisites(value), ensure_ascii=False)
                     fields.append(f"{key} = %s")
                     values.append(value)
             if 'is_closed' in body:

@@ -93,6 +93,8 @@ export function usePlanCanvasPointer({
     onUpdateHeating,
   } = props
   const furniture = scheme.furniture || []
+  // Помощник выключен кнопкой — Alt наоборот включает его на время
+  const free = (e: React.MouseEvent) => e.altKey !== !!props.assistOff
   const { trackStart, trackPts, setTrackPts, finishTrack, snapPoint, ceilingRefs, placeFor, trackEnd, assistRefs, drawAssist } = assistApi
   const [, setCursor] = cursorState
 
@@ -113,13 +115,13 @@ export function usePlanCanvasPointer({
       [...nodes].reverse().find((n) => dist({ x: n.x, y: n.y }, world) * view.scale < 14) || null
 
     if (tool === "node") {
-      const pa = placeFor(world, nodeKind, e.altKey)
+      const pa = placeFor(world, nodeKind, free(e))
       onAddNode(pa ? pa.point : { x: snap(world.x, SNAP_STEP), y: snap(world.y, SNAP_STEP) })
       return
     }
 
     if (tool === "track") {
-      const pa = trackEnd(world, e.altKey)
+      const pa = trackEnd(world, free(e))
       if (!trackStart) {
         setTrackPts([pa.point])
         return
@@ -145,7 +147,7 @@ export function usePlanCanvasPointer({
 
     // Контур тёплого пола рисуется как стены: щелчки по углам, замыкание у первой точки
     if (tool === "heating") {
-      const snapped = drawAssist(world, e.altKey).point
+      const snapped = drawAssist(world, free(e)).point
       if (draft.length >= 3 && dist(snapped, draft[0]) * view.scale < 12) {
         onAddHeating?.(draft)
         return
@@ -166,7 +168,7 @@ export function usePlanCanvasPointer({
         return
       }
       // Щелчок по пустому месту — ещё один поворот трассы
-      if (linkFromId) setBends((b) => [...b, nextBend(world, e.altKey)])
+      if (linkFromId) setBends((b) => [...b, nextBend(world, free(e))])
       return
     }
 
@@ -317,7 +319,7 @@ export function usePlanCanvasPointer({
     // Повторный щелчок в последнюю точку (или Enter) заканчивает стену
     if (tool === "split") {
       const tp = typedPoint()
-      const p = tp || drawAssist(world, e.altKey).point
+      const p = tp || drawAssist(world, free(e)).point
       if (tp) setTyped("")
       const onEdge = !!pointOnRoomEdge(scheme, p, 0.02)
       if (!draft.length) {
@@ -345,7 +347,7 @@ export function usePlanCanvasPointer({
         setTyped("")
         return
       }
-      const snapped = drawAssist(world, e.altKey).point
+      const snapped = drawAssist(world, free(e)).point
       // Замыкаем контур, если щёлкнули рядом с первой точкой (12 пикселей на экране)
       if (draft.length >= 3 && dist(snapped, draft[0]) * view.scale < 12) {
         onFinishRoom(draft)
@@ -378,17 +380,17 @@ export function usePlanCanvasPointer({
     const { sx, sy } = eventPoint(e)
     const world = toWorld(sx, sy)
     if ((tool === "draw" || tool === "heating" || tool === "split") && !drag) {
-      const a = drawAssist(world, e.altKey)
+      const a = drawAssist(world, free(e))
       setAssist(a)
       setCursor(a.point)
     } else if (tool === "track" && !drag) {
       if (assist) setAssist(null)
-      const pa = trackEnd(world, e.altKey)
+      const pa = trackEnd(world, free(e))
       setPlace(pa)
       setCursor(pa.point)
     } else if (tool === "node" && !drag) {
       if (assist) setAssist(null)
-      const pa = placeFor(world, nodeKind, e.altKey)
+      const pa = placeFor(world, nodeKind, free(e))
       setPlace(pa)
       setCursor(pa ? pa.point : snapPoint(world))
     } else {
@@ -404,7 +406,7 @@ export function usePlanCanvasPointer({
     }
     if (drag.type === "node") {
       const moving = nodes.find((n) => n.id === drag.nodeId)
-      const pa = moving ? placeFor(world, moving.kind, e.altKey, moving.id) : null
+      const pa = moving ? placeFor(world, moving.kind, free(e), moving.id) : null
       setPlace(pa)
       onMoveNode(drag.nodeId, pa ? pa.point : snapPoint(world))
       return
@@ -412,7 +414,7 @@ export function usePlanCanvasPointer({
     if (drag.type === "fixture") {
       // Трек двигается целиком; к осям светильников прилипает его начало
       const raw = { x: drag.a.x + world.x - drag.grab.x, y: drag.a.y + world.y - drag.grab.y }
-      const pa = placeAssist(snapPoint(raw), scheme.rooms, ceilingRefs(undefined, drag.id), view.scale, e.altKey)
+      const pa = placeAssist(snapPoint(raw), scheme.rooms, ceilingRefs(undefined, drag.id), view.scale, free(e))
       const dx = pa.point.x - drag.a.x
       const dy = pa.point.y - drag.a.y
       onUpdateFixture?.(drag.id, shiftTrack(drag, dx, dy))
@@ -436,7 +438,7 @@ export function usePlanCanvasPointer({
       if (!item) return
       const raw = snapPoint({ x: drag.x + world.x - drag.grab.x, y: drag.y + world.y - drag.grab.y })
       // У стены — прилипает тыльной стороной и разворачивается; Alt — свободно
-      const sn = !e.altKey && furnitureProps(item).wall ? snapFurnitureToWall(scheme, { ...item, ...raw }, 0.25) : null
+      const sn = !free(e) && furnitureProps(item).wall ? snapFurnitureToWall(scheme, { ...item, ...raw }, 0.25) : null
       onUpdateFurniture?.(drag.id, sn ? sn : raw)
       return
     }
@@ -444,7 +446,7 @@ export function usePlanCanvasPointer({
       const fw = (scheme.freeWalls || []).find((w) => w.id === drag.id)
       if (!fw) return
       const other = drag.end === "a" ? fw.b : fw.a
-      const sn = snapFreeEnd(scheme, world, other, view.scale, fw.id, e.altKey)
+      const sn = snapFreeEnd(scheme, world, other, view.scale, fw.id, free(e))
       if (Math.hypot(sn.point.x - other.x, sn.point.y - other.y) < 0.05) return
       setCursor(sn.point)
       props.onMoveFreeWall?.(fw.id, { [drag.end]: sn.point })
@@ -457,7 +459,7 @@ export function usePlanCanvasPointer({
       onUpdateLink(link.id, { points: pts })
       return
     }
-    const a = assistPoint(snapPoint(world), null, null, assistRefs({ roomId: drag.roomId, index: drag.index }), view.scale, e.altKey)
+    const a = assistPoint(snapPoint(world), null, null, assistRefs({ roomId: drag.roomId, index: drag.index }), view.scale, free(e))
     setAssist(a)
     setCursor(a.point)
     onMoveVertex(drag.roomId, drag.index, a.point)

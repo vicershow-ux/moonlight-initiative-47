@@ -45,6 +45,15 @@ export function dilate(mask: Uint8Array, W: number, H: number, r: number) {
   return out
 }
 
+/** Квадратное сужение маски на r пикселей */
+export function erode(mask: Uint8Array, W: number, H: number, r: number) {
+  const sum = integral(mask, W, H)
+  const out = new Uint8Array(W * H)
+  const full = (2 * r + 1) * (2 * r + 1)
+  for (let y = r; y < H - r; y++) for (let x = r; x < W - r; x++) out[y * W + x] = sum(x - r, y - r, x + r, y + r) >= full ? 1 : 0
+  return out
+}
+
 /** Внешний контур области по граням пикселей; вершины только в поворотах */
 export function traceOutline(mask: Uint8Array, W: number, H: number): PlanPoint[] {
   const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < W && y < H && mask[y * W + x] === 1
@@ -306,10 +315,12 @@ function mergeRuns(runs: DetectedRoom[][]): DetectedRoom[] {
         const gx = Math.max(A.x0, B.x0) - Math.min(A.x1, B.x1)
         const gy = Math.max(A.y0, B.y0) - Math.min(A.y1, B.y1)
         const side = gx > gy ? { gap: gx, ov: Math.min(A.y1, B.y1) - Math.max(A.y0, B.y0), len: Math.min(A.y1 - A.y0, B.y1 - B.y0) } : { gap: gy, ov: Math.min(A.x1, B.x1) - Math.max(A.x0, B.x0), len: Math.min(A.x1 - A.x0, B.x1 - B.x0) }
-        if (side.gap > 0.05 || side.ov < side.len * 0.85) continue
+        // Половинки крошечного санузла (меньше 1 м² каждая) разделяет прибор с подписью — зазор шире
+        const tiny = a.area < 1 && b.area < 1
+        if (side.gap > (tiny ? 0.22 : 0.05) || side.ov < side.len * 0.85) continue
         const U = { x0: Math.min(A.x0, B.x0), y0: Math.min(A.y0, B.y0), x1: Math.max(A.x1, B.x1), y1: Math.max(A.y1, B.y1) }
         const ua = (U.x1 - U.x0) * (U.y1 - U.y0)
-        if (ua > 4.5 || ua > (a.area + b.area) * 1.25) continue
+        if (ua > 4.5 || ua > (a.area + b.area) * (tiny ? 1.5 : 1.25)) continue
         const pts = [{ x: U.x0, y: U.y0 }, { x: U.x1, y: U.y0 }, { x: U.x1, y: U.y1 }, { x: U.x0, y: U.y1 }]
         out.splice(j, 1)
         out[i] = { points: pts, area: Math.round(ua * 10) / 10 }
@@ -405,14 +416,180 @@ export function detectPass(gray: Float32Array, W: number, H: number, u: PlanUnde
       }
       return inside
     })
+  // Сначала размечаем все светлые области
   let lab = 0
   const stack: number[] = []
+  const info: { n: number; minX: number; minY: number; maxX: number; maxY: number; sx: number; sy: number; border: boolean }[] = []
   for (let s = 0; s < W * H; s++) {
     if (wall[s] || label[s] >= 0) continue
     stack.length = 0
     stack.push(s)
     label[s] = lab
-    let border = false
+    const it = { n: 0, minX: W, minY: H, maxX: 0, maxY: 0, sx: 0, sy: 0, border: false }
+    while (stack.length) {
+      const i = stack.pop()!
+      const x = i % W
+      const y = (i / W) | 0
+      it.n++
+      it.sx += x
+      it.sy += y
+      if (x < it.minX) it.minX = x
+      if (x > it.maxX) it.maxX = x
+      if (y < it.minY) it.minY = y
+      if (y > it.maxY) it.maxY = y
+      if (x === 0 || y === 0 || x === W - 1 || y === H - 1) it.border = true
+      if (x > 0 && !wall[i - 1] && label[i - 1] < 0) (label[i - 1] = lab), stack.push(i - 1)
+      if (x < W - 1 && !wall[i + 1] && label[i + 1] < 0) (label[i + 1] = lab), stack.push(i + 1)
+      if (y > 0 && !wall[i - W] && label[i - W] < 0) (label[i - W] = lab), stack.push(i - W)
+      if (y < H - 1 && !wall[i + W] && label[i + W] < 0) (label[i + W] = lab), stack.push(i + W)
+    }
+    info.push(it)
+    lab++
+  }
+
+  // Ванна, унитаз, раковина, плита нарисованы ОДНОЙ тонкой линией внутри помещения, а перегородка —
+  // двумя линиями с просветом или толстой заливкой. Небольшая плотная область, отделённая от соседа
+  // только одной тонкой линией, — сантехника или мебель: присоединяем её к помещению вокруг
+  const owner = info.map((_, i) => i)
+  const root = (i: number): number => (owner[i] === i ? i : (owner[i] = root(owner[i])))
+  const size = info.map((it) => it.n)
+  const thin = Math.max(2, Math.round(pxPerM * 0.07))
+  const contact = new Map<number, number>()
+  const addContact = (a: number, b: number) => {
+    const k = a * lab + b
+    contact.set(k, (contact.get(k) || 0) + 1)
+  }
+  // Для тесного санузла: подпись номера («10») поверх прибора — линия потолще
+  const wide = new Map<number, number>()
+  const wideMax = Math.max(thin + 1, Math.round(pxPerM * 0.2))
+  const scanThin = (len: number, cnt: number, at: (i: number, j: number) => number) => {
+    for (let i = 0; i < cnt; i++) {
+      let j = 0
+      while (j < len) {
+        if (!wall[at(i, j)]) {
+          j++
+          continue
+        }
+        let e = j
+        while (e < len && wall[at(i, e)]) e++
+        if (j > 0 && e < len && e - j <= wideMax) {
+          const a = label[at(i, j - 1)]
+          const b = label[at(i, e)]
+          if (a >= 0 && b >= 0 && a !== b) {
+            if (e - j <= thin) {
+              addContact(a, b)
+              addContact(b, a)
+            }
+            const k = Math.min(a, b) * lab + Math.max(a, b)
+            wide.set(k, (wide.get(k) || 0) + 1)
+          }
+        }
+        j = e
+      }
+    }
+  }
+  scanThin(W, H, (y, x) => y * W + x)
+  scanThin(H, W, (x, y) => y * W + x)
+  const smallMax = pxPerM * pxPerM * 1.8
+  const minSide = pxPerM * 0.2
+  const order = info.map((_, i) => i).filter((i) => !info[i].border && info[i].n < smallMax).sort((a, b) => info[a].n - info[b].n)
+  for (const i of order) {
+    if (root(i) !== i || size[i] >= smallMax) continue
+    const it = info[i]
+    const bw = it.maxX - it.minX + 1
+    const bh = it.maxY - it.minY + 1
+    // Щель между двойными линиями перегородки — длинная и узкая, её не присоединяем
+    if (Math.min(bw, bh) < minSide || it.n / (bw * bh) < 0.45) continue
+    const perim = 2 * (bw + bh)
+    let best = -1
+    let bestC = 0
+    for (let j = 0; j < lab; j++) {
+      const c = contact.get(i * lab + j)
+      if (!c || info[j].border) continue
+      // Узкая щель между двойными линиями перегородки — не помещение, через неё не склеиваем
+      const jt = info[j]
+      if (Math.min(jt.maxX - jt.minX + 1, jt.maxY - jt.minY + 1) < minSide) continue
+      const rj = root(j)
+      if (rj === i || size[rj] <= size[i]) continue
+      if (c > bestC) {
+        bestC = c
+        best = rj
+      }
+    }
+    if (best < 0 || bestC < perim * 0.15) continue
+    owner[i] = best
+    size[best] += size[i]
+  }
+
+  // Тесный санузел: унитаз или ванна занимают ячейку почти целиком, и она распадается на мелкие
+  // куски и узкие полоски вокруг прибора. Соседние «недокомнаты», разделённые тонкой линией,
+  // собираем в одну ячейку, если вместе они дают компактный прямоугольник размером с санузел
+  const ppm2 = pxPerM * pxPerM
+  const tooSmall = (r: number) => {
+    const it = info[r]
+    const side = Math.min(it.maxX - it.minX + 1, it.maxY - it.minY + 1)
+    return size[r] < ppm2 * 0.8 || side < pxPerM * 0.55
+  }
+  const longMax = pxPerM * 2.6
+  const pool = info
+    .map((_, i) => i)
+    .filter((i) => root(i) === i && !info[i].border && tooSmall(i) && Math.max(info[i].maxX - info[i].minX, info[i].maxY - info[i].minY) < longMax)
+  const inPool = new Set(pool)
+  const cl = new Map<number, number>()
+  const cr = (i: number): number => {
+    const p = cl.get(i)
+    if (p === undefined || p === i) return i
+    const r = cr(p)
+    cl.set(i, r)
+    return r
+  }
+  for (const [k, c] of wide) {
+    if (c < pxPerM * 0.15) continue
+    const a = Math.floor(k / lab)
+    const b = k % lab
+    const ra = root(a)
+    const rb = root(b)
+    if (ra === rb || !inPool.has(ra) || !inPool.has(rb)) continue
+    cl.set(cr(ra), cr(rb))
+  }
+  const clusters = new Map<number, number[]>()
+  for (const i of pool) {
+    const r = cr(i)
+    const g = clusters.get(r)
+    if (g) g.push(i)
+    else clusters.set(r, [i])
+  }
+  for (const g of clusters.values()) {
+    if (g.length < 2) continue
+    let x0 = W
+    let y0 = H
+    let x1 = 0
+    let y1 = 0
+    let tot = 0
+    for (const i of g) {
+      const it = info[i]
+      x0 = Math.min(x0, it.minX)
+      y0 = Math.min(y0, it.minY)
+      x1 = Math.max(x1, it.maxX)
+      y1 = Math.max(y1, it.maxY)
+      tot += size[i]
+    }
+    const bw = x1 - x0 + 1
+    const bh = y1 - y0 + 1
+    if (Math.min(bw, bh) < pxPerM * 0.5 || Math.max(bw, bh) > longMax) continue
+    if (tot < ppm2 * 0.3 || tot / (bw * bh) < 0.4) continue
+    const main = g.reduce((a, b) => (size[a] >= size[b] ? a : b))
+    for (const i of g) {
+      if (i === main) continue
+      owner[i] = main
+      size[main] += size[i]
+    }
+  }
+
+  for (let cur = 0; cur < lab; cur++) {
+    if (root(cur) !== cur) continue
+    const members = info.map((_, i) => i).filter((i) => root(i) === cur)
+    const border = members.some((i) => info[i].border)
     let n = 0
     let minX = W
     let minY = H
@@ -420,39 +597,36 @@ export function detectPass(gray: Float32Array, W: number, H: number, u: PlanUnde
     let maxY = 0
     let sx = 0
     let sy = 0
-    while (stack.length) {
-      const i = stack.pop()!
-      const x = i % W
-      const y = (i / W) | 0
-      n++
-      sx += x
-      sy += y
-      if (x < minX) minX = x
-      if (x > maxX) maxX = x
-      if (y < minY) minY = y
-      if (y > maxY) maxY = y
-      if (x === 0 || y === 0 || x === W - 1 || y === H - 1) border = true
-      if (x > 0 && !wall[i - 1] && label[i - 1] < 0) (label[i - 1] = lab), stack.push(i - 1)
-      if (x < W - 1 && !wall[i + 1] && label[i + 1] < 0) (label[i + 1] = lab), stack.push(i + 1)
-      if (y > 0 && !wall[i - W] && label[i - W] < 0) (label[i - W] = lab), stack.push(i - W)
-      if (y < H - 1 && !wall[i + W] && label[i + W] < 0) (label[i + W] = lab), stack.push(i + W)
+    for (const i of members) {
+      const it = info[i]
+      n += it.n
+      sx += it.sx
+      sy += it.sy
+      minX = Math.min(minX, it.minX)
+      minY = Math.min(minY, it.minY)
+      maxX = Math.max(maxX, it.maxX)
+      maxY = Math.max(maxY, it.maxY)
     }
-    const cur = lab++
+    const memberSet = new Set(members)
     if (border) continue
     // Площадь после возврата к грани стены
     const area = n / (pxPerM * pxPerM)
-    if (area < 0.6 || area > 150) continue
+    // Собранный из кусков санузел (унитаз во всю ширину) бывает совсем маленьким
+    const merged = members.length > 1
+    if (area < (merged ? 0.3 : 0.6) || area > 150) continue
     if (centerTaken(toWorld({ x: sx / n, y: sy / n }))) continue
 
     // Область — до внутренней грани стен; закрываем дырки от надписей внутри
-    const bx0 = Math.max(minX - 2, 0)
-    const by0 = Math.max(minY - 2, 0)
-    const bw = Math.min(maxX + 3, W) - bx0
-    const bh = Math.min(maxY + 3, H) - by0
+    const pad = thin + 3
+    const bx0 = Math.max(minX - pad, 0)
+    const by0 = Math.max(minY - pad, 0)
+    const bw = Math.min(maxX + pad + 1, W) - bx0
+    const bh = Math.min(maxY + pad + 1, H) - by0
     const local = new Uint8Array(bw * bh)
     for (let y = minY; y <= maxY; y++)
-      for (let x = minX; x <= maxX; x++) if (label[y * W + x] === cur) local[(y - by0) * bw + (x - bx0)] = 1
-    const grown = dilate(local, bw, bh, 1)
+      for (let x = minX; x <= maxX; x++) if (memberSet.has(label[y * W + x])) local[(y - by0) * bw + (x - bx0)] = 1
+    // Тонкие линии сантехники внутри помещения закрываем — контур идёт по стенам
+    const grown = dilate(members.length > 1 ? erode(dilate(local, bw, bh, thin), bw, bh, thin) : local, bw, bh, 1)
     let outline = traceOutline(grown, bw, bh).map((p) => ({ x: p.x + bx0, y: p.y + by0 }))
     // Контур из пикселей — только прямые углы; мелкие ступеньки от шума и надписей убираем
     let pts = orthoSimplify(dropCollinear(outline, 1e-9).map(toWorld), 0.45)
@@ -460,7 +634,7 @@ export function detectPass(gray: Float32Array, W: number, H: number, u: PlanUnde
     // Узкая щель между стенами (толщина стены, вентканал) — не помещение
     const xs = pts.map((p) => p.x)
     const ys = pts.map((p) => p.y)
-    if (Math.min(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) < 0.55) continue
+    if (Math.min(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) < (merged ? 0.3 : 0.55)) continue
     let a2 = 0
     for (let i = 0; i < pts.length; i++) {
       const p = pts[i]
@@ -468,7 +642,7 @@ export function detectPass(gray: Float32Array, W: number, H: number, u: PlanUnde
       a2 += p.x * q.y - q.x * p.y
     }
     const realArea = Math.abs(a2) / 2
-    if (realArea < 0.8) continue
+    if (realArea < (merged ? 0.4 : 0.8)) continue
     out.push({ points: pts, area: Math.round(realArea * 10) / 10 })
   }
   alignRooms(out.map((r) => r.points), 0.12)

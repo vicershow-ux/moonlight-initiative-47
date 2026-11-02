@@ -102,7 +102,7 @@ const WELD_EDGE = 0.08
  * рядом со стеной соседа — на её линию. Соседние углы двигаются вместе,
  * чтобы ровные стены остались ровными. Меняет pts на месте, возвращает число сваренных углов
  */
-function weldCorners(pts: PlanPoint[], others: { points: PlanPoint[] }[]): number {
+export function weldCorners(pts: PlanPoint[], others: { points: PlanPoint[] }[]): number {
   const n = pts.length
   if (n < 3 || !others.length) return 0
   const fixed = new Set<number>()

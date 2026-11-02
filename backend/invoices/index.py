@@ -126,11 +126,14 @@ def load_extra(cur, company_id, inv):
     row = cur.fetchone()
     inv['company'] = {k: (v or '') for k, v in zip(COMPANY_KEYS, row)} if row else {}
     cur.execute(
-        "SELECT client_name, client_phone, email, address, object_code FROM objects WHERE id = %s",
+        "SELECT client_name, client_phone, email, address, object_code, legal_status, client_requisites FROM objects WHERE id = %s",
         (inv['object_id'],)
     )
-    o = cur.fetchone() or ('', '', '', '', '')
-    inv['customer'] = {'name': o[0] or '', 'phone': o[1] or '', 'email': o[2] or '', 'address': o[3] or '', 'object_code': o[4] or ''}
+    o = cur.fetchone() or ('', '', '', '', '', '', {})
+    inv['customer'] = {
+        'name': o[0] or '', 'phone': o[1] or '', 'email': o[2] or '', 'address': o[3] or '', 'object_code': o[4] or '',
+        'legal': (o[5] or '') == 'юридическое лицо', 'requisites': o[6] or {},
+    }
     inv['contract'] = None
     inv['breakdown'] = None
     if inv.get('contract_id'):

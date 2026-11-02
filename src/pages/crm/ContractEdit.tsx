@@ -97,6 +97,20 @@ const EMPTY_CONTRACTOR: Partial<Opts> = {
 }
 
 /** Переключение «кто мы в договоре»: свою компанию переносим на нужную сторону, другую сторону очищаем */
+/** Заказчик-юрлицо из карточки объекта: тип, название, ОГРН, подписант */
+function customerFromObject(obj: ObjectItem): Partial<Opts> {
+  if (obj.legal_status !== "юридическое лицо") return {}
+  const r = obj.client_requisites || {}
+  return {
+    customer_type: "legal",
+    customer_org_name: r.org_name || obj.client_name || "",
+    customer_ogrn: r.ogrn || "",
+    customer_director_position: r.director_position || "",
+    customer_director_name: r.director_name || "",
+    customer_basis: r.basis || "",
+  }
+}
+
 function switchRole(prev: Opts, role: Opts["our_role"], comp: CompanyData | null, obj: ObjectItem | null): Opts {
   if (role === prev.our_role) return prev
   if (role === "customer") {
@@ -113,6 +127,7 @@ function switchRole(prev: Opts, role: Opts["our_role"], comp: CompanyData | null
     customer_director_name: "",
     customer_ogrn: "",
     customer_ogrnip: "",
+    ...(obj ? customerFromObject(obj) : {}),
     ...EMPTY_CONTRACTOR,
     ...contractorFromCompany(comp, type),
     contractor_type: type as Opts["contractor_type"],
@@ -201,6 +216,7 @@ export default function ContractEdit() {
             return {
               ...prev,
               customer_name: obj.client_name || "",
+              ...customerFromObject(obj),
               ...contractorFromCompany(comp, type),
               contractor_type: type as Required<ContractOptions>["contractor_type"],
               object_address: obj.address || "",

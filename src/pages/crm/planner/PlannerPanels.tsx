@@ -222,6 +222,7 @@ interface SettingsProps {
   fileUrl: string | null
   dirty: boolean
   onFitAll?: () => void
+  onAlignWalls?: () => void
 }
 
 /** Высота стен, перенос метража в помещения, ссылка на PDF и метка изменений */
@@ -233,6 +234,7 @@ export function PlannerSettingsBar({
   fileUrl,
   dirty,
   onFitAll,
+  onAlignWalls,
 }: SettingsProps) {
   const withArea = scheme.rooms.filter((r) => r.planArea).length
   return (
@@ -269,6 +271,16 @@ export function PlannerSettingsBar({
           <span className="text-xs text-[#D4AF37]/70">
             {withArea}/{scheme.rooms.length}
           </span>
+        </button>
+      )}
+      {onAlignWalls && scheme.rooms.length > 1 && (
+        <button
+          onClick={onAlignWalls}
+          title="Стены соседних помещений через перегородку сводятся на одну ось, углы стыкуются — помещения не удаляются"
+          className="flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-2 text-sm text-white/70 transition-colors hover:bg-white/10"
+        >
+          <Icon name="AlignHorizontalSpaceAround" fallback="Grid2x2" size={15} />
+          Свести стены
         </button>
       )}
       {fileUrl && (

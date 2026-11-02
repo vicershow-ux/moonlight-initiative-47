@@ -107,6 +107,8 @@ export default function ObjectPlanner() {
         save={save}
         exporting={exporting}
         saving={saving}
+        assistOff={state.assistOff}
+        setAssistOff={state.setAssistOff}
       />
 
       {layer === "plan" && (
@@ -181,6 +183,7 @@ export default function ObjectPlanner() {
         fileUrl={fileUrl}
         dirty={dirty}
         onFitAll={state.fitAllToPlan}
+        onAlignWalls={state.alignWalls}
       />
 
       <PlannerWorkspace state={state} />

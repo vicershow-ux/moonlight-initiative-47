@@ -174,6 +174,22 @@ export const twoFactorApi = {
   },
 }
 
+export interface ClientRequisites {
+  org_name?: string
+  inn?: string
+  kpp?: string
+  ogrn?: string
+  legal_address?: string
+  postal_address?: string
+  director_position?: string
+  director_name?: string
+  basis?: string
+  bank_name?: string
+  bik?: string
+  account?: string
+  corr_account?: string
+}
+
 export interface ObjectItem {
   id: number
   object_code: string
@@ -184,6 +200,8 @@ export interface ObjectItem {
   status: string
   email: string
   legal_status: string
+  /** Реквизиты заказчика-юрлица — подставляются в договор и счёт */
+  client_requisites?: ClientRequisites
   address: string
   payment_type: string
   has_elevator: string
@@ -2359,7 +2377,7 @@ export interface Invoice {
   contract_number?: string | null
   act_number?: string | null
   company?: Partial<CompanyData> & { stamp_url?: string }
-  customer?: { name: string; phone: string; email: string; address: string; object_code: string }
+  customer?: { name: string; phone: string; email: string; address: string; object_code: string; legal?: boolean; requisites?: ClientRequisites }
   contract?: { contract_number: string; contract_date: string; options: ContractOptions } | null
   act?: { act_number: string; act_date: string } | null
   breakdown?: { stage: string; items: InvoiceItem[] } | null

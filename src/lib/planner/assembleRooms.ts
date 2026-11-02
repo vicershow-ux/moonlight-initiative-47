@@ -1,5 +1,6 @@
 import { pointInPolygon } from "./geometry"
 import type { PlanPoint, PlanRoom, PlanScheme, WallProps } from "./types"
+import { weldCorners } from "./glueRooms"
 import { wallProps } from "./walls"
 
 /** Самая толстая перегородка между найденными комнатами, м */
@@ -93,7 +94,9 @@ export function assembleRooms(scheme: PlanScheme, added: PlanRoom[]): { scheme: 
       const l = mean(left)
       const r = mean(right)
       axis = (l + r) / 2
-      props = { ...wallProps(scheme, ""), thickness: Math.max(MIN_THICK, Math.round((r - l) * 100) / 100) }
+      // Уже общая стена (зазора нет) — толщину не трогаем, берём самую толстую из заданных
+      const own = list.map((e) => wallProps(scheme, `${all[e.room].id}:${e.i}`)).sort((a, b) => b.thickness - a.thickness)[0]
+      props = r - l > 0.03 ? { ...own, thickness: Math.max(MIN_THICK, Math.round((r - l) * 100) / 100) } : own
     }
     axis = Math.round(axis * 1000) / 1000
     for (const e of list) {
@@ -125,6 +128,31 @@ export function assembleRooms(scheme: PlanScheme, added: PlanRoom[]): { scheme: 
     }
   }
 
+  // Углы, оставшиеся рядом с углом или стеной соседа, свариваем — мелких зазоров не остаётся
+  for (let k = nFixed; k < pts.length; k++) {
+    const others = pts.filter((_, j) => j !== k).map((points) => ({ points }))
+    const trial = pts[k].map((p) => ({ ...p }))
+    weldCorners(trial, others)
+    // Сварка не должна перекашивать стены: ровная стена обязана остаться ровной
+    const straight = (P: PlanPoint[], i: number) => {
+      const a = P[i]
+      const b = P[(i + 1) % P.length]
+      return Math.abs(a.x - b.x) < 1e-4 || Math.abs(a.y - b.y) < 1e-4
+    }
+    if (trial.every((_, i) => !straight(pts[k], i) || straight(trial, i))) pts[k].splice(0, pts[k].length, ...trial)
+  }
+
   const rooms = added.map((r, k) => ({ ...r, points: pts[nFixed + k] }))
   return { scheme: { ...scheme, walls }, rooms }
+}
+
+/** Свести стены всех нарисованных помещений на общие оси, ничего не удаляя */
+export function alignAllRooms(scheme: PlanScheme): { scheme: PlanScheme; moved: number } {
+  const res = assembleRooms({ ...scheme, rooms: [] }, scheme.rooms)
+  let moved = 0
+  res.rooms.forEach((r, k) => {
+    const old = scheme.rooms[k].points
+    if (r.points.some((p, i) => Math.hypot(p.x - old[i].x, p.y - old[i].y) > 0.002)) moved++
+  })
+  return { scheme: { ...scheme, walls: res.scheme.walls, rooms: res.rooms }, moved }
 }

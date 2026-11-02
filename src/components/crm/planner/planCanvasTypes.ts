@@ -65,6 +65,8 @@ export interface PlanCanvasProps {
   calibPts?: PlanPoint[]
   onCalibrateClick?: (p: PlanPoint) => void
   /** Найденные по подложке контуры — щелчок добавляет помещение */
+  /** Помощник черчения выключен кнопкой на панели — Alt включает его на время */
+  assistOff?: boolean
   detected?: NamedContour[]
   onAcceptDetected?: (index: number) => void
   activeDetected?: number | null

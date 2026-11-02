@@ -71,6 +71,8 @@ interface ToolbarProps {
   save: () => void
   exporting: boolean
   saving: boolean
+  assistOff?: boolean
+  setAssistOff?: (v: boolean) => void
 }
 
 /** Инструменты рисования и кнопки «Скачать PDF» и «Сохранить» */
@@ -88,6 +90,8 @@ export function PlannerToolbar({
   save,
   exporting,
   saving,
+  assistOff,
+  setAssistOff,
 }: ToolbarProps) {
   return (
     <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -110,6 +114,18 @@ export function PlannerToolbar({
             {t.label}
           </button>
         ))}
+        {layer !== "interior" && setAssistOff && (
+          <button
+            onClick={() => setAssistOff(!assistOff)}
+            title={assistOff ? "Помощник выключен: точки ставятся свободно. Alt — включить на время" : "Прилипание к углам, осям и стенам. Alt — ставить свободно"}
+            className={`flex min-h-[42px] items-center gap-2 rounded-lg border px-3 text-sm transition-colors ${
+              assistOff ? "border-white/10 bg-transparent text-white/40 hover:bg-white/5" : "border-[#D4AF37]/40 bg-[#D4AF37]/10 text-[#D4AF37] hover:bg-[#D4AF37]/20"
+            }`}
+          >
+            <Icon name="Magnet" size={16} />
+            {assistOff ? "Помощник выкл." : "Помощник вкл."}
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2">

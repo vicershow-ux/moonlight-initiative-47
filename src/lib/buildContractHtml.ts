@@ -50,7 +50,9 @@ function customerIntro(ctx: ContractContext): string {
     return `Индивидуальный предприниматель ${esc(customerName)}, зарегистрирован${suffix} в реестре индивидуальных предпринимателей под № ${esc(o.customer_ogrnip) || "____________"}${ourInn ? `, ИНН ${esc(ourInn)}` : ""} (далее — «Заказчик»), с одной стороны, и`
   }
   const org = o.customer_org_name || customerName
-  const reg = [o.customer_ogrn ? `ОГРН ${esc(o.customer_ogrn)}` : "", ourInn ? `ИНН ${esc(ourInn)}` : ""].filter(Boolean).join(", ")
+  const req = isHire(o) ? {} : object.client_requisites || {}
+  const inn = ourInn || req.inn || ""
+  const reg = [o.customer_ogrn ? `ОГРН ${esc(o.customer_ogrn)}` : "", inn ? `ИНН ${esc(inn)}` : "", !isHire(o) && req.kpp ? `КПП ${esc(req.kpp)}` : ""].filter(Boolean).join(", ")
   return `${esc(org)}${reg ? ` (${reg})` : ""}, именуемое в дальнейшем «Заказчик», от имени которого действует ${esc(o.customer_director_position) || "генеральный директор"} ${esc(o.customer_director_name) || esc(customerName)} на основании ${esc(o.customer_basis) || "Устава"}, с одной стороны, и`
 }
 
@@ -234,6 +236,29 @@ function customerCard(ctx: ContractContext, address: string): string {
   if (isHire(o)) {
     const ogrn = isLegal ? o.customer_ogrn : o.customer_ogrnip
     const rows = requisitesRows(companyRequisites(c, o.customer_type, ogrn || c?.ogrn)) + row("Адрес объекта", address)
+    return card("Заказчик", customerTitle(ctx), rows)
+  }
+  const r = object.client_requisites || {}
+  if (isLegal && Object.values(r).some(Boolean)) {
+    // Реквизиты юрлица из карточки объекта — полным блоком, как у своей компании
+    const rows =
+      requisitesRows({
+        ogrnLabel: "ОГРН",
+        ogrn: o.customer_ogrn || r.ogrn,
+        inn: r.inn,
+        kpp: r.kpp,
+        addressLabel: "Юр. адрес",
+        address: r.legal_address,
+        phone: object.client_phone,
+        email: object.email,
+        account: r.account,
+        bank: r.bank_name,
+        bik: r.bik,
+        corr: r.corr_account,
+      }) +
+      row("Почтовый адрес", r.postal_address) +
+      (o.customer_director_name ? row(o.customer_director_position || "Директор", o.customer_director_name) : "") +
+      row("Адрес объекта", address)
     return card("Заказчик", customerTitle(ctx), rows)
   }
   const rows = [

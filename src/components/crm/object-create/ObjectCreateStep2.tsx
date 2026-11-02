@@ -1,4 +1,6 @@
 import { formatPhone } from "@/lib/phone"
+import { ClientRequisites } from "@/lib/api"
+import { ClientRequisitesForm } from "./ClientRequisitesForm"
 
 interface ObjectCreateStep2Props {
   clientName: string
@@ -7,6 +9,10 @@ interface ObjectCreateStep2Props {
   setClientPhone: (v: string) => void
   email: string
   setEmail: (v: string) => void
+  /** Заказчик — юрлицо: показываем реквизиты */
+  isLegal?: boolean
+  requisites?: ClientRequisites
+  setRequisites?: (v: ClientRequisites) => void
 }
 
 export function ObjectCreateStep2({
@@ -16,6 +22,9 @@ export function ObjectCreateStep2({
   setClientPhone,
   email,
   setEmail,
+  isLegal,
+  requisites,
+  setRequisites,
 }: ObjectCreateStep2Props) {
   return (
     <div className="flex flex-col gap-5">
@@ -27,7 +36,7 @@ export function ObjectCreateStep2({
         <input
           value={clientName}
           onChange={(e) => setClientName(e.target.value)}
-          placeholder="Иванов Иван Иванович или наименование компании"
+          placeholder={isLegal ? "Контактное лицо или наименование компании" : "Иванов Иван Иванович или наименование компании"}
           className="bg-[#161616] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#D4AF37]/50"
         />
       </div>
@@ -63,6 +72,15 @@ export function ObjectCreateStep2({
           />
         </div>
       </div>
+      {isLegal && setRequisites && (
+        <ClientRequisitesForm
+          value={requisites || {}}
+          onChange={(v) => {
+            setRequisites(v)
+            if (v.org_name && (!clientName || clientName === (requisites?.org_name || ""))) setClientName(v.org_name)
+          }}
+        />
+      )}
     </div>
   )
 }

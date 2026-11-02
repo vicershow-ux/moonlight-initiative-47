@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { Link, useNavigate, useParams } from "@/lib/router-compat"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
-import { objectsApi, ObjectItem } from "@/lib/api"
+import { ClientRequisites, objectsApi, ObjectItem } from "@/lib/api"
 import { ObjectCreateStep1 } from "@/components/crm/object-create/ObjectCreateStep1"
 import { ObjectCreateStep2 } from "@/components/crm/object-create/ObjectCreateStep2"
 import { ObjectCreateStep3 } from "@/components/crm/object-create/ObjectCreateStep3"
@@ -28,6 +28,7 @@ export default function ObjectEdit() {
   const [clientName, setClientName] = useState("")
   const [clientPhone, setClientPhone] = useState("")
   const [email, setEmail] = useState("")
+  const [requisites, setRequisites] = useState<ClientRequisites>({})
 
   const [hasElevator, setHasElevator] = useState("")
   const [completionType, setCompletionType] = useState("")
@@ -55,6 +56,7 @@ export default function ObjectEdit() {
     setClientName(object.client_name || "")
     setClientPhone(object.client_phone || "")
     setEmail(object.email || "")
+    setRequisites(object.client_requisites || {})
     setHasElevator(object.has_elevator || "")
     setCompletionType(object.completion_type || "")
     setMaterialUnloading(object.material_unloading || "")
@@ -97,6 +99,10 @@ export default function ObjectEdit() {
       setError("Укажите телефон заказчика")
       return false
     }
+    if (legalStatus === "юридическое лицо" && (!requisites.org_name?.trim() || !requisites.inn?.trim())) {
+      setError("Для юрлица укажите наименование организации и ИНН")
+      return false
+    }
     return true
   }
 
@@ -117,6 +123,7 @@ export default function ObjectEdit() {
         client_name: clientName,
         client_phone: clientPhone,
         email,
+        client_requisites: legalStatus === "юридическое лицо" ? requisites : {},
         has_elevator: hasElevator,
         completion_type: completionType,
         material_unloading: materialUnloading,
@@ -181,6 +188,9 @@ export default function ObjectEdit() {
             setClientPhone={setClientPhone}
             email={email}
             setEmail={setEmail}
+            isLegal={legalStatus === "юридическое лицо"}
+            requisites={requisites}
+            setRequisites={setRequisites}
           />
         </div>
 

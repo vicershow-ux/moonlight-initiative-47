@@ -1,6 +1,6 @@
 import { squareUp } from "@/components/crm/planner/drawAssist"
 import { glueRoom } from "@/lib/planner/glueRooms"
-import { assembleRooms } from "@/lib/planner/assembleRooms"
+import { alignAllRooms, assembleRooms } from "@/lib/planner/assembleRooms"
 import { guessRoomNames, nameForType, type NamedContour } from "@/lib/planner/roomNames"
 import { mergeRooms, removeRoomWall, roomBehindWall, scaleRoomToArea, splitRoom, stickiestCorner } from "@/lib/planner/editRooms"
 import { useCallback, useEffect, useMemo, useState } from "react"
@@ -695,6 +695,17 @@ export function usePlannerState(id: string | undefined) {
   /** Контур — не помещение: убрать из найденных */
   const discardDetected = (index: number) => setDetected((prev) => prev.filter((_, i) => i !== index))
 
+  /** Свести стены уже нарисованных помещений на общие оси — убрать изломы и двойные стены */
+  const alignWalls = () => {
+    if (scheme.rooms.length < 2) return
+    const { moved } = alignAllRooms(scheme)
+    setScheme((s) => applyMounts(alignAllRooms(s).scheme))
+    touch()
+    setMessage(moved ? `Стены сведены на общие оси, поправлено помещений: ${moved}` : "Стены уже ровные — сводить нечего")
+  }
+  /** Помощник черчения: прилипание к углам, осям и стенам. Выключен — Alt включает на время */
+  const [assistOff, setAssistOff] = useState(false)
+
   /** Все помещения с площадью из БТИ — пропорционально под неё */
   const fitAllToPlan = () => {
     const list = scheme.rooms.filter((r) => r.planArea && r.planArea > 0)
@@ -1052,6 +1063,9 @@ export function usePlannerState(id: string | undefined) {
     setActiveDetected,
     discardDetected,
     fitAllToPlan,
+    alignWalls,
+    assistOff,
+    setAssistOff,
     setDetectedType,
     dropDetectedOpening,
     splitByLine,

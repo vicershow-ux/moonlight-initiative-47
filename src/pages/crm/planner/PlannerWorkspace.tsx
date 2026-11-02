@@ -196,6 +196,7 @@ export function PlannerWorkspace({ state }: Props) {
           calibPts={state.calibPts}
           onCalibrateClick={state.calibrateClick}
           detected={state.detected}
+          assistOff={state.assistOff}
           onAcceptDetected={(i) => state.detected[i] && state.acceptDetected([state.detected[i]])}
           onSplit={state.splitByLine}
           selectedFreeWallId={state.selectedFreeWallId}

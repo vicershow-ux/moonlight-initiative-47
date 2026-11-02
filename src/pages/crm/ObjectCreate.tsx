@@ -2,7 +2,7 @@ import { useState } from "react"
 import { Link, useNavigate } from "@/lib/router-compat"
 import { CrmLayout } from "@/components/crm/CrmLayout"
 import Icon from "@/components/ui/icon"
-import { objectsApi } from "@/lib/api"
+import { ClientRequisites, objectsApi } from "@/lib/api"
 import { ObjectCreateStepper } from "@/components/crm/object-create/ObjectCreateStepper"
 import { ObjectCreateStep1 } from "@/components/crm/object-create/ObjectCreateStep1"
 import { ObjectCreateStep2 } from "@/components/crm/object-create/ObjectCreateStep2"
@@ -26,6 +26,7 @@ export default function ObjectCreate() {
   const [clientName, setClientName] = useState("")
   const [clientPhone, setClientPhone] = useState("")
   const [email, setEmail] = useState("")
+  const [requisites, setRequisites] = useState<ClientRequisites>({})
 
   const [hasElevator, setHasElevator] = useState("")
   const [completionType, setCompletionType] = useState("")
@@ -62,6 +63,10 @@ export default function ObjectCreate() {
       setError("Укажите телефон заказчика")
       return false
     }
+    if (legalStatus === "юридическое лицо" && (!requisites.org_name?.trim() || !requisites.inn?.trim())) {
+      setError("Для юрлица укажите наименование организации и ИНН")
+      return false
+    }
     return true
   }
 
@@ -93,6 +98,7 @@ export default function ObjectCreate() {
         client_name: clientName,
         client_phone: clientPhone,
         email,
+        client_requisites: legalStatus === "юридическое лицо" ? requisites : {},
         has_elevator: hasElevator,
         completion_type: completionType,
         material_unloading: materialUnloading,
@@ -151,6 +157,9 @@ export default function ObjectCreate() {
             setClientPhone={setClientPhone}
             email={email}
             setEmail={setEmail}
+            isLegal={legalStatus === "юридическое лицо"}
+            requisites={requisites}
+            setRequisites={setRequisites}
           />
         )}
 

@@ -111,16 +111,21 @@ export function buildInvoiceHtml(inv: Invoice): string {
   ].join("")
 
   const opts = inv.contract?.options || {}
+  const req = cust.legal ? cust.requisites || {} : {}
+  const buyerLegal = opts.customer_type === "legal" || (!inv.contract && !!cust.legal)
   const buyerName =
-    opts.customer_type === "legal" && opts.customer_org_name
-      ? opts.customer_org_name
+    buyerLegal && (opts.customer_org_name || req.org_name)
+      ? opts.customer_org_name || req.org_name || ""
       : opts.customer_type === "entrepreneur"
         ? `ИП ${opts.customer_name || cust.name}`
         : opts.customer_name || cust.name
   const buyerRows = [
-    field(opts.customer_type === "legal" ? "Организация" : "ФИО", buyerName),
+    field(buyerLegal ? "Организация" : "ФИО", buyerName),
+    buyerLegal ? field("ИНН", req.inn) : "",
+    buyerLegal ? field("КПП", req.kpp) : "",
     opts.customer_type === "entrepreneur" ? field("ОГРНИП", opts.customer_ogrnip) : "",
-    opts.customer_type === "legal" ? field("ОГРН", opts.customer_ogrn) : "",
+    buyerLegal ? field("ОГРН", opts.customer_ogrn || req.ogrn) : "",
+    buyerLegal ? field("Юр. адрес", req.legal_address) : "",
     field("Адрес объекта", cust.address),
     field("Телефон", cust.phone),
     field("E-mail", cust.email),

@@ -1,0 +1,1 @@
+ALTER TABLE t_p98567891_moonlight_initiative.objects ADD COLUMN client_requisites jsonb NOT NULL DEFAULT '{}'::jsonb;
